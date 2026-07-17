@@ -1,0 +1,24 @@
+.hero-css-slider .css-slide {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  animation: heroCrossfade 10s infinite ease-in-out;
+}
+
+.hero-css-slider .slide-1 {
+  animation-delay: 0s;
+}
+
+.hero-css-slider .slide-2 {
+  animation-delay: 5s;
+}
+
+@keyframes heroCrossfade {
+  0% { opacity: 1; }
+  45% { opacity: 1; }
+  55% { opacity: 0; }
+  95% { opacity: 0; }
+  100% { opacity: 1; }
+}
