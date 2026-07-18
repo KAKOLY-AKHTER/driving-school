@@ -83,7 +83,7 @@ const TIERS = [
   },
 ]
 
-export default function Pricing() {
+export default function Pricing({ light = false }) {
   return (
     <>
       <style>{`
@@ -94,6 +94,10 @@ export default function Pricing() {
         @keyframes priceGlow {
           0%, 100% { box-shadow: 0 0 30px rgba(253,188,1,0.08), 0 10px 40px rgba(0,0,0,0.2); }
           50% { box-shadow: 0 0 50px rgba(253,188,1,0.15), 0 10px 40px rgba(0,0,0,0.2); }
+        }
+        @keyframes priceGlowLight {
+          0%, 100% { box-shadow: 0 0 20px rgba(253,188,1,0.06), 0 4px 20px rgba(0,0,0,0.06); }
+          50% { box-shadow: 0 0 40px rgba(253,188,1,0.12), 0 4px 20px rgba(0,0,0,0.06); }
         }
         @keyframes priceBadgePulse {
           0%, 100% { box-shadow: 0 2px 10px rgba(253,188,1,0.3); }
@@ -150,6 +154,22 @@ export default function Pricing() {
           background: linear-gradient(90deg, ${GOLD}, ${GOLD_BRIGHT}) !important;
           height: 4px;
         }
+        .price-card-light {
+          background: #ffffff;
+          border: 1px solid #E2EBF5;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        }
+        .price-card-light:hover {
+          background: #ffffff;
+          border-color: rgba(253,188,1,0.3);
+          box-shadow: 0 16px 48px rgba(0,0,0,0.1);
+          transform: translateY(-10px);
+        }
+        .price-card-light .price-card-highlight {
+          background: linear-gradient(135deg, rgba(253,188,1,0.05) 0%, rgba(1,69,168,0.04) 100%) !important;
+          border: 1px solid rgba(253,188,1,0.25) !important;
+          animation: priceCardIn 0.6s cubic-bezier(0.22,1,0.36,1) 0.2s both, priceGlowLight 3s ease-in-out infinite !important;
+        }
         .price-badge {
           position: absolute;
           top: 1rem;
@@ -200,14 +220,14 @@ export default function Pricing() {
         id="pricing"
         className="section-pad"
         style={{
-          background: `linear-gradient(180deg, ${DARK_MID} 0%, ${DARK} 50%, ${DARK_MID} 100%)`,
+          background: light ? '#ffffff' : `linear-gradient(180deg, ${DARK_MID} 0%, ${DARK} 50%, ${DARK_MID} 100%)`,
           position: 'relative',
           overflow: 'hidden',
         }}
       >
         <div aria-hidden="true" style={{
           position: 'absolute', inset: 0,
-          background: 'radial-gradient(ellipse at 50% 30%, rgba(253,188,1,0.03) 0%, transparent 50%)',
+          background: light ? 'none' : 'radial-gradient(ellipse at 50% 30%, rgba(253,188,1,0.03) 0%, transparent 50%)',
           pointerEvents: 'none',
         }} />
 
@@ -234,7 +254,7 @@ export default function Pricing() {
             <h2 style={{
               fontFamily: 'var(--font-display)',
               fontSize: 'clamp(2rem, 4vw, 3rem)',
-              color: '#ffffff',
+              color: light ? '#0a1628' : '#ffffff',
               marginBottom: '0.5rem',
               fontWeight: 800,
             }}>
@@ -243,7 +263,7 @@ export default function Pricing() {
             <p style={{
               fontFamily: 'var(--font-body)',
               fontSize: 'clamp(0.85rem, 1.5vw, 1rem)',
-              color: 'rgba(255,255,255,0.45)',
+              color: light ? 'rgba(10,22,40,0.45)' : 'rgba(255,255,255,0.45)',
               maxWidth: '32rem',
               marginInline: 'auto',
             }}>
@@ -255,7 +275,7 @@ export default function Pricing() {
           <div style={{ overflow: 'auto', marginInline: '-1rem', paddingInline: '1rem' }}>
             <div className="price-scroll">
               {TIERS.map((tier) => (
-                <div key={tier.name} className={`price-card${tier.highlight ? ' price-card-highlight' : ''}`}>
+                <div key={tier.name} className={`price-card${light ? ' price-card-light' : ''}${tier.highlight ? ' price-card-highlight' : ''}`}>
 
                   {tier.badge && (
                     <div className="price-badge">{tier.badge}</div>
@@ -266,14 +286,14 @@ export default function Pricing() {
                     width: '48px',
                     height: '48px',
                     borderRadius: '12px',
-                    background: tier.highlight ? 'rgba(253,188,1,0.1)' : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${tier.highlight ? 'rgba(253,188,1,0.2)' : 'rgba(255,255,255,0.06)'}`,
+                    background: light ? (tier.highlight ? 'rgba(253,188,1,0.1)' : 'rgba(1,69,168,0.06)') : (tier.highlight ? 'rgba(253,188,1,0.1)' : 'rgba(255,255,255,0.04)'),
+                    border: `1px solid ${light ? (tier.highlight ? 'rgba(253,188,1,0.2)' : 'rgba(1,69,168,0.1)') : (tier.highlight ? 'rgba(253,188,1,0.2)' : 'rgba(255,255,255,0.06)')}`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     marginBottom: '1.25rem',
                   }}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={tier.highlight ? GOLD : 'rgba(255,255,255,0.35)'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={tier.highlight ? GOLD : (light ? SKY_BLUE : 'rgba(255,255,255,0.35)')} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d={tier.icon} />
                     </svg>
                   </div>
@@ -284,7 +304,7 @@ export default function Pricing() {
                     fontSize: '0.6rem',
                     letterSpacing: '0.15em',
                     textTransform: 'uppercase',
-                    color: 'rgba(255,255,255,0.35)',
+                    color: light ? 'rgba(10,22,40,0.4)' : 'rgba(255,255,255,0.35)',
                     fontWeight: 600,
                     marginBottom: '0.5rem',
                   }}>
@@ -295,7 +315,7 @@ export default function Pricing() {
                   <h3 style={{
                     fontFamily: 'var(--font-display)',
                     fontSize: '1.15rem',
-                    color: '#ffffff',
+                    color: light ? '#0a1628' : '#ffffff',
                     marginBottom: '1rem',
                     fontWeight: 700,
                   }}>
@@ -319,7 +339,7 @@ export default function Pricing() {
                         fontSize: '0.6rem',
                         letterSpacing: '0.1em',
                         textTransform: 'uppercase',
-                        color: 'rgba(255,255,255,0.3)',
+                        color: light ? 'rgba(10,22,40,0.35)' : 'rgba(255,255,255,0.3)',
                       }}>
                         /{tier.period}
                       </span>
@@ -330,7 +350,7 @@ export default function Pricing() {
                   <div style={{
                     width: '100%',
                     height: '1px',
-                    background: tier.highlight ? 'rgba(253,188,1,0.15)' : 'rgba(255,255,255,0.05)',
+                    background: tier.highlight ? 'rgba(253,188,1,0.15)' : (light ? 'rgba(10,22,40,0.08)' : 'rgba(255,255,255,0.05)'),
                     marginBottom: '1.5rem',
                   }} />
 
@@ -347,12 +367,12 @@ export default function Pricing() {
                   }}>
                     {tier.features.map((f) => (
                       <li key={f} style={{ display: 'flex', gap: '0.7rem', alignItems: 'flex-start' }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={tier.highlight ? GOLD : 'rgba(255,255,255,0.25)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '3px' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={tier.highlight ? GOLD : (light ? SKY_BLUE : 'rgba(255,255,255,0.25)')} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '3px' }}>
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                         <span style={{
                           fontFamily: 'var(--font-body)',
-                          color: 'rgba(255,255,255,0.5)',
+                          color: light ? 'rgba(10,22,40,0.6)' : 'rgba(255,255,255,0.5)',
                           fontSize: '0.85rem',
                           lineHeight: 1.5,
                         }}>
@@ -387,9 +407,9 @@ export default function Pricing() {
                             background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`,
                           }
                         : {
-                            color: '#ffffff',
-                            background: 'transparent',
-                            border: '1px solid rgba(255,255,255,0.15)',
+                            color: light ? SKY_BLUE : '#ffffff',
+                            background: light ? 'transparent' : 'transparent',
+                            border: `1px solid ${light ? 'rgba(1,69,168,0.2)' : 'rgba(255,255,255,0.15)'}`,
                           }),
                     }}
                     onMouseEnter={(e) => {
@@ -406,8 +426,8 @@ export default function Pricing() {
                         e.currentTarget.style.transform = 'translateY(0)'
                         e.currentTarget.style.boxShadow = 'none'
                       } else {
-                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
-                        e.currentTarget.style.color = '#ffffff'
+                        e.currentTarget.style.borderColor = light ? 'rgba(1,69,168,0.2)' : 'rgba(255,255,255,0.15)'
+                        e.currentTarget.style.color = light ? SKY_BLUE : '#ffffff'
                       }
                     }}
                   >
@@ -425,7 +445,7 @@ export default function Pricing() {
           <p style={{
             fontFamily: 'var(--font-body)',
             fontSize: '0.75rem',
-            color: 'rgba(255,255,255,0.25)',
+            color: light ? 'rgba(10,22,40,0.35)' : 'rgba(255,255,255,0.25)',
             marginTop: '2.5rem',
             textAlign: 'center',
           }}>

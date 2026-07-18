@@ -30,9 +30,7 @@ export default function CTABanner() {
         }
         .cta-main-card {
           position: relative;
-          background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
-          backdrop-filter: blur(30px);
-          -webkit-backdrop-filter: blur(30px);
+          background: linear-gradient(135deg, ${DARK} 0%, #0d1f3c 50%, ${DARK} 100%);
           border: 1px solid rgba(255,255,255,0.08);
           border-radius: 20px;
           padding: clamp(3rem, 6vw, 5rem) clamp(2rem, 4vw, 4rem);
@@ -79,7 +77,6 @@ export default function CTABanner() {
 
       <section
         style={{
-          background: `linear-gradient(135deg, ${DARK} 0%, #0d1f3c 50%, ${DARK} 100%)`,
           position: 'relative',
           overflow: 'hidden',
           padding: 'clamp(4rem, 8vw, 7rem) 0',
