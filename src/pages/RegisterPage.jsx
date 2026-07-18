@@ -1,5 +1,11 @@
 import { useState } from 'react'
 
+const GOLD = '#FDBC01'
+const GOLD_DEEP = '#C8960C'
+const GOLD_BRIGHT = '#FFD54F'
+const SKY_BLUE = '#0145A8'
+const DARK = '#0a1628'
+
 const STATES = [
   'Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut',
   'Delaware','District Of Columbia','Florida','Georgia','Hawaii','Idaho','Illinois',
@@ -16,74 +22,21 @@ const COURSE_TYPES = [
   { value: '7', label: 'Duplicate Certificate 400C — $15' },
 ]
 
-const inputStyle = {
-  width: '100%',
-  padding: '0.85rem 1rem',
-  background: '#ffffff',
-  border: '1px solid #D1DFEE',
-  borderRadius: '6px',
-  color: '#0145A8',
-  fontFamily: 'var(--font-body)',
-  fontSize: '0.95rem',
-  outline: 'none',
-  transition: 'border-color 0.25s ease, box-shadow 0.25s ease',
-}
-
-const inputFocusCSS = `
-  .reg-input:focus {
-    border-color: #0145A8 !important;
-    box-shadow: 0 0 0 3px rgba(1,69,168,0.1) !important;
-  }
-  .reg-input::placeholder { color: #A0B3C6; }
-  .reg-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%230145A8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L1 4h14z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 1rem center; background-color: #ffffff; }
-  .reg-section-title {
-    font-family: var(--font-display);
-    font-size: 1.1rem;
-    color: #0145A8;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    margin-bottom: 1.5rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid #E2EBF5;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-  .reg-section-title::before {
-    content: '';
-    width: 4px;
-    height: 20px;
-    background: var(--color-gold);
-    border-radius: 2px;
-  }
-`
-
-function FormField({ label, required, children }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-      <label style={{
-        fontFamily: 'var(--font-body)',
-        fontSize: '0.8rem',
-        fontWeight: 700,
-        color: '#364B6B',
-        letterSpacing: '0.06em',
-        textTransform: 'uppercase',
-      }}>
-        {label} {required && <span style={{ color: '#B23B3B' }}>*</span>}
-      </label>
-      {children}
-    </div>
-  )
-}
+const STEPS = [
+  { label: 'Personal', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+  { label: 'Course', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' },
+  { label: 'Payment', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
+  { label: 'Confirm', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
+]
 
 export default function RegisterPage() {
-  const [sameAsMailing, setSameAsMailing] = useState(false)
+  const [step, setStep] = useState(0)
   const [form, setForm] = useState({
-    firstName: '', middleName: '', lastName: '',
+    firstName: '', middleName: '', lastName: '', dob: '', phone: '', email: '',
     address1: '', address2: '', city: '', state: 'California', zipCode: '',
-    dob: '', phone: '', email: '', username: '', password: '', confirmPassword: '',
     courseType: '1',
     ccType: '', ccMonth: '', ccYear: '', ccNumber: '', ccCvv: '',
+    sameBilling: true,
     billFirstName: '', billLastName: '', billAddress1: '', billAddress2: '',
     billCity: '', billState: 'California', billZip: '', billPhone: '', billEmail: '',
     disclaimer: '',
@@ -96,275 +49,601 @@ export default function RegisterPage() {
 
   const handleSameBilling = (e) => {
     const checked = e.target.checked
-    setSameAsMailing(checked)
-    if (checked) {
-      setForm(prev => ({
-        ...prev,
-        billFirstName: prev.firstName,
-        billLastName: prev.lastName,
-        billAddress1: prev.address1,
-        billAddress2: prev.address2,
-        billCity: prev.city,
-        billState: prev.state,
-        billZip: prev.zipCode,
-        billPhone: prev.phone,
-        billEmail: prev.email,
-      }))
-    } else {
-      setForm(prev => ({
-        ...prev,
+    setForm(prev => ({
+      ...prev,
+      sameBilling: checked,
+      ...(checked ? {
+        billFirstName: prev.firstName, billLastName: prev.lastName,
+        billAddress1: prev.address1, billAddress2: prev.address2,
+        billCity: prev.city, billState: prev.state, billZip: prev.zipCode,
+        billPhone: prev.phone, billEmail: prev.email,
+      } : {
         billFirstName: '', billLastName: '', billAddress1: '', billAddress2: '',
         billCity: '', billState: 'California', billZip: '', billPhone: '', billEmail: '',
-      }))
-    }
+      }),
+    }))
   }
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
+  const handleSubmit = () => {
     if (form.disclaimer !== '1') {
       alert('Please accept the disclaimer to proceed.')
-      return
-    }
-    if (form.password !== form.confirmPassword) {
-      alert('Passwords do not match.')
       return
     }
     alert('Registration submitted successfully!')
   }
 
+  const next = () => setStep(s => Math.min(s + 1, 3))
+  const prev = () => setStep(s => Math.max(s - 1, 0))
+
+  const inputStyle = {
+    width: '100%',
+    padding: '0.85rem 1rem',
+    background: '#ffffff',
+    border: '1.5px solid #D1DFEE',
+    borderRadius: '10px',
+    color: '#0a1628',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.9rem',
+    outline: 'none',
+    transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
+  }
+
   return (
-    <div style={{ paddingTop: '12rem', minHeight: '100vh' }}>
-      <style>{inputFocusCSS}</style>
-      <div className="container" style={{ maxWidth: '52rem', marginBottom: '6rem' }}>
-        <div className="reveal" style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <img
-            src="/driving-logo.png"
-            alt="A Precision Driving School"
-            style={{
-              height: 'clamp(140px, 20vw, 220px)',
-              width: 'auto',
-              objectFit: 'contain',
-              display: 'block',
-              margin: '0 auto 0.75rem',
-              filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.85)) drop-shadow(0 0 18px rgba(253,188,1,0.45))',
-            }}
-          />
-          <h1 style={{ fontSize: 'clamp(2.5rem, 5vw, 4rem)', color: '#ffffff', marginBottom: '0.4rem', lineHeight: 1.1 }}>
-            30 Hour Drivers Ed
+    <>
+      <style>{`
+        @keyframes rwFadeUp {
+          from { opacity: 0; transform: translateY(24px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes rwShimmer {
+          0% { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+        @keyframes rwStepFill {
+          from { width: 0; }
+        }
+        @keyframes rwStarFloat {
+          0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.2; }
+          50% { transform: translateY(-18px) rotate(180deg); opacity: 0.45; }
+        }
+        .rw-input:focus {
+          border-color: ${SKY_BLUE} !important;
+          box-shadow: 0 0 0 3px rgba(1,69,168,0.1) !important;
+        }
+        .rw-input::placeholder { color: #A0B3C6; }
+        .rw-select {
+          appearance: none;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%230145A8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L1 4h14z'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right 1rem center;
+          background-color: #ffffff;
+        }
+        .rw-step {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.5rem;
+          flex: 1;
+          z-index: 2;
+        }
+        .rw-step-dot {
+          width: 40px; height: 40px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid #D1DFEE;
+          background: #ffffff;
+          transition: all 0.4s cubic-bezier(0.22,1,0.36,1);
+          position: relative;
+          z-index: 2;
+        }
+        .rw-step-active .rw-step-dot {
+          border-color: ${GOLD};
+          background: linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT});
+          box-shadow: 0 4px 16px rgba(253,188,1,0.35);
+          transform: scale(1.1);
+        }
+        .rw-step-done .rw-step-dot {
+          border-color: ${SKY_BLUE};
+          background: ${SKY_BLUE};
+        }
+        .rw-step-line {
+          position: absolute;
+          top: 20px;
+          left: 50%;
+          right: -50%;
+          height: 2px;
+          background: #D1DFEE;
+          z-index: 1;
+        }
+        .rw-step:last-child .rw-step-line { display: none; }
+        .rw-step-active .rw-step-line,
+        .rw-step-done .rw-step-line {
+          background: ${SKY_BLUE};
+        }
+        .rw-glow {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(80px);
+          pointer-events: none;
+          opacity: 0.12;
+        }
+        .rw-particle {
+          position: absolute;
+          border-radius: 50%;
+          pointer-events: none;
+          animation: rwStarFloat ease-in-out infinite;
+        }
+        .rw-card {
+          background: #F8FAFD;
+          border: 1px solid #E2EBF5;
+          border-radius: 16px;
+          padding: clamp(1.5rem, 3vw, 2.5rem);
+          animation: rwFadeUp 0.4s cubic-bezier(0.22,1,0.36,1) both;
+          position: relative;
+        }
+        .rw-cta-gold {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.6rem;
+          padding: 0.9rem 2.5rem;
+          background: linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT});
+          color: ${DARK};
+          font-family: var(--font-mono);
+          font-size: 0.7rem;
+          letter-spacing: 0.15em;
+          text-transform: uppercase;
+          font-weight: 700;
+          border: none;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.22,1,0.36,1);
+          box-shadow: 0 4px 16px rgba(253,188,1,0.3);
+        }
+        .rw-cta-gold:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px rgba(253,188,1,0.4);
+        }
+        .rw-cta-ghost {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          padding: 0.9rem 2rem;
+          background: transparent;
+          color: SKY_BLUE;
+          font-family: var(--font-mono);
+          font-size: 0.7rem;
+          letter-spacing: 0.15em;
+          text-transform: uppercase;
+          font-weight: 700;
+          border: 1.5px solid rgba(1,69,168,0.2);
+          cursor: pointer;
+          text-decoration: none;
+          transition: all 0.3s ease;
+        }
+        .rw-cta-ghost:hover {
+          border-color: ${SKY_BLUE};
+          background: rgba(1,69,168,0.04);
+        }
+      `}</style>
+
+      {/* ═══ Hero ═══ */}
+      <section style={{
+        background: `linear-gradient(135deg, ${DARK} 0%, #0d1f3c 50%, ${DARK} 100%)`,
+        position: 'relative',
+        overflow: 'hidden',
+        paddingTop: '12rem',
+        paddingBottom: '3rem',
+      }}>
+        <div className="rw-glow" style={{ top: '-100px', left: '10%', background: SKY_BLUE, width: '300px', height: '300px' }} />
+        <div className="rw-glow" style={{ bottom: '-80px', right: '15%', background: GOLD, width: '250px', height: '250px' }} />
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="rw-particle" aria-hidden="true" style={{
+            width: `${3 + i * 1.2}px`, height: `${3 + i * 1.2}px`,
+            background: i % 2 === 0 ? GOLD : 'rgba(255,255,255,0.1)',
+            top: `${18 + i * 11}%`, left: `${10 + i * 14}%`,
+            animationDuration: `${3.5 + i * 0.4}s`, animationDelay: `${i * 0.25}s`,
+          }} />
+        ))}
+        <div className="container" style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
+          <img src="/driving-logo.png" alt="A Precision Driving School" style={{
+            height: 'clamp(60px, 9vw, 90px)', width: 'auto', objectFit: 'contain',
+            display: 'block', margin: '0 auto 1rem',
+            filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.85)) drop-shadow(0 0 18px rgba(253,188,1,0.45))',
+          }} />
+          <h1 style={{
+            fontFamily: 'var(--font-display)', fontSize: 'clamp(1.8rem, 4vw, 3rem)',
+            color: '#ffffff', lineHeight: 1.15, fontWeight: 800, marginBottom: '0.75rem',
+          }}>
+            30 Hour{' '}
+            <span style={{
+              background: `linear-gradient(135deg, ${GOLD} 0%, ${GOLD_BRIGHT} 50%, ${GOLD} 100%)`,
+              backgroundSize: '200% auto', WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+              animation: 'rwShimmer 3s linear infinite',
+            }}>Drivers Ed</span>
           </h1>
-          <p className="eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}>
-            <span className="gold-bar" style={{ width: '20px' }} />
-            Online Registration
-            <span className="gold-bar" style={{ width: '20px' }} />
-          </p>
-          <p style={{ color: 'rgba(255,255,255,0.6)', maxWidth: '40ch', margin: '0 auto' }}>
-            Register and pay via credit card to get started today.
-          </p>
+          <p style={{
+            fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.45)',
+            fontSize: 'clamp(0.85rem, 1.3vw, 1rem)', maxWidth: '36ch',
+            marginInline: 'auto', lineHeight: 1.7,
+          }}>Register and pay via credit card to get started today.</p>
         </div>
+      </section>
 
-        <form onSubmit={handleSubmit} style={{
-          background: '#F8FAFD',
-          border: '1px solid #E2EBF5',
-          padding: 'clamp(2rem, 4vw, 3rem)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '2.5rem',
-        }}>
+      {/* ═══ Stepper + Form ═══ */}
+      <section style={{
+        position: 'relative', overflow: 'hidden',
+        padding: 'clamp(1.5rem, 4vw, 3rem) 0 4rem',
+        marginTop: '-1rem',
+      }}>
+        <div className="container" style={{ maxWidth: '48rem', position: 'relative', zIndex: 1 }}>
 
-          {/* PERSONAL INFO */}
-          <div>
-            <div className="reg-section-title">Personal Information</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-              <FormField label="First Name" required>
-                <input name="firstName" value={form.firstName} onChange={handleChange} required className="reg-input" style={inputStyle} />
-              </FormField>
-              <FormField label="Middle Name">
-                <input name="middleName" value={form.middleName} onChange={handleChange} className="reg-input" style={inputStyle} />
-              </FormField>
-              <FormField label="Last Name" required>
-                <input name="lastName" value={form.lastName} onChange={handleChange} required className="reg-input" style={inputStyle} />
-              </FormField>
-              <FormField label="Date of Birth" required>
-                <input name="dob" value={form.dob} onChange={handleChange} required placeholder="MM-DD-YYYY" className="reg-input" style={inputStyle} />
-              </FormField>
-              <FormField label="Phone Number" required>
-                <input name="phone" value={form.phone} onChange={handleChange} required placeholder="999-999-9999" className="reg-input" style={inputStyle} />
-              </FormField>
-              <FormField label="Email" required>
-                <input name="email" type="email" value={form.email} onChange={handleChange} required className="reg-input" style={inputStyle} />
-              </FormField>
-            </div>
+          {/* Progress Steps */}
+          <div style={{
+            display: 'flex', justifyContent: 'center', marginBottom: '2rem',
+            padding: '1.5rem 2rem', background: '#ffffff',
+            border: '1px solid #E2EBF5', borderRadius: '14px',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
+          }}>
+            {STEPS.map((s, i) => (
+              <div key={s.label} className={`rw-step ${i === step ? 'rw-step-active' : ''} ${i < step ? 'rw-step-done' : ''}`}>
+                {i < STEPS.length - 1 && <div className="rw-step-line" style={{ animation: i < step ? 'rwStepFill 0.5s ease both' : undefined }} />}
+                <div className="rw-step-dot">
+                  {i < step ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={i === step ? DARK : '#A0B3C6'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d={s.icon} /></svg>
+                  )}
+                </div>
+                <span style={{
+                  fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.12em',
+                  textTransform: 'uppercase', fontWeight: 600,
+                  color: i <= step ? SKY_BLUE : '#A0B3C6',
+                }}>{s.label}</span>
+              </div>
+            ))}
           </div>
 
-          {/* ADDRESS */}
-          <div>
-            <div className="reg-section-title">Mailing Address</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-              <FormField label="Address Line 1" required>
-                <input name="address1" value={form.address1} onChange={handleChange} required className="reg-input" style={inputStyle} />
-              </FormField>
-              <FormField label="Address Line 2">
-                <input name="address2" value={form.address2} onChange={handleChange} className="reg-input" style={inputStyle} />
-              </FormField>
-              <FormField label="City" required>
-                <input name="city" value={form.city} onChange={handleChange} required className="reg-input" style={inputStyle} />
-              </FormField>
-              <FormField label="State" required>
-                <select name="state" value={form.state} onChange={handleChange} required className="reg-input reg-select" style={inputStyle}>
-                  {STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </FormField>
-              <FormField label="Zip Code" required>
-                <input name="zipCode" value={form.zipCode} onChange={handleChange} required maxLength={5} className="reg-input" style={inputStyle} />
-              </FormField>
-            </div>
-          </div>
+          {/* Form Card */}
+          <div className="rw-card">
 
-          {/* ACCOUNT */}
-          <div>
-            <div className="reg-section-title">Account Details</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-              <FormField label="Username" required>
-                <input name="username" value={form.username} onChange={handleChange} required className="reg-input" style={inputStyle} />
-              </FormField>
-              <FormField label="Password" required>
-                <input name="password" type="password" value={form.password} onChange={handleChange} required className="reg-input" style={inputStyle} />
-              </FormField>
-              <FormField label="Confirm Password" required>
-                <input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} required className="reg-input" style={inputStyle} />
-              </FormField>
-            </div>
-          </div>
+            {/* ═══ STEP 0 — Personal Info ═══ */}
+            {step === 0 && (
+              <div>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '0.75rem',
+                  marginBottom: '1.75rem',
+                }}>
+                  <div style={{
+                    width: '40px', height: '40px', borderRadius: '10px',
+                    background: 'linear-gradient(135deg, rgba(1,69,168,0.06), rgba(253,188,1,0.06))',
+                    border: '1px solid rgba(1,69,168,0.08)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d={STEPS[0].icon} />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: DARK, fontWeight: 700, margin: 0 }}>Personal Information</h2>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>Step 1 of 4</p>
+                  </div>
+                </div>
 
-          {/* COURSE */}
-          <div>
-            <div className="reg-section-title">Course Selection</div>
-            <FormField label="Course Type" required>
-              <select name="courseType" value={form.courseType} onChange={handleChange} required className="reg-input reg-select" style={inputStyle}>
-                {COURSE_TYPES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-              </select>
-            </FormField>
-          </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                  <Field label="First Name" required><input name="firstName" value={form.firstName} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                  <Field label="Middle Name"><input name="middleName" value={form.middleName} onChange={handleChange} className="rw-input" style={inputStyle} /></Field>
+                  <Field label="Last Name" required><input name="lastName" value={form.lastName} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                  <Field label="Date of Birth" required><input name="dob" value={form.dob} onChange={handleChange} required placeholder="MM-DD-YYYY" className="rw-input" style={inputStyle} /></Field>
+                  <Field label="Phone Number" required><input name="phone" value={form.phone} onChange={handleChange} required placeholder="999-999-9999" className="rw-input" style={inputStyle} /></Field>
+                  <Field label="Email" required><input name="email" type="email" value={form.email} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                </div>
 
-          {/* PAYMENT */}
-          <div>
-            <div className="reg-section-title">Payment Information</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-              <FormField label="Card Type" required>
-                <select name="ccType" value={form.ccType} onChange={handleChange} required className="reg-input reg-select" style={inputStyle}>
-                  <option value="">Select...</option>
-                  <option value="Visa">Visa</option>
-                  <option value="MasterCard">MasterCard</option>
-                  <option value="Discover">Discover</option>
-                  <option value="Amex">American Express</option>
-                </select>
-              </FormField>
-              <FormField label="Card Number" required>
-                <input name="ccNumber" value={form.ccNumber} onChange={handleChange} required maxLength={16} placeholder="XXXXXXXXXXXXXXXX" className="reg-input" style={inputStyle} />
-              </FormField>
-              <FormField label="Expiration Month" required>
-                <select name="ccMonth" value={form.ccMonth} onChange={handleChange} required className="reg-input reg-select" style={inputStyle}>
-                  <option value="">Month</option>
-                  {['01','02','03','04','05','06','07','08','09','10','11','12'].map(m => (
-                    <option key={m} value={m}>{m}</option>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginTop: '1rem' }}>
+                  <Field label="Address" required><input name="address1" value={form.address1} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                  <Field label="Apt / Suite"><input name="address2" value={form.address2} onChange={handleChange} className="rw-input" style={inputStyle} /></Field>
+                  <Field label="City" required><input name="city" value={form.city} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem' }}>
+                    <Field label="State" required>
+                      <select name="state" value={form.state} onChange={handleChange} required className="rw-input rw-select" style={inputStyle}>
+                        {STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Zip" required><input name="zipCode" value={form.zipCode} onChange={handleChange} required maxLength={5} className="rw-input" style={inputStyle} /></Field>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ═══ STEP 1 — Course Selection ═══ */}
+            {step === 1 && (
+              <div>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '0.75rem',
+                  marginBottom: '1.75rem',
+                }}>
+                  <div style={{
+                    width: '40px', height: '40px', borderRadius: '10px',
+                    background: 'linear-gradient(135deg, rgba(1,69,168,0.06), rgba(253,188,1,0.06))',
+                    border: '1px solid rgba(1,69,168,0.08)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d={STEPS[1].icon} />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: DARK, fontWeight: 700, margin: 0 }}>Course & Account</h2>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>Step 2 of 4</p>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: '#ffffff', border: '1.5px solid #E2EBF5', borderRadius: '12px',
+                  padding: '1.5rem', marginBottom: '1.5rem',
+                }}>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, marginBottom: '0.75rem' }}>Selected Course</p>
+                  {COURSE_TYPES.map(c => (
+                    <label key={c.value} style={{
+                      display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem',
+                      border: form.courseType === c.value ? `2px solid ${GOLD}` : '1.5px solid #E2EBF5',
+                      borderRadius: '10px', cursor: 'pointer', marginBottom: '0.5rem',
+                      background: form.courseType === c.value ? 'rgba(253,188,1,0.04)' : '#ffffff',
+                      transition: 'all 0.25s ease',
+                    }}>
+                      <input type="radio" name="courseType" value={c.value} checked={form.courseType === c.value} onChange={handleChange} style={{ accentColor: GOLD, width: '18px', height: '18px' }} />
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: DARK, fontWeight: 600 }}>{c.label}</span>
+                    </label>
                   ))}
-                </select>
-              </FormField>
-              <FormField label="Expiration Year" required>
-                <select name="ccYear" value={form.ccYear} onChange={handleChange} required className="reg-input reg-select" style={inputStyle}>
-                  <option value="">Year</option>
-                  {Array.from({ length: 16 }, (_, i) => 26 + i).map(y => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
-              </FormField>
-              <FormField label="CVV" required>
-                <input name="ccCvv" value={form.ccCvv} onChange={handleChange} required maxLength={4} placeholder="3-4 digits" className="reg-input" style={inputStyle} />
-              </FormField>
-            </div>
-          </div>
+                </div>
 
-          {/* BILLING */}
-          <div>
-            <div className="reg-section-title">Billing Address</div>
-            <label style={{
-              display: 'flex', alignItems: 'center', gap: '0.6rem',
-              color: '#0145A8', fontSize: '0.9rem', fontWeight: 600,
-              marginBottom: '1.25rem', cursor: 'pointer',
-            }}>
-              <input type="checkbox" checked={sameAsMailing} onChange={handleSameBilling} style={{ accentColor: '#0145A8', width: '18px', height: '18px' }} />
-              Billing address is the same as mailing address
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-              <FormField label="First Name" required>
-                <input name="billFirstName" value={form.billFirstName} onChange={handleChange} required className="reg-input" style={inputStyle} />
-              </FormField>
-              <FormField label="Last Name" required>
-                <input name="billLastName" value={form.billLastName} onChange={handleChange} required className="reg-input" style={inputStyle} />
-              </FormField>
-              <FormField label="Address 1" required>
-                <input name="billAddress1" value={form.billAddress1} onChange={handleChange} required className="reg-input" style={inputStyle} />
-              </FormField>
-              <FormField label="Address 2">
-                <input name="billAddress2" value={form.billAddress2} onChange={handleChange} className="reg-input" style={inputStyle} />
-              </FormField>
-              <FormField label="City" required>
-                <input name="billCity" value={form.billCity} onChange={handleChange} required className="reg-input" style={inputStyle} />
-              </FormField>
-              <FormField label="State" required>
-                <select name="billState" value={form.billState} onChange={handleChange} required className="reg-input reg-select" style={inputStyle}>
-                  {STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </FormField>
-              <FormField label="Zip Code" required>
-                <input name="billZip" value={form.billZip} onChange={handleChange} required maxLength={5} className="reg-input" style={inputStyle} />
-              </FormField>
-              <FormField label="Phone" required>
-                <input name="billPhone" value={form.billPhone} onChange={handleChange} required className="reg-input" style={inputStyle} />
-              </FormField>
-              <FormField label="Email" required>
-                <input name="billEmail" type="email" value={form.billEmail} onChange={handleChange} required className="reg-input" style={inputStyle} />
-              </FormField>
-            </div>
-          </div>
+                <div style={{
+                  background: '#ffffff', border: '1.5px solid #E2EBF5', borderRadius: '12px',
+                  padding: '1.5rem',
+                }}>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, marginBottom: '1rem' }}>Create Account</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                    <Field label="Username" required><input name="username" value={form.username} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                    <Field label="Password" required><input name="password" type="password" value={form.password} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                    <Field label="Confirm Password" required><input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                  </div>
+                </div>
+              </div>
+            )}
 
-          {/* DISCLAIMER */}
-          <div>
-            <div className="reg-section-title">Disclaimer</div>
+            {/* ═══ STEP 2 — Payment ═══ */}
+            {step === 2 && (
+              <div>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '0.75rem',
+                  marginBottom: '1.75rem',
+                }}>
+                  <div style={{
+                    width: '40px', height: '40px', borderRadius: '10px',
+                    background: 'linear-gradient(135deg, rgba(1,69,168,0.06), rgba(253,188,1,0.06))',
+                    border: '1px solid rgba(1,69,168,0.08)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d={STEPS[2].icon} />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: DARK, fontWeight: 700, margin: 0 }}>Payment Details</h2>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>Step 3 of 4</p>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: '#ffffff', border: '1.5px solid #E2EBF5', borderRadius: '12px',
+                  padding: '1.5rem', marginBottom: '1.25rem',
+                }}>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, marginBottom: '1rem' }}>Card Information</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                    <Field label="Card Type" required>
+                      <select name="ccType" value={form.ccType} onChange={handleChange} required className="rw-input rw-select" style={inputStyle}>
+                        <option value="">Select...</option>
+                        <option value="Visa">Visa</option>
+                        <option value="MasterCard">MasterCard</option>
+                        <option value="Discover">Discover</option>
+                        <option value="Amex">American Express</option>
+                      </select>
+                    </Field>
+                    <Field label="Card Number" required><input name="ccNumber" value={form.ccNumber} onChange={handleChange} required maxLength={16} placeholder="XXXX XXXX XXXX XXXX" className="rw-input" style={inputStyle} /></Field>
+                    <Field label="Exp Month" required>
+                      <select name="ccMonth" value={form.ccMonth} onChange={handleChange} required className="rw-input rw-select" style={inputStyle}>
+                        <option value="">Month</option>
+                        {['01','02','03','04','05','06','07','08','09','10','11','12'].map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Exp Year" required>
+                      <select name="ccYear" value={form.ccYear} onChange={handleChange} required className="rw-input rw-select" style={inputStyle}>
+                        <option value="">Year</option>
+                        {Array.from({ length: 16 }, (_, i) => 26 + i).map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="CVV" required><input name="ccCvv" value={form.ccCvv} onChange={handleChange} required maxLength={4} placeholder="3-4 digits" className="rw-input" style={inputStyle} /></Field>
+                  </div>
+                </div>
+
+                {/* Billing */}
+                <div style={{
+                  background: '#ffffff', border: '1.5px solid #E2EBF5', borderRadius: '12px',
+                  padding: '1.5rem',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, margin: 0 }}>Billing Address</p>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={form.sameBilling} onChange={handleSameBilling} style={{ accentColor: SKY_BLUE, width: '16px', height: '16px' }} />
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: SKY_BLUE, fontWeight: 600 }}>Same as mailing</span>
+                    </label>
+                  </div>
+                  {!form.sameBilling && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                      <Field label="First Name" required><input name="billFirstName" value={form.billFirstName} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                      <Field label="Last Name" required><input name="billLastName" value={form.billLastName} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                      <Field label="Address" required><input name="billAddress1" value={form.billAddress1} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                      <Field label="City" required><input name="billCity" value={form.billCity} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem' }}>
+                        <Field label="State" required>
+                          <select name="billState" value={form.billState} onChange={handleChange} required className="rw-input rw-select" style={inputStyle}>
+                            {STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </Field>
+                        <Field label="Zip" required><input name="billZip" value={form.billZip} onChange={handleChange} required maxLength={5} className="rw-input" style={inputStyle} /></Field>
+                      </div>
+                      <Field label="Phone" required><input name="billPhone" value={form.billPhone} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                      <Field label="Email" required><input name="billEmail" type="email" value={form.billEmail} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ═══ STEP 3 — Confirm ═══ */}
+            {step === 3 && (
+              <div>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '0.75rem',
+                  marginBottom: '1.75rem',
+                }}>
+                  <div style={{
+                    width: '40px', height: '40px', borderRadius: '10px',
+                    background: 'linear-gradient(135deg, rgba(1,69,168,0.06), rgba(253,188,1,0.06))',
+                    border: '1px solid rgba(1,69,168,0.08)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d={STEPS[3].icon} />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: DARK, fontWeight: 700, margin: 0 }}>Review & Confirm</h2>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>Step 4 of 4</p>
+                  </div>
+                </div>
+
+                {/* Summary cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                  <SummaryCard title="Personal">
+                    <SumLine label="Name" value={`${form.firstName} ${form.middleName} ${form.lastName}`.trim() || '—'} />
+                    <SumLine label="Phone" value={form.phone || '—'} />
+                    <SumLine label="Email" value={form.email || '—'} />
+                    <SumLine label="DOB" value={form.dob || '—'} />
+                  </SummaryCard>
+                  <SummaryCard title="Course">
+                    <SumLine label="Course" value={COURSE_TYPES.find(c => c.value === form.courseType)?.label || '—'} />
+                    <SumLine label="Username" value={form.username || '—'} />
+                  </SummaryCard>
+                  <SummaryCard title="Address">
+                    <SumLine label="Street" value={form.address1 || '—'} />
+                    <SumLine label="City" value={`${form.city}, ${form.state} ${form.zipCode}` || '—'} />
+                  </SummaryCard>
+                  <SummaryCard title="Payment">
+                    <SumLine label="Card" value={form.ccType ? `${form.ccType} ****${form.ccNumber.slice(-4)}` : '—'} />
+                    <SumLine label="Expires" value={form.ccMonth && form.ccYear ? `${form.ccMonth}/${form.ccYear}` : '—'} />
+                  </SummaryCard>
+                </div>
+
+                {/* Disclaimer */}
+                <div style={{
+                  background: '#F0F4F8', border: '1.5px solid #E2EBF5', borderRadius: '12px',
+                  padding: '1.25rem', marginBottom: '1rem',
+                }}>
+                  <p style={{ color: '#364B6B', fontSize: '0.82rem', lineHeight: 1.7, marginBottom: '1rem' }}>
+                    Aprecision Driving School is not affiliated with the DMV, and the department shall not be responsible
+                    for distributed materials, advertisements, etc.
+                  </p>
+                  <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: SKY_BLUE, fontWeight: 600, fontSize: '0.85rem' }}>
+                      <input type="radio" name="disclaimer" value="1" checked={form.disclaimer === '1'} onChange={handleChange} style={{ accentColor: SKY_BLUE, width: '18px', height: '18px' }} />
+                      I Agree
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: SKY_BLUE, fontWeight: 600, fontSize: '0.85rem' }}>
+                      <input type="radio" name="disclaimer" value="0" checked={form.disclaimer === '0'} onChange={handleChange} style={{ accentColor: SKY_BLUE, width: '18px', height: '18px' }} />
+                      I Disagree
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Navigation */}
             <div style={{
-              background: '#F0F4F8',
-              border: '1px solid #E2EBF5',
-              padding: '1.5rem',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid #E2EBF5',
             }}>
-              <p style={{ color: '#364B6B', fontSize: '0.85rem', lineHeight: 1.7, marginBottom: '1.25rem' }}>
-                Aprecision Driving School is not affiliated with the DMV, and the department shall not be responsible
-                for distributed materials, advertisements, etc.
-              </p>
-              <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: '#0145A8', fontWeight: 600 }}>
-                  <input type="radio" name="disclaimer" value="1" checked={form.disclaimer === '1'} onChange={handleChange} style={{ accentColor: '#0145A8', width: '18px', height: '18px' }} />
-                  I Agree
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: '#0145A8', fontWeight: 600 }}>
-                  <input type="radio" name="disclaimer" value="0" checked={form.disclaimer === '0'} onChange={handleChange} style={{ accentColor: '#0145A8', width: '18px', height: '18px' }} />
-                  I Disagree
-                </label>
+              <div>
+                {step > 0 && (
+                  <button type="button" onClick={prev} className="rw-cta-ghost">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                    Back
+                  </button>
+                )}
+              </div>
+              <div>
+                {step < 3 ? (
+                  <button type="button" onClick={next} className="rw-cta-gold">
+                    Continue
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                  </button>
+                ) : (
+                  <button type="button" onClick={handleSubmit} className="rw-cta-gold">
+                    Register & Pay
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  </button>
+                )}
               </div>
             </div>
-          </div>
 
-          {/* SUBMIT */}
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap', paddingTop: '0.5rem' }}>
-            <button type="submit" className="btn-gold" style={{ padding: '1rem 3rem', fontSize: '1rem' }}>
-              Register & Pay
-            </button>
-            <a href="/" className="btn-ghost" style={{ padding: '1rem 3rem', fontSize: '1rem' }}>
-              Cancel
-            </a>
           </div>
+        </div>
+      </section>
+    </>
+  )
+}
 
-        </form>
-      </div>
+function Field({ label, required, children }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+      <label style={{
+        fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 700,
+        color: '#364B6B', letterSpacing: '0.06em', textTransform: 'uppercase',
+      }}>{label}{required && <span style={{ color: '#B23B3B' }}> *</span>}</label>
+      {children}
+    </div>
+  )
+}
+
+function SummaryCard({ title, children }) {
+  return (
+    <div style={{
+      background: '#ffffff', border: '1.5px solid #E2EBF5', borderRadius: '10px',
+      padding: '1rem 1.25rem',
+    }}>
+      <p style={{
+        fontFamily: 'var(--font-mono)', fontSize: '0.55rem', color: GOLD_DEEP,
+        letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700,
+        marginBottom: '0.6rem', margin: '0 0 0.6rem 0',
+      }}>{title}</p>
+      {children}
+    </div>
+  )
+}
+
+function SumLine({ label, value }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '0.25rem 0' }}>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: '#8899aa' }}>{label}</span>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: DARK, fontWeight: 600 }}>{value}</span>
     </div>
   )
 }

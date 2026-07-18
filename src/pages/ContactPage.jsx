@@ -1,47 +1,475 @@
 import ServiceAreas from '../components/ServiceAreas'
 
+const GOLD = '#FDBC01'
+const GOLD_DEEP = '#C8960C'
+const GOLD_BRIGHT = '#FFD54F'
+const SKY_BLUE = '#0145A8'
+const DARK = '#0a1628'
+
+const CONTACTS = [
+  {
+    label: 'Call Us',
+    sublabel: 'Text only please',
+    value: '+1 925 329 1736',
+    href: 'tel:+19253291736',
+    icon: 'M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z',
+  },
+  {
+    label: 'Email Us',
+    sublabel: 'We reply within 24 hours',
+    value: 'aprecisiondrivingschool@gmail.com',
+    href: 'mailto:aprecisiondrivingschool@gmail.com',
+    icon: 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22 6l-10 7L2 6',
+  },
+  {
+    label: 'Visit Us',
+    sublabel: 'DMV Licensed since 1989',
+    value: '2001 Omega Rd, Ste 205',
+    subvalue: 'San Ramon, CA 94583',
+    href: 'https://maps.google.com/?q=2001+Omega+Rd+Ste+205+San+Ramon+CA+94583',
+    icon: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5',
+  },
+  {
+    label: 'Schedule Online',
+    sublabel: 'Book your lessons 24/7',
+    value: 'aprecisiondrivingschool.com',
+    href: 'https://www.aprecisiondrivingschool.com/schedule/cart_home.html',
+    icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+  },
+]
+
+const HOURS = [
+  { day: 'Monday', time: '9:00 AM – 7:00 PM' },
+  { day: 'Tuesday', time: '9:00 AM – 7:00 PM' },
+  { day: 'Wednesday', time: '9:00 AM – 7:00 PM' },
+  { day: 'Thursday', time: '9:00 AM – 7:00 PM' },
+  { day: 'Friday', time: '9:00 AM – 7:00 PM' },
+  { day: 'Saturday', time: '9:00 AM – 5:00 PM' },
+  { day: 'Sunday', time: 'Closed' },
+]
+
+const TRUST = [
+  { num: '35+', label: 'Years Experience' },
+  { num: '99%', label: 'DMV Pass Rate' },
+  { num: '5K+', label: 'Students Trained' },
+  { num: '100%', label: 'Background Checked' },
+]
+
 export default function ContactPage() {
   return (
-    <div style={{ paddingTop: '12rem' }}>
-      <div className="container" style={{ marginBottom: '4rem' }}>
-        <div className="reveal" style={{ textAlign: 'center' }}>
-          <p className="eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1rem' }}>
-            <span className="gold-bar" style={{ width: '20px' }} />
-            Get In Touch
-            <span className="gold-bar" style={{ width: '20px' }} />
-          </p>
-          <h1 style={{ fontSize: 'clamp(2.5rem, 5vw, 4rem)', color: 'var(--color-paper)', marginBottom: '2rem' }}>
-            Contact Us
+    <>
+      <style>{`
+        @keyframes cFadeUp {
+          from { opacity: 0; transform: translateY(32px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes cPulseRing {
+          0% { transform: scale(1); opacity: 0.35; }
+          100% { transform: scale(1.7); opacity: 0; }
+        }
+        @keyframes cShimmer {
+          0% { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+        @keyframes cGradientMove {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes cStarFloat {
+          0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.2; }
+          50% { transform: translateY(-20px) rotate(180deg); opacity: 0.5; }
+        }
+        @keyframes cBorderDash {
+          to { stroke-dashoffset: 0; }
+        }
+        @keyframes cCountUp {
+          from { opacity: 0; transform: scale(0.8); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        .c-hero-title { animation: cFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) both; }
+        .c-hero-sub { animation: cFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.15s both; }
+        .c-hero-trust { animation: cFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.3s both; }
+
+        .c-contact-card {
+          background: #ffffff;
+          border: 1px solid #E2EBF5;
+          padding: 2.25rem 1.5rem;
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          transition: all 0.4s cubic-bezier(0.22,1,0.36,1);
+          animation: cFadeUp 0.6s cubic-bezier(0.22,1,0.36,1) both;
+          position: relative;
+          overflow: hidden;
+        }
+        .c-contact-card::before {
+          content: '';
+          position: absolute;
+          top: 0; left: 0; right: 0;
+          height: 3px;
+          background: linear-gradient(90deg, transparent, ${SKY_BLUE}, ${GOLD}, ${SKY_BLUE}, transparent);
+          background-size: 200% 100%;
+          animation: cGradientMove 4s ease-in-out infinite;
+          opacity: 0;
+          transition: opacity 0.4s ease;
+        }
+        .c-contact-card:hover::before { opacity: 1; }
+        .c-contact-card:hover {
+          transform: translateY(-10px);
+          box-shadow: 0 24px 60px rgba(1,69,168,0.1), 0 8px 20px rgba(253,188,1,0.06);
+          border-color: ${GOLD};
+        }
+        .c-contact-card:nth-child(1) { animation-delay: 0.15s; }
+        .c-contact-card:nth-child(2) { animation-delay: 0.25s; }
+        .c-contact-card:nth-child(3) { animation-delay: 0.35s; }
+        .c-contact-card:nth-child(4) { animation-delay: 0.45s; }
+
+        .c-icon-wrap {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 72px; height: 72px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, rgba(1,69,168,0.06), rgba(253,188,1,0.06));
+          border: 2px solid rgba(1,69,168,0.08);
+          margin-bottom: 1.25rem;
+          transition: all 0.4s ease;
+        }
+        .c-contact-card:hover .c-icon-wrap {
+          border-color: ${GOLD};
+          background: linear-gradient(135deg, rgba(253,188,1,0.08), rgba(1,69,168,0.08));
+          transform: scale(1.1);
+        }
+        .c-icon-wrap::before, .c-icon-wrap::after {
+          content: '';
+          position: absolute;
+          inset: -7px;
+          border: 1px solid rgba(253,188,1,0.12);
+          border-radius: 50%;
+          animation: cPulseRing 3s ease-out infinite;
+          pointer-events: none;
+        }
+        .c-icon-wrap::after { animation-delay: 1.5s; }
+        .c-contact-card:hover .c-icon-wrap::before,
+        .c-contact-card:hover .c-icon-wrap::after {
+          border-color: rgba(253,188,1,0.25);
+        }
+
+        .c-hours-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.8rem 0;
+          border-bottom: 1px solid rgba(1,69,168,0.05);
+          transition: background 0.3s ease;
+        }
+        .c-hours-row:hover { background: rgba(1,69,168,0.02); }
+        .c-hours-row:last-child { border-bottom: none; }
+
+        .c-map-card {
+          position: relative;
+          overflow: hidden;
+          border-radius: 16px;
+          border: 1px solid #E2EBF5;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.06);
+          transition: all 0.4s cubic-bezier(0.22,1,0.36,1);
+          animation: cFadeUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.3s both;
+        }
+        .c-map-card:hover {
+          box-shadow: 0 16px 48px rgba(0,0,0,0.1);
+          border-color: rgba(253,188,1,0.2);
+        }
+        .c-map-card::after {
+          content: '';
+          position: absolute;
+          bottom: 0; left: 0; right: 0;
+          height: 60px;
+          background: linear-gradient(transparent, rgba(255,255,255,0.8));
+          pointer-events: none;
+          z-index: 1;
+        }
+
+        .c-glow {
+          position: absolute;
+          width: 300px; height: 300px;
+          border-radius: 50%;
+          filter: blur(80px);
+          pointer-events: none;
+          opacity: 0.12;
+        }
+        .c-particle {
+          position: absolute;
+          border-radius: 50%;
+          pointer-events: none;
+          animation: cStarFloat ease-in-out infinite;
+        }
+
+        .c-trust-card {
+          text-align: center;
+          padding: 1rem;
+          animation: cFadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both;
+        }
+        .c-trust-card:nth-child(1) { animation-delay: 0.4s; }
+        .c-trust-card:nth-child(2) { animation-delay: 0.5s; }
+        .c-trust-card:nth-child(3) { animation-delay: 0.6s; }
+        .c-trust-card:nth-child(4) { animation-delay: 0.7s; }
+
+        .c-gold-divider {
+          width: 60px;
+          height: 2px;
+          background: linear-gradient(90deg, transparent, ${GOLD}, transparent);
+          margin: 0 auto;
+        }
+
+        @media (min-width: 768px) {
+          .c-cards-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .c-map-hours { grid-template-columns: 1.2fr 1fr !important; }
+        }
+        @media (min-width: 1024px) {
+          .c-cards-grid { grid-template-columns: repeat(4, 1fr) !important; }
+        }
+      `}</style>
+
+      {/* ═══ Hero ═══ */}
+      <section style={{
+        background: `linear-gradient(135deg, ${DARK} 0%, #0d1f3c 50%, ${DARK} 100%)`,
+        position: 'relative',
+        overflow: 'hidden',
+        paddingTop: '10rem',
+        paddingBottom: '5rem',
+      }}>
+        <div className="c-glow" style={{ top: '-100px', left: '12%', background: SKY_BLUE }} />
+        <div className="c-glow" style={{ bottom: '-100px', right: '12%', background: GOLD }} />
+        <div className="c-glow" style={{ top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '500px', height: '500px', background: SKY_BLUE, opacity: 0.04 }} />
+
+        {[...Array(7)].map((_, i) => (
+          <div key={i} className="c-particle" aria-hidden="true" style={{
+            width: `${3 + i * 1.5}px`,
+            height: `${3 + i * 1.5}px`,
+            background: i % 2 === 0 ? GOLD : 'rgba(255,255,255,0.1)',
+            top: `${15 + i * 10}%`,
+            left: `${8 + i * 12}%`,
+            animationDuration: `${3.5 + i * 0.4}s`,
+            animationDelay: `${i * 0.25}s`,
+          }} />
+        ))}
+
+        <div className="container" style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
+          {/* Eyebrow */}
+          <div className="c-hero-title" style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.8rem',
+            marginBottom: '1.25rem',
+          }}>
+            <span style={{ width: '24px', height: '2px', background: `linear-gradient(90deg, transparent, ${GOLD})` }} />
+            <span style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '0.7rem',
+              letterSpacing: '0.3em',
+              textTransform: 'uppercase',
+              color: GOLD_DEEP,
+              fontWeight: 700,
+            }}>Get In Touch</span>
+            <span style={{ width: '24px', height: '2px', background: `linear-gradient(90deg, ${GOLD}, transparent)` }} />
+          </div>
+
+          {/* Title */}
+          <h1 className="c-hero-title" style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(2.5rem, 6vw, 4.5rem)',
+            color: '#ffffff',
+            lineHeight: 1.1,
+            fontWeight: 800,
+            marginBottom: '1.25rem',
+          }}>
+            Contact{' '}
+            <span style={{
+              background: `linear-gradient(135deg, ${GOLD} 0%, ${GOLD_BRIGHT} 50%, ${GOLD} 100%)`,
+              backgroundSize: '200% auto',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              animation: 'cShimmer 3s linear infinite',
+            }}>Us</span>
           </h1>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', maxWidth: '30rem', margin: '0 auto', background: 'var(--color-ink-surface)', padding: '3rem', border: '1px solid var(--color-ink-line)' }}>
-            <div>
-              <p className="eyebrow" style={{ color: 'var(--color-steel-light)', marginBottom: '0.5rem' }}>Text Only Please</p>
-              <a href="tel:+19253291736" style={{ 
-                fontFamily: 'var(--font-mono)', 
-                fontSize: '2rem', 
-                fontWeight: 700, 
-                color: 'var(--color-gold)',
-                letterSpacing: '-0.02em'
-              }}>
-                +1 925 329 1736
+
+          <p className="c-hero-sub" style={{
+            fontFamily: 'var(--font-body)',
+            color: 'rgba(255,255,255,0.5)',
+            fontSize: 'clamp(0.95rem, 1.5vw, 1.15rem)',
+            maxWidth: '38ch',
+            marginInline: 'auto',
+            lineHeight: 1.7,
+            marginBottom: '3rem',
+          }}>
+            Ready to start driving? We're here to guide you every step of the way.
+          </p>
+
+          {/* Trust Stats */}
+          <div className="c-hero-trust" style={{
+            display: 'flex',
+            justifyContent: 'center',
+            flexWrap: 'wrap',
+            gap: 'clamp(1.5rem, 3vw, 3rem)',
+          }}>
+            {TRUST.map((t) => (
+              <div key={t.label} className="c-trust-card">
+                <div style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: 'clamp(1.8rem, 3vw, 2.4rem)',
+                  color: GOLD,
+                  fontWeight: 800,
+                  lineHeight: 1,
+                  marginBottom: '0.3rem',
+                }}>{t.num}</div>
+                <div style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.55rem',
+                  letterSpacing: '0.15em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,0.4)',
+                  fontWeight: 600,
+                }}>{t.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ Contact Cards ═══ */}
+      <section style={{
+        position: 'relative',
+        overflow: 'hidden',
+        padding: 'clamp(3rem, 6vw, 5rem) 0 0',
+        marginTop: '-2rem',
+      }}>
+        <div className="container" style={{ position: 'relative', zIndex: 1 }}>
+          <div className="c-cards-grid" style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr',
+            gap: '1.5rem',
+            marginBottom: '4rem',
+          }}>
+            {CONTACTS.map((c) => (
+              <a
+                key={c.label}
+                href={c.href}
+                target={c.href.startsWith('http') ? '_blank' : undefined}
+                rel={c.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                className="c-contact-card"
+                style={{ textDecoration: 'none', color: 'inherit' }}
+              >
+                <div className="c-icon-wrap">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d={c.icon} />
+                  </svg>
+                </div>
+
+                <p style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.6rem',
+                  letterSpacing: '0.2em',
+                  textTransform: 'uppercase',
+                  color: '#8899aa',
+                  fontWeight: 600,
+                  marginBottom: '0.35rem',
+                }}>{c.sublabel}</p>
+
+                <h3 style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '1.2rem',
+                  color: DARK,
+                  fontWeight: 700,
+                  marginBottom: '0.6rem',
+                }}>{c.label}</h3>
+
+                <p style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '0.9rem',
+                  color: SKY_BLUE,
+                  fontWeight: 600,
+                  wordBreak: 'break-word',
+                }}>{c.value}</p>
+
+                {c.subvalue && (
+                  <p style={{
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '0.85rem',
+                    color: '#364B6B',
+                    marginTop: '0.15rem',
+                  }}>{c.subvalue}</p>
+                )}
               </a>
+            ))}
+          </div>
+
+          {/* ═══ Map + Hours Side by Side ═══ */}
+          <div className="c-map-hours" style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr',
+            gap: '2rem',
+            marginBottom: '2rem',
+          }}>
+            {/* Map */}
+            <div className="c-map-card">
+              <iframe
+                src="https://www.google.com/maps/embed/v1/place?q=2001+Omega+Rd+Ste+205+San+Ramon+CA+94583&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8"
+                width="100%"
+                height="420"
+                style={{ border: 0, display: 'block' }}
+                allowFullScreen=""
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="A Precision Driving School Location"
+              />
             </div>
-            
-            <div className="hairline" style={{ width: '100%' }} />
-            
-            <div>
-              <p className="eyebrow" style={{ color: 'var(--color-steel-light)', marginBottom: '0.5rem' }}>Office Address</p>
-              <p style={{ color: 'var(--color-paper-muted)', fontSize: '1.1rem' }}>
-                2001 Omega Rd, Ste 205<br/>
-                San Ramon, CA 94583
-              </p>
+
+            {/* Hours */}
+            <div className="c-contact-card" style={{ animationDelay: '0.5s', padding: '2.5rem 2rem' }}>
+              <div className="c-icon-wrap">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+              </div>
+
+              <h3 style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: '1.25rem',
+                color: DARK,
+                fontWeight: 700,
+                marginBottom: '0.3rem',
+              }}>Business Hours</h3>
+
+              <div className="c-gold-divider" style={{ marginBottom: '1.5rem' }} />
+
+              <div style={{ width: '100%' }}>
+                {HOURS.map((h, i) => (
+                  <div key={h.day} className="c-hours-row" style={{ animationDelay: `${0.6 + i * 0.05}s` }}>
+                    <span style={{
+                      fontFamily: 'var(--font-body)',
+                      fontSize: '0.85rem',
+                      color: h.time === 'Closed' ? '#c0c0c0' : '#1a2332',
+                      fontWeight: h.time === 'Closed' ? 400 : 600,
+                    }}>{h.day}</span>
+                    <span style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '0.72rem',
+                      color: h.time === 'Closed' ? '#c0c0c0' : SKY_BLUE,
+                      fontWeight: 600,
+                      letterSpacing: '0.02em',
+                    }}>{h.time}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      
-      <ServiceAreas />
-    </div>
+      </section>
+    </>
   )
 }
