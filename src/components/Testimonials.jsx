@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 const REVIEWS = [
   {
@@ -36,94 +36,400 @@ const REVIEWS = [
   {
     name: 'Mehek Saini',
     text: 'The driving instructors are super helpful and teach amazingly. They always answer questions specifically and point out and help you fix your mistakes. I 100% recommend.',
-  }
+  },
 ]
+
+const FIVE_STARS = [0, 1, 2, 3, 4]
+const GOLD = '#FDBC01'
+const SKY_BLUE = '#0145A8'
+const BG = '#F8FAFD'
+const GOLD_DEEP = '#C8960C'
+const GOLD_BRIGHT = '#FFD54F'
+
+function getIndices(active, total) {
+  const prev = (active - 1 + total) % total
+  const next = (active + 1) % total
+  return [prev, active, next]
+}
+
+function CoverCard({ review, position, isPaused }) {
+  const isCenter = position === 'center'
+  const isLeft = position === 'left'
+  const isRight = position === 'right'
+
+  const baseStyle = {
+    background: '#ffffff',
+    borderRadius: '12px',
+    border: `1px solid ${isCenter ? 'rgba(253,188,1,0.25)' : 'rgba(1,69,168,0.06)'}`,
+    borderTop: isCenter ? `4px solid ${GOLD}` : '4px solid rgba(1,69,168,0.08)',
+    padding: isCenter ? '2.5rem 2rem 2rem' : '1.5rem 1.2rem 1.2rem',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    textAlign: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+    transition: 'all 0.7s cubic-bezier(0.22,1,0.36,1)',
+    flexShrink: 0,
+    ...(isCenter
+      ? {
+          width: '100%',
+          maxWidth: '520px',
+          minHeight: '420px',
+          boxShadow: '0 25px 70px rgba(1,69,168,0.12), 0 8px 24px rgba(253,188,1,0.08)',
+          transform: 'scale(1)',
+          opacity: 1,
+          zIndex: 3,
+        }
+      : {
+          width: '100%',
+          maxWidth: '320px',
+          minHeight: '320px',
+          boxShadow: '0 8px 30px rgba(1,69,168,0.05)',
+          transform: 'scale(0.82)',
+          opacity: 0.55,
+          zIndex: 1,
+        }),
+  }
+
+  return (
+    <div style={baseStyle}>
+      {isCenter && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            top: '-8px',
+            right: '12px',
+            fontFamily: 'var(--font-display)',
+            fontSize: '10rem',
+            lineHeight: 1,
+            color: 'rgba(253,188,1,0.06)',
+            pointerEvents: 'none',
+            userSelect: 'none',
+          }}
+        >
+          &ldquo;
+        </div>
+      )}
+
+      <div
+        className={`testi-quote-circle${isPaused ? ' paused' : ''}`}
+        style={{
+          width: isCenter ? '56px' : '40px',
+          height: isCenter ? '56px' : '40px',
+          borderRadius: '50%',
+          background: isCenter
+            ? `linear-gradient(135deg, ${GOLD} 0%, ${GOLD_BRIGHT} 100%)`
+            : 'rgba(1,69,168,0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: isCenter ? '1.2rem' : '0.8rem',
+          color: isCenter ? '#ffffff' : SKY_BLUE,
+          flexShrink: 0,
+        }}
+      >
+        <svg width={isCenter ? 24 : 18} height={isCenter ? 24 : 18} viewBox="0 0 24 24" fill="currentColor">
+          <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21z" />
+          <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 .001 0 .001 0 0z" />
+        </svg>
+      </div>
+
+      <div style={{ display: 'flex', gap: '3px', marginBottom: isCenter ? '1rem' : '0.6rem' }}>
+        {FIVE_STARS.map((i) => (
+          <svg key={i} width={isCenter ? 18 : 13} height={isCenter ? 18 : 13} viewBox="0 0 24 24" fill={GOLD}>
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+          </svg>
+        ))}
+      </div>
+
+      <p
+        style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: isCenter ? 'clamp(0.95rem, 1.5vw, 1.1rem)' : '0.78rem',
+          color: isCenter ? '#2d3748' : '#5a6a7a',
+          lineHeight: isCenter ? 1.7 : 1.55,
+          marginBottom: isCenter ? '1.5rem' : '0.8rem',
+          fontStyle: 'italic',
+          maxWidth: isCenter ? '460px' : '260px',
+          position: 'relative',
+          zIndex: 1,
+          flex: 1,
+        }}
+      >
+        &ldquo;{review.text}&rdquo;
+      </p>
+
+      {isCenter && (
+        <div
+          style={{
+            width: '50px',
+            height: '2px',
+            background: `linear-gradient(90deg, transparent, ${GOLD}, transparent)`,
+            marginBottom: '0.8rem',
+          }}
+        />
+      )}
+
+      <div
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: isCenter ? '0.7rem' : '0.58rem',
+          letterSpacing: '0.2em',
+          textTransform: 'uppercase',
+          color: isCenter ? GOLD_DEEP : '#8899aa',
+          fontWeight: 700,
+        }}
+      >
+        {review.name}
+      </div>
+    </div>
+  )
+}
 
 export default function Testimonials() {
   const [active, setActive] = useState(0)
+  const [isPaused, setIsPaused] = useState(false)
+
+  const total = REVIEWS.length
+
+  const advance = useCallback(() => {
+    setActive((curr) => (curr + 1) % total)
+  }, [total])
+
+  const timerRef = useRef(null)
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setActive(curr => (curr + 1) % REVIEWS.length)
-    }, 6000)
-    return () => clearInterval(timer)
-  }, [])
+    if (timerRef.current) clearInterval(timerRef.current)
+    if (!isPaused) {
+      timerRef.current = setInterval(() => {
+        setActive((curr) => (curr + 1) % REVIEWS.length)
+      }, 4000)
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [isPaused])
 
-  const review = REVIEWS[active]
+  const [prevIdx, centerIdx, nextIdx] = getIndices(active, total)
 
   return (
-    <section id="reviews" className="section-pad">
-      <div className="container" style={{ maxWidth: '48rem' }}>
-        
-        <div className="reveal" style={{ textAlign: 'center', marginBottom: '4rem' }}>
-          <p className="eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1rem' }}>
-            <span className="gold-bar" style={{ width: '20px' }} />
-            Student Reviews
-            <span className="gold-bar" style={{ width: '20px' }} />
-          </p>
+    <>
+      <style>{`
+        @keyframes testiProgressShrink {
+          from { width: 100%; }
+          to { width: 0%; }
+        }
+        @keyframes testiPulseGold {
+          0%, 100% { box-shadow: 0 4px 14px rgba(253,188,1,0.25); }
+          50% { box-shadow: 0 6px 22px rgba(253,188,1,0.5); }
+        }
+        .testi-quote-circle {
+          animation: testiPulseGold 2.5s ease-in-out infinite;
+        }
+        .testi-quote-circle.paused {
+          animation-play-state: paused;
+        }
+        .testi-progress-track {
+          width: 100%;
+          max-width: 180px;
+          height: 3px;
+          background: rgba(1,69,168,0.1);
+          border-radius: 2px;
+          overflow: hidden;
+        }
+        .testi-progress-fill {
+          height: 100%;
+          border-radius: 2px;
+          background: linear-gradient(90deg, ${GOLD}, ${GOLD_BRIGHT});
+          animation: testiProgressShrink ${isPaused ? '0s' : '4s'} linear forwards;
+        }
+        .testi-dot {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: rgba(1,69,168,0.12);
+          border: 2px solid transparent;
+          cursor: pointer;
+          transition: all 0.4s cubic-bezier(0.22,1,0.36,1);
+          padding: 0;
+        }
+        .testi-dot:hover {
+          background: rgba(1,69,168,0.25);
+          transform: scale(1.25);
+        }
+        .testi-dot.active {
+          background: ${GOLD};
+          width: 36px;
+          border-radius: 5px;
+          border-color: ${GOLD_DEEP};
+          box-shadow: 0 2px 10px rgba(253,188,1,0.45);
+        }
+        .testi-section::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, ${GOLD_DEEP}, transparent);
+        }
+        .testi-section::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, ${GOLD_DEEP}, transparent);
+        }
+        .testi-coverflow {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 1.5rem;
+          max-width: 1100px;
+          margin: 0 auto;
+          perspective: 1200px;
+        }
+        .testi-side-card {
+          transition: all 0.7s cubic-bezier(0.22,1,0.36,1);
+          flex-shrink: 1;
+          min-width: 0;
+        }
+        .testi-center-card {
+          transition: all 0.7s cubic-bezier(0.22,1,0.36,1);
+          flex-shrink: 0;
+          z-index: 3;
+        }
+        @media (max-width: 900px) {
+          .testi-coverflow {
+            gap: 0.5rem;
+          }
+          .testi-side-card {
+            display: none;
+          }
+        }
+      `}</style>
+
+      <section
+        id="reviews"
+        className="testi-section section-pad"
+        style={{
+          background: BG,
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+      >
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            fontFamily: 'var(--font-display)',
+            fontSize: '30rem',
+            lineHeight: 1,
+            color: 'rgba(1,69,168,0.018)',
+            pointerEvents: 'none',
+            userSelect: 'none',
+            zIndex: 0,
+          }}
+        >
+          &ldquo;
         </div>
 
-        <div className="reveal reveal-delay-2" style={{ position: 'relative', perspective: '1000px' }}>
-          {/* Quote Mark */}
-          <div style={{
-            position: 'absolute', top: '-3rem', left: '50%', transform: 'translateX(-50%)',
-            fontFamily: 'var(--font-display)', fontSize: '8rem', color: 'rgba(253,188,1,0.1)',
-            lineHeight: 1, zIndex: 0
-          }}>
-            "
+        <div className="container" style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+            <p
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.7rem',
+                letterSpacing: '0.3em',
+                textTransform: 'uppercase',
+                color: GOLD_DEEP,
+                fontWeight: 700,
+                marginBottom: '1rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.8rem',
+              }}
+            >
+              <span style={{ width: '24px', height: '2px', background: `linear-gradient(90deg, transparent, ${GOLD})`, display: 'inline-block' }} />
+              Testimonials
+              <span style={{ width: '24px', height: '2px', background: `linear-gradient(90deg, ${GOLD}, transparent)`, display: 'inline-block' }} />
+            </p>
+            <h2
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 'clamp(2rem, 4vw, 3rem)',
+                color: SKY_BLUE,
+                marginBottom: '0.5rem',
+                fontWeight: 800,
+              }}
+            >
+              Customer Testimonials
+            </h2>
+            <p
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: 'clamp(0.85rem, 1.5vw, 1rem)',
+                color: '#5a6a7a',
+                maxWidth: '30rem',
+                marginInline: 'auto',
+              }}
+            >
+              A Precision Driving School (Lic#E4566)
+            </p>
           </div>
 
           <div
-            key={active}
-            className="testi-fade-enter"
+            className="testi-coverflow"
+            style={{ minHeight: '440px' }}
+          >
+            <div className="testi-side-card" style={{ flex: '0 0 28%' }}>
+              <CoverCard review={REVIEWS[prevIdx]} position="left" isPaused={isPaused} />
+            </div>
+            <div className="testi-center-card" style={{ flex: '0 0 44%' }}>
+              <CoverCard review={REVIEWS[centerIdx]} position="center" isPaused={isPaused} />
+            </div>
+            <div className="testi-side-card" style={{ flex: '0 0 28%' }}>
+              <CoverCard review={REVIEWS[nextIdx]} position="right" isPaused={isPaused} />
+            </div>
+          </div>
+
+          <div
             style={{
-              position: 'relative', zIndex: 1,
-              textAlign: 'center',
-              minHeight: '200px',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '1.25rem',
+              marginTop: '3rem',
             }}
           >
-            {/* Stars */}
-            <div className="stars" style={{ marginBottom: '2rem' }}>
-              {[...Array(5)].map((_, i) => (
-                <svg key={i} width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                </svg>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              {REVIEWS.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActive(i)}
+                  className={`testi-dot${active === i ? ' active' : ''}`}
+                  aria-label={`Go to testimonial ${i + 1}`}
+                />
               ))}
             </div>
 
-            <p style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(1.2rem, 2.5vw, 1.8rem)',
-              color: 'var(--color-paper)',
-              lineHeight: 1.5,
-              marginBottom: '2.5rem'
-            }}>
-              "{review.text}"
-            </p>
-
-            <div className="eyebrow-gold">{review.name}</div>
+            <div className="testi-progress-track">
+              <div
+                key={`progress-${active}-${isPaused}`}
+                className="testi-progress-fill"
+              />
+            </div>
           </div>
         </div>
-
-        {/* Progress Bar Indicators */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '3rem' }}>
-          {REVIEWS.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setActive(i)}
-              aria-label={`Go to slide ${i + 1}`}
-              style={{
-                width: active === i ? '24px' : '12px',
-                height: '2px',
-                backgroundColor: active === i ? 'var(--color-gold)' : 'var(--color-ink-muted)',
-                transition: 'all 0.3s ease',
-              }}
-            />
-          ))}
-        </div>
-
-      </div>
-    </section>
+      </section>
+    </>
   )
 }
