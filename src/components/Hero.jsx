@@ -55,7 +55,7 @@ export default function Hero() {
               objectFit: 'contain',
               display: 'block',
               marginBottom: '1.8rem',
-              filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.85)) drop-shadow(0 0 18px rgba(201,168,76,0.45))',
+              filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.85)) drop-shadow(0 0 18px rgba(253,188,1,0.45))',
             }}
           />
 

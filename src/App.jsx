@@ -5,6 +5,8 @@ import Footer from './components/Footer'
 import Home from './pages/Home'
 import PricingPage from './pages/PricingPage'
 import ContactPage from './pages/ContactPage'
+import RegisterPage from './pages/RegisterPage'
+import SchedulePage from './pages/SchedulePage'
 
 // Component to handle scroll reset on route change and global scroll reveal
 function LayoutSetup({ children }) {
@@ -46,6 +48,8 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/schedule" element={<SchedulePage />} />
           </Routes>
         </main>
         <Footer />

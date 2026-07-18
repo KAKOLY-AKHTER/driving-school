@@ -2,7 +2,7 @@ import ServiceAreas from '../components/ServiceAreas'
 
 export default function ContactPage() {
   return (
-    <div style={{ paddingTop: '8rem' }}>
+    <div style={{ paddingTop: '12rem' }}>
       <div className="container" style={{ marginBottom: '4rem' }}>
         <div className="reveal" style={{ textAlign: 'center' }}>
           <p className="eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1rem' }}>

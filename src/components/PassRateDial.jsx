@@ -90,7 +90,7 @@ export default function PassRateDial({ percent = 99, size = 240 }) {
         viewBox={`0 0 ${size} ${size}`}
         aria-label={`${percent}% DMV first-attempt pass rate`}
         role="img"
-        style={{ display: 'block', filter: 'drop-shadow(0 0 24px rgba(201,162,75,0.12))' }}
+        style={{ display: 'block', filter: 'drop-shadow(0 0 24px rgba(253,188,1,0.12))' }}
       >
         {/* Outer ring subtle */}
         <circle
@@ -117,7 +117,7 @@ export default function PassRateDial({ percent = 99, size = 240 }) {
           <circle
             cx={cx} cy={cy} r={radius}
             fill="none"
-            stroke="rgba(201,162,75,0.18)"
+            stroke="rgba(253,188,1,0.18)"
             strokeWidth={strokeWidth + 6}
             strokeDasharray={`${fillLen} ${circumference}`}
             strokeLinecap="butt"
@@ -140,7 +140,7 @@ export default function PassRateDial({ percent = 99, size = 240 }) {
         <defs>
           <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#8A6B2E" />
-            <stop offset="60%" stopColor="#C9A24B" />
+            <stop offset="60%" stopColor="#FDBC01" />
             <stop offset="100%" stopColor="#E4C97A" />
           </linearGradient>
         </defs>
@@ -152,7 +152,7 @@ export default function PassRateDial({ percent = 99, size = 240 }) {
             x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2}
             stroke={
               t.progress <= animated / 100
-                ? t.isMajor ? 'rgba(228,201,122,0.7)' : 'rgba(201,162,75,0.4)'
+                ? t.isMajor ? 'rgba(228,201,122,0.7)' : 'rgba(253,188,1,0.4)'
                 : t.isMajor ? '#2A2F37' : '#1A1E24'
             }
             strokeWidth={t.isMajor ? 1.5 : 0.8}
@@ -181,7 +181,7 @@ export default function PassRateDial({ percent = 99, size = 240 }) {
           cx={cx} cy={cy}
           r={radius - strokeWidth * 2.4}
           fill="none"
-          stroke="rgba(201,162,75,0.08)"
+          stroke="rgba(253,188,1,0.08)"
           strokeWidth={0.5}
           strokeDasharray="4 8"
         />

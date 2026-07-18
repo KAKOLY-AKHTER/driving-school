@@ -11,16 +11,16 @@
   --color-ink-line:      #C8D7E6;
   --color-ink-muted:     #A0B3C6;
 
-  --color-paper:         #0A1220;
-  --color-paper-muted:   #1E304D;
-  --color-paper-dim:     #364B6B;
+  --color-paper:         #0145A8;
+  --color-paper-muted:   #033680;
+  --color-paper-dim:     #0240A0;
 
-  --color-gold:          #C9A24B;
-  --color-gold-bright:   #E4C97A;
-  --color-gold-deep:     #8A6B2E;
-  --color-gold-glow:     rgba(201,162,75,0.18);
-  --color-steel:         #1E3A8A;
-  --color-steel-light:   #3B82F6;
+  --color-gold:          #FDBC01;
+  --color-gold-bright:   #FDDA4C;
+  --color-gold-deep:     #B89401;
+  --color-gold-glow:     rgba(253,188,1,0.18);
+  --color-steel:         #003C9B;
+  --color-steel-light:   #1A5BC4;
   --color-signal:        #B23B3B;
 
   --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;

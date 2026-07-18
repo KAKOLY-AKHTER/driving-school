@@ -67,7 +67,7 @@ export default function Testimonials() {
           {/* Quote Mark */}
           <div style={{
             position: 'absolute', top: '-3rem', left: '50%', transform: 'translateX(-50%)',
-            fontFamily: 'var(--font-display)', fontSize: '8rem', color: 'rgba(201,162,75,0.1)',
+            fontFamily: 'var(--font-display)', fontSize: '8rem', color: 'rgba(253,188,1,0.1)',
             lineHeight: 1, zIndex: 0
           }}>
             "

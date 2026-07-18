@@ -17,7 +17,7 @@ export default function Awards() {
             {/* Background texture */}
             <div style={{
               position: 'absolute', inset: 0,
-              background: 'radial-gradient(circle at center, rgba(201,162,75,0.08) 0%, transparent 60%)',
+              background: 'radial-gradient(circle at center, rgba(253,188,1,0.08) 0%, transparent 60%)',
               pointerEvents: 'none'
             }} />
             

@@ -1,4 +1,5 @@
 import Hero from '../components/Hero'
+import About from '../components/About'
 import TrustBar from '../components/TrustBar'
 import TheRoute from '../components/TheRoute'
 import Programs from '../components/Programs'
@@ -12,6 +13,7 @@ export default function Home() {
   return (
     <>
       <Hero />
+      <About />
       <TrustBar />
       <TheRoute />
       <Programs />
