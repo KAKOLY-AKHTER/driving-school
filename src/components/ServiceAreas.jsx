@@ -96,7 +96,7 @@ export default function ServiceAreas() {
       `}</style>
 
       <section
-        id="contact"
+        id="locations"
         className="section-pad"
         style={{
           background: 'linear-gradient(180deg, #0d1f3c 0%, #0a1628 100%)',
