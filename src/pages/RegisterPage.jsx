@@ -106,6 +106,32 @@ export default function RegisterPage() {
           0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.2; }
           50% { transform: translateY(-18px) rotate(180deg); opacity: 0.45; }
         }
+        @keyframes rwBgPan {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes rwOrbit {
+          0% { transform: translate(0,0) scale(1); opacity: 0.10; }
+          25% { transform: translate(30px,-20px) scale(1.05); opacity: 0.16; }
+          50% { transform: translate(-10px,-40px) scale(1.1); opacity: 0.10; }
+          75% { transform: translate(-30px,-10px) scale(1.05); opacity: 0.16; }
+          100% { transform: translate(0,0) scale(1); opacity: 0.10; }
+        }
+        @keyframes rwGridSlide {
+          0% { background-position: 0 0; }
+          100% { background-position: 40px 40px; }
+        }
+        @keyframes rwLineGrow {
+          0% { width: 0; opacity: 0; }
+          50% { opacity: 0.15; }
+          100% { width: 100%; opacity: 0; }
+        }
+        @keyframes rwRingPulse {
+          0% { transform: scale(0.8); opacity: 0.2; border-color: rgba(253,188,1,0.15); }
+          50% { transform: scale(1.2); opacity: 0.08; border-color: rgba(1,69,168,0.2); }
+          100% { transform: scale(0.8); opacity: 0.2; border-color: rgba(253,188,1,0.15); }
+        }
         .rw-input:focus {
           border-color: ${SKY_BLUE} !important;
           box-shadow: 0 0 0 3px rgba(1,69,168,0.1) !important;
@@ -169,6 +195,7 @@ export default function RegisterPage() {
           filter: blur(80px);
           pointer-events: none;
           opacity: 0.12;
+          animation: rwOrbit 10s ease-in-out infinite;
         }
         .rw-particle {
           position: absolute;
@@ -176,6 +203,8 @@ export default function RegisterPage() {
           pointer-events: none;
           animation: rwStarFloat ease-in-out infinite;
         }
+        .rw-hero-title { animation: rwFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) both; }
+        .rw-hero-sub { animation: rwFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.15s both; }
         .rw-card {
           background: #F8FAFD;
           border: 1px solid #E2EBF5;
@@ -232,29 +261,72 @@ export default function RegisterPage() {
 
       {/* ═══ Hero ═══ */}
       <section style={{
-        background: `linear-gradient(135deg, ${DARK} 0%, #0d1f3c 50%, ${DARK} 100%)`,
+        background: `linear-gradient(135deg, ${DARK} 0%, #0a2a5e 25%, ${DARK} 50%, #0c2040 75%, ${DARK} 100%)`,
+        backgroundSize: '300% 300%',
+        animation: 'rwBgPan 12s ease-in-out infinite',
         position: 'relative',
         overflow: 'hidden',
         paddingTop: '12rem',
-        paddingBottom: '3rem',
+        paddingBottom: '6rem',
+        minHeight: '600px',
       }}>
-        <div className="rw-glow" style={{ top: '-100px', left: '10%', background: SKY_BLUE, width: '300px', height: '300px' }} />
-        <div className="rw-glow" style={{ bottom: '-80px', right: '15%', background: GOLD, width: '250px', height: '250px' }} />
-        {[...Array(5)].map((_, i) => (
+        <div style={{
+          position: 'absolute', inset: 0,
+          backgroundImage: 'linear-gradient(rgba(253,188,1,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(253,188,1,0.03) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
+          animation: 'rwGridSlide 8s linear infinite',
+          pointerEvents: 'none',
+        }} />
+        {[...Array(3)].map((_, i) => (
+          <div key={`line-${i}`} style={{
+            position: 'absolute',
+            top: `${25 + i * 20}%`, left: 0,
+            height: '1px',
+            background: `linear-gradient(90deg, transparent, ${i % 2 === 0 ? GOLD : SKY_BLUE}, transparent)`,
+            animation: `rwLineGrow ${4 + i}s ease-in-out ${i * 1.5}s infinite`,
+            pointerEvents: 'none',
+          }} />
+        ))}
+        {[...Array(2)].map((_, i) => (
+          <div key={`ring-${i}`} style={{
+            position: 'absolute',
+            top: '50%', left: '50%',
+            width: `${200 + i * 160}px`, height: `${200 + i * 160}px`,
+            border: '1px solid rgba(253,188,1,0.08)',
+            borderRadius: '50%',
+            transform: 'translate(-50%,-50%)',
+            animation: `rwRingPulse ${5 + i * 2}s ease-in-out ${i * 0.8}s infinite`,
+            pointerEvents: 'none',
+          }} />
+        ))}
+        <div className="rw-glow" style={{ top: '-100px', left: '10%', background: SKY_BLUE, width: '350px', height: '350px' }} />
+        <div className="rw-glow" style={{ bottom: '-80px', right: '15%', background: GOLD, width: '280px', height: '280px', animationDelay: '3s' }} />
+        <div className="rw-glow" style={{ top: '40%', left: '60%', background: SKY_BLUE, width: '200px', height: '200px', opacity: 0.06, animationDelay: '5s' }} />
+        {[...Array(8)].map((_, i) => (
           <div key={i} className="rw-particle" aria-hidden="true" style={{
-            width: `${3 + i * 1.2}px`, height: `${3 + i * 1.2}px`,
-            background: i % 2 === 0 ? GOLD : 'rgba(255,255,255,0.1)',
-            top: `${18 + i * 11}%`, left: `${10 + i * 14}%`,
-            animationDuration: `${3.5 + i * 0.4}s`, animationDelay: `${i * 0.25}s`,
+            width: `${2 + i * 1}px`, height: `${2 + i * 1}px`,
+            background: i % 3 === 0 ? GOLD : i % 3 === 1 ? 'rgba(1,69,168,0.5)' : 'rgba(255,255,255,0.12)',
+            top: `${10 + i * 9}%`, left: `${8 + i * 10}%`,
+            animationDuration: `${3 + i * 0.5}s`, animationDelay: `${i * 0.2}s`,
           }} />
         ))}
         <div className="container" style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
           <img src="/driving-logo.png" alt="A Precision Driving School" style={{
-            height: 'clamp(60px, 9vw, 90px)', width: 'auto', objectFit: 'contain',
-            display: 'block', margin: '0 auto 1rem',
-            filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.85)) drop-shadow(0 0 18px rgba(253,188,1,0.45))',
+            height: 'clamp(100px, 15vw, 160px)', width: 'auto', objectFit: 'contain',
+            display: 'block', margin: '0 auto 1.25rem',
+            filter: 'drop-shadow(0 8px 40px rgba(255,255,255,0.85)) drop-shadow(0 0 35px rgba(255,255,255,0.6)) drop-shadow(0 0 60px rgba(255,255,255,0.3))',
           }} />
-          <h1 style={{
+          <div className="rw-hero-title" style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1rem',
+          }}>
+            <span style={{ width: '24px', height: '2px', background: `linear-gradient(90deg, transparent, ${GOLD})` }} />
+            <span style={{
+              fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.3em',
+              textTransform: 'uppercase', color: GOLD_DEEP, fontWeight: 700,
+            }}>Online Registration</span>
+            <span style={{ width: '24px', height: '2px', background: `linear-gradient(90deg, ${GOLD}, transparent)` }} />
+          </div>
+          <h1 className="rw-hero-title" style={{
             fontFamily: 'var(--font-display)', fontSize: 'clamp(1.8rem, 4vw, 3rem)',
             color: '#ffffff', lineHeight: 1.15, fontWeight: 800, marginBottom: '0.75rem',
           }}>
@@ -266,7 +338,7 @@ export default function RegisterPage() {
               animation: 'rwShimmer 3s linear infinite',
             }}>Drivers Ed</span>
           </h1>
-          <p style={{
+          <p className="rw-hero-sub" style={{
             fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.45)',
             fontSize: 'clamp(0.85rem, 1.3vw, 1rem)', maxWidth: '36ch',
             marginInline: 'auto', lineHeight: 1.7,

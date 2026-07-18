@@ -87,6 +87,33 @@ export default function ContactPage() {
           from { opacity: 0; transform: scale(0.8); }
           to { opacity: 1; transform: scale(1); }
         }
+        @keyframes cBgPan {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes cOrbit {
+          0% { transform: translate(0,0) scale(1); opacity: 0.10; }
+          25% { transform: translate(30px,-20px) scale(1.05); opacity: 0.16; }
+          50% { transform: translate(-10px,-40px) scale(1.1); opacity: 0.10; }
+          75% { transform: translate(-30px,-10px) scale(1.05); opacity: 0.16; }
+          100% { transform: translate(0,0) scale(1); opacity: 0.10; }
+        }
+        @keyframes cGridSlide {
+          0% { background-position: 0 0; }
+          100% { background-position: 40px 40px; }
+        }
+        @keyframes cLineGrow {
+          0% { width: 0; opacity: 0; }
+          50% { opacity: 0.15; }
+          100% { width: 100%; opacity: 0; }
+        }
+        @keyframes cRingPulse {
+          0% { transform: scale(0.8); opacity: 0.2; border-color: rgba(253,188,1,0.15); }
+          50% { transform: scale(1.2); opacity: 0.08; border-color: rgba(1,69,168,0.2); }
+          100% { transform: scale(0.8); opacity: 0.2; border-color: rgba(253,188,1,0.15); }
+        }
+
         .c-hero-title { animation: cFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) both; }
         .c-hero-sub { animation: cFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.15s both; }
         .c-hero-trust { animation: cFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.3s both; }
@@ -199,6 +226,7 @@ export default function ContactPage() {
           filter: blur(80px);
           pointer-events: none;
           opacity: 0.12;
+          animation: cOrbit 10s ease-in-out infinite;
         }
         .c-particle {
           position: absolute;
@@ -235,25 +263,53 @@ export default function ContactPage() {
 
       {/* ═══ Hero ═══ */}
       <section style={{
-        background: `linear-gradient(135deg, ${DARK} 0%, #0d1f3c 50%, ${DARK} 100%)`,
+        background: `linear-gradient(135deg, ${DARK} 0%, #0a2a5e 25%, ${DARK} 50%, #0c2040 75%, ${DARK} 100%)`,
+        backgroundSize: '300% 300%',
+        animation: 'cBgPan 12s ease-in-out infinite',
         position: 'relative',
         overflow: 'hidden',
-        paddingTop: '10rem',
-        paddingBottom: '5rem',
+        paddingTop: '12rem',
+        paddingBottom: '6rem',
+        minHeight: '600px',
       }}>
-        <div className="c-glow" style={{ top: '-100px', left: '12%', background: SKY_BLUE }} />
-        <div className="c-glow" style={{ bottom: '-100px', right: '12%', background: GOLD }} />
-        <div className="c-glow" style={{ top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '500px', height: '500px', background: SKY_BLUE, opacity: 0.04 }} />
-
-        {[...Array(7)].map((_, i) => (
+        <div style={{
+          position: 'absolute', inset: 0,
+          backgroundImage: 'linear-gradient(rgba(253,188,1,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(253,188,1,0.03) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
+          animation: 'cGridSlide 8s linear infinite',
+          pointerEvents: 'none',
+        }} />
+        {[...Array(3)].map((_, i) => (
+          <div key={`line-${i}`} style={{
+            position: 'absolute',
+            top: `${25 + i * 20}%`, left: 0,
+            height: '1px',
+            background: `linear-gradient(90deg, transparent, ${i % 2 === 0 ? GOLD : SKY_BLUE}, transparent)`,
+            animation: `cLineGrow ${4 + i}s ease-in-out ${i * 1.5}s infinite`,
+            pointerEvents: 'none',
+          }} />
+        ))}
+        {[...Array(2)].map((_, i) => (
+          <div key={`ring-${i}`} style={{
+            position: 'absolute',
+            top: '50%', left: '50%',
+            width: `${200 + i * 160}px`, height: `${200 + i * 160}px`,
+            border: '1px solid rgba(253,188,1,0.08)',
+            borderRadius: '50%',
+            transform: 'translate(-50%,-50%)',
+            animation: `cRingPulse ${5 + i * 2}s ease-in-out ${i * 0.8}s infinite`,
+            pointerEvents: 'none',
+          }} />
+        ))}
+        <div className="c-glow" style={{ top: '-100px', left: '10%', background: SKY_BLUE, width: '350px', height: '350px' }} />
+        <div className="c-glow" style={{ bottom: '-80px', right: '15%', background: GOLD, width: '280px', height: '280px', animationDelay: '3s' }} />
+        <div className="c-glow" style={{ top: '40%', left: '60%', background: SKY_BLUE, width: '200px', height: '200px', opacity: 0.06, animationDelay: '5s' }} />
+        {[...Array(8)].map((_, i) => (
           <div key={i} className="c-particle" aria-hidden="true" style={{
-            width: `${3 + i * 1.5}px`,
-            height: `${3 + i * 1.5}px`,
-            background: i % 2 === 0 ? GOLD : 'rgba(255,255,255,0.1)',
-            top: `${15 + i * 10}%`,
-            left: `${8 + i * 12}%`,
-            animationDuration: `${3.5 + i * 0.4}s`,
-            animationDelay: `${i * 0.25}s`,
+            width: `${2 + i * 1}px`, height: `${2 + i * 1}px`,
+            background: i % 3 === 0 ? GOLD : i % 3 === 1 ? 'rgba(1,69,168,0.5)' : 'rgba(255,255,255,0.12)',
+            top: `${10 + i * 9}%`, left: `${8 + i * 10}%`,
+            animationDuration: `${3 + i * 0.5}s`, animationDelay: `${i * 0.2}s`,
           }} />
         ))}
 
