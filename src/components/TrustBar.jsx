@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+
 
 const TRUST_ITEMS = [
   { text: 'DMV License #E4566', highlight: true },

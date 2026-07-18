@@ -1,5 +1,3 @@
-// import Pricing from '../components/Pricing'
-
 import CTABanner from "../components/CTABanner";
 import Pricing from "../components/Pricing";
 

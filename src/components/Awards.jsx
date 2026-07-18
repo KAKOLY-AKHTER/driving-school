@@ -342,7 +342,7 @@ export default function Awards() {
 
               <div>
                 <a
-                  href="/about-us/"
+                  href="/#about"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',

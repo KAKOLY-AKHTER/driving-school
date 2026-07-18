@@ -34,11 +34,6 @@ export default function ServiceAreas() {
           box-shadow: 0 24px 60px rgba(0,0,0,0.15), 0 8px 20px rgba(0,0,0,0.08), 0 0 0 1px rgba(253,188,1,0.15);
           border-color: rgba(253,188,1,0.25);
         }
-        .area-card:hover {
-          transform: translateY(-6px);
-          box-shadow: 0 20px 50px rgba(1,69,168,0.12), 0 4px 16px rgba(253,188,1,0.08);
-          border-color: rgba(253,188,1,0.2);
-        }
         .area-card:nth-child(1) { animation-delay: 0.1s; }
         .area-card:nth-child(2) { animation-delay: 0.2s; }
         .area-card:nth-child(3) { animation-delay: 0.3s; }

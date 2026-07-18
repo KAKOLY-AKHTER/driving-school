@@ -74,13 +74,17 @@ export default function Hero() {
 
       {/* Scroll indicator */}
       <div style={{
-        position: 'absolute', bottom: '2rem', left: '50%', transform: 'translateX(-50%)',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
-        animation: 'floatY 3s ease-in-out infinite',
-        opacity: 0.5,
+        position: 'absolute', bottom: '2rem', left: 0, right: 0,
+        display: 'flex', justifyContent: 'center',
       }} aria-hidden="true">
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
+          animation: 'floatY 3s ease-in-out infinite',
+          opacity: 0.5,
+        }}>
         <span className="eyebrow" style={{ fontSize: '0.5rem' }}>Scroll</span>
         <div style={{ width: '1px', height: '40px', background: 'linear-gradient(to bottom, var(--color-gold), transparent)' }} />
+        </div>
       </div>
 
     </section>

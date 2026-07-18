@@ -109,7 +109,7 @@ export default function Footer() {
 
         @media (min-width: 768px) {
           .footer-grid { grid-template-columns: 2fr 1fr 1fr; }
-          .footer-bottom { flexDirection: 'row', justifyContent: 'space-between', textAlign: 'left' }
+          .footer-bottom { flex-direction: row; justify-content: space-between; text-align: left; }
         }
       `}</style>
     </footer>
