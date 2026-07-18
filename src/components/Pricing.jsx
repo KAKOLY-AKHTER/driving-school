@@ -104,10 +104,9 @@ export default function Pricing({ light = false }) {
           50% { box-shadow: 0 4px 20px rgba(253,188,1,0.5); }
         }
         .price-card {
-          background: rgba(255,255,255,0.03);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          border: 1px solid rgba(255,255,255,0.06);
+          background: #ffffff;
+          border: 1.5px solid #E2EBF5;
+          border-radius: 16px;
           padding: 2.5rem 1.5rem;
           display: flex;
           flex-direction: column;
@@ -115,12 +114,13 @@ export default function Pricing({ light = false }) {
           overflow: hidden;
           transition: all 0.4s cubic-bezier(0.22,1,0.36,1);
           animation: priceCardIn 0.6s cubic-bezier(0.22,1,0.36,1) both;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.04);
         }
         .price-card:hover {
           transform: translateY(-10px);
-          background: rgba(255,255,255,0.06);
-          border-color: rgba(253,188,1,0.15);
-          box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+          background: #ffffff;
+          border-color: ${GOLD};
+          box-shadow: 0 20px 50px rgba(0,0,0,0.08);
         }
         .price-card:nth-child(1) { animation-delay: 0.05s; }
         .price-card:nth-child(2) { animation-delay: 0.1s; }
@@ -128,14 +128,16 @@ export default function Pricing({ light = false }) {
         .price-card:nth-child(4) { animation-delay: 0.2s; }
         .price-card:nth-child(5) { animation-delay: 0.25s; }
         .price-card-highlight {
-          background: linear-gradient(135deg, rgba(253,188,1,0.06) 0%, rgba(1,69,168,0.06) 100%) !important;
-          border: 1px solid rgba(253,188,1,0.2) !important;
+          background: #ffffff !important;
+          border: 2px solid ${GOLD} !important;
+          border-radius: 16px;
           animation: priceCardIn 0.6s cubic-bezier(0.22,1,0.36,1) 0.2s both, priceGlow 3s ease-in-out infinite !important;
           z-index: 2;
+          box-shadow: 0 8px 32px rgba(253,188,1,0.12);
         }
         .price-card-highlight:hover {
-          border-color: rgba(253,188,1,0.35) !important;
-          box-shadow: 0 30px 70px rgba(253,188,1,0.12), 0 10px 40px rgba(0,0,0,0.25) !important;
+          border-color: ${GOLD} !important;
+          box-shadow: 0 24px 60px rgba(253,188,1,0.15), 0 8px 24px rgba(0,0,0,0.06) !important;
         }
         .price-card::before {
           content: '';
@@ -144,11 +146,11 @@ export default function Pricing({ light = false }) {
           left: 0;
           right: 0;
           height: 3px;
-          background: rgba(255,255,255,0.05);
+          background: linear-gradient(90deg, transparent, ${SKY_BLUE}, ${GOLD}, transparent);
           transition: background 0.3s ease;
         }
         .price-card:hover::before {
-          background: linear-gradient(90deg, ${SKY_BLUE}, ${GOLD});
+          background: linear-gradient(90deg, ${GOLD}, ${GOLD_BRIGHT});
         }
         .price-card-highlight::before {
           background: linear-gradient(90deg, ${GOLD}, ${GOLD_BRIGHT}) !important;
@@ -286,14 +288,14 @@ export default function Pricing({ light = false }) {
                     width: '48px',
                     height: '48px',
                     borderRadius: '12px',
-                    background: light ? (tier.highlight ? 'rgba(253,188,1,0.1)' : 'rgba(1,69,168,0.06)') : (tier.highlight ? 'rgba(253,188,1,0.1)' : 'rgba(255,255,255,0.04)'),
-                    border: `1px solid ${light ? (tier.highlight ? 'rgba(253,188,1,0.2)' : 'rgba(1,69,168,0.1)') : (tier.highlight ? 'rgba(253,188,1,0.2)' : 'rgba(255,255,255,0.06)')}`,
+                    background: tier.highlight ? 'rgba(253,188,1,0.1)' : 'rgba(1,69,168,0.06)',
+                    border: `1px solid ${tier.highlight ? 'rgba(253,188,1,0.2)' : 'rgba(1,69,168,0.1)'}`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     marginBottom: '1.25rem',
                   }}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={tier.highlight ? GOLD : (light ? SKY_BLUE : 'rgba(255,255,255,0.35)')} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={tier.highlight ? GOLD : SKY_BLUE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d={tier.icon} />
                     </svg>
                   </div>
@@ -304,7 +306,7 @@ export default function Pricing({ light = false }) {
                     fontSize: '0.6rem',
                     letterSpacing: '0.15em',
                     textTransform: 'uppercase',
-                    color: light ? 'rgba(10,22,40,0.4)' : 'rgba(255,255,255,0.35)',
+                    color: 'rgba(10,22,40,0.4)',
                     fontWeight: 600,
                     marginBottom: '0.5rem',
                   }}>
@@ -315,7 +317,7 @@ export default function Pricing({ light = false }) {
                   <h3 style={{
                     fontFamily: 'var(--font-display)',
                     fontSize: '1.15rem',
-                    color: light ? '#0a1628' : '#ffffff',
+                    color: '#0a1628',
                     marginBottom: '1rem',
                     fontWeight: 700,
                   }}>
@@ -339,7 +341,7 @@ export default function Pricing({ light = false }) {
                         fontSize: '0.6rem',
                         letterSpacing: '0.1em',
                         textTransform: 'uppercase',
-                        color: light ? 'rgba(10,22,40,0.35)' : 'rgba(255,255,255,0.3)',
+                        color: 'rgba(10,22,40,0.35)',
                       }}>
                         /{tier.period}
                       </span>
@@ -350,7 +352,7 @@ export default function Pricing({ light = false }) {
                   <div style={{
                     width: '100%',
                     height: '1px',
-                    background: tier.highlight ? 'rgba(253,188,1,0.15)' : (light ? 'rgba(10,22,40,0.08)' : 'rgba(255,255,255,0.05)'),
+                    background: tier.highlight ? 'rgba(253,188,1,0.15)' : 'rgba(10,22,40,0.08)',
                     marginBottom: '1.5rem',
                   }} />
 
@@ -367,12 +369,12 @@ export default function Pricing({ light = false }) {
                   }}>
                     {tier.features.map((f) => (
                       <li key={f} style={{ display: 'flex', gap: '0.7rem', alignItems: 'flex-start' }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={tier.highlight ? GOLD : (light ? SKY_BLUE : 'rgba(255,255,255,0.25)')} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '3px' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={tier.highlight ? GOLD : SKY_BLUE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '3px' }}>
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                         <span style={{
                           fontFamily: 'var(--font-body)',
-                          color: light ? 'rgba(10,22,40,0.6)' : 'rgba(255,255,255,0.5)',
+                          color: 'rgba(10,22,40,0.6)',
                           fontSize: '0.85rem',
                           lineHeight: 1.5,
                         }}>
@@ -407,9 +409,9 @@ export default function Pricing({ light = false }) {
                             background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`,
                           }
                         : {
-                            color: light ? SKY_BLUE : '#ffffff',
-                            background: light ? 'transparent' : 'transparent',
-                            border: `1px solid ${light ? 'rgba(1,69,168,0.2)' : 'rgba(255,255,255,0.15)'}`,
+                            color: SKY_BLUE,
+                            background: 'transparent',
+                            border: '1px solid rgba(1,69,168,0.2)',
                           }),
                     }}
                     onMouseEnter={(e) => {
@@ -426,8 +428,8 @@ export default function Pricing({ light = false }) {
                         e.currentTarget.style.transform = 'translateY(0)'
                         e.currentTarget.style.boxShadow = 'none'
                       } else {
-                        e.currentTarget.style.borderColor = light ? 'rgba(1,69,168,0.2)' : 'rgba(255,255,255,0.15)'
-                        e.currentTarget.style.color = light ? SKY_BLUE : '#ffffff'
+                        e.currentTarget.style.borderColor = 'rgba(1,69,168,0.2)'
+                        e.currentTarget.style.color = SKY_BLUE
                       }
                     }}
                   >
@@ -445,7 +447,7 @@ export default function Pricing({ light = false }) {
           <p style={{
             fontFamily: 'var(--font-body)',
             fontSize: '0.75rem',
-            color: light ? 'rgba(10,22,40,0.35)' : 'rgba(255,255,255,0.25)',
+            color: 'rgba(10,22,40,0.35)',
             marginTop: '2.5rem',
             textAlign: 'center',
           }}>

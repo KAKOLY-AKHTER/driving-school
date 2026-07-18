@@ -46,18 +46,18 @@ export default function Nav() {
     >
       {/* Top Contact Bar */}
       <div style={{
-        backgroundColor: '#001A52',
+        backgroundColor: '#fecb30',
         padding: '0.4rem 0',
-        color: '#ffffff',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        color: '#0a1628',
+        borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
         display: scrolled ? 'none' : 'block'
       }}>
         <div className="container" style={{ display: 'flex', gap: '2rem', fontSize: '0.9rem', fontWeight: '600' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ color: 'var(--color-gold)', transform: 'rotate(90deg)' }}>📞</span> +1 925 329 1736
+            <span style={{ color: '#0a1628', transform: 'rotate(90deg)' }}>📞</span> +1 925 329 1736
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ color: 'var(--color-gold)' }}>✉️</span> aprecisiondrivingschool@gmail.com
+            <span style={{ color: '#0a1628' }}>✉️</span> aprecisiondrivingschool@gmail.com
           </div>
         </div>
       </div>

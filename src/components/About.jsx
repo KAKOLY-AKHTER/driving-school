@@ -372,7 +372,7 @@ export default function About() {
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
             gap: '1.25rem',
-            padding: '4rem 0',
+            padding: '5rem 0',
           }}>
             {[
               { icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z', label: 'WHO WE ARE', text: 'Very friendly, patient, polite and professional looking instructors.' },
@@ -535,6 +535,8 @@ export default function About() {
       <section style={{
         background: `linear-gradient(180deg, ${DARK} 0%, ${DARK_MID} 100%)`,
         position: 'relative',
+        paddingTop: '5rem',
+        paddingBottom: '5rem',
       }}>
         <div className="container">
           <div className="ab-card-hover" style={{
@@ -544,7 +546,6 @@ export default function About() {
             padding: 'clamp(2.5rem, 4vw, 3.5rem)',
             position: 'relative',
             overflow: 'hidden',
-            marginBottom: '3rem',
           }}>
             <div style={{
               position: 'absolute',
@@ -634,6 +635,7 @@ export default function About() {
         background: `linear-gradient(135deg, ${DARK_MID} 0%, ${DARK} 100%)`,
         position: 'relative',
         overflow: 'hidden',
+        paddingTop: '5rem',
         paddingBottom: '5rem',
       }}>
         <div aria-hidden="true" style={{

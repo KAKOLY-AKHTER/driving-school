@@ -79,7 +79,7 @@ export default function CTABanner() {
         style={{
           position: 'relative',
           overflow: 'hidden',
-          padding: 'clamp(4rem, 8vw, 7rem) 0',
+          padding: 'clamp(5rem, 8vw, 7rem) 0',
         }}
       >
         {/* Ambient glows */}

@@ -96,6 +96,8 @@ export default function Awards() {
           background: 'linear-gradient(135deg, #0a1628 0%, #0d1f3c 40%, #0a1628 100%)',
           position: 'relative',
           overflow: 'hidden',
+          paddingTop: '5rem',
+          paddingBottom: '5rem',
         }}
 
       >

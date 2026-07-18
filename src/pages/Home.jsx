@@ -16,8 +16,9 @@ export default function Home() {
       <About />
       <TrustBar />
       <TheRoute />
-      <Programs />
+     
       <Pricing />
+       <Programs />
       <Awards />
       <Testimonials />
       <ServiceAreas />
