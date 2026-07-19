@@ -21,7 +21,7 @@ export default function ServiceAreas() {
         }
         .area-card {
           position: relative;
-          border-radius: 10px;
+          border-radius: var(--radius-md);
           overflow: hidden;
           background: #ffffff;
           border: 1px solid rgba(1,69,168,0.1);

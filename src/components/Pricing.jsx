@@ -106,7 +106,7 @@ export default function Pricing({ light = false }) {
         .price-card {
           background: #ffffff;
           border: 1.5px solid #E2EBF5;
-          border-radius: 16px;
+          border-radius: var(--radius-lg);
           padding: 2.5rem 1.5rem;
           display: flex;
           flex-direction: column;
@@ -130,7 +130,7 @@ export default function Pricing({ light = false }) {
         .price-card-highlight {
           background: #ffffff !important;
           border: 2px solid ${GOLD} !important;
-          border-radius: 16px;
+          border-radius: var(--radius-lg);
           animation: priceCardIn 0.6s cubic-bezier(0.22,1,0.36,1) 0.2s both, priceGlow 3s ease-in-out infinite !important;
           z-index: 2;
           box-shadow: 0 8px 32px rgba(253,188,1,0.12);
@@ -287,7 +287,7 @@ export default function Pricing({ light = false }) {
                   <div style={{
                     width: '48px',
                     height: '48px',
-                    borderRadius: '12px',
+                    borderRadius: 'var(--radius-md)',
                     background: tier.highlight ? 'rgba(253,188,1,0.1)' : 'rgba(1,69,168,0.06)',
                     border: `1px solid ${tier.highlight ? 'rgba(253,188,1,0.2)' : 'rgba(1,69,168,0.1)'}`,
                     display: 'flex',

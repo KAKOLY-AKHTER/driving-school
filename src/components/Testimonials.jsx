@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const REVIEWS = [
   {
@@ -59,7 +59,7 @@ function CoverCard({ review, position, isPaused }) {
 
   const baseStyle = {
     background: '#ffffff',
-    borderRadius: '12px',
+    borderRadius: 'var(--radius-md)',
     border: `1px solid ${isCenter ? 'rgba(253,188,1,0.25)' : 'rgba(1,69,168,0.06)'}`,
     borderTop: isCenter ? `4px solid ${GOLD}` : '4px solid rgba(1,69,168,0.08)',
     padding: isCenter ? '2.5rem 2rem 2rem' : '1.5rem 1.2rem 1.2rem',
@@ -193,10 +193,6 @@ export default function Testimonials() {
   const [isPaused, setIsPaused] = useState(false)
 
   const total = REVIEWS.length
-
-  const advance = useCallback(() => {
-    setActive((curr) => (curr + 1) % total)
-  }, [total])
 
   const timerRef = useRef(null)
 

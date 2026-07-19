@@ -14,17 +14,24 @@ const SKY_BLUE = '#0145A8'
 
 export default function Awards() {
   const [current, setCurrent] = useState(0)
+  const [isPaused, setIsPaused] = useState(false)
 
   const total = AWARDS.length
 
   useEffect(() => {
+    if (isPaused) return
     const tick = () => setCurrent((c) => (c + 1) % total)
     const timer = setInterval(tick, 3000)
     return () => clearInterval(timer)
-  }, [total])
+  }, [total, isPaused])
 
   const prev = (current - 1 + total) % total
   const next = (current + 1) % total
+
+  const handleKey = (e) => {
+    if (e.key === 'ArrowLeft') setCurrent((c) => (c - 1 + total) % total)
+    if (e.key === 'ArrowRight') setCurrent((c) => (c + 1) % total)
+  }
 
   return (
     <>
@@ -135,6 +142,12 @@ export default function Awards() {
             >
               {/* Carousel Section */}
               <div
+                onMouseEnter={() => setIsPaused(true)}
+                onMouseLeave={() => setIsPaused(false)}
+                onKeyDown={handleKey}
+                tabIndex={0}
+                role="region"
+                aria-label="Awards carousel"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -142,6 +155,7 @@ export default function Awards() {
                   gap: '0.8rem',
                   width: '100%',
                   marginBottom: '2.5rem',
+                  outline: 'none',
                 }}
               >
                 {/* Left side image */}
@@ -154,7 +168,7 @@ export default function Awards() {
                       width: '100%',
                       maxWidth: '130px',
                       height: 'auto',
-                      borderRadius: '8px',
+                      borderRadius: 'var(--radius-sm)',
                     }}
                   />
                 </div>
@@ -172,7 +186,7 @@ export default function Awards() {
                     className="award-img-slide"
                     style={{
                       background: 'linear-gradient(135deg, #ffffff 0%, #fefce8 50%, #f0f7ff 100%)',
-                      borderRadius: '12px',
+                      borderRadius: 'var(--radius-md)',
                       padding: '1.5rem',
                       border: '1px solid rgba(253,188,1,0.2)',
                       boxShadow: '0 10px 40px rgba(0,0,0,0.15), 0 2px 10px rgba(253,188,1,0.1)',
@@ -201,7 +215,7 @@ export default function Awards() {
                       right: '-6px',
                       bottom: '-6px',
                       border: '1px solid rgba(253,188,1,0.1)',
-                      borderRadius: '16px',
+                      borderRadius: 'var(--radius-lg)',
                       pointerEvents: 'none',
                     }}
                   />
@@ -217,7 +231,7 @@ export default function Awards() {
                       width: '100%',
                       maxWidth: '130px',
                       height: 'auto',
-                      borderRadius: '8px',
+                      borderRadius: 'var(--radius-sm)',
                     }}
                   />
                 </div>

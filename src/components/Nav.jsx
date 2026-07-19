@@ -187,7 +187,7 @@ export default function Nav() {
           color: #ffffff;
           position: relative;
           padding: 0.5rem 1rem;
-          border-radius: 6px;
+          border-radius: var(--radius-sm);
           transition: all 0.25s ease;
           white-space: nowrap;
           text-shadow: 0 1px 6px rgba(0,0,0,0.8);

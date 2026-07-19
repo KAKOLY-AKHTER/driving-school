@@ -32,7 +32,7 @@ export default function CTABanner() {
           position: relative;
           background: linear-gradient(135deg, ${DARK} 0%, #0d1f3c 50%, ${DARK} 100%);
           border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 20px;
+          border-radius: var(--radius-xl);
           padding: clamp(3rem, 6vw, 5rem) clamp(2rem, 4vw, 4rem);
           overflow: hidden;
         }

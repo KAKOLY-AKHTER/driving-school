@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import Nav from './components/Nav'
 import Footer from './components/Footer'
@@ -11,12 +11,15 @@ import SchedulePage from './pages/SchedulePage'
 // Component to handle scroll reset on route change and global scroll reveal
 function LayoutSetup({ children }) {
   const location = useLocation()
+  const observerRef = useRef(null)
 
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [location.pathname])
 
   useEffect(() => {
+    if (observerRef.current) observerRef.current.disconnect()
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach(entry => {
@@ -28,12 +31,22 @@ function LayoutSetup({ children }) {
       },
       { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
     )
+    observerRef.current = observer
 
-    const elements = document.querySelectorAll('.reveal')
-    elements.forEach(el => observer.observe(el))
+    const discover = () => {
+      document.querySelectorAll('.reveal:not(.visible)').forEach(el => observer.observe(el))
+    }
 
-    return () => observer.disconnect()
-  }, [location.pathname])
+    discover()
+
+    const mutator = new MutationObserver(discover)
+    mutator.observe(document.body, { childList: true, subtree: true })
+
+    return () => {
+      observer.disconnect()
+      mutator.disconnect()
+    }
+  }, [])
 
   return children
 }

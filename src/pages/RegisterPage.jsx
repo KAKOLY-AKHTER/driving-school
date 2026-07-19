@@ -208,7 +208,7 @@ export default function RegisterPage() {
         .rw-card {
           background: #F8FAFD;
           border: 1px solid #E2EBF5;
-          border-radius: 16px;
+          border-radius: var(--radius-lg);
           padding: clamp(1.5rem, 3vw, 2.5rem);
           animation: rwFadeUp 0.4s cubic-bezier(0.22,1,0.36,1) both;
           position: relative;
@@ -455,7 +455,7 @@ export default function RegisterPage() {
                 </div>
 
                 <div style={{
-                  background: '#ffffff', border: '1.5px solid #E2EBF5', borderRadius: '12px',
+                  background: '#ffffff', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-md)',
                   padding: '1.5rem', marginBottom: '1.5rem',
                 }}>
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, marginBottom: '0.75rem' }}>Selected Course</p>
@@ -474,7 +474,7 @@ export default function RegisterPage() {
                 </div>
 
                 <div style={{
-                  background: '#ffffff', border: '1.5px solid #E2EBF5', borderRadius: '12px',
+                  background: '#ffffff', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-md)',
                   padding: '1.5rem',
                 }}>
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, marginBottom: '1rem' }}>Create Account</p>
@@ -511,7 +511,7 @@ export default function RegisterPage() {
                 </div>
 
                 <div style={{
-                  background: '#ffffff', border: '1.5px solid #E2EBF5', borderRadius: '12px',
+                  background: '#ffffff', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-md)',
                   padding: '1.5rem', marginBottom: '1.25rem',
                 }}>
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, marginBottom: '1rem' }}>Card Information</p>
@@ -548,7 +548,7 @@ export default function RegisterPage() {
 
                 {/* Billing */}
                 <div style={{
-                  background: '#ffffff', border: '1.5px solid #E2EBF5', borderRadius: '12px',
+                  background: '#ffffff', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-md)',
                   padding: '1.5rem',
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -627,7 +627,7 @@ export default function RegisterPage() {
 
                 {/* Disclaimer */}
                 <div style={{
-                  background: '#F0F4F8', border: '1.5px solid #E2EBF5', borderRadius: '12px',
+                  background: '#F0F4F8', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-md)',
                   padding: '1.25rem', marginBottom: '1rem',
                 }}>
                   <p style={{ color: '#364B6B', fontSize: '0.82rem', lineHeight: 1.7, marginBottom: '1rem' }}>

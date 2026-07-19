@@ -199,7 +199,7 @@ export default function ContactPage() {
         .c-map-card {
           position: relative;
           overflow: hidden;
-          border-radius: 16px;
+          border-radius: var(--radius-lg);
           border: 1px solid #E2EBF5;
           box-shadow: 0 8px 32px rgba(0,0,0,0.06);
           transition: all 0.4s cubic-bezier(0.22,1,0.36,1);

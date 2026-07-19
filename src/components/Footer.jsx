@@ -33,7 +33,7 @@ export default function Footer() {
         .ft-social {
           width: 40px;
           height: 40px;
-          border-radius: 10px;
+          border-radius: var(--radius-md);
           border: 1px solid rgba(255,255,255,0.06);
           background: rgba(255,255,255,0.03);
           display: flex;
@@ -175,7 +175,7 @@ export default function Footer() {
                 <li style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                   <div style={{
                     width: '32px', height: '32px', minWidth: '32px',
-                    borderRadius: '8px',
+                    borderRadius: 'var(--radius-sm)',
                     background: 'rgba(253,188,1,0.06)',
                     border: '1px solid rgba(253,188,1,0.1)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -195,7 +195,7 @@ export default function Footer() {
                 <li style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                   <div style={{
                     width: '32px', height: '32px', minWidth: '32px',
-                    borderRadius: '8px',
+                    borderRadius: 'var(--radius-sm)',
                     background: 'rgba(253,188,1,0.06)',
                     border: '1px solid rgba(253,188,1,0.1)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -217,7 +217,7 @@ export default function Footer() {
                 <li style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                   <div style={{
                     width: '32px', height: '32px', minWidth: '32px',
-                    borderRadius: '8px',
+                    borderRadius: 'var(--radius-sm)',
                     background: 'rgba(253,188,1,0.06)',
                     border: '1px solid rgba(253,188,1,0.1)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -246,20 +246,14 @@ export default function Footer() {
           }}>
             <p style={{
               fontFamily: 'var(--font-body)',
-              color: 'rgba(255,255,255,0.25)',
+              color: 'rgba(255,255,255,0.4)',
               fontSize: '0.78rem',
             }}>
               &copy; {currentYear} A Precision Driving School. All rights reserved.
             </p>
             <div style={{ display: 'flex', gap: '1.5rem' }}>
-              <a href="#" style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.2)', fontSize: '0.75rem', textDecoration: 'none', transition: 'color 0.3s ease' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.2)' }}
-              >Privacy Policy</a>
-              <a href="#" style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.2)', fontSize: '0.75rem', textDecoration: 'none', transition: 'color 0.3s ease' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.2)' }}
-              >Terms of Service</a>
+              <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.45)', fontSize: '0.75rem', cursor: 'default' }}>Privacy Policy</span>
+              <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.45)', fontSize: '0.75rem', cursor: 'default' }}>Terms of Service</span>
             </div>
           </div>
 

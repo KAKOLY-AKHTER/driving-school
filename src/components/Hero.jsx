@@ -8,7 +8,7 @@ export default function Hero() {
         display: 'flex',
         alignItems: 'center',
         position: 'relative',
-        paddingTop: '11rem', /* extra space below navbar + top bar */
+        paddingTop: 'clamp(7rem, 15vw, 11rem)',
         paddingBottom: '4rem',
         overflow: 'hidden',
       }}
@@ -82,7 +82,7 @@ export default function Hero() {
           animation: 'floatY 3s ease-in-out infinite',
           opacity: 0.5,
         }}>
-        <span className="eyebrow" style={{ fontSize: '0.5rem' }}>Scroll</span>
+        <span className="eyebrow" style={{ fontSize: '0.7rem' }}>Scroll</span>
         <div style={{ width: '1px', height: '40px', background: 'linear-gradient(to bottom, var(--color-gold), transparent)' }} />
         </div>
       </div>

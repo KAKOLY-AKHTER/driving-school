@@ -85,7 +85,7 @@ export default function About() {
         .ab-img-wrap {
           position: relative;
           overflow: hidden;
-          border-radius: 12px;
+          border-radius: var(--radius-md);
         }
         .ab-img-wrap img {
           width: 100%;
@@ -112,7 +112,7 @@ export default function About() {
           width: 36px;
           height: 36px;
           min-width: 36px;
-          background: linear-gradient(135deg, ${SKY_BLUE}, #023080);
+          background: linear-gradient(135deg, ${SKY_BLUE}, ${DARK});
           color: #ffffff;
           font-family: var(--font-mono);
           font-size: 0.8rem;
@@ -188,7 +188,7 @@ export default function About() {
                 backdropFilter: 'blur(12px)',
                 border: '1px solid rgba(253,188,1,0.2)',
                 padding: '1rem 1.5rem',
-                borderRadius: '8px',
+                borderRadius: 'var(--radius-sm)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '1rem',
@@ -272,7 +272,7 @@ export default function About() {
                     <div style={{
                       width: '36px',
                       height: '36px',
-                      borderRadius: '8px',
+                      borderRadius: 'var(--radius-sm)',
                       background: 'rgba(253,188,1,0.1)',
                       border: '1px solid rgba(253,188,1,0.15)',
                       display: 'flex',
@@ -490,7 +490,7 @@ export default function About() {
                 background: 'rgba(253,188,1,0.06)',
                 border: '1px solid rgba(253,188,1,0.12)',
                 padding: '1rem 1.25rem',
-                borderRadius: '8px',
+                borderRadius: 'var(--radius-sm)',
               }}>
                 <div style={{
                   width: '40px',
@@ -519,7 +519,7 @@ export default function About() {
 
             {/* Right — Image */}
             <div style={{ order: 2 }}>
-              <div className="ab-img-wrap ab-shine" style={{ borderRadius: '16px', border: '1px solid rgba(253,188,1,0.1)' }}>
+              <div className="ab-img-wrap ab-shine" style={{ borderRadius: 'var(--radius-lg)', border: '1px solid rgba(253,188,1,0.1)' }}>
                 <img
                   src="/dual-car.png"
                   alt="Dual control car interior"
@@ -690,7 +690,7 @@ export default function About() {
             <div className="ab-card-hover" style={{
               position: 'relative',
               overflow: 'hidden',
-              borderRadius: '8px',
+              borderRadius: 'var(--radius-sm)',
               border: '1px solid rgba(253,188,1,0.1)',
             }}>
               <img

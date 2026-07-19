@@ -2,6 +2,7 @@ const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
 const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
+const DARK = '#0a1628'
 
 const STEPS = [
   {
@@ -77,7 +78,7 @@ export default function TheRoute() {
           width: 6rem;
           height: 6rem;
           margin: 0 auto 2rem;
-          background: linear-gradient(135deg, ${SKY_BLUE}, #023080);
+          background: linear-gradient(135deg, ${SKY_BLUE}, ${DARK});
           border: 3px solid ${GOLD};
           display: flex;
           flex-direction: column;

@@ -63,7 +63,7 @@ export default function SchedulePage() {
         .sch-pkg-card {
           background: #ffffff;
           border: 2px solid rgba(1,69,168,0.12);
-          border-radius: 20px;
+          border-radius: var(--radius-xl);
           padding: 2.25rem 1.5rem;
           display: flex;
           flex-direction: column;
@@ -143,7 +143,7 @@ export default function SchedulePage() {
           align-items: center;
           justify-content: center;
           width: 60px; height: 60px;
-          border-radius: 16px;
+          border-radius: var(--radius-lg);
           background: linear-gradient(135deg, rgba(1,69,168,0.08), rgba(253,188,1,0.08));
           border: 1.5px solid rgba(1,69,168,0.12);
           margin-bottom: 1.25rem;
@@ -223,7 +223,7 @@ export default function SchedulePage() {
         .sch-login-card {
           background: #ffffff;
           border: 1.5px solid rgba(1,69,168,0.15);
-          border-radius: 16px;
+          border-radius: var(--radius-lg);
           padding: 2.5rem 2rem;
           text-align: center;
           transition: all 0.3s ease;
@@ -481,7 +481,7 @@ export default function SchedulePage() {
           <div className="sch-login-card">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.85rem', marginBottom: '1rem' }}>
               <div style={{
-                width: '44px', height: '44px', borderRadius: '12px',
+                width: '44px', height: '44px', borderRadius: 'var(--radius-md)',
                 background: 'linear-gradient(135deg, rgba(1,69,168,0.08), rgba(253,188,1,0.08))',
                 border: '1.5px solid rgba(1,69,168,0.12)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
