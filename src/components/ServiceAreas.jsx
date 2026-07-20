@@ -92,6 +92,8 @@ export default function ServiceAreas() {
         }
         @media (max-width: 767px) {
           .area-map-wrap { height: 180px; }
+          .areas-grid-bottom { flex-direction: column !important; }
+          .areas-grid-bottom .area-card { flex: none !important; max-width: 100% !important; }
         }
       `}</style>
 

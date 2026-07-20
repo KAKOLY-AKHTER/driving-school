@@ -240,8 +240,8 @@ export default function Testimonials() {
           animation: testiProgressShrink ${isPaused ? '0s' : '4s'} linear forwards;
         }
         .testi-dot {
-          width: 10px;
-          height: 10px;
+          width: 14px;
+          height: 14px;
           border-radius: 50%;
           background: rgba(1,69,168,0.12);
           border: 2px solid transparent;
@@ -300,6 +300,7 @@ export default function Testimonials() {
         @media (max-width: 900px) {
           .testi-coverflow {
             gap: 0.5rem;
+            min-height: 340px !important;
           }
           .testi-side-card {
             display: none;

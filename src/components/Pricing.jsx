@@ -194,6 +194,23 @@ export default function Pricing({ light = false }) {
         }
         .price-scroll::-webkit-scrollbar { display: none; }
         .price-scroll { scrollbar-width: none; }
+        .price-scroll-hint {
+          display: none;
+          justify-content: center;
+          align-items: center;
+          gap: 0.5rem;
+          margin-top: 1rem;
+          font-family: var(--font-mono);
+          font-size: 0.65rem;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: rgba(10,22,40,0.35);
+          animation: priceScrollHint 2s ease-in-out infinite;
+        }
+        @keyframes priceScrollHint {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 0.8; }
+        }
         @media (min-width: 768px) {
           .price-scroll {
             display: grid;
@@ -214,6 +231,9 @@ export default function Pricing({ light = false }) {
           .price-card {
             min-width: 260px;
             flex-shrink: 0;
+          }
+          .price-scroll-hint {
+            display: flex !important;
           }
         }
       `}</style>
@@ -443,7 +463,12 @@ export default function Pricing({ light = false }) {
             </div>
           </div>
 
-          {/* Footnote */}
+          <div className="price-scroll-hint">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+            Swipe to see more
+          </div>
           <p style={{
             fontFamily: 'var(--font-body)',
             fontSize: '0.75rem',

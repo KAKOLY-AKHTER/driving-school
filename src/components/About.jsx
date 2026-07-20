@@ -133,6 +133,9 @@ export default function About() {
           .ab-split-right {
             order: 1;
           }
+          .ab-img-wrap {
+            min-height: 280px !important;
+          }
         }
       `}</style>
 

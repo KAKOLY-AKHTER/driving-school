@@ -52,12 +52,13 @@ export default function Nav() {
         borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
         display: scrolled ? 'none' : 'block'
       }}>
-        <div className="container" style={{ display: 'flex', gap: '2rem', fontSize: '0.9rem', fontWeight: '600' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div className="container" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.75rem 2rem', fontSize: '0.9rem', fontWeight: '600' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
             <span style={{ color: '#0a1628', transform: 'rotate(90deg)' }}>📞</span> +1 925 329 1736
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ color: '#0a1628' }}>✉️</span> aprecisiondrivingschool@gmail.com
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+            <span style={{ color: '#0a1628', flexShrink: 0 }}>✉️</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>aprecisiondrivingschool@gmail.com</span>
           </div>
         </div>
       </div>
@@ -112,11 +113,17 @@ export default function Nav() {
               aria-label="Toggle menu"
               aria-expanded={open}
               style={{
-                width: '40px', height: '40px',
+                width: '44px', height: '44px',
                 display: 'flex', flexDirection: 'column',
                 justifyContent: 'center', alignItems: 'center',
                 gap: '6px',
-                color: 'var(--color-paper)',
+                color: '#ffffff',
+                padding: 0,
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                borderRadius: '8px',
+                transition: 'background 0.2s',
               }}
             >
               <span style={{ display: 'block', width: '24px', height: '2px', backgroundColor: 'currentColor', transition: 'all 0.3s ease', transform: open ? 'rotate(45deg) translate(5px, 6px)' : 'none' }} />
@@ -148,13 +155,7 @@ export default function Nav() {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => setOpen(false)}
-                    style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: '0.85rem',
-                      letterSpacing: '0.1em',
-                      textTransform: 'uppercase',
-                      color: 'var(--color-paper)',
-                    }}
+                    className="nav-mobile-link"
                   >
                     {l.label}
                   </a>
@@ -162,12 +163,9 @@ export default function Nav() {
                   <Link
                     to={l.href}
                     onClick={() => setOpen(false)}
+                    className="nav-mobile-link"
                     style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: '0.85rem',
-                      letterSpacing: '0.1em',
-                      textTransform: 'uppercase',
-                      color: location.pathname === l.href ? 'var(--color-gold)' : 'var(--color-paper)',
+                      color: location.pathname === l.href ? 'var(--color-gold)' : undefined,
                     }}
                   >
                     {l.label}
@@ -205,6 +203,21 @@ export default function Nav() {
         @media (min-width: 1024px) {
           .lg\\:hidden { display: none !important; }
           .lg\\:flex { display: flex !important; }
+        }
+        .nav-mobile-link {
+          font-family: var(--font-mono);
+          font-size: 0.85rem;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: var(--color-paper);
+          padding: 0.5rem 0.75rem;
+          border-radius: 8px;
+          transition: background 0.2s, color 0.2s;
+          display: block;
+        }
+        .nav-mobile-link:hover {
+          background: rgba(253,188,1,0.12);
+          color: #FDBC01;
         }
       `}</style>
     </header>

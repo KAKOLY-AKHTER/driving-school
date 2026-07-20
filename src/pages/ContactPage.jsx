@@ -198,12 +198,25 @@ export default function ContactPage() {
 
         .c-map-card {
           position: relative;
-          overflow: hidden;
           border-radius: var(--radius-lg);
-          border: 1px solid #E2EBF5;
+          overflow: hidden;
+          background: #ffffff;
+          border: 1px solid rgba(1,69,168,0.08);
           box-shadow: 0 8px 32px rgba(0,0,0,0.06);
-          transition: all 0.4s cubic-bezier(0.22,1,0.36,1);
-          animation: cFadeUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.3s both;
+          transition: all 0.4s ease;
+        }
+        .c-map-card:hover {
+          box-shadow: 0 16px 48px rgba(0,0,0,0.1);
+          transform: translateY(-2px);
+        }
+        .c-map-card iframe { width: 100%; height: 420px; border: 0; display: block; }
+        .c-map-card::after {
+          content: '';
+          position: absolute;
+          bottom: 0; left: 0; right: 0;
+          height: 60px;
+          background: linear-gradient(transparent, rgba(255,255,255,0.8));
+          pointer-events: none;
         }
         .c-map-card:hover {
           box-shadow: 0 16px 48px rgba(0,0,0,0.1);
@@ -258,6 +271,9 @@ export default function ContactPage() {
         }
         @media (min-width: 1024px) {
           .c-cards-grid { grid-template-columns: repeat(4, 1fr) !important; }
+        }
+        @media (max-width: 767px) {
+          .c-map-card iframe { height: 260px; }
         }
       `}</style>
 

@@ -238,15 +238,15 @@ export default function Awards() {
               </div>
 
               {/* Dots */}
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '1.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                 {AWARDS.map((_, i) => (
                   <button
                     key={i}
                     onClick={() => setCurrent(i)}
                     style={{
-                      width: current === i ? '28px' : '8px',
-                      height: '8px',
-                      borderRadius: '4px',
+                      width: current === i ? '28px' : '14px',
+                      height: '14px',
+                      borderRadius: '7px',
                       background: current === i ? GOLD : 'rgba(253,188,1,0.2)',
                       border: 'none',
                       cursor: 'pointer',

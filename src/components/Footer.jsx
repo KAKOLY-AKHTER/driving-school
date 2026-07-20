@@ -1,3 +1,5 @@
+import { useLocation, Link } from 'react-router-dom'
+
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
 const GOLD_BRIGHT = '#FFD54F'
@@ -31,8 +33,8 @@ export default function Footer() {
           color: ${GOLD_BRIGHT};
         }
         .ft-social {
-          width: 40px;
-          height: 40px;
+          width: 44px;
+          height: 44px;
           border-radius: var(--radius-md);
           border: 1px solid rgba(255,255,255,0.06);
           background: rgba(255,255,255,0.03);
@@ -148,9 +150,9 @@ export default function Footer() {
             <div>
               <div className="ft-col-title">Quick Links</div>
               <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', listStyle: 'none', padding: 0, margin: 0 }}>
-                <li><a href="#programs" className="ft-link">Programs</a></li>
-                <li><a href="#pricing" className="ft-link">Pricing</a></li>
-                <li><a href="#route" className="ft-link">The Route</a></li>
+                <li><Link to="/#programs" className="ft-link">Programs</Link></li>
+                <li><Link to="/#pricing" className="ft-link">Pricing</Link></li>
+                <li><Link to="/#route" className="ft-link">The Route</Link></li>
                 <li><a href="https://www.aprecisiondrivingschool.com/script/register.php" target="_blank" rel="noopener noreferrer" className="ft-link ft-link-gold">Online Drivers Ed</a></li>
                 <li><a href="https://aprecisiondrivingschool.com/schedule/my_account.html" target="_blank" rel="noopener noreferrer" className="ft-link">Student Login</a></li>
               </ul>
@@ -160,11 +162,11 @@ export default function Footer() {
             <div>
               <div className="ft-col-title">Services</div>
               <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', listStyle: 'none', padding: 0, margin: 0 }}>
-                <li><a href="#programs" className="ft-link">Teenager Lessons</a></li>
-                <li><a href="#programs" className="ft-link">Adult Lessons</a></li>
-                <li><a href="#pricing" className="ft-link">Behind-the-Wheel</a></li>
+                <li><Link to="/#programs" className="ft-link">Teenager Lessons</Link></li>
+                <li><Link to="/#programs" className="ft-link">Adult Lessons</Link></li>
+                <li><Link to="/#pricing" className="ft-link">Behind-the-Wheel</Link></li>
                 <li><a href="https://www.aprecisiondrivingschool.com/script/register.php" target="_blank" rel="noopener noreferrer" className="ft-link">Online Drivers Ed</a></li>
-                <li><a href="#contact" className="ft-link">Free Pickup & Drop</a></li>
+                <li><Link to="/#contact" className="ft-link">Free Pickup & Drop</Link></li>
               </ul>
             </div>
 

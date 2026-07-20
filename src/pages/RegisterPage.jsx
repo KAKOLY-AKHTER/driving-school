@@ -35,6 +35,7 @@ export default function RegisterPage() {
     firstName: '', middleName: '', lastName: '', dob: '', phone: '', email: '',
     address1: '', address2: '', city: '', state: 'California', zipCode: '',
     courseType: '1',
+    username: '', password: '', confirmPassword: '',
     ccType: '', ccMonth: '', ccYear: '', ccNumber: '', ccCvv: '',
     sameBilling: true,
     billFirstName: '', billLastName: '', billAddress1: '', billAddress2: '',
@@ -257,10 +258,28 @@ export default function RegisterPage() {
           border-color: ${SKY_BLUE};
           background: rgba(1,69,168,0.04);
         }
+        .rw-form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+        .rw-form-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+        .rw-form-grid-2fr1fr { display: grid; grid-template-columns: 2fr 1fr; gap: 0.75rem; }
+        .rw-step-bar { display: flex; gap: 0; }
+        @media (max-width: 768px) {
+          .rw-form-grid, .rw-form-grid-3 { grid-template-columns: 1fr !important; }
+          .rw-form-grid-2fr1fr { grid-template-columns: 1fr !important; }
+          .rw-step-bar { gap: 0.25rem; }
+          .rw-step-bar .rw-step-line { display: none !important; }
+          .rw-step-bar .rw-step { padding: 0.4rem 0.3rem; }
+        }
+        @media (max-width: 480px) {
+          .rw-step-bar { flex-wrap: wrap; justify-content: center; gap: 0.5rem; }
+          .rw-step-bar .rw-step { flex: 0 0 auto; min-width: 60px; padding: 0.5rem 0.4rem; }
+        }
+        @media (max-width: 600px) {
+          .rw-hero { padding-top: 14rem !important; }
+        }
       `}</style>
 
       {/* ═══ Hero ═══ */}
-      <section style={{
+      <section className="rw-hero" style={{
         background: `linear-gradient(135deg, ${DARK} 0%, #0a2a5e 25%, ${DARK} 50%, #0c2040 75%, ${DARK} 100%)`,
         backgroundSize: '300% 300%',
         animation: 'rwBgPan 12s ease-in-out infinite',
@@ -355,7 +374,7 @@ export default function RegisterPage() {
         <div className="container" style={{ maxWidth: '48rem', position: 'relative', zIndex: 1 }}>
 
           {/* Progress Steps */}
-          <div style={{
+          <div className="rw-step-bar" style={{
             display: 'flex', justifyContent: 'center', marginBottom: '2rem',
             padding: '1.5rem 2rem', background: '#ffffff',
             border: '1px solid #E2EBF5', borderRadius: '14px',
@@ -406,7 +425,7 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                <div className="rw-form-grid">
                   <Field label="First Name" required><input name="firstName" value={form.firstName} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
                   <Field label="Middle Name"><input name="middleName" value={form.middleName} onChange={handleChange} className="rw-input" style={inputStyle} /></Field>
                   <Field label="Last Name" required><input name="lastName" value={form.lastName} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
@@ -415,11 +434,11 @@ export default function RegisterPage() {
                   <Field label="Email" required><input name="email" type="email" value={form.email} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginTop: '1rem' }}>
+                <div className="rw-form-grid" style={{ marginTop: '1rem' }}>
                   <Field label="Address" required><input name="address1" value={form.address1} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
                   <Field label="Apt / Suite"><input name="address2" value={form.address2} onChange={handleChange} className="rw-input" style={inputStyle} /></Field>
                   <Field label="City" required><input name="city" value={form.city} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem' }}>
+                  <div className="rw-form-grid-2fr1fr">
                     <Field label="State" required>
                       <select name="state" value={form.state} onChange={handleChange} required className="rw-input rw-select" style={inputStyle}>
                         {STATES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -478,7 +497,7 @@ export default function RegisterPage() {
                   padding: '1.5rem',
                 }}>
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, marginBottom: '1rem' }}>Create Account</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                  <div className="rw-form-grid-3">
                     <Field label="Username" required><input name="username" value={form.username} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
                     <Field label="Password" required><input name="password" type="password" value={form.password} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
                     <Field label="Confirm Password" required><input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
@@ -515,7 +534,7 @@ export default function RegisterPage() {
                   padding: '1.5rem', marginBottom: '1.25rem',
                 }}>
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, marginBottom: '1rem' }}>Card Information</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                  <div className="rw-form-grid">
                     <Field label="Card Type" required>
                       <select name="ccType" value={form.ccType} onChange={handleChange} required className="rw-input rw-select" style={inputStyle}>
                         <option value="">Select...</option>
@@ -559,12 +578,12 @@ export default function RegisterPage() {
                     </label>
                   </div>
                   {!form.sameBilling && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                    <div className="rw-form-grid">
                       <Field label="First Name" required><input name="billFirstName" value={form.billFirstName} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
                       <Field label="Last Name" required><input name="billLastName" value={form.billLastName} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
                       <Field label="Address" required><input name="billAddress1" value={form.billAddress1} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
                       <Field label="City" required><input name="billCity" value={form.billCity} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
-                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem' }}>
+                      <div className="rw-form-grid-2fr1fr">
                         <Field label="State" required>
                           <select name="billState" value={form.billState} onChange={handleChange} required className="rw-input rw-select" style={inputStyle}>
                             {STATES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -604,7 +623,7 @@ export default function RegisterPage() {
                 </div>
 
                 {/* Summary cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                <div className="rw-form-grid" style={{ marginBottom: '1.25rem' }}>
                   <SummaryCard title="Personal">
                     <SumLine label="Name" value={`${form.firstName} ${form.middleName} ${form.lastName}`.trim() || '—'} />
                     <SumLine label="Phone" value={form.phone || '—'} />

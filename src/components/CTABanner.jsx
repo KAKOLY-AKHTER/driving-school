@@ -76,6 +76,7 @@ export default function CTABanner() {
       `}</style>
 
       <section
+        id="contact"
         style={{
           position: 'relative',
           overflow: 'hidden',

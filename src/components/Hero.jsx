@@ -2,7 +2,29 @@ import './HeroSlider.css'
 
 export default function Hero() {
   return (
+    <>
+    <style>{`
+      @media (max-width: 600px) {
+        .hero-content {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          text-align: center !important;
+        }
+        .hero-logo { margin-bottom: 1.5rem !important; }
+        .hero-title { font-size: 2.2rem !important; margin-bottom: 0.8rem !important; }
+        .hero-subtitle { font-size: 0.9rem !important; margin-bottom: 1rem !important; }
+        .hero-cta { justify-content: center !important; }
+        .hero-section {
+          padding-top: 14rem !important;
+          padding-bottom: 4rem !important;
+          min-height: auto !important;
+          align-items: flex-start !important;
+        }
+      }
+    `}</style>
     <section
+      className="hero-section"
       style={{
         minHeight: '100vh',
         display: 'flex',
@@ -20,10 +42,10 @@ export default function Hero() {
       </div>
 
       <div className="container" style={{ position: 'relative', zIndex: 1 }}>
-        <div className="reveal" style={{ maxWidth: '560px' }}>
+        <div className="reveal hero-content" style={{ maxWidth: '720px' }}>
 
           {/* 1. Title */}
-          <h1 style={{
+          <h1 className="hero-title" style={{
             fontSize: 'clamp(2.8rem, 6vw, 4.8rem)',
             color: '#ffffff',
             textShadow: '0 4px 24px rgba(0,0,0,0.9), 0 2px 8px rgba(0,0,0,0.6)',
@@ -34,7 +56,7 @@ export default function Hero() {
           </h1>
 
           {/* 2. Subtitle */}
-          <p style={{
+          <p className="hero-subtitle" style={{
             fontSize: 'clamp(1rem, 1.5vw, 1.15rem)',
             color: '#eeeeee',
             textShadow: '0 2px 8px rgba(0,0,0,0.9), 0 1px 4px rgba(0,0,0,0.6)',
@@ -47,6 +69,7 @@ export default function Hero() {
 
           {/* 3. Hero Icon Logo Image */}
           <img
+            className="hero-logo"
             src="/hero-icon-logo.png"
             alt="A Precision Driving School"
             style={{
@@ -60,7 +83,7 @@ export default function Hero() {
           />
 
           {/* 4. CTA Buttons */}
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <div className="hero-cta" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             <a href="https://www.aprecisiondrivingschool.com/schedule/cart_home.html" className="btn-gold" target="_blank" rel="noopener noreferrer">
               Book Driving Lessons
             </a>
@@ -88,5 +111,6 @@ export default function Hero() {
       </div>
 
     </section>
+    </>
   )
 }

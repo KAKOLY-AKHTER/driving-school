@@ -287,10 +287,13 @@ export default function SchedulePage() {
         @media (min-width: 1200px) {
           .sch-pkg-grid { grid-template-columns: repeat(5, 1fr) !important; }
         }
+        @media (max-width: 600px) {
+          .sch-hero { padding-top: 14rem !important; }
+        }
       `}</style>
 
       {/* ═══ Hero ═══ */}
-      <section style={{
+      <section className="sch-hero" style={{
         background: `linear-gradient(135deg, ${DARK} 0%, #0a2a5e 25%, ${DARK} 50%, #0c2040 75%, ${DARK} 100%)`,
         backgroundSize: '300% 300%',
         animation: 'schBgPan 12s ease-in-out infinite',
