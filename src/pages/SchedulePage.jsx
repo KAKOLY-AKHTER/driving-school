@@ -1,8 +1,11 @@
+import { useNavigate, Link } from 'react-router-dom'
+
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
 const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
+
 
 const PACKAGES = [
   {
@@ -33,6 +36,7 @@ const PACKAGES = [
 ]
 
 export default function SchedulePage() {
+  const navigate = useNavigate()
   return (
     <>
       <style>{`
@@ -465,17 +469,16 @@ export default function SchedulePage() {
                   color: '#8899aa', marginBottom: '1.75rem', flexGrow: 1,
                 }}>{pkg.desc}</p>
 
-                <a
-                  href={`https://www.aprecisiondrivingschool.com/schedule/register.html/${pkg.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={() => navigate('/register', { state: { packageId: pkg.id } })}
                   className={pkg.highlight ? 'sch-cta-gold' : 'sch-cta-ghost'}
+                  style={{ width: '100%', border: pkg.highlight ? 'none' : undefined, cursor: 'pointer' }}
                 >
                   Register Now
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
-                </a>
+                </button>
               </div>
             ))}
           </div>
@@ -497,10 +500,8 @@ export default function SchedulePage() {
                 Already a registered user?
               </p>
             </div>
-            <a
-              href="https://www.aprecisiondrivingschool.com/schedule/cart_login_check.html"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              to="/login"
               style={{
                 fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.12em',
                 textTransform: 'uppercase', color: SKY_BLUE, fontWeight: 700,
@@ -509,7 +510,7 @@ export default function SchedulePage() {
               }}
             >
               Click here to login
-            </a>
+            </Link>
           </div>
         </div>
       </section>

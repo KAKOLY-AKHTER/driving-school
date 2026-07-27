@@ -489,7 +489,7 @@ export default function ContactPage() {
             {/* Map */}
             <div className="c-map-card">
               <iframe
-                src="https://www.google.com/maps/embed/v1/place?q=2001+Omega+Rd+Ste+205+San+Ramon+CA+94583&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8"
+                src="https://maps.google.com/maps?q=2001%20Omega%20Rd%20Ste%20205%20San%20Ramon%20CA%2094583&t=&z=15&ie=UTF8&iwloc=&output=embed"
                 width="100%"
                 height="420"
                 style={{ border: 0, display: 'block' }}

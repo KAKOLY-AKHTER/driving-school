@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import './HeroSlider.css'
 
 export default function Hero() {
@@ -84,12 +85,12 @@ export default function Hero() {
 
           {/* 4. CTA Buttons */}
           <div className="hero-cta" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <a href="https://www.aprecisiondrivingschool.com/schedule/cart_home.html" className="btn-gold" target="_blank" rel="noopener noreferrer">
+            <Link to="/schedule" className="btn-gold">
               Book Driving Lessons
-            </a>
-            <a href="https://www.aprecisiondrivingschool.com/script/register.php" className="btn-ghost" target="_blank" rel="noopener noreferrer">
+            </Link>
+            <Link to="/register" className="btn-ghost">
               Online Drivers Ed
-            </a>
+            </Link>
           </div>
 
         </div>

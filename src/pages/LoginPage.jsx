@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth'
+import { signInWithEmailAndPassword, signInWithPopup, sendPasswordResetEmail } from 'firebase/auth'
 import { auth, googleProvider } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -14,8 +14,26 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('Please enter your email address first to reset your password.')
+      return
+    }
+    setError('')
+    setSuccessMsg('')
+    try {
+      await sendPasswordResetEmail(auth, email)
+      setSuccessMsg('Password reset link sent to your email!')
+    } catch (err) {
+      if (err.code === 'auth/user-not-found') setError('No account found with this email.')
+      else if (err.code === 'auth/invalid-email') setError('Invalid email address.')
+      else setError('Failed to send reset email. Please try again.')
+    }
+  }
   const { user } = useAuth()
 
   if (user) {
@@ -132,13 +150,22 @@ export default function LoginPage() {
               </div>
 
               <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8899aa', fontWeight: 600, marginBottom: '0.4rem' }}>Password</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                  <label style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8899aa', fontWeight: 600 }}>Password</label>
+                  <button type="button" onClick={handleForgotPassword} style={{ background: 'none', border: 'none', color: SKY_BLUE, fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', fontWeight: 700 }}>Forgot?</button>
+                </div>
                 <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="lg-input" style={inputStyle} placeholder="Enter your password" />
               </div>
 
               {error && (
                 <div style={{ padding: '0.75rem 1rem', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 'var(--radius-sm)', marginBottom: '1.25rem', fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#DC2626' }}>
                   {error}
+                </div>
+              )}
+
+              {successMsg && (
+                <div style={{ padding: '0.75rem 1rem', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 'var(--radius-sm)', marginBottom: '1.25rem', fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#16A34A' }}>
+                  {successMsg}
                 </div>
               )}
 

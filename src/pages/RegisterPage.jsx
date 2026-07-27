@@ -1,7 +1,8 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { createUserWithEmailAndPassword } from 'firebase/auth'
-import { auth } from '../firebase'
+import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
+import { auth, db } from '../firebase'
+import { doc, setDoc } from 'firebase/firestore'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -23,6 +24,11 @@ const STATES = [
 const COURSE_TYPES = [
   { value: '1', label: 'Online Driver Ed — $39.99' },
   { value: '7', label: 'Duplicate Certificate 400C — $15' },
+  { value: '2', label: 'Basic BTW (Package A - 2 Hours) — $210' },
+  { value: '12', label: 'Basic BTW (Package D - 4 Hours) — $399' },
+  { value: '3', label: 'Essential BTW (Package B - 6 Hours) — $599' },
+  { value: '8', label: 'Ideal BTW + Online Ed (Package C - 6 Hours) — $615' },
+  { value: '4', label: 'Premier BTW (Package E - 10 Hours) — $999' },
 ]
 
 const STEPS = [
@@ -37,6 +43,8 @@ export default function RegisterPage() {
   const [regError, setRegError] = useState('')
   const [regLoading, setRegLoading] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
+
   const [form, setForm] = useState({
     firstName: '', middleName: '', lastName: '', dob: '', phone: '', email: '',
     address1: '', address2: '', city: '', state: 'California', zipCode: '',
@@ -48,6 +56,15 @@ export default function RegisterPage() {
     billCity: '', billState: 'California', billZip: '', billPhone: '', billEmail: '',
     disclaimer: '',
   })
+
+  useEffect(() => {
+    if (location.state?.packageId) {
+      const pkgIdStr = String(location.state.packageId)
+      if (COURSE_TYPES.some(c => c.value === pkgIdStr)) {
+        setForm(prev => ({ ...prev, courseType: pkgIdStr }))
+      }
+    }
+  }, [location.state])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -83,13 +100,40 @@ export default function RegisterPage() {
     setRegError('')
     setRegLoading(true)
     try {
-      await createUserWithEmailAndPassword(auth, form.email, form.password)
+      const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password)
+      const user = userCredential.user
+
+      const fullName = `${form.firstName} ${form.lastName}`.trim()
+
+      // Update firebase authentication user profile
+      await updateProfile(user, { displayName: fullName })
+
+      // Store other profile and course data in Firestore
+      await setDoc(doc(db, 'users', user.uid), {
+        firstName: form.firstName,
+        middleName: form.middleName,
+        lastName: form.lastName,
+        displayName: fullName,
+        dob: form.dob,
+        phone: form.phone,
+        email: form.email,
+        address: `${form.address1} ${form.address2}`.trim(),
+        city: form.city,
+        state: form.state,
+        zipCode: form.zipCode,
+        courseType: form.courseType,
+        createdAt: new Date().toISOString(),
+      })
+
       navigate('/dashboard')
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') setRegError('An account with this email already exists.')
       else if (err.code === 'auth/weak-password') setRegError('Password must be at least 6 characters.')
       else if (err.code === 'auth/invalid-email') setRegError('Invalid email address.')
-      else setRegError('Registration failed. Please try again.')
+      else {
+        console.error(err)
+        setRegError('Registration failed. Please try again.')
+      }
     }
     setRegLoading(false)
   }
@@ -547,6 +591,20 @@ export default function RegisterPage() {
                   <div>
                     <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: DARK, fontWeight: 700, margin: 0 }}>Payment Details</h2>
                     <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>Step 3 of 4</p>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 'var(--radius-md)',
+                  padding: '1rem 1.25rem', marginBottom: '1.25rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start',
+                  textAlign: 'left'
+                }}>
+                  <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>⚠️</span>
+                  <div>
+                    <h4 style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#B45309', fontWeight: 700, margin: '0 0 0.25rem 0' }}>Demo Mode Active</h4>
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#D97706', margin: 0, lineHeight: 1.5 }}>
+                      This system is in demonstration mode. Please do NOT input real credit card credentials. You may use simulated inputs to complete the registration. No payment is processed and no card info is stored.
+                    </p>
                   </div>
                 </div>
 
