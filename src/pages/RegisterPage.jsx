@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { createUserWithEmailAndPassword } from 'firebase/auth'
+import { auth } from '../firebase'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -31,6 +34,9 @@ const STEPS = [
 
 export default function RegisterPage() {
   const [step, setStep] = useState(0)
+  const [regError, setRegError] = useState('')
+  const [regLoading, setRegLoading] = useState(false)
+  const navigate = useNavigate()
   const [form, setForm] = useState({
     firstName: '', middleName: '', lastName: '', dob: '', phone: '', email: '',
     address1: '', address2: '', city: '', state: 'California', zipCode: '',
@@ -65,12 +71,27 @@ export default function RegisterPage() {
     }))
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (form.disclaimer !== '1') {
       alert('Please accept the disclaimer to proceed.')
       return
     }
-    alert('Registration submitted successfully!')
+    if (form.password !== form.confirmPassword) {
+      setRegError('Passwords do not match.')
+      return
+    }
+    setRegError('')
+    setRegLoading(true)
+    try {
+      await createUserWithEmailAndPassword(auth, form.email, form.password)
+      navigate('/dashboard')
+    } catch (err) {
+      if (err.code === 'auth/email-already-in-use') setRegError('An account with this email already exists.')
+      else if (err.code === 'auth/weak-password') setRegError('Password must be at least 6 characters.')
+      else if (err.code === 'auth/invalid-email') setRegError('Invalid email address.')
+      else setRegError('Registration failed. Please try again.')
+    }
+    setRegLoading(false)
   }
 
   const next = () => setStep(s => Math.min(s + 1, 3))
@@ -687,10 +708,17 @@ export default function RegisterPage() {
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                   </button>
                 ) : (
-                  <button type="button" onClick={handleSubmit} className="rw-cta-gold">
-                    Register & Pay
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                  </button>
+                  <>
+                    {regError && (
+                      <div style={{ padding: '0.75rem 1rem', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 'var(--radius-sm)', marginBottom: '1rem', fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#DC2626', width: '100%' }}>
+                        {regError}
+                      </div>
+                    )}
+                    <button type="button" onClick={handleSubmit} disabled={regLoading} className="rw-cta-gold" style={{ opacity: regLoading ? 0.6 : 1 }}>
+                      {regLoading ? 'Creating Account...' : 'Register & Pay'}
+                      {!regLoading && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>}
+                    </button>
+                  </>
                 )}
               </div>
             </div>
