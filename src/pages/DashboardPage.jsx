@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { signOut, updateProfile } from 'firebase/auth'
 import { auth } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
+import { api } from '../api'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -74,35 +75,6 @@ const COURSE_MODULES = [
   },
 ]
 
-function getUsers() {
-  return JSON.parse(localStorage.getItem('drivingSchoolUsers') || '{}')
-}
-
-function getUserProfile(uid) {
-  return getUsers()[uid] || null
-}
-
-function saveUserProfile(uid, data) {
-  const all = getUsers()
-  all[uid] = { ...(all[uid] || {}), ...data }
-  localStorage.setItem('drivingSchoolUsers', JSON.stringify(all))
-}
-
-function getBookings(uid) {
-  return JSON.parse(localStorage.getItem('drivingSchoolBookings') || '[]').filter(b => b.userId === uid)
-}
-
-function saveBooking(booking) {
-  const all = JSON.parse(localStorage.getItem('drivingSchoolBookings') || '[]')
-  all.push(booking)
-  localStorage.setItem('drivingSchoolBookings', JSON.stringify(all))
-}
-
-function removeBooking(id) {
-  const all = JSON.parse(localStorage.getItem('drivingSchoolBookings') || '[]')
-  localStorage.setItem('drivingSchoolBookings', JSON.stringify(all.filter(b => b.id !== id)))
-}
-
 export default function DashboardPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -132,34 +104,44 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) return
-    const profile = getUserProfile(user.uid)
-    if (profile) {
-      setPhone(profile.phone || '')
-      setAddress(profile.address || '')
-      setCourseType(profile.courseType || '')
-      setCompletedModules(profile.completedModules || [])
-      if (profile.displayName && !user.displayName) setDisplayName(profile.displayName)
+    const load = async () => {
+      try {
+        const [profile, bookingsData] = await Promise.all([
+          api.getUser(user.uid),
+          api.getBookings(user.uid),
+        ])
+        if (profile) {
+          setPhone(profile.phone || '')
+          setAddress(profile.address || '')
+          setCourseType(profile.courseType || '')
+          setCompletedModules(profile.completedModules || [])
+          if (profile.displayName && !user.displayName) setDisplayName(profile.displayName)
+        }
+        setBookings(bookingsData)
+      } catch {}
+      setLoading(false)
     }
-    setBookings(getBookings(user.uid))
-    setLoading(false)
+    load()
   }, [user])
 
   const saveField = async (field, value) => {
     try {
+      const data = {}
       if (field === 'displayName') {
         await updateProfile(user, { displayName: value })
-        saveUserProfile(user.uid, { displayName: value })
+        data.displayName = value
         setDisplayName(value)
         setEditName(false)
       }
       if (field === 'phone') {
-        saveUserProfile(user.uid, { phone: value })
+        data.phone = value
         setEditPhone(false)
       }
       if (field === 'address') {
-        saveUserProfile(user.uid, { address: value })
+        data.address = value
         setEditAddress(false)
       }
+      await api.saveUser(user.uid, data)
       setMsg(`${field === 'displayName' ? 'Name' : field === 'phone' ? 'Phone' : 'Address'} updated!`)
       setTimeout(() => setMsg(''), 2000)
     } catch {
@@ -172,48 +154,52 @@ export default function DashboardPage() {
     navigate('/')
   }
 
-  const handleBookLesson = () => {
+  const handleBookLesson = async () => {
     if (!bookingDate || !bookingSlot) {
       setMsg('Please select a date and time slot.')
       setTimeout(() => setMsg(''), 2000)
       return
     }
     setBookingLoading(true)
-    const today = new Date().toISOString().split('T')[0]
-    const isPast = bookingDate < today
-    const booking = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-      userId: user.uid,
-      date: bookingDate,
-      timeSlot: bookingSlot,
-      hours: 2,
-      status: isPast ? 'completed' : 'scheduled',
-      createdAt: new Date().toISOString(),
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const isPast = bookingDate < today
+      const newBooking = await api.createBooking({
+        userId: user.uid,
+        date: bookingDate,
+        timeSlot: bookingSlot,
+        status: isPast ? 'completed' : 'scheduled',
+      })
+      setBookings(prev => [newBooking, ...prev])
+      setBookingDate('')
+      setBookingSlot('')
+      setMsg('Lesson booked successfully!')
+      setTimeout(() => setMsg(''), 2000)
+    } catch {
+      setMsg('Failed to book lesson.')
     }
-    saveBooking(booking)
-    setBookings(getBookings(user.uid))
-    setBookingDate('')
-    setBookingSlot('')
-    setMsg('Lesson booked successfully!')
-    setTimeout(() => setMsg(''), 2000)
     setBookingLoading(false)
   }
 
-  const handleCancelBooking = (bookingId) => {
-    removeBooking(bookingId)
-    setBookings(getBookings(user.uid))
-    setMsg('Booking cancelled.')
-    setTimeout(() => setMsg(''), 2000)
+  const handleCancelBooking = async (bookingId) => {
+    try {
+      await api.deleteBooking(bookingId)
+      setBookings(prev => prev.filter(b => b._id !== bookingId))
+      setMsg('Booking cancelled.')
+      setTimeout(() => setMsg(''), 2000)
+    } catch {
+      setMsg('Failed to cancel booking.')
+    }
   }
 
-  const handleCompleteQuiz = (moduleId, correctCount) => {
+  const handleCompleteQuiz = async (moduleId, correctCount) => {
     const passed = correctCount >= 2
     setQuizScore(correctCount)
     setQuizSubmitted(true)
     if (passed && !completedModules.includes(moduleId)) {
       const updated = [...completedModules, moduleId]
       setCompletedModules(updated)
-      saveUserProfile(user.uid, { completedModules: updated })
+      await api.saveUser(user.uid, { completedModules: updated })
     }
   }
 
@@ -544,14 +530,14 @@ export default function DashboardPage() {
                         {upcomingBookings.map(b => {
                           const slot = TIME_SLOTS.find(s => s.id === b.timeSlot)
                           return (
-                            <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1rem', background: '#f8fafd', borderRadius: 'var(--radius-md)', border: '1px solid #f0f2f5' }}>
+                            <div key={b._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1rem', background: '#f8fafd', borderRadius: 'var(--radius-md)', border: '1px solid #f0f2f5' }}>
                               <div>
                                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: DARK, fontWeight: 600, margin: 0 }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
                                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#8899aa', margin: '0.15rem 0 0' }}>{slot?.time || b.timeSlot}</p>
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <span style={{ padding: '0.25rem 0.6rem', background: 'rgba(34,197,94,0.1)', color: '#22C55E', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>Scheduled</span>
-                                <button onClick={() => handleCancelBooking(b.id)} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', padding: '0.25rem' }} title="Cancel booking">
+                                <button onClick={() => handleCancelBooking(b._id)} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', padding: '0.25rem' }} title="Cancel booking">
                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                                 </button>
                               </div>
@@ -567,7 +553,7 @@ export default function DashboardPage() {
                         {pastBookings.slice(0, 10).map(b => {
                           const slot = TIME_SLOTS.find(s => s.id === b.timeSlot)
                           return (
-                            <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1rem', background: '#fafbfc', borderRadius: 'var(--radius-md)', border: '1px solid #f0f2f5', opacity: 0.7 }}>
+                            <div key={b._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1rem', background: '#fafbfc', borderRadius: 'var(--radius-md)', border: '1px solid #f0f2f5', opacity: 0.7 }}>
                               <div>
                                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#666', fontWeight: 500, margin: 0 }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
                                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: '#999', margin: '0.15rem 0 0' }}>{slot?.time || b.timeSlot}</p>

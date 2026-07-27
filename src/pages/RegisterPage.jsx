@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
 import { auth } from '../firebase'
+import { api } from '../api'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -123,9 +124,7 @@ export default function RegisterPage() {
         completedModules: [],
         createdAt: new Date().toISOString(),
       }
-      const allUsers = JSON.parse(localStorage.getItem('drivingSchoolUsers') || '{}')
-      allUsers[user.uid] = profileData
-      localStorage.setItem('drivingSchoolUsers', JSON.stringify(allUsers))
+      await api.saveUser(user.uid, profileData)
 
       navigate('/dashboard')
     } catch (err) {
