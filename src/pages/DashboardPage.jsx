@@ -1,12 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { signOut, updateProfile } from 'firebase/auth'
-import {
-  doc, getDoc, setDoc, collection, addDoc, query, where, getDocs,
-  deleteDoc, orderBy, updateDoc, increment, arrayUnion, serverTimestamp
-} from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { auth, db, storage } from '../firebase'
+import { auth } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
 
 const GOLD = '#FDBC01'
@@ -79,10 +74,38 @@ const COURSE_MODULES = [
   },
 ]
 
+function getUsers() {
+  return JSON.parse(localStorage.getItem('drivingSchoolUsers') || '{}')
+}
+
+function getUserProfile(uid) {
+  return getUsers()[uid] || null
+}
+
+function saveUserProfile(uid, data) {
+  const all = getUsers()
+  all[uid] = { ...(all[uid] || {}), ...data }
+  localStorage.setItem('drivingSchoolUsers', JSON.stringify(all))
+}
+
+function getBookings(uid) {
+  return JSON.parse(localStorage.getItem('drivingSchoolBookings') || '[]').filter(b => b.userId === uid)
+}
+
+function saveBooking(booking) {
+  const all = JSON.parse(localStorage.getItem('drivingSchoolBookings') || '[]')
+  all.push(booking)
+  localStorage.setItem('drivingSchoolBookings', JSON.stringify(all))
+}
+
+function removeBooking(id) {
+  const all = JSON.parse(localStorage.getItem('drivingSchoolBookings') || '[]')
+  localStorage.setItem('drivingSchoolBookings', JSON.stringify(all.filter(b => b.id !== id)))
+}
+
 export default function DashboardPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const fileInputRef = useRef(null)
 
   const [displayName, setDisplayName] = useState(user?.displayName || '')
   const [phone, setPhone] = useState('')
@@ -93,7 +116,6 @@ export default function DashboardPage() {
   const [editAddress, setEditAddress] = useState(false)
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
   const [bookings, setBookings] = useState([])
   const [bookingDate, setBookingDate] = useState('')
@@ -110,35 +132,34 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) return
-    const load = async () => {
-      try {
-        const snap = await getDoc(doc(db, 'users', user.uid))
-        if (snap.exists()) {
-          const d = snap.data()
-          setPhone(d.phone || '')
-          setAddress(d.address || '')
-          setCourseType(d.courseType || '')
-          setCompletedModules(d.completedModules || [])
-          if (d.displayName && !user.displayName) setDisplayName(d.displayName)
-        }
-        const q = query(collection(db, 'bookings'), where('userId', '==', user.uid), orderBy('date', 'desc'))
-        const bSnap = await getDocs(q)
-        setBookings(bSnap.docs.map(d => ({ id: d.id, ...d.data() })))
-      } catch {}
-      setLoading(false)
+    const profile = getUserProfile(user.uid)
+    if (profile) {
+      setPhone(profile.phone || '')
+      setAddress(profile.address || '')
+      setCourseType(profile.courseType || '')
+      setCompletedModules(profile.completedModules || [])
+      if (profile.displayName && !user.displayName) setDisplayName(profile.displayName)
     }
-    load()
+    setBookings(getBookings(user.uid))
+    setLoading(false)
   }, [user])
 
   const saveField = async (field, value) => {
     try {
-      await setDoc(doc(db, 'users', user.uid), { [field]: value }, { merge: true })
       if (field === 'displayName') {
         await updateProfile(user, { displayName: value })
+        saveUserProfile(user.uid, { displayName: value })
+        setDisplayName(value)
         setEditName(false)
       }
-      if (field === 'phone') setEditPhone(false)
-      if (field === 'address') setEditAddress(false)
+      if (field === 'phone') {
+        saveUserProfile(user.uid, { phone: value })
+        setEditPhone(false)
+      }
+      if (field === 'address') {
+        saveUserProfile(user.uid, { address: value })
+        setEditAddress(false)
+      }
       setMsg(`${field === 'displayName' ? 'Name' : field === 'phone' ? 'Phone' : 'Address'} updated!`)
       setTimeout(() => setMsg(''), 2000)
     } catch {
@@ -151,74 +172,48 @@ export default function DashboardPage() {
     navigate('/')
   }
 
-  const handleAvatarUpload = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    try {
-      const storageRef = ref(storage, `avatars/${user.uid}`)
-      await uploadBytes(storageRef, file)
-      const url = await getDownloadURL(storageRef)
-      await updateProfile(user, { photoURL: url })
-      await setDoc(doc(db, 'users', user.uid), { photoURL: url }, { merge: true })
-      setMsg('Profile photo updated!')
-      setTimeout(() => setMsg(''), 2000)
-    } catch {
-      setMsg('Failed to upload photo.')
-    }
-    setUploading(false)
-  }
-
-  const handleBookLesson = async () => {
+  const handleBookLesson = () => {
     if (!bookingDate || !bookingSlot) {
       setMsg('Please select a date and time slot.')
       setTimeout(() => setMsg(''), 2000)
       return
     }
     setBookingLoading(true)
-    try {
-      const today = new Date().toISOString().split('T')[0]
-      const isPast = bookingDate < today
-      await addDoc(collection(db, 'bookings'), {
-        userId: user.uid,
-        date: bookingDate,
-        timeSlot: bookingSlot,
-        hours: 2,
-        status: isPast ? 'completed' : 'scheduled',
-        createdAt: serverTimestamp(),
-      })
-      const q = query(collection(db, 'bookings'), where('userId', '==', user.uid), orderBy('date', 'desc'))
-      const bSnap = await getDocs(q)
-      setBookings(bSnap.docs.map(d => ({ id: d.id, ...d.data() })))
-      setBookingDate('')
-      setBookingSlot('')
-      setMsg('Lesson booked successfully!')
-      setTimeout(() => setMsg(''), 2000)
-    } catch {
-      setMsg('Failed to book lesson.')
+    const today = new Date().toISOString().split('T')[0]
+    const isPast = bookingDate < today
+    const booking = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+      userId: user.uid,
+      date: bookingDate,
+      timeSlot: bookingSlot,
+      hours: 2,
+      status: isPast ? 'completed' : 'scheduled',
+      createdAt: new Date().toISOString(),
     }
+    saveBooking(booking)
+    setBookings(getBookings(user.uid))
+    setBookingDate('')
+    setBookingSlot('')
+    setMsg('Lesson booked successfully!')
+    setTimeout(() => setMsg(''), 2000)
     setBookingLoading(false)
   }
 
-  const handleCancelBooking = async (bookingId) => {
-    try {
-      await deleteDoc(doc(db, 'bookings', bookingId))
-      setBookings(prev => prev.filter(b => b.id !== bookingId))
-      setMsg('Booking cancelled.')
-      setTimeout(() => setMsg(''), 2000)
-    } catch {
-      setMsg('Failed to cancel booking.')
-    }
+  const handleCancelBooking = (bookingId) => {
+    removeBooking(bookingId)
+    setBookings(getBookings(user.uid))
+    setMsg('Booking cancelled.')
+    setTimeout(() => setMsg(''), 2000)
   }
 
-  const handleCompleteQuiz = async (moduleId, correctCount) => {
+  const handleCompleteQuiz = (moduleId, correctCount) => {
     const passed = correctCount >= 2
     setQuizScore(correctCount)
     setQuizSubmitted(true)
     if (passed && !completedModules.includes(moduleId)) {
       const updated = [...completedModules, moduleId]
       setCompletedModules(updated)
-      await setDoc(doc(db, 'users', user.uid), { completedModules: updated }, { merge: true })
+      saveUserProfile(user.uid, { completedModules: updated })
     }
   }
 
@@ -234,7 +229,7 @@ export default function DashboardPage() {
   const upcomingBookings = bookings.filter(b => b.date >= todayStr && b.status === 'scheduled')
   const pastBookings = bookings.filter(b => b.date < todayStr || b.status === 'completed')
 
-  const completedLessonCount = bookings.filter(b => b.date < todayStr || b.status === 'completed').length
+  const completedLessonCount = pastBookings.length
   const hoursCompleted = completedLessonCount * 2
   const totalHours = COURSE_HOURS[courseType] || 0
   const progress = showCourse
@@ -292,8 +287,6 @@ export default function DashboardPage() {
         .dash-quiz-option { padding: 0.85rem 1rem; border: 1.5px solid #E2EBF5; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.3s ease; font-family: var(--font-body); font-size: 0.9rem; color: #1a2332; background: #fff; text-align: left; width: 100%; }
         .dash-quiz-option:hover { border-color: ${SKY_BLUE}; background: #f0f6ff; }
         .dash-quiz-option-quizselected { border-color: ${SKY_BLUE}; background: #EBF5FF; }
-        .dash-quiz-option-correct { border-color: #22C55E; background: #F0FDF4; }
-        .dash-quiz-option-wrong { border-color: #DC2626; background: #FEF2F2; }
         @media (max-width: 900px) {
           .dash-hero { padding-top: 14rem !important; padding-bottom: 3rem !important; min-height: auto !important; }
           .dash-grid { grid-template-columns: 1fr !important; }
@@ -369,23 +362,12 @@ export default function DashboardPage() {
                 </h3>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', padding: '1rem', background: '#f8fafd', borderRadius: 'var(--radius-md)', border: '1px solid #f0f2f5' }}>
-                  <div style={{ position: 'relative', width: '64px', height: '64px', flexShrink: 0 }}>
-                    {user?.photoURL ? (
-                      <img src={user.photoURL} alt="" style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover' }} />
-                    ) : (
-                      <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', fontWeight: 800, color: '#fff', boxShadow: '0 4px 16px rgba(1,69,168,0.25)' }}>
-                        {initials}
-                      </div>
-                    )}
-                    <label style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '26px', height: '26px', borderRadius: '50%', background: GOLD, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'transform 0.2s ease' }} title="Upload photo">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={DARK} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" /><circle cx="12" cy="13" r="4" /></svg>
-                      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: 'none' }} />
-                    </label>
+                  <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', fontWeight: 800, color: '#fff', flexShrink: 0, boxShadow: '0 4px 16px rgba(1,69,168,0.25)' }}>
+                    {initials}
                   </div>
                   <div style={{ minWidth: 0 }}>
                     <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', color: DARK, margin: 0, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.displayName || 'Student'}</p>
                     <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#8899aa', margin: '0.15rem 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email}</p>
-                    {uploading && <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', color: GOLD_DEEP, margin: '0.25rem 0 0', fontWeight: 600 }}>Uploading...</p>}
                   </div>
                 </div>
 

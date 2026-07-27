@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
-import { auth, db } from '../firebase'
-import { doc, setDoc } from 'firebase/firestore'
+import { auth } from '../firebase'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -108,8 +107,7 @@ export default function RegisterPage() {
       // Update firebase authentication user profile
       await updateProfile(user, { displayName: fullName })
 
-      // Store other profile and course data in Firestore
-      await setDoc(doc(db, 'users', user.uid), {
+      const profileData = {
         firstName: form.firstName,
         middleName: form.middleName,
         lastName: form.lastName,
@@ -122,8 +120,12 @@ export default function RegisterPage() {
         state: form.state,
         zipCode: form.zipCode,
         courseType: form.courseType,
+        completedModules: [],
         createdAt: new Date().toISOString(),
-      })
+      }
+      const allUsers = JSON.parse(localStorage.getItem('drivingSchoolUsers') || '{}')
+      allUsers[user.uid] = profileData
+      localStorage.setItem('drivingSchoolUsers', JSON.stringify(allUsers))
 
       navigate('/dashboard')
     } catch (err) {
