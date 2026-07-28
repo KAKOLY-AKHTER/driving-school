@@ -93,6 +93,56 @@ app.delete('/api/bookings/:id', async (req, res) => {
   }
 })
 
+app.get('/api/admin/stats', async (req, res) => {
+  try {
+    const [totalUsers, totalBookings, activeEnrollments] = await Promise.all([
+      usersCol.countDocuments(),
+      bookingsCol.countDocuments(),
+      usersCol.countDocuments({ courseType: { $exists: true, $ne: '' } }),
+    ])
+    res.json({ totalUsers, totalBookings, activeEnrollments })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.get('/api/admin/users', async (req, res) => {
+  try {
+    const users = await usersCol.find().sort({ _id: -1 }).toArray()
+    res.json(users)
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.get('/api/admin/bookings', async (req, res) => {
+  try {
+    const bookings = await bookingsCol.find().sort({ _id: -1 }).toArray()
+    res.json(bookings)
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.put('/api/admin/users/:uid/role', async (req, res) => {
+  try {
+    const { isAdmin } = req.body
+    await usersCol.updateOne({ uid: req.params.uid }, { $set: { isAdmin: !!isAdmin } }, { upsert: true })
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.delete('/api/admin/bookings/:id', async (req, res) => {
+  try {
+    await bookingsCol.deleteOne({ _id: new ObjectId(req.params.id) })
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
 connectDB()
   .then(() => {
     app.listen(PORT, () => console.log(`API running on port ${PORT}`))
