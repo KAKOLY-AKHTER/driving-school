@@ -8,6 +8,7 @@ const DARK_MID = '#0d1f3c'
 const TIERS = [
   {
     name: 'Online Driver\'s Ed',
+    id: '1',
     price: '$39.99',
     period: 'one-time',
     tagline: 'DMV Test Only · Online Only',
@@ -22,6 +23,7 @@ const TIERS = [
   },
   {
     name: 'Basic',
+    id: '2',
     price: '$210',
     period: null,
     tagline: 'DMV Test Only',
@@ -37,6 +39,7 @@ const TIERS = [
   },
   {
     name: 'Essential',
+    id: '3',
     price: '$599',
     period: null,
     tagline: 'Test Included',
@@ -52,6 +55,7 @@ const TIERS = [
   },
   {
     name: 'Ideal for Students',
+    id: '8',
     badge: 'Most Popular',
     price: '$615',
     period: null,
@@ -68,6 +72,7 @@ const TIERS = [
   },
   {
     name: 'Premier',
+    id: '4',
     price: '$999',
     period: null,
     tagline: 'Advanced Track',
@@ -83,7 +88,7 @@ const TIERS = [
   },
 ]
 
-export default function Pricing({ light = false }) {
+export default function Pricing({ light = false, onEnroll = null }) {
   return (
     <>
       <style>{`
@@ -405,59 +410,115 @@ export default function Pricing({ light = false }) {
                   </ul>
 
                   {/* CTA */}
-                  <a
-                    href={tier.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem',
-                      width: '100%',
-                      padding: '0.85rem 1.5rem',
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: '0.65rem',
-                      letterSpacing: '0.15em',
-                      textTransform: 'uppercase',
-                      fontWeight: 700,
-                      textDecoration: 'none',
-                      transition: 'all 0.3s ease',
-                      ...(tier.highlight
-                        ? {
-                            color: DARK,
-                            background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`,
-                          }
-                        : {
-                            color: SKY_BLUE,
-                            background: 'transparent',
-                            border: '1px solid rgba(1,69,168,0.2)',
-                          }),
-                    }}
-                    onMouseEnter={(e) => {
-                      if (tier.highlight) {
-                        e.currentTarget.style.transform = 'translateY(-2px)'
-                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(253,188,1,0.35)'
-                      } else {
-                        e.currentTarget.style.borderColor = GOLD
-                        e.currentTarget.style.color = GOLD
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (tier.highlight) {
-                        e.currentTarget.style.transform = 'translateY(0)'
-                        e.currentTarget.style.boxShadow = 'none'
-                      } else {
-                        e.currentTarget.style.borderColor = 'rgba(1,69,168,0.2)'
-                        e.currentTarget.style.color = SKY_BLUE
-                      }
-                    }}
-                  >
-                    {tier.cta}
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M5 12h14M12 5l7 7-7 7" />
-                    </svg>
-                  </a>
+                  {onEnroll ? (
+                    <button
+                      onClick={() => onEnroll(tier)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        width: '100%',
+                        padding: '0.85rem 1.5rem',
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '0.65rem',
+                        letterSpacing: '0.15em',
+                        textTransform: 'uppercase',
+                        fontWeight: 700,
+                        textDecoration: 'none',
+                        transition: 'all 0.3s ease',
+                        border: 'none',
+                        cursor: 'pointer',
+                        ...(tier.highlight
+                          ? {
+                              color: DARK,
+                              background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`,
+                            }
+                          : {
+                              color: SKY_BLUE,
+                              background: 'transparent',
+                              border: '1px solid rgba(1,69,168,0.2)',
+                            }),
+                      }}
+                      onMouseEnter={(e) => {
+                        if (tier.highlight) {
+                          e.currentTarget.style.transform = 'translateY(-2px)'
+                          e.currentTarget.style.boxShadow = '0 8px 25px rgba(253,188,1,0.35)'
+                        } else {
+                          e.currentTarget.style.borderColor = GOLD
+                          e.currentTarget.style.color = GOLD
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (tier.highlight) {
+                          e.currentTarget.style.transform = 'translateY(0)'
+                          e.currentTarget.style.boxShadow = 'none'
+                        } else {
+                          e.currentTarget.style.borderColor = 'rgba(1,69,168,0.2)'
+                          e.currentTarget.style.color = SKY_BLUE
+                        }
+                      }}
+                    >
+                      {tier.cta}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <a
+                      href={tier.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        width: '100%',
+                        padding: '0.85rem 1.5rem',
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '0.65rem',
+                        letterSpacing: '0.15em',
+                        textTransform: 'uppercase',
+                        fontWeight: 700,
+                        textDecoration: 'none',
+                        transition: 'all 0.3s ease',
+                        ...(tier.highlight
+                          ? {
+                              color: DARK,
+                              background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`,
+                            }
+                          : {
+                              color: SKY_BLUE,
+                              background: 'transparent',
+                              border: '1px solid rgba(1,69,168,0.2)',
+                            }),
+                      }}
+                      onMouseEnter={(e) => {
+                        if (tier.highlight) {
+                          e.currentTarget.style.transform = 'translateY(-2px)'
+                          e.currentTarget.style.boxShadow = '0 8px 25px rgba(253,188,1,0.35)'
+                        } else {
+                          e.currentTarget.style.borderColor = GOLD
+                          e.currentTarget.style.color = GOLD
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (tier.highlight) {
+                          e.currentTarget.style.transform = 'translateY(0)'
+                          e.currentTarget.style.boxShadow = 'none'
+                        } else {
+                          e.currentTarget.style.borderColor = 'rgba(1,69,168,0.2)'
+                          e.currentTarget.style.color = SKY_BLUE
+                        }
+                      }}
+                    >
+                      {tier.cta}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                      </svg>
+                    </a>
+                  )}
                 </div>
               ))}
             </div>

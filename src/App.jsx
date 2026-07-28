@@ -10,6 +10,7 @@ import RegisterPage from './pages/RegisterPage'
 import SchedulePage from './pages/SchedulePage'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
+import AdminPage from './pages/AdminPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -19,6 +20,18 @@ function ProtectedRoute({ children }) {
     </div>
   )
   if (!user) return <Navigate to="/login" replace />
+  return children
+}
+
+function AdminRoute({ children }) {
+  const { user, loading, isAdmin } = useAuth()
+  if (loading) return (
+    <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a1628' }}>
+      <div style={{ width: '40px', height: '40px', border: '3px solid rgba(253,188,1,0.2)', borderTopColor: '#FDBC01', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+    </div>
+  )
+  if (!user) return <Navigate to="/login" replace />
+  if (!isAdmin) return <Navigate to="/dashboard" replace />
   return children
 }
 
@@ -64,14 +77,15 @@ function LayoutSetup({ children }) {
   return children
 }
 
-export default function App() {
+function AppRoutes() {
+  const location = useLocation()
+  const hideShell = location.pathname === '/dashboard' || location.pathname === '/admin'
+
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <LayoutSetup>
-          <Nav />
-          <main style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-            <Routes>
+    <>
+      {!hideShell && <Nav />}
+      <main style={{ minHeight: hideShell ? 'auto' : '100vh', display: 'flex', flexDirection: 'column' }}>
+        <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/contact" element={<ContactPage />} />
@@ -83,6 +97,11 @@ export default function App() {
                   <DashboardPage />
                 </ProtectedRoute>
               } />
+              <Route path="/admin" element={
+                <AdminRoute>
+                  <AdminPage />
+                </AdminRoute>
+              } />
               <Route path="*" element={
                 <div style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '4rem 2rem' }}>
                   <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(4rem, 10vw, 8rem)', color: 'var(--color-gold)', lineHeight: 1, marginBottom: '1rem' }}>404</h1>
@@ -93,7 +112,17 @@ export default function App() {
               } />
             </Routes>
           </main>
-          <Footer />
+          {!hideShell && <Footer />}
+        </>
+  )
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <LayoutSetup>
+          <AppRoutes />
         </LayoutSetup>
       </AuthProvider>
     </BrowserRouter>
