@@ -37,6 +37,7 @@ const SVG = {
   close: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>,
   home: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>,
   shield: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>,
+  mail: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>,
 }
 
 export default function AdminPage() {
@@ -47,6 +48,7 @@ export default function AdminPage() {
   const [stats, setStats] = useState({ totalUsers: 0, totalBookings: 0, activeEnrollments: 0 })
   const [users, setUsers] = useState([])
   const [bookings, setBookings] = useState([])
+  const [contacts, setContacts] = useState([])
   const [userSearch, setUserSearch] = useState('')
   const [bookingSearch, setBookingSearch] = useState('')
   const [msg, setMsg] = useState('')
@@ -54,18 +56,22 @@ export default function AdminPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [courseModal, setCourseModal] = useState(null)
   const [selectedCourseId, setSelectedCourseId] = useState('')
+  const [contactEdit, setContactEdit] = useState(null)
+  const [contactForm, setContactForm] = useState({ firstName: '', lastName: '', phone: '', email: '', comments: '', status: '' })
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [s, u, b] = await Promise.all([
+        const [s, u, b, c] = await Promise.all([
           api.adminStats(),
           api.adminUsers(),
           api.adminBookings(),
+          api.adminContacts(),
         ])
         setStats(s)
         setUsers(u)
         setBookings(b)
+        setContacts(c)
       } catch {}
       setLoading(false)
     }
@@ -128,6 +134,36 @@ export default function AdminPage() {
     }
   }
 
+  const handleEditContact = (contact) => {
+    setContactForm({ firstName: contact.firstName || '', lastName: contact.lastName || '', phone: contact.phone || '', email: contact.email || '', comments: contact.comments || '', status: contact.status || 'new' })
+    setContactEdit(contact._id)
+  }
+
+  const handleSaveContact = async () => {
+    try {
+      await api.adminUpdateContact(contactEdit, contactForm)
+      setContacts(prev => prev.map(c => c._id === contactEdit ? { ...c, ...contactForm } : c))
+      setContactEdit(null)
+      setMsg('Contact updated.')
+      setTimeout(() => setMsg(''), 2000)
+    } catch {
+      setMsg('Failed to update contact.')
+      setTimeout(() => setMsg(''), 2000)
+    }
+  }
+
+  const handleDeleteContact = async (id) => {
+    try {
+      await api.adminDeleteContact(id)
+      setContacts(prev => prev.filter(c => c._id !== id))
+      setMsg('Contact deleted.')
+      setTimeout(() => setMsg(''), 2000)
+    } catch {
+      setMsg('Failed to delete contact.')
+      setTimeout(() => setMsg(''), 2000)
+    }
+  }
+
   const todayStr = new Date().toISOString().split('T')[0]
   const initials = user?.displayName ? user.displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : user?.email?.[0]?.toUpperCase() || '?'
 
@@ -157,6 +193,7 @@ export default function AdminPage() {
     { id: 'dashboard', label: 'Overview', icon: SVG.dashboard },
     { id: 'users', label: 'Users', icon: SVG.users },
     { id: 'bookings', label: 'Bookings', icon: SVG.calendar },
+    { id: 'contacts', label: 'Contacts', icon: SVG.mail },
   ]
 
   const switchTab = (tab) => { setActiveTab(tab); setSidebarOpen(false) }
@@ -453,6 +490,99 @@ export default function AdminPage() {
                         )}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'contacts' && (
+                <div style={cardStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.mail} Contact Messages ({contacts.length})</h3>
+                  </div>
+                  <div className="admin-table-wrap">
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr>
+                          <th style={thStyle}>Name</th>
+                          <th style={thStyle}>Phone</th>
+                          <th style={thStyle}>Email</th>
+                          <th style={thStyle}>Comments</th>
+                          <th style={thStyle}>Status</th>
+                          <th style={thStyle}>Date</th>
+                          <th style={thStyle}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {contacts.map(c => (
+                          <tr key={c._id}>
+                            <td style={tdStyle}><span style={{ fontWeight: 600 }}>{c.firstName} {c.lastName}</span></td>
+                            <td style={tdStyle}>{c.phone}</td>
+                            <td style={tdStyle}>{c.email}</td>
+                            <td style={{ ...tdStyle, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.comments}</td>
+                            <td style={tdStyle}>
+                              <span style={{ padding: '0.2rem 0.5rem', background: c.status === 'new' ? 'rgba(1,69,168,0.08)' : 'rgba(34,197,94,0.1)', color: c.status === 'new' ? SKY_BLUE : '#16A34A', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>{c.status || 'new'}</span>
+                            </td>
+                            <td style={tdStyle}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</td>
+                            <td style={tdStyle}>
+                              <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                <button onClick={() => handleEditContact(c)} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
+                                <button onClick={() => handleDeleteContact(c._id)} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {contacts.length === 0 && (
+                          <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#8899aa' }}>No contact messages yet</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {contactEdit && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setContactEdit(null) }}>
+                  <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '500px', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>Edit Contact</h3>
+                      <button onClick={() => setContactEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#94A3B8', cursor: 'pointer' }}>&times;</button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>First Name</label>
+                        <input type="text" value={contactForm.firstName} onChange={e => setContactForm(prev => ({ ...prev, firstName: e.target.value }))} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Last Name</label>
+                        <input type="text" value={contactForm.lastName} onChange={e => setContactForm(prev => ({ ...prev, lastName: e.target.value }))} style={inputStyle} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Phone</label>
+                        <input type="text" value={contactForm.phone} onChange={e => setContactForm(prev => ({ ...prev, phone: e.target.value }))} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Email</label>
+                        <input type="text" value={contactForm.email} onChange={e => setContactForm(prev => ({ ...prev, email: e.target.value }))} style={inputStyle} />
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: '1rem' }}>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Comments</label>
+                      <textarea rows="4" value={contactForm.comments} onChange={e => setContactForm(prev => ({ ...prev, comments: e.target.value }))} style={{ ...inputStyle, resize: 'vertical' }} />
+                    </div>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Status</label>
+                      <select value={contactForm.status} onChange={e => setContactForm(prev => ({ ...prev, status: e.target.value }))} style={inputStyle}>
+                        <option value="new">New</option>
+                        <option value="read">Read</option>
+                        <option value="replied">Replied</option>
+                      </select>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                      <button onClick={() => setContactEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#94A3B8', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={handleSaveContact} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>Save</button>
+                    </div>
                   </div>
                 </div>
               )}

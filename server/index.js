@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 3001
 const MONGO_URI = process.env.MONGO_URI
 const DB_NAME = 'driving_school'
 
-let db, usersCol, bookingsCol
+let db, usersCol, bookingsCol, contactCol
 
 async function connectDB() {
   const client = new MongoClient(MONGO_URI)
@@ -25,12 +25,26 @@ async function connectDB() {
   db = client.db(DB_NAME)
   usersCol = db.collection('users')
   bookingsCol = db.collection('bookings')
+  contactCol = db.collection('contact')
   await usersCol.createIndex({ uid: 1 }, { unique: true })
   await bookingsCol.createIndex({ userId: 1, date: 1 })
   console.log('MongoDB connected')
 }
 
 app.get('/api/health', (req, res) => res.json({ ok: true }))
+
+app.post('/api/contact', async (req, res) => {
+  try {
+    const { firstName, lastName, phone, email, comments } = req.body
+    if (!firstName || !lastName || !phone || !email || !comments) {
+      return res.status(400).json({ error: 'All fields required' })
+    }
+    await contactCol.insertOne({ ...req.body, createdAt: new Date().toISOString() })
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
 
 app.get('/api/users/:uid', async (req, res) => {
   try {
@@ -393,6 +407,33 @@ app.put('/api/admin/users/:uid/role', async (req, res) => {
 app.delete('/api/admin/bookings/:id', async (req, res) => {
   try {
     await bookingsCol.deleteOne({ _id: new ObjectId(req.params.id) })
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.get('/api/admin/contacts', async (req, res) => {
+  try {
+    const contacts = await contactCol.find().sort({ _id: -1 }).toArray()
+    res.json(contacts)
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.put('/api/admin/contacts/:id', async (req, res) => {
+  try {
+    await contactCol.updateOne({ _id: new ObjectId(req.params.id) }, { $set: req.body })
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.delete('/api/admin/contacts/:id', async (req, res) => {
+  try {
+    await contactCol.deleteOne({ _id: new ObjectId(req.params.id) })
     res.json({ ok: true })
   } catch (e) {
     res.status(500).json({ error: e.message })

@@ -318,7 +318,6 @@ export default function DashboardPage() {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', sublabel: 'Profile & summary', icon: I.dashboard },
     { id: 'courses', label: 'Courses', sublabel: 'Your courses', icon: I.book },
-    { id: 'bookings', label: 'Bookings', sublabel: 'Schedule lessons', icon: I.calendar },
     { id: 'payments', label: 'Payments', sublabel: 'Invoices', icon: I.profile },
     ...(showCourse ? [{ id: 'course', label: 'Driver Ed', sublabel: 'Online modules', icon: I.book }] : []),
     { id: 'settings', label: 'Settings', sublabel: 'Account', icon: I.shield },

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import ServiceAreas from '../components/ServiceAreas'
 
 const GOLD = '#FDBC01'
@@ -5,6 +6,7 @@ const GOLD_DEEP = '#C8960C'
 const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 const CONTACTS = [
   {
@@ -38,16 +40,6 @@ const CONTACTS = [
   },
 ]
 
-const HOURS = [
-  { day: 'Monday', time: '9:00 AM – 7:00 PM' },
-  { day: 'Tuesday', time: '9:00 AM – 7:00 PM' },
-  { day: 'Wednesday', time: '9:00 AM – 7:00 PM' },
-  { day: 'Thursday', time: '9:00 AM – 7:00 PM' },
-  { day: 'Friday', time: '9:00 AM – 7:00 PM' },
-  { day: 'Saturday', time: '9:00 AM – 5:00 PM' },
-  { day: 'Sunday', time: 'Closed' },
-]
-
 const TRUST = [
   { num: '35+', label: 'Years Experience' },
   { num: '99%', label: 'DMV Pass Rate' },
@@ -56,6 +48,37 @@ const TRUST = [
 ]
 
 export default function ContactPage() {
+  const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', email: '', comments: '' })
+  const [formLoading, setFormLoading] = useState(false)
+  const [formMsg, setFormMsg] = useState('')
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!form.firstName || !form.lastName || !form.phone || !form.email || !form.comments) {
+      setFormMsg('Please fill all fields.'); setTimeout(() => setFormMsg(''), 3000); return
+    }
+    setFormLoading(true)
+    try {
+      const res = await fetch(`${API}/api/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setFormMsg('Message sent! We will get back to you within 24 hours.')
+        setForm({ firstName: '', lastName: '', phone: '', email: '', comments: '' })
+      } else {
+        setFormMsg('Failed to send. Please try again.')
+      }
+    } catch {
+      setFormMsg('Network error. Please try again.')
+    }
+    setFormLoading(false)
+    setTimeout(() => setFormMsg(''), 3000)
+  }
+
+  const update = (k, v) => setForm(prev => ({ ...prev, [k]: v }))
   return (
     <>
       <style>{`
@@ -500,12 +523,11 @@ export default function ContactPage() {
               />
             </div>
 
-            {/* Hours */}
+            {/* Contact Form */}
             <div className="c-contact-card" style={{ animationDelay: '0.5s', padding: '2.5rem 2rem' }}>
               <div className="c-icon-wrap">
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" />
                 </svg>
               </div>
 
@@ -515,29 +537,25 @@ export default function ContactPage() {
                 color: DARK,
                 fontWeight: 700,
                 marginBottom: '0.3rem',
-              }}>Business Hours</h3>
+              }}>Get in Touch</h3>
 
               <div className="c-gold-divider" style={{ marginBottom: '1.5rem' }} />
 
-              <div style={{ width: '100%' }}>
-                {HOURS.map((h, i) => (
-                  <div key={h.day} className="c-hours-row" style={{ animationDelay: `${0.6 + i * 0.05}s` }}>
-                    <span style={{
-                      fontFamily: 'var(--font-body)',
-                      fontSize: '0.85rem',
-                      color: h.time === 'Closed' ? '#c0c0c0' : '#1a2332',
-                      fontWeight: h.time === 'Closed' ? 400 : 600,
-                    }}>{h.day}</span>
-                    <span style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: '0.72rem',
-                      color: h.time === 'Closed' ? '#c0c0c0' : SKY_BLUE,
-                      fontWeight: 600,
-                      letterSpacing: '0.02em',
-                    }}>{h.time}</span>
-                  </div>
-                ))}
-              </div>
+              <form onSubmit={handleSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+                  <input type="text" placeholder="First Name" value={form.firstName} onChange={e => update('firstName', e.target.value)} style={{ padding: '0.85rem 1rem', borderRadius: '12px', border: '1.5px solid #E2EBF5', fontFamily: 'var(--font-body)', fontSize: '0.88rem', outline: 'none', transition: 'border-color 0.3s', background: '#F8FAFD' }} onFocus={e => e.target.style.borderColor = SKY_BLUE} onBlur={e => e.target.style.borderColor = '#E2EBF5'} />
+                  <input type="text" placeholder="Last Name" value={form.lastName} onChange={e => update('lastName', e.target.value)} style={{ padding: '0.85rem 1rem', borderRadius: '12px', border: '1.5px solid #E2EBF5', fontFamily: 'var(--font-body)', fontSize: '0.88rem', outline: 'none', transition: 'border-color 0.3s', background: '#F8FAFD' }} onFocus={e => e.target.style.borderColor = SKY_BLUE} onBlur={e => e.target.style.borderColor = '#E2EBF5'} />
+                </div>
+                <input type="tel" placeholder="Phone Number" value={form.phone} onChange={e => update('phone', e.target.value)} style={{ padding: '0.85rem 1rem', borderRadius: '12px', border: '1.5px solid #E2EBF5', fontFamily: 'var(--font-body)', fontSize: '0.88rem', outline: 'none', transition: 'border-color 0.3s', background: '#F8FAFD' }} onFocus={e => e.target.style.borderColor = SKY_BLUE} onBlur={e => e.target.style.borderColor = '#E2EBF5'} />
+                <input type="email" placeholder="Email Address" value={form.email} onChange={e => update('email', e.target.value)} style={{ padding: '0.85rem 1rem', borderRadius: '12px', border: '1.5px solid #E2EBF5', fontFamily: 'var(--font-body)', fontSize: '0.88rem', outline: 'none', transition: 'border-color 0.3s', background: '#F8FAFD' }} onFocus={e => e.target.style.borderColor = SKY_BLUE} onBlur={e => e.target.style.borderColor = '#E2EBF5'} />
+                <textarea placeholder="Comments" rows="4" value={form.comments} onChange={e => update('comments', e.target.value)} style={{ padding: '0.85rem 1rem', borderRadius: '12px', border: '1.5px solid #E2EBF5', fontFamily: 'var(--font-body)', fontSize: '0.88rem', outline: 'none', transition: 'border-color 0.3s', background: '#F8FAFD', resize: 'vertical' }} onFocus={e => e.target.style.borderColor = SKY_BLUE} onBlur={e => e.target.style.borderColor = '#E2EBF5'} />
+                {formMsg && (
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: formMsg.includes('sent') || formMsg.includes('success') ? '#16A34A' : '#DC2626', margin: 0 }}>{formMsg}</p>
+                )}
+                <button type="submit" disabled={formLoading} style={{ width: '100%', padding: '0.9rem', background: formLoading ? '#94A3B8' : `linear-gradient(135deg,${SKY_BLUE},#0a2a5e)`, color: '#fff', border: 'none', borderRadius: '12px', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, cursor: formLoading ? 'not-allowed' : 'pointer', transition: 'all 0.3s', boxShadow: formLoading ? 'none' : '0 4px 16px rgba(1,69,168,0.25)' }}>
+                  {formLoading ? 'Sending...' : 'Send'}
+                </button>
+              </form>
             </div>
           </div>
         </div>
