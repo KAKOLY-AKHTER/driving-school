@@ -11,6 +11,11 @@ const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
 
+const priceNumber = (value) => {
+  const n = parseFloat(String(value || '').replace(/[^0-9.]/g, ''))
+  return Number.isFinite(n) ? n : 0
+}
+
 export default function PricingPage() {
   usePageMeta(
     'Packages & Pricing — A Precision Driving School San Ramon CA',
@@ -146,15 +151,21 @@ export default function PricingPage() {
             </div>
 
             <div style={{ padding: '1.5rem 2rem 2rem' }}>
-              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', alignItems: 'flex-start' }}>
                 <div>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Price</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Today's Price</span>
                   <span style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: GOLD, fontWeight: 800, lineHeight: 1 }}>{selectedTier.planPrice}</span>
                 </div>
-                <div>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Price Two</span>
-                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: DARK, fontWeight: 800, lineHeight: 1 }}>{selectedTier.planPriceTwo}</span>
-                </div>
+                {selectedTier.planPriceTwo && selectedTier.planPriceTwo !== selectedTier.planPrice && (
+                  <div style={{ paddingTop: '0.55rem' }}>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: '#94A3B8', fontWeight: 600, lineHeight: 1, textDecoration: 'line-through' }}>{selectedTier.planPriceTwo}</span>
+                    {priceNumber(selectedTier.planPriceTwo) > priceNumber(selectedTier.planPrice) && (
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.55rem', fontWeight: 700, color: '#16A34A', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '999px', padding: '0.15rem 0.45rem', display: 'block', marginTop: '0.3rem', width: 'fit-content' }}>
+                        Save ${priceNumber(selectedTier.planPriceTwo) - priceNumber(selectedTier.planPrice)}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div style={{ width: '100%', height: '1px', background: '#E2EBF5', marginBottom: '1.25rem' }} />

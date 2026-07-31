@@ -629,7 +629,7 @@ export default function AdminPage() {
                           <th style={thStyle}>ID</th>
                           <th style={thStyle}>Plan Name</th>
                           <th style={thStyle}>Price</th>
-                          <th style={thStyle}>Price Two</th>
+                          <th style={thStyle}>Original Price</th>
                           <th style={thStyle}>Option 1</th>
                           <th style={thStyle}>Option 2</th>
                           <th style={thStyle}>Option 3</th>
@@ -1011,7 +1011,7 @@ export default function AdminPage() {
                         <input type="text" value={pricingForm.planPrice} onChange={e => setPricingForm(prev => ({ ...prev, planPrice: e.target.value }))} style={inputStyle} placeholder="$24.99" />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Plan Price Two *</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Original Price (strikethrough) *</label>
                         <input type="text" value={pricingForm.planPriceTwo} onChange={e => setPricingForm(prev => ({ ...prev, planPriceTwo: e.target.value }))} style={inputStyle} placeholder="$24.99" />
                       </div>
                     </div>
