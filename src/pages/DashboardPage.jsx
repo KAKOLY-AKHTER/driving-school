@@ -346,7 +346,7 @@ export default function DashboardPage() {
         @keyframes dashCardHover { 0% { box-shadow:0 4px 16px rgba(0,0,0,0.04); } 100% { box-shadow:0 12px 48px rgba(1,69,168,0.12),0 0 0 1px rgba(1,69,168,0.06); } }
         .dash-anim { animation: dashFadeIn 0.6s cubic-bezier(0.22,1,0.36,1) both; }
         .dash-d1 { animation-delay:0.06s; } .dash-d2 { animation-delay:0.12s; } .dash-d3 { animation-delay:0.18s; } .dash-d4 { animation-delay:0.24s; } .dash-d5 { animation-delay:0.30s; } .dash-d6 { animation-delay:0.36s; } .dash-d7 { animation-delay:0.42s; }
-        .dash-nav-item { display:flex; align-items:center; gap:0.75rem; padding:0.75rem 1rem; border-radius:14px; cursor:pointer; transition:all 0.35s cubic-bezier(0.22,1,0.36,1); font-family:var(--font-body); font-size:0.88rem; font-weight:500; color:#64748B; border:none; background:none; width:100%; text-align:left; position:relative; overflow:hidden; }
+        .dash-nav-item { display:flex; align-items:center; gap:0.75rem; padding:0.75rem 1rem; border-radius:14px; cursor:pointer; transition:all 0.35s cubic-bezier(0.22,1,0.36,1); font-family:var(--font-body); font-size:0.88rem; font-weight:500; color:#334155; border:none; background:none; width:100%; text-align:left; position:relative; overflow:hidden; }
         .dash-nav-item::after { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(1,69,168,0.06),rgba(253,188,1,0.04)); opacity:0; transition:opacity 0.3s; border-radius:14px; }
         .dash-nav-item:hover { color:#0F172A; transform:translateX(6px); }
         .dash-nav-item:hover::after { opacity:1; }
@@ -377,7 +377,7 @@ export default function DashboardPage() {
         .dash-sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(10,22,40,0.7); backdrop-filter:blur(12px) saturate(120%); z-index:998; }
         .dash-hamburger { display:none; }
         .dash-card-premium { background:linear-gradient(160deg,rgba(255,255,255,0.92),rgba(255,255,255,0.98)); border:1px solid rgba(226,235,245,0.5); border-radius:22px; padding:1.75rem; box-shadow:0 1px 2px rgba(0,0,0,0.02),0 8px 32px rgba(0,0,0,0.04),inset 0 1px 0 rgba(255,255,255,0.9); position:relative; overflow:hidden; transition:all 0.5s cubic-bezier(0.22,1,0.36,1); backdrop-filter:blur(8px); }
-        .dash-card-premium::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.4),transparent 40%); pointer-events:none; border-radius:22px; }
+        .dash-card-premium::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.65),transparent 40%); pointer-events:none; border-radius:22px; }
         .dash-card-premium:hover { box-shadow:0 4px 8px rgba(0,0,0,0.03),0 16px 48px rgba(0,0,0,0.07),inset 0 1px 0 rgba(255,255,255,0.95); transform:translateY(-2px); }
         .dash-table-row { transition:all 0.3s cubic-bezier(0.22,1,0.36,1); }
         .dash-table-row:hover { background:linear-gradient(135deg,rgba(1,69,168,0.02),rgba(253,188,1,0.02)) !important; }
@@ -386,9 +386,9 @@ export default function DashboardPage() {
         .dash-btn-primary { background:linear-gradient(135deg,${SKY_BLUE},#0a2a5e); color:#fff; padding:0.9rem 2rem; border-radius:14px; border:none; font-family:var(--font-body); fontSize:0.9rem; font-weight:600; cursor:pointer; transition:all 0.4s cubic-bezier(0.22,1,0.36,1); box-shadow:0 4px 16px rgba(1,69,168,0.2),inset 0 1px 0 rgba(255,255,255,0.1); position:relative; overflow:hidden; }
         .dash-btn-primary::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.15),transparent 50%); pointer-events:none; }
         .dash-btn-primary:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(1,69,168,0.3),inset 0 1px 0 rgba(255,255,255,0.15); }
-        .dash-btn-gold { background:linear-gradient(135deg,${GOLD},${GOLD_BRIGHT}); color:${DARK}; padding:0.9rem 2rem; border-radius:14px; border:none; font-family:var(--font-mono); font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; cursor:pointer; transition:all 0.4s cubic-bezier(0.22,1,0.36,1); box-shadow:0 4px 20px rgba(253,188,1,0.25),inset 0 1px 0 rgba(255,255,255,0.4); position:relative; overflow:hidden; }
+        .dash-btn-gold { background:linear-gradient(135deg,${GOLD},${GOLD_BRIGHT}); color:${DARK}; padding:0.9rem 2rem; border-radius:14px; border:none; font-family:var(--font-mono); font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; cursor:pointer; transition:all 0.4s cubic-bezier(0.22,1,0.36,1); box-shadow:0 4px 20px rgba(253,188,1,0.25),inset 0 1px 0 rgba(255,255,255,0.65); position:relative; overflow:hidden; }
         .dash-btn-gold::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.3),transparent 50%); pointer-events:none; }
-        .dash-btn-gold:hover { transform:translateY(-2px); box-shadow:0 8px 32px rgba(253,188,1,0.35),inset 0 1px 0 rgba(255,255,255,0.5); }
+        .dash-btn-gold:hover { transform:translateY(-2px); box-shadow:0 8px 32px rgba(253,188,1,0.35),inset 0 1px 0 rgba(255,255,255,0.75); }
         @media (max-width:900px) {
           .dash-hamburger { display:flex; }
           .dash-sidebar { position:fixed !important; left:-280px !important; z-index:999; transition:left 0.4s cubic-bezier(0.22,1,0.36,1) !important; box-shadow:8px 0 40px rgba(0,0,0,0.2) !important; }
@@ -434,7 +434,7 @@ export default function DashboardPage() {
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:'1rem' }}>
               <button style={{ width:'42px', height:'42px', background:'linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)' }}>
-                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" /></svg>
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" /></svg>
                 {upcomingBookings.length > 0 && <div style={{ position:'absolute', top:'8px', right:'8px', width:'9px', height:'9px', borderRadius:'50%', background:'linear-gradient(135deg,#22C55E,#16A34A)', border:'2px solid rgba(12,28,52,0.97)', animation:'dashPulse 2s ease-in-out infinite', boxShadow:'0 0 8px rgba(34,197,94,0.5)' }} />}
               </button>
               <div style={{ width:'1px', height:'28px', background:'linear-gradient(180deg,transparent,rgba(253,188,1,0.2),transparent)' }} />
@@ -442,13 +442,13 @@ export default function DashboardPage() {
                 <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'0.45rem 0.85rem 0.45rem 0.55rem', background:profileMenuOpen ? 'linear-gradient(135deg,rgba(253,188,1,0.12),rgba(253,188,1,0.04))' : 'linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))', border:`1px solid ${profileMenuOpen ? 'rgba(253,188,1,0.25)' : 'rgba(255,255,255,0.08)'}`, borderRadius:'14px', cursor:'pointer', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)' }}>
                   <div style={{ textAlign:'right' }}>
                     <p style={{ fontFamily:'var(--font-body)', fontSize:'0.82rem', color:'#fff', margin:0, fontWeight:600, lineHeight:1.2 }}>{user?.displayName || 'Student'}</p>
-                    <p style={{ fontFamily:'var(--font-body)', fontSize:'0.65rem', color:'rgba(255,255,255,0.4)', margin:'0.1rem 0 0', maxWidth:'160px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
+                    <p style={{ fontFamily:'var(--font-body)', fontSize:'0.65rem', color:'rgba(255,255,255,0.65)', margin:'0.1rem 0 0', maxWidth:'160px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
                   </div>
                   <div style={{ position:'relative' }}>
                     {user?.photoURL ? <img src={user.photoURL} alt="" style={{ width:'42px', height:'42px', borderRadius:'50%', objectFit:'cover', border:`2.5px solid ${GOLD}`, boxShadow:'0 0 20px rgba(253,188,1,0.3)' }} /> : <div style={{ width:'42px', height:'42px', borderRadius:'50%', background:`linear-gradient(135deg,${GOLD},${GOLD_BRIGHT})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.85rem', fontWeight:800, color:DARK, border:`2.5px solid ${GOLD}`, boxShadow:'0 0 20px rgba(253,188,1,0.3)' }}>{initials}</div>}
                     <div style={{ position:'absolute', bottom:0, right:0, width:'11px', height:'11px', borderRadius:'50%', background:'linear-gradient(135deg,#22C55E,#16A34A)', border:'2.5px solid rgba(8,18,35,0.97)', boxShadow:'0 0 6px rgba(34,197,94,0.4)' }} />
                   </div>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" style={{ transition:'transform 0.25s', transform:profileMenuOpen ? 'rotate(180deg)' : 'rotate(0)' }}><path d="M6 9l6 6 6-6" /></svg>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="2.5" style={{ transition:'transform 0.25s', transform:profileMenuOpen ? 'rotate(180deg)' : 'rotate(0)' }}><path d="M6 9l6 6 6-6" /></svg>
                 </div>
                 {profileMenuOpen && (
                   <div style={{ position:'absolute', top:'calc(100% + 10px)', right:0, width:'280px', background:'linear-gradient(160deg,rgba(12,28,52,0.97),rgba(8,18,35,0.98))', backdropFilter:'blur(40px) saturate(180%)', border:'1px solid rgba(253,188,1,0.12)', borderRadius:'18px', boxShadow:'0 24px 64px rgba(0,0,0,0.5),0 0 0 1px rgba(253,188,1,0.06)', overflow:'hidden', zIndex:200, animation:'dashFadeIn 0.25s cubic-bezier(0.22,1,0.36,1) both' }}>
@@ -457,7 +457,7 @@ export default function DashboardPage() {
                         {user?.photoURL ? <img src={user.photoURL} alt="" style={{ width:'50px', height:'50px', borderRadius:'50%', objectFit:'cover', border:`2.5px solid ${GOLD}`, boxShadow:'0 0 16px rgba(253,188,1,0.25)' }} /> : <div style={{ width:'50px', height:'50px', borderRadius:'50%', background:`linear-gradient(135deg,${GOLD},${GOLD_BRIGHT})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.1rem', fontWeight:800, color:DARK, border:`2.5px solid ${GOLD}`, boxShadow:'0 0 16px rgba(253,188,1,0.25)' }}>{initials}</div>}
                         <div style={{ minWidth:0 }}>
                           <p style={{ fontFamily:'var(--font-display)', fontSize:'0.95rem', color:'#fff', margin:0, fontWeight:700 }}>{user?.displayName || 'Student'}</p>
-                          <p style={{ fontFamily:'var(--font-body)', fontSize:'0.72rem', color:'rgba(255,255,255,0.45)', margin:'0.2rem 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
+                          <p style={{ fontFamily:'var(--font-body)', fontSize:'0.72rem', color:'rgba(255,255,255,0.85)', margin:'0.2rem 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
                         </div>
                       </div>
                     </div>
@@ -467,7 +467,7 @@ export default function DashboardPage() {
                         { label:'Book Lessons', icon:I.calendar, action:() => { setProfileMenuOpen(false); switchTab('bookings') } },
                         { label:'My Courses', icon:I.book, action:() => { setProfileMenuOpen(false); switchTab('courses') } },
                       ].map(item => (
-                        <button key={item.label} onClick={item.action} style={{ display:'flex', alignItems:'center', gap:'0.7rem', padding:'0.65rem 0.8rem', width:'100%', fontFamily:'var(--font-body)', fontSize:'0.82rem', color:'rgba(255,255,255,0.7)', background:'none', border:'none', borderRadius:'10px', cursor:'pointer', textAlign:'left', transition:'all 0.2s' }}>
+                        <button key={item.label} onClick={item.action} style={{ display:'flex', alignItems:'center', gap:'0.7rem', padding:'0.65rem 0.8rem', width:'100%', fontFamily:'var(--font-body)', fontSize:'0.82rem', color:'rgba(255,255,255,0.85)', background:'none', border:'none', borderRadius:'10px', cursor:'pointer', textAlign:'left', transition:'all 0.2s' }}>
                           {item.icon} {item.label}
                         </button>
                       ))}
@@ -490,12 +490,12 @@ export default function DashboardPage() {
               {navItems.map(item => item.link ? (
                 <a key={item.id} href={item.link} onClick={() => setSidebarOpen(false)} className="dash-nav-item" style={{ textDecoration:'none', marginBottom:'4px' }}>
                   <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', display:'flex', alignItems:'center', justifyContent:'center' }}>{item.icon}</div>
-                  <div style={{ display:'flex', flexDirection:'column' }}><span>{item.label}</span>{item.sublabel && <span style={{ fontSize:'0.62rem', fontWeight:400, color:'#94A3B8', marginTop:'2px' }}>{item.sublabel}</span>}</div>
+                  <div style={{ display:'flex', flexDirection:'column' }}><span>{item.label}</span>{item.sublabel && <span style={{ fontSize:'0.62rem', fontWeight:400, color:'#475569', marginTop:'2px' }}>{item.sublabel}</span>}</div>
                 </a>
               ) : (
                 <button key={item.id} onClick={() => switchTab(item.id)} className={`dash-nav-item ${activeTab === item.id ? 'dash-nav-active' : ''}`} style={{ marginBottom:'4px' }}>
                   <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:activeTab === item.id ? 'linear-gradient(135deg,rgba(1,69,168,0.12),rgba(1,69,168,0.06))' : 'linear-gradient(135deg,rgba(0,0,0,0.02),rgba(0,0,0,0.01))', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.3s' }}>{item.icon}</div>
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}><span>{item.label}</span>{item.sublabel && <span style={{ fontSize:'0.62rem', fontWeight:400, color:activeTab === item.id ? '#64748B' : '#94A3B8', marginTop:'2px' }}>{item.sublabel}</span>}</div>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}><span>{item.label}</span>{item.sublabel && <span style={{ fontSize:'0.62rem', fontWeight:400, color:activeTab === item.id ? '#475569' : '#475569', marginTop:'2px' }}>{item.sublabel}</span>}</div>
                 </button>
               ))}
             </nav>
@@ -507,11 +507,11 @@ export default function DashboardPage() {
               </button>
               <button onClick={handleLogout} className="dash-nav-item" style={{ marginBottom:'1rem' }}>
                 <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:'linear-gradient(135deg,rgba(220,38,38,0.04),rgba(220,38,38,0.02))', display:'flex', alignItems:'center', justifyContent:'center' }}>{I.logout}</div>
-                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}><span>Logout</span><span style={{ fontSize:'0.62rem', fontWeight:400, color:'#94A3B8', marginTop:'2px' }}>Sign out</span></div>
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}><span>Logout</span><span style={{ fontSize:'0.62rem', fontWeight:400, color:'#475569', marginTop:'2px' }}>Sign out</span></div>
               </button>
               <div style={{ padding:'0.85rem 1rem', background:'linear-gradient(145deg,rgba(1,69,168,0.04),rgba(253,188,1,0.02))', borderRadius:'14px', border:'1px solid rgba(1,69,168,0.06)', boxShadow:'inset 0 1px 0 rgba(255,255,255,0.8)' }}>
                 <p style={{ fontFamily:'var(--font-display)', fontSize:'0.85rem', color:'#0F172A', margin:0, fontWeight:700, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{user?.displayName || 'Student'}</p>
-                <p style={{ fontFamily:'var(--font-body)', fontSize:'0.68rem', color:'#94A3B8', margin:'0.25rem 0 0' }}>Member since {user?.metadata?.creationTime ? new Date(user.metadata.creationTime).toLocaleDateString('en-US', { month:'numeric', day:'numeric', year:'numeric' }) : 'recently'}</p>
+                <p style={{ fontFamily:'var(--font-body)', fontSize:'0.68rem', color:'#475569', margin:'0.25rem 0 0' }}>Member since {user?.metadata?.creationTime ? new Date(user.metadata.creationTime).toLocaleDateString('en-US', { month:'numeric', day:'numeric', year:'numeric' }) : 'recently'}</p>
               </div>
             </div>
           </div>
@@ -535,9 +535,9 @@ export default function DashboardPage() {
               {activeTab === 'dashboard' && (
                 <div>
                   <div style={{ marginBottom:'2.5rem' }}>
-                    <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#94A3B8', margin:'0 0 0.5rem', fontWeight:600 }}>Welcome back</p>
+                    <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600 }}>Welcome back</p>
                     <h2 style={{ fontFamily:'var(--font-display)', fontSize:'clamp(1.8rem,3vw,2.4rem)', color:'#0F172A', margin:'0 0 0.5rem', fontWeight:800, lineHeight:1.1 }}>Dashboard</h2>
-                    <p style={{ fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#94A3B8', margin:0 }}>Your profile details and quick summary</p>
+                    <p style={{ fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#475569', margin:0 }}>Your profile details and quick summary</p>
                   </div>
                   <div className="dash-hero-grid" style={{ display:'grid', gridTemplateColumns:'repeat(12,1fr)', gap:'1.25rem' }}>
                     {/* Profile */}
@@ -549,9 +549,9 @@ export default function DashboardPage() {
                       </div>
                       <div>
                         <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.25rem', color:'#0F172A', fontWeight:800, margin:'0 0 0.5rem', lineHeight:1.2 }}>{user?.displayName || 'Student'}</h3>
-                        <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#94A3B8', margin:'0 0 0.25rem', display:'flex', alignItems:'center', gap:'0.4rem' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg> {user?.email}</p>
-                        <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#94A3B8', margin:'0 0 0.25rem', display:'flex', alignItems:'center', gap:'0.4rem' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" /></svg> {phone || '—'}</p>
-                        <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#94A3B8', margin:0, display:'flex', alignItems:'center', gap:'0.4rem' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg> {address || '—'}</p>
+                        <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', margin:'0 0 0.25rem', display:'flex', alignItems:'center', gap:'0.4rem' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg> {user?.email}</p>
+                        <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', margin:'0 0 0.25rem', display:'flex', alignItems:'center', gap:'0.4rem' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" /></svg> {phone || '—'}</p>
+                        <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', margin:0, display:'flex', alignItems:'center', gap:'0.4rem' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg> {address || '—'}</p>
                       </div>
                     </div>
 
@@ -560,7 +560,7 @@ export default function DashboardPage() {
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:'linear-gradient(90deg,#DC2626,#F97316)' }} />
                       <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.75rem' }}>
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(220,38,38,0.08),rgba(220,38,38,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0016.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 002 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg></div>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#94A3B8', margin:0, fontWeight:600 }}>Medications</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Medications</p>
                       </div>
                       <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#0F172A', margin:0, fontWeight:600 }}>{medications || '—'}</p>
                     </div>
@@ -570,7 +570,7 @@ export default function DashboardPage() {
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${SKY_BLUE},#3B82F6)` }} />
                       <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.75rem' }}>
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(1,69,168,0.08),rgba(1,69,168,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="2"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg></div>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#94A3B8', margin:0, fontWeight:600 }}>Permit</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Permit</p>
                       </div>
                       <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#0F172A', margin:0, fontWeight:600 }}>{permit || '—'}</p>
                     </div>
@@ -580,7 +580,7 @@ export default function DashboardPage() {
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT})` }} />
                       <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.75rem' }}>
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(253,188,1,0.1),rgba(253,188,1,0.04))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={GOLD_DEEP} strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg></div>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#94A3B8', margin:0, fontWeight:600 }}>Submitted</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Submitted</p>
                       </div>
                       <p style={{ fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#0F172A', margin:0, fontWeight:600 }}>{submittedAt ? new Date(submittedAt + 'T12:00:00').toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' }) : '—'}</p>
                     </div>
@@ -590,7 +590,7 @@ export default function DashboardPage() {
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:'linear-gradient(90deg,#8B5CF6,#A78BFA)' }} />
                       <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.75rem' }}>
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(139,92,246,0.08),rgba(139,92,246,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg></div>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#94A3B8', margin:0, fontWeight:600 }}>Notes</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Notes</p>
                       </div>
                       <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#0F172A', margin:0, lineHeight:1.7, fontWeight:500 }}>{notes || '—'}</p>
                     </div>
@@ -600,7 +600,7 @@ export default function DashboardPage() {
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:'linear-gradient(90deg,#059669,#10B981)' }} />
                       <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.75rem' }}>
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(5,150,105,0.08),rgba(5,150,105,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg></div>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#94A3B8', margin:0, fontWeight:600 }}>Issue Date</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Issue Date</p>
                       </div>
                       <p style={{ fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#0F172A', margin:0, fontWeight:600 }}>{issueDate ? new Date(issueDate + 'T12:00:00').toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' }) : '—'}</p>
                     </div>
@@ -610,7 +610,7 @@ export default function DashboardPage() {
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:'linear-gradient(90deg,#DC2626,#EF4444)' }} />
                       <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.75rem' }}>
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(220,38,38,0.08),rgba(220,38,38,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg></div>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#94A3B8', margin:0, fontWeight:600 }}>Expiry</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Expiry</p>
                       </div>
                       <p style={{ fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#0F172A', margin:0, fontWeight:600 }}>{expiryDate ? new Date(expiryDate + 'T12:00:00').toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' }) : '—'}</p>
                     </div>
@@ -624,23 +624,23 @@ export default function DashboardPage() {
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${SKY_BLUE},${GOLD_BRIGHT},${SKY_BLUE})`, backgroundSize:'200% 100%', animation:'dashShimmer 5s linear infinite' }} />
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'0.75rem', marginBottom:'0.5rem' }}>
                       <div>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#94A3B8', margin:'0 0 0.5rem', fontWeight:600, animation:'dashTextReveal 0.8s ease both' }}>COURSES</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600, animation:'dashTextReveal 0.8s ease both' }}>COURSES</p>
                         <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'#0F172A', margin:0, fontWeight:800, textTransform:'uppercase' }}>YOUR ENROLLED COURSES</h2>
                       </div>
                       {courses.length > 0 && (
                         <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', padding:'0.5rem 1rem', borderRadius:'12px', border:'1px solid rgba(1,69,168,0.08)' }}>
                           <span style={{ fontFamily:'var(--font-display)', fontSize:'1.3rem', fontWeight:800, color:SKY_BLUE }}>{courses.length}</span>
-                          <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', fontWeight:600 }}>enrolled</span>
+                          <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', fontWeight:600 }}>enrolled</span>
                         </div>
                       )}
                     </div>
-                    <p style={{ fontFamily:'var(--font-body)', fontSize:'0.9rem', color:'#94A3B8', margin:'0 0 1.5rem' }}>Here are your currently enrolled courses... you can add more packages.</p>
+                    <p style={{ fontFamily:'var(--font-body)', fontSize:'0.9rem', color:'#475569', margin:'0 0 1.5rem' }}>Here are your currently enrolled courses... you can add more packages.</p>
                     <button onClick={() => navigate('/pricing')} className="dash-btn-primary" style={{ marginBottom:'2rem' }}>Add more packages</button>
                     <div style={{ display:'flex', flexDirection:'column', gap:'0.75rem' }}>
                       {courses.length === 0 && (
                         <div style={{ textAlign:'center', padding:'2.5rem 1rem' }}>
-                          <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="1.5"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z" /><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z" /></svg></div>
-                          <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#94A3B8', marginBottom:'1rem' }}>No courses enrolled yet.</p>
+                          <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="1.5"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z" /><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z" /></svg></div>
+                          <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', marginBottom:'1rem' }}>No courses enrolled yet.</p>
                           <button onClick={() => navigate('/pricing')} className="dash-btn-gold" style={{ fontSize:'0.65rem', padding:'0.7rem 1.5rem' }}>Browse Courses</button>
                         </div>
                       )}
@@ -655,11 +655,11 @@ export default function DashboardPage() {
                               <h4 style={{ fontFamily:'var(--font-display)', fontSize:'0.95rem', color:'#0F172A', fontWeight:800, margin:0, textTransform:'uppercase' }}>{course.title}</h4>
                               <span style={{ padding:'0.15rem 0.5rem', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.45rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700, ...(course.status === 'Enrolled' || course.status === 'Paid' ? { background:'rgba(34,197,94,0.08)', color:'#16A34A' } : course.status === 'Completed' ? { background:'rgba(1,69,168,0.08)', color:SKY_BLUE } : course.status === 'Refunded' || course.status === 'Cancelled' ? { background:'rgba(220,38,38,0.06)', color:'#DC2626' } : { background:'rgba(234,179,8,0.08)', color:'#CA8A04' }) }}>{course.status}</span>
                             </div>
-                            <p style={{ fontFamily:'var(--font-body)', fontSize:'0.8rem', color:'#94A3B8', margin:'0 0 0.5rem' }}>{course.price}</p>
+                            <p style={{ fontFamily:'var(--font-body)', fontSize:'0.8rem', color:'#475569', margin:'0 0 0.5rem' }}>{course.price}</p>
                             <div style={{ height:'6px', background:'#E8EDF4', borderRadius:'3px', overflow:'hidden', marginBottom:'0.4rem', maxWidth:'300px' }}>
                               <div style={{ width:`${course.progress || 0}%`, height:'100%', background:`linear-gradient(90deg,${SKY_BLUE},#3B82F6)`, borderRadius:'3px', transition:'width 0.8s cubic-bezier(0.22,1,0.36,1)' }} />
                             </div>
-                            <p style={{ fontFamily:'var(--font-body)', fontSize:'0.75rem', color:'#94A3B8', margin:0 }}>{course.progress || 0}% complete</p>
+                            <p style={{ fontFamily:'var(--font-body)', fontSize:'0.75rem', color:'#475569', margin:0 }}>{course.progress || 0}% complete</p>
                           </div>
                           <div style={{ display:'flex', gap:'0.5rem', flexShrink:0, flexWrap:'wrap', justifyContent:'flex-end', alignItems:'center' }}>
                             <button onClick={() => setCourseDetail(course)} style={{ padding:'0.5rem 1rem', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', color:SKY_BLUE, border:'1px solid rgba(1,69,168,0.1)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'0.8rem', fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:'0.4rem', transition:'all 0.2s' }}>
@@ -700,25 +700,25 @@ export default function DashboardPage() {
                     <div style={{ padding:'1.5rem 2rem 2rem' }}>
                       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem', marginBottom:'1.25rem' }}>
                         <div style={{ background:'#F8FAFD', borderRadius:'12px', padding:'1rem', border:'1px solid #E8EDF4' }}>
-                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', margin:'0 0 0.3rem', fontWeight:600 }}>Course ID</p>
+                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Course ID</p>
                           <p style={{ fontFamily:'var(--font-display)', fontSize:'1rem', color:DARK, fontWeight:800, margin:0 }}>{courseDetail.id}</p>
                         </div>
                         <div style={{ background:'#F8FAFD', borderRadius:'12px', padding:'1rem', border:'1px solid #E8EDF4' }}>
-                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', margin:'0 0 0.3rem', fontWeight:600 }}>Price</p>
+                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Price</p>
                           <p style={{ fontFamily:'var(--font-display)', fontSize:'1rem', color:GOLD, fontWeight:800, margin:0 }}>{courseDetail.price}</p>
                         </div>
                         <div style={{ background:'#F8FAFD', borderRadius:'12px', padding:'1rem', border:'1px solid #E8EDF4' }}>
-                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', margin:'0 0 0.3rem', fontWeight:600 }}>Status</p>
+                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Status</p>
                           <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:courseDetail.status === 'Enrolled' || courseDetail.status === 'Paid' ? '#16A34A' : '#DC2626', fontWeight:700, margin:0 }}>{courseDetail.status}</p>
                         </div>
                         <div style={{ background:'#F8FAFD', borderRadius:'12px', padding:'1rem', border:'1px solid #E8EDF4' }}>
-                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', margin:'0 0 0.3rem', fontWeight:600 }}>Progress</p>
+                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Progress</p>
                           <p style={{ fontFamily:'var(--font-display)', fontSize:'1rem', color:DARK, fontWeight:800, margin:0 }}>{courseDetail.progress || 0}%</p>
                         </div>
                       </div>
                       {courseDetail.enrolledAt && (
                         <div style={{ background:'#F8FAFD', borderRadius:'12px', padding:'1rem', border:'1px solid #E8EDF4', marginBottom:'1.25rem' }}>
-                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', margin:'0 0 0.3rem', fontWeight:600 }}>Enrolled On</p>
+                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Enrolled On</p>
                           <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:DARK, fontWeight:600, margin:0 }}>{new Date(courseDetail.enrolledAt).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' })}</p>
                         </div>
                       )}
@@ -736,10 +736,10 @@ export default function DashboardPage() {
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
                       </div>
                       <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.2rem', color:'#0F172A', fontWeight:800, margin:'0 0 0.5rem' }}>Cancel Enrollment</h3>
-                      <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#94A3B8', margin:0, lineHeight:1.5 }}>Are you sure you want to cancel this course? This action cannot be undone.</p>
+                      <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', margin:0, lineHeight:1.5 }}>Are you sure you want to cancel this course? This action cannot be undone.</p>
                     </div>
                     <div style={{ padding:'0 2rem 2rem', display:'flex', gap:'0.75rem' }}>
-                      <button onClick={() => setCancelConfirm(null)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#94A3B8', background:'transparent', border:'1.5px solid #E2EBF5', borderRadius:'var(--radius-sm)', cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.borderColor='#CBD5E0'; e.currentTarget.style.color='#0F172A' }} onMouseLeave={(e) => { e.currentTarget.style.borderColor='#E2EBF5'; e.currentTarget.style.color='#94A3B8' }}>Keep Course</button>
+                      <button onClick={() => setCancelConfirm(null)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#475569', background:'transparent', border:'1.5px solid #E2EBF5', borderRadius:'var(--radius-sm)', cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.borderColor='#CBD5E0'; e.currentTarget.style.color='#0F172A' }} onMouseLeave={(e) => { e.currentTarget.style.borderColor='#E2EBF5'; e.currentTarget.style.color='#475569' }}>Keep Course</button>
                       <button onClick={() => handleCancelCourse(cancelConfirm)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#fff', background:'linear-gradient(135deg,#DC2626,#B91C1C)', border:'none', borderRadius:'var(--radius-sm)', cursor:'pointer', transition:'all 0.3s', boxShadow:'0 4px 16px rgba(220,38,38,0.25)' }} onMouseEnter={(e) => { e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(220,38,38,0.35)' }} onMouseLeave={(e) => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 4px 16px rgba(220,38,38,0.25)' }}>Yes, Cancel</button>
                     </div>
                   </div>
@@ -754,10 +754,10 @@ export default function DashboardPage() {
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#CA8A04" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" /></svg>
                       </div>
                       <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.2rem', color:'#0F172A', fontWeight:800, margin:'0 0 0.5rem' }}>Request Refund</h3>
-                      <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#94A3B8', margin:0, lineHeight:1.5 }}>Are you sure you want to request a refund for this course? The course will be removed from your dashboard.</p>
+                      <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', margin:0, lineHeight:1.5 }}>Are you sure you want to request a refund for this course? The course will be removed from your dashboard.</p>
                     </div>
                     <div style={{ padding:'0 2rem 2rem', display:'flex', gap:'0.75rem' }}>
-                      <button onClick={() => setRefundConfirm(null)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#94A3B8', background:'transparent', border:'1.5px solid #E2EBF5', borderRadius:'var(--radius-sm)', cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.borderColor='#CBD5E0'; e.currentTarget.style.color='#0F172A' }} onMouseLeave={(e) => { e.currentTarget.style.borderColor='#E2EBF5'; e.currentTarget.style.color='#94A3B8' }}>Keep Course</button>
+                      <button onClick={() => setRefundConfirm(null)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#475569', background:'transparent', border:'1.5px solid #E2EBF5', borderRadius:'var(--radius-sm)', cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.borderColor='#CBD5E0'; e.currentTarget.style.color='#0F172A' }} onMouseLeave={(e) => { e.currentTarget.style.borderColor='#E2EBF5'; e.currentTarget.style.color='#475569' }}>Keep Course</button>
                       <button onClick={() => handleRefundCourse(refundConfirm)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#fff', background:'linear-gradient(135deg,#CA8A04,#A16207)', border:'none', borderRadius:'var(--radius-sm)', cursor:'pointer', transition:'all 0.3s', boxShadow:'0 4px 16px rgba(202,138,4,0.25)' }} onMouseEnter={(e) => { e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(202,138,4,0.35)' }} onMouseLeave={(e) => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 4px 16px rgba(202,138,4,0.25)' }}>Yes, Refund</button>
                     </div>
                   </div>
@@ -768,7 +768,7 @@ export default function DashboardPage() {
                 <div style={{ maxWidth:'1000px', margin:'0 auto' }}>
                   <div className="dash-anim dash-card-premium" style={{ padding:'2.5rem' }}>
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT},${GOLD})`, backgroundSize:'200% 100%', animation:'dashShimmer 5s linear infinite' }} />
-                    <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#94A3B8', margin:'0 0 0.5rem', fontWeight:600, animation:'dashTextReveal 0.8s ease both' }}>Billing</p>
+                    <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600, animation:'dashTextReveal 0.8s ease both' }}>Billing</p>
                     <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'#0F172A', margin:'0 0 1.5rem', fontWeight:800, textTransform:'uppercase' }}>PAYMENT HISTORY</h2>
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1rem', marginBottom:'2rem' }}>
                       <div style={{ background:'linear-gradient(135deg,rgba(5,150,105,0.04),rgba(5,150,105,0.01))', border:'1px solid rgba(5,150,105,0.1)', borderRadius:'var(--radius-md)', padding:'1.25rem' }}>
@@ -789,7 +789,7 @@ export default function DashboardPage() {
                       <thead>
                         <tr>
                           {['Date','Ref','Email','Item','Amount','Status','Receipt'].map((th, i) => (
-                            <th key={th} style={{ textAlign:i===6?'center':'left', padding:'0.85rem 1rem', fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', fontWeight:700, borderBottom:'2px solid #E8EDF4', background:'linear-gradient(135deg,#FAFBFD,#F5F7FB)', ...(i===0?{borderTopLeftRadius:'10px',borderBottomLeftRadius:'10px'}:{}), ...(i===6?{borderTopRightRadius:'10px',borderBottomRightRadius:'10px'}:{}) }}>{th}</th>
+                            <th key={th} style={{ textAlign:i===6?'center':'left', padding:'0.85rem 1rem', fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', fontWeight:700, borderBottom:'2px solid #E8EDF4', background:'linear-gradient(135deg,#FAFBFD,#F5F7FB)', ...(i===0?{borderTopLeftRadius:'10px',borderBottomLeftRadius:'10px'}:{}), ...(i===6?{borderTopRightRadius:'10px',borderBottomRightRadius:'10px'}:{}) }}>{th}</th>
                           ))}
                         </tr>
                       </thead>
@@ -797,8 +797,8 @@ export default function DashboardPage() {
                         {payments.length === 0 && (
                           <tr>
                             <td colSpan="7" style={{ padding:'2.5rem 1rem', textAlign:'center' }}>
-                              <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="1.5"><rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg></div>
-                              <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#94A3B8', marginBottom:'1rem' }}>No payment history yet.</p>
+                              <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="1.5"><rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg></div>
+                              <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', marginBottom:'1rem' }}>No payment history yet.</p>
                               <button onClick={() => navigate('/pricing')} className="dash-btn-gold" style={{ fontSize:'0.65rem', padding:'0.7rem 1.5rem' }}>Browse Courses</button>
                             </td>
                           </tr>
@@ -811,7 +811,7 @@ export default function DashboardPage() {
                             <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'0.8rem', color:'#475569', fontWeight:600 }}>{p.item}</td>
                             <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#0F172A', fontWeight:700 }}>{p.amount}</td>
                             <td style={{ padding:'1rem' }}><span style={{ padding:'0.25rem 0.7rem', background:p.status==='Paid' ? 'rgba(5,150,105,0.06)' : 'rgba(220,38,38,0.04)', color:p.status==='Paid' ? '#059669' : '#DC2626', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:700 }}>{p.status}</span></td>
-                            <td style={{ padding:'1rem', textAlign:'center' }}><button onClick={() => { const r = window.open('','_blank'); r.document.write(`<html><head><title>Receipt - ${p.ref}</title><style>body{font-family:sans-serif;padding:40px;color:#333}h1{font-size:20px;border-bottom:2px solid #0145A8;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:8px 12px;border-bottom:1px solid #eee}.lbl{color:#94A3B8;width:120px}</style></head><body><h1>A Precision Driving School</h1><p style="color:#94A3B8">Payment Receipt</p><table><tr><td class="lbl">Date</td><td>${p.date}</td></tr><tr><td class="lbl">Reference</td><td>${p.ref}</td></tr><tr><td class="lbl">Email</td><td>${p.email}</td></tr><tr><td class="lbl">Item</td><td>${p.item}</td></tr><tr><td class="lbl">Amount</td><td><strong>${p.amount}</strong></td></tr><tr><td class="lbl">Status</td><td>${p.status}</td></tr></table><p style="margin-top:40px;color:#94A3B8;font-size:12px">A Precision Driving School - San Ramon, CA</p></body></html>`); r.document.close(); r.print() }} style={{ background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.35rem', borderRadius:'8px', display:'inline-flex' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg></button></td>
+                            <td style={{ padding:'1rem', textAlign:'center' }}><button onClick={() => { const r = window.open('','_blank'); r.document.write(`<html><head><title>Receipt - ${p.ref}</title><style>body{font-family:sans-serif;padding:40px;color:#333}h1{font-size:20px;border-bottom:2px solid #0145A8;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:8px 12px;border-bottom:1px solid #eee}.lbl{color:#475569;width:120px}</style></head><body><h1>A Precision Driving School</h1><p style="color:#475569">Payment Receipt</p><table><tr><td class="lbl">Date</td><td>${p.date}</td></tr><tr><td class="lbl">Reference</td><td>${p.ref}</td></tr><tr><td class="lbl">Email</td><td>${p.email}</td></tr><tr><td class="lbl">Item</td><td>${p.item}</td></tr><tr><td class="lbl">Amount</td><td><strong>${p.amount}</strong></td></tr><tr><td class="lbl">Status</td><td>${p.status}</td></tr></table><p style="margin-top:40px;color:#475569;font-size:12px">A Precision Driving School - San Ramon, CA</p></body></html>`); r.document.close(); r.print() }} style={{ background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.35rem', borderRadius:'8px', display:'inline-flex' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg></button></td>
                           </tr>
                         ))}
                       </tbody>
@@ -825,63 +825,63 @@ export default function DashboardPage() {
                 <div style={{ maxWidth:'1000px', margin:'0 auto' }}>
                   <div className="dash-anim dash-card-premium" style={{ padding:'2.5rem' }}>
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${SKY_BLUE},${GOLD_BRIGHT},${SKY_BLUE})`, backgroundSize:'200% 100%', animation:'dashShimmer 5s linear infinite' }} />
-                    <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#94A3B8', margin:'0 0 0.5rem', fontWeight:600 }}>Settings</p>
+                    <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600 }}>Settings</p>
                     <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'#0F172A', margin:'0 0 0.5rem', fontWeight:800, textTransform:'uppercase' }}>ACCOUNT SETTINGS</h2>
-                    <p style={{ fontFamily:'var(--font-body)', fontSize:'0.9rem', color:'#94A3B8', margin:'0 0 2rem' }}>Quick access to profile and security settings.</p>
+                    <p style={{ fontFamily:'var(--font-body)', fontSize:'0.9rem', color:'#475569', margin:'0 0 2rem' }}>Quick access to profile and security settings.</p>
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'1rem' }}>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', marginBottom:'0.5rem', fontWeight:600 }}>Username</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Username</label>
                         <input type="text" value={sUsername} onChange={e => setSUsername(e.target.value)} className="dash-input" />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', marginBottom:'0.5rem', fontWeight:600 }}>Email</label>
-                        <input type="email" value={user?.email || ''} readOnly className="dash-input" style={{ color:'#94A3B8', background:'linear-gradient(145deg,#F0F0F0,#e8e8e8)', cursor:'not-allowed' }} />
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Email</label>
+                        <input type="email" value={user?.email || ''} readOnly className="dash-input" style={{ color:'#475569', background:'linear-gradient(145deg,#F0F0F0,#e8e8e8)', cursor:'not-allowed' }} />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', marginBottom:'0.5rem', fontWeight:600 }}>Phone</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Phone</label>
                         <input type="tel" value={sPhone} onChange={e => setSPhone(e.target.value)} className="dash-input" />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', marginBottom:'0.5rem', fontWeight:600 }}>Permit</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Permit</label>
                         <input type="text" value={sPermit} onChange={e => setSPermit(e.target.value)} className="dash-input" />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', marginBottom:'0.5rem', fontWeight:600 }}>Medications</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Medications</label>
                         <input type="text" value={sMedications} onChange={e => setSMedications(e.target.value)} className="dash-input" />
                       </div>
                       <div style={{ gridColumn:'1 / 2' }}>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', marginBottom:'0.5rem', fontWeight:600 }}>Address</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Address</label>
                         <textarea value={sAddress} onChange={e => setSAddress(e.target.value)} rows="3" className="dash-input" style={{ resize:'vertical' }} />
                       </div>
                       <div style={{ gridColumn:'1 / 2' }}>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', marginBottom:'0.5rem', fontWeight:600 }}>Notes</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Notes</label>
                         <textarea value={sNotes} onChange={e => setSNotes(e.target.value)} rows="3" className="dash-input" style={{ resize:'vertical' }} />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', marginBottom:'0.5rem', fontWeight:600 }}>Submitted Date</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Submitted Date</label>
                         <input type="date" value={sSubmittedAt} onChange={e => setSSubmittedAt(e.target.value)} className="dash-input" />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', marginBottom:'0.5rem', fontWeight:600 }}>Issue Date</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Issue Date</label>
                         <input type="date" value={sIssueDate} onChange={e => setSIssueDate(e.target.value)} className="dash-input" />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', marginBottom:'0.5rem', fontWeight:600 }}>Expiry Date</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Expiry Date</label>
                         <input type="date" value={sExpiryDate} onChange={e => setSExpiryDate(e.target.value)} className="dash-input" />
                       </div>
                     </div>
-                    <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.1rem', color:'#64748B', margin:'0 0 1.5rem', fontWeight:700 }}>Change password (optional)</h3>
+                    <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.1rem', color:'#475569', margin:'0 0 1.5rem', fontWeight:700 }}>Change password (optional)</h3>
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'1.5rem' }}>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', marginBottom:'0.5rem', fontWeight:600 }}>Current password</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Current password</label>
                         <input type="password" placeholder="Enter current password" value={sCurrentPass} onChange={e => setSCurrentPass(e.target.value)} className="dash-input" />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', marginBottom:'0.5rem', fontWeight:600 }}>New password</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>New password</label>
                         <input type="password" placeholder="Min 8 characters" value={sNewPass} onChange={e => setSNewPass(e.target.value)} className="dash-input" />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', marginBottom:'0.5rem', fontWeight:600 }}>Confirm new password</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Confirm new password</label>
                         <input type="password" placeholder="Repeat new password" value={sConfirmPass} onChange={e => setSConfirmPass(e.target.value)} className="dash-input" />
                       </div>
                     </div>
@@ -906,8 +906,8 @@ export default function DashboardPage() {
                       ) : (
                         conversations.map(conv => (
                           <div key={conv.id} onClick={() => handleSelectConv(conv.id)} style={{ padding:'0.6rem 0.75rem', borderRadius:'10px', cursor:'pointer', marginBottom:'0.2rem', background: activeConvId === conv.id ? 'rgba(1,69,168,0.06)' : 'transparent', border: activeConvId === conv.id ? '1px solid rgba(1,69,168,0.1)' : '1px solid transparent', transition:'all 0.15s', display:'flex', alignItems:'center', gap:'0.5rem', position:'relative' }} onMouseEnter={(e) => { if (activeConvId !== conv.id) e.currentTarget.style.background='rgba(0,0,0,0.02)' }} onMouseLeave={(e) => { if (activeConvId !== conv.id) e.currentTarget.style.background='transparent' }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="1.5" style={{ flexShrink:0 }}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
-                            <p style={{ fontFamily:'var(--font-body)', fontSize:'0.75rem', color: activeConvId === conv.id ? DARK : '#64748B', margin:0, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontWeight: activeConvId === conv.id ? 600 : 400 }}>{conv.title}</p>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="1.5" style={{ flexShrink:0 }}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
+                            <p style={{ fontFamily:'var(--font-body)', fontSize:'0.75rem', color: activeConvId === conv.id ? DARK : '#475569', margin:0, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontWeight: activeConvId === conv.id ? 600 : 400 }}>{conv.title}</p>
                             <button onClick={(e) => handleDeleteConv(e, conv.id)} style={{ background:'none', border:'none', cursor:'pointer', padding:'2px', borderRadius:'4px', display:'flex', opacity:0.4, transition:'opacity 0.2s', flexShrink:0 }} onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(220,38,38,0.06)' }} onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.background = 'none' }}>
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
                             </button>
@@ -924,7 +924,7 @@ export default function DashboardPage() {
                             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
                           </div>
                           <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.3rem', color:DARK, fontWeight:800, margin:0 }}>How can I help you today?</h3>
-                          <p style={{ fontFamily:'var(--font-body)', fontSize:'0.9rem', color:'#94A3B8', margin:0, textAlign:'center', maxWidth:'400px', lineHeight:1.6 }}>Ask me anything about our driving courses, scheduling, payments, permits, or driving rules in California.</p>
+                          <p style={{ fontFamily:'var(--font-body)', fontSize:'0.9rem', color:'#475569', margin:0, textAlign:'center', maxWidth:'400px', lineHeight:1.6 }}>Ask me anything about our driving courses, scheduling, payments, permits, or driving rules in California.</p>
                           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.6rem', marginTop:'0.5rem', maxWidth:'440px', width:'100%' }}>
                             {[{ q:'What courses do you offer?' }, { q:'How do I schedule a lesson?' }, { q:'What is the refund policy?' }, { q:'Do I need a permit first?' }].map((s, i) => (
                               <button key={i} onClick={() => setChatInput(s.q)} style={{ padding:'0.75rem 1rem', background:'linear-gradient(135deg,rgba(1,69,168,0.03),rgba(1,69,168,0.01))', border:'1px solid rgba(1,69,168,0.08)', borderRadius:'12px', fontFamily:'var(--font-body)', fontSize:'0.78rem', color:DARK, fontWeight:500, cursor:'pointer', textAlign:'left', transition:'all 0.2s', lineHeight:1.4 }} onMouseEnter={(e) => { e.currentTarget.style.borderColor='rgba(1,69,168,0.2)'; e.currentTarget.style.background='rgba(1,69,168,0.05)' }} onMouseLeave={(e) => { e.currentTarget.style.borderColor='rgba(1,69,168,0.08)'; e.currentTarget.style.background='linear-gradient(135deg,rgba(1,69,168,0.03),rgba(1,69,168,0.01))' }}>{s.q}</button>
@@ -957,9 +957,9 @@ export default function DashboardPage() {
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2z"/></svg>
                           </div>
                           <div style={{ padding:'0.85rem 1.15rem', borderRadius:'16px 16px 16px 4px', background:'linear-gradient(135deg,#F1F5F9,#E8EDF4)', display:'flex', gap:'0.35rem', alignItems:'center' }}>
-                            <span style={{ width:'7px', height:'7px', borderRadius:'50%', background:'#94A3B8', animation:'dashPulse 1.2s ease infinite' }} />
-                            <span style={{ width:'7px', height:'7px', borderRadius:'50%', background:'#94A3B8', animation:'dashPulse 1.2s ease 0.2s infinite' }} />
-                            <span style={{ width:'7px', height:'7px', borderRadius:'50%', background:'#94A3B8', animation:'dashPulse 1.2s ease 0.4s infinite' }} />
+                            <span style={{ width:'7px', height:'7px', borderRadius:'50%', background:'#475569', animation:'dashPulse 1.2s ease infinite' }} />
+                            <span style={{ width:'7px', height:'7px', borderRadius:'50%', background:'#475569', animation:'dashPulse 1.2s ease 0.2s infinite' }} />
+                            <span style={{ width:'7px', height:'7px', borderRadius:'50%', background:'#475569', animation:'dashPulse 1.2s ease 0.4s infinite' }} />
                           </div>
                         </div>
                       )}
@@ -967,7 +967,7 @@ export default function DashboardPage() {
                     </div>
                     <div style={{ padding:'1rem 1.5rem', borderTop:'1px solid #E8EDF4', background:'linear-gradient(135deg,#FAFBFD,#F5F7FB)', display:'flex', gap:'0.6rem', alignItems:'flex-end' }}>
                       <textarea value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChat() } }} rows="1" placeholder="Ask about courses, scheduling, payments..." className="dash-input" style={{ flex:1, background:'#fff', borderRadius:'14px', padding:'0.75rem 1rem', fontSize:'0.88rem', resize:'none', minHeight:'44px', maxHeight:'100px' }} />
-                      <button onClick={handleChat} disabled={chatLoading || !chatInput.trim()} style={{ width:'44px', height:'44px', borderRadius:'14px', border:'none', background:(!chatInput.trim() || chatLoading) ? '#E2EBF5' : `linear-gradient(135deg,${SKY_BLUE},#0a2a5e)`, color:(!chatInput.trim() || chatLoading) ? '#94A3B8' : '#fff', cursor:(!chatInput.trim() || chatLoading) ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.3s', boxShadow:(!chatInput.trim() || chatLoading) ? 'none' : '0 4px 12px rgba(1,69,168,0.25)', flexShrink:0 }}>
+                      <button onClick={handleChat} disabled={chatLoading || !chatInput.trim()} style={{ width:'44px', height:'44px', borderRadius:'14px', border:'none', background:(!chatInput.trim() || chatLoading) ? '#E2EBF5' : `linear-gradient(135deg,${SKY_BLUE},#0a2a5e)`, color:(!chatInput.trim() || chatLoading) ? '#475569' : '#fff', cursor:(!chatInput.trim() || chatLoading) ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.3s', boxShadow:(!chatInput.trim() || chatLoading) ? 'none' : '0 4px 12px rgba(1,69,168,0.25)', flexShrink:0 }}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
                       </button>
                     </div>
@@ -984,16 +984,16 @@ export default function DashboardPage() {
                       Schedule a Lesson
                     </h3>
                     <div style={{ marginBottom:'1.25rem' }}>
-                      <label style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#94A3B8', fontWeight:600, display:'block', marginBottom:'0.35rem' }}>Select Date</label>
+                      <label style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', fontWeight:600, display:'block', marginBottom:'0.35rem' }}>Select Date</label>
                       <input type="date" min={todayStr} value={bookingDate} onChange={(e) => setBookingDate(e.target.value)} className="dash-input" />
                     </div>
                     <div style={{ marginBottom:'1.5rem' }}>
-                      <label style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#94A3B8', fontWeight:600, display:'block', marginBottom:'0.35rem' }}>Select Time Slot</label>
+                      <label style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', fontWeight:600, display:'block', marginBottom:'0.35rem' }}>Select Time Slot</label>
                       <div className="dash-slot-grid" style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:'0.75rem', marginTop:'0.4rem' }}>
                         {TIME_SLOTS.map(slot => (
                           <div key={slot.id} onClick={() => setBookingSlot(slot.id)} className={`dash-slot ${bookingSlot === slot.id ? 'dash-slot-sel' : ''}`}>
                             <div style={{ fontFamily:'var(--font-display)', fontSize:'0.85rem', color:bookingSlot === slot.id ? GOLD_DEEP : DARK, fontWeight:700, marginBottom:'0.2rem', position:'relative', zIndex:1 }}>{slot.label}</div>
-                            <div style={{ fontFamily:'var(--font-body)', fontSize:'0.75rem', color:'#94A3B8', marginBottom:'0.15rem', position:'relative', zIndex:1 }}>{slot.time}</div>
+                            <div style={{ fontFamily:'var(--font-body)', fontSize:'0.75rem', color:'#475569', marginBottom:'0.15rem', position:'relative', zIndex:1 }}>{slot.time}</div>
                             <div style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.1em', textTransform:'uppercase', color:bookingSlot === slot.id ? GOLD_DEEP : '#aaa', fontWeight:600, position:'relative', zIndex:1 }}>{slot.hours} Hours</div>
                           </div>
                         ))}
@@ -1009,20 +1009,20 @@ export default function DashboardPage() {
                     </h3>
                     {bookings.length === 0 ? (
                       <div style={{ textAlign:'center', padding:'2.5rem 1rem' }}>
-                        <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg></div>
-                        <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#94A3B8' }}>No bookings yet. Schedule your first lesson!</p>
+                        <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg></div>
+                        <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569' }}>No bookings yet. Schedule your first lesson!</p>
                       </div>
                     ) : (
                       <div style={{ display:'flex', flexDirection:'column', gap:'0.75rem', maxHeight:'400px', overflowY:'auto' }}>
                         {upcomingBookings.length > 0 && <>
-                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#94A3B8', fontWeight:600, margin:'0.25rem 0' }}>Upcoming</p>
+                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', fontWeight:600, margin:'0.25rem 0' }}>Upcoming</p>
                           {upcomingBookings.map(b => {
                             const slot = TIME_SLOTS.find(s => s.id === b.timeSlot)
                             return (
                               <div key={b._id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.85rem 1rem', background:'linear-gradient(135deg,rgba(34,197,94,0.04),rgba(34,197,94,0.01))', borderRadius:'14px', border:'1px solid rgba(34,197,94,0.1)' }}>
                                 <div>
                                   <p style={{ fontFamily:'var(--font-body)', fontSize:'0.9rem', color:DARK, fontWeight:600, margin:0 }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })}</p>
-                                  <p style={{ fontFamily:'var(--font-body)', fontSize:'0.78rem', color:'#94A3B8', margin:'0.15rem 0 0' }}>{slot?.time || b.timeSlot}</p>
+                                  <p style={{ fontFamily:'var(--font-body)', fontSize:'0.78rem', color:'#475569', margin:'0.15rem 0 0' }}>{slot?.time || b.timeSlot}</p>
                                 </div>
                                 <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
                                   <span style={{ padding:'0.25rem 0.7rem', background:'linear-gradient(135deg,rgba(34,197,94,0.12),rgba(34,197,94,0.06))', color:'#16A34A', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700 }}>Scheduled</span>
@@ -1033,7 +1033,7 @@ export default function DashboardPage() {
                           })}
                         </>}
                         {pastBookings.length > 0 && <>
-                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#94A3B8', fontWeight:600, margin:'0.5rem 0 0.25rem' }}>Past</p>
+                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', fontWeight:600, margin:'0.5rem 0 0.25rem' }}>Past</p>
                           {pastBookings.slice(0, 10).map(b => {
                             const slot = TIME_SLOTS.find(s => s.id === b.timeSlot)
                             return (
@@ -1042,7 +1042,7 @@ export default function DashboardPage() {
                                   <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#666', fontWeight:500, margin:0 }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })}</p>
                                   <p style={{ fontFamily:'var(--font-body)', fontSize:'0.75rem', color:'#999', margin:'0.15rem 0 0' }}>{slot?.time || b.timeSlot}</p>
                                 </div>
-                                <span style={{ padding:'0.25rem 0.7rem', background:'rgba(136,153,170,0.08)', color:'#94A3B8', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:600 }}>Completed</span>
+                                <span style={{ padding:'0.25rem 0.7rem', background:'rgba(136,153,170,0.08)', color:'#475569', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:600 }}>Completed</span>
                               </div>
                             )
                           })}
@@ -1095,7 +1095,7 @@ export default function DashboardPage() {
                                 <span style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', fontWeight:800, color:quizScore >= 2 ? '#22C55E' : '#DC2626' }}>{quizScore}/{activeMod.quiz.length}</span>
                               </div>
                               <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.2rem', color:DARK, fontWeight:700, marginBottom:'0.5rem' }}>{quizScore >= 2 ? 'Congratulations! Module Passed' : 'Not Passed'}</h3>
-                              <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#94A3B8', marginBottom:'1.5rem' }}>{quizScore >= 2 ? 'You have successfully completed this module.' : 'You need at least 2 correct answers to pass.'}</p>
+                              <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', marginBottom:'1.5rem' }}>{quizScore >= 2 ? 'You have successfully completed this module.' : 'You need at least 2 correct answers to pass.'}</p>
                               {quizScore < 2 && <button onClick={() => { setModuleStep(0); setQuizAnswers({}); setQuizSubmitted(false) }} style={{ padding:'0.7rem 1.5rem', background:SKY_BLUE, color:'#fff', border:'none', borderRadius:'10px', fontFamily:'var(--font-mono)', fontSize:'0.65rem', letterSpacing:'0.1em', textTransform:'uppercase', fontWeight:700, cursor:'pointer' }}>Review Lessons</button>}
                               {quizScore >= 2 && <button onClick={() => { setActiveModule(null); setModuleStep(0) }} style={{ padding:'0.7rem 1.5rem', background:GOLD, color:DARK, border:'none', borderRadius:'10px', fontFamily:'var(--font-mono)', fontSize:'0.65rem', letterSpacing:'0.1em', textTransform:'uppercase', fontWeight:700, cursor:'pointer' }}>Back to Modules</button>}
                             </div>
@@ -1107,11 +1107,11 @@ export default function DashboardPage() {
                     <div>
                       <div style={{ marginBottom:'1.5rem' }}>
                         <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.15rem', color:DARK, fontWeight:700, marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.6rem' }}>{I.book} Online Driver Education</h3>
-                        <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#94A3B8', margin:0 }}>Complete all 3 modules to finish your course.</p>
+                        <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', margin:0 }}>Complete all 3 modules to finish your course.</p>
                         <div style={{ marginTop:'0.75rem', background:'#E8EDF4', borderRadius:'999px', height:'8px', overflow:'hidden' }}>
                           <div style={{ width:`${Math.round((completedModules.length/3)*100)}%`, height:'100%', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT})`, borderRadius:'999px', transition:'width 0.5s' }} />
                         </div>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#94A3B8', fontWeight:600, marginTop:'0.35rem' }}>{completedModules.length} of 3 modules completed</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', fontWeight:600, marginTop:'0.35rem' }}>{completedModules.length} of 3 modules completed</p>
                       </div>
                       <div className="dash-mod-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1.25rem' }}>
                         {COURSE_MODULES.map((mod, i) => {
@@ -1125,7 +1125,7 @@ export default function DashboardPage() {
                                 {done && <span style={{ padding:'0.2rem 0.5rem', background:'rgba(34,197,94,0.1)', color:'#22C55E', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700 }}>Done</span>}
                               </div>
                               <h4 style={{ fontFamily:'var(--font-display)', fontSize:'1rem', color:DARK, fontWeight:700, marginBottom:'0.4rem' }}>{mod.title}</h4>
-                              <p style={{ fontFamily:'var(--font-body)', fontSize:'0.8rem', color:'#94A3B8', margin:0, lineHeight:1.6 }}>{mod.description}</p>
+                              <p style={{ fontFamily:'var(--font-body)', fontSize:'0.8rem', color:'#475569', margin:0, lineHeight:1.6 }}>{mod.description}</p>
                               <div style={{ marginTop:'1rem', display:'flex', alignItems:'center', gap:'0.4rem', color:done ? '#22C55E' : SKY_BLUE, fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', fontWeight:700 }}>
                                 {done ? 'Review Module' : 'Start Module'}
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
