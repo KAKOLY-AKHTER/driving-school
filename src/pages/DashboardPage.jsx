@@ -362,24 +362,24 @@ export default function DashboardPage() {
         .dash-slot:hover::before, .dash-slot:hover::after { opacity:1; }
         .dash-slot-sel { border-color:${GOLD} !important; background:linear-gradient(145deg,#FFFCF0,#FFF8E0) !important; box-shadow:0 12px 40px rgba(253,188,1,0.2),0 0 0 1px rgba(253,188,1,0.15),inset 0 1px 0 rgba(255,255,255,0.8) !important; transform:translateY(-4px) scale(1.01); animation:dashGlow 3s ease-in-out infinite; }
         .dash-slot-sel::before, .dash-slot-sel::after { opacity:1 !important; }
-        .dash-mod { background:linear-gradient(160deg,rgba(255,255,255,0.95),rgba(250,251,253,0.98)); border:1.5px solid rgba(232,237,244,0.7); border-radius:20px; padding:1.75rem; cursor:pointer; transition:all 0.5s cubic-bezier(0.22,1,0.36,1); position:relative; overflow:hidden; backdrop-filter:blur(8px); }
+        .dash-mod { background:#ffffff; border:1.5px solid #E8EDF4; border-radius:20px; padding:1.75rem; cursor:pointer; transition:all 0.5s cubic-bezier(0.22,1,0.36,1); position:relative; overflow:hidden; }
         .dash-mod::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,transparent,${GOLD},${GOLD_BRIGHT},${GOLD},transparent); opacity:0; transition:opacity 0.4s; }
         .dash-mod::after { content:''; position:absolute; bottom:0; left:50%; transform:translateX(-50%); width:0; height:2px; background:linear-gradient(90deg,transparent,${SKY_BLUE},transparent); transition:width 0.5s cubic-bezier(0.22,1,0.36,1); }
         .dash-mod:hover { transform:translateY(-8px); box-shadow:0 24px 64px rgba(0,0,0,0.1),0 0 0 1px rgba(253,188,1,0.12); border-color:rgba(253,188,1,0.3); }
         .dash-mod:hover::before { opacity:1; }
         .dash-mod:hover::after { width:60%; }
-        .dash-lesson { background:linear-gradient(145deg,#F8FAFD 0%,#F1F5F9 50%,#EDF2F7 100%); border:1px solid rgba(232,237,244,0.7); border-radius:18px; padding:1.75rem; position:relative; overflow:hidden; }
+        .dash-lesson { background:linear-gradient(145deg,#F8FAFD 0%,#F1F5F9 50%,#EDF2F7 100%); border:1px solid #E8EDF4; border-radius:18px; padding:1.75rem; position:relative; overflow:hidden; }
         .dash-lesson::before { content:''; position:absolute; top:0; left:0; bottom:0; width:3px; background:linear-gradient(180deg,${GOLD},${SKY_BLUE}); border-radius:0 2px 2px 0; }
-        .dash-qopt { padding:1rem 1.25rem; border:1.5px solid rgba(232,237,244,0.7); border-radius:14px; cursor:pointer; transition:all 0.35s cubic-bezier(0.22,1,0.36,1); font-family:var(--font-body); font-size:0.9rem; color:#1a2332; background:linear-gradient(145deg,#fff,#FAFBFE); text-align:left; width:100%; position:relative; overflow:hidden; }
+        .dash-qopt { padding:1rem 1.25rem; border:1.5px solid #E8EDF4; border-radius:14px; cursor:pointer; transition:all 0.35s cubic-bezier(0.22,1,0.36,1); font-family:var(--font-body); font-size:0.9rem; color:#1a2332; background:linear-gradient(145deg,#fff,#FAFBFE); text-align:left; width:100%; position:relative; overflow:hidden; }
         .dash-qopt:hover { border-color:rgba(1,69,168,0.4); background:linear-gradient(145deg,#F0F6FF,#E8F0FE); transform:translateX(6px); box-shadow:0 8px 24px rgba(1,69,168,0.08),inset 0 1px 0 rgba(255,255,255,0.8); }
         .dash-qopt-sel { border-color:${SKY_BLUE} !important; background:linear-gradient(145deg,#E8F2FF,#D4E6FF) !important; box-shadow:0 8px 28px rgba(1,69,168,0.14),inset 0 1px 0 rgba(255,255,255,0.9) !important; transform:translateX(6px); }
         .dash-qopt-sel::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:linear-gradient(180deg,${SKY_BLUE},${GOLD}); border-radius:0 2px 2px 0; }
         .dash-gold-line { height:1px; background:linear-gradient(90deg,transparent,rgba(253,188,1,0.4),rgba(253,188,1,0.15),rgba(253,188,1,0.4),transparent); margin:0.5rem 0.75rem; }
         .dash-sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(10,22,40,0.7); backdrop-filter:blur(12px) saturate(120%); z-index:998; }
         .dash-hamburger { display:none; }
-        .dash-card-premium { background:linear-gradient(160deg,rgba(255,255,255,0.92),rgba(255,255,255,0.98)); border:1px solid rgba(226,235,245,0.5); border-radius:22px; padding:1.75rem; box-shadow:0 1px 2px rgba(0,0,0,0.02),0 8px 32px rgba(0,0,0,0.04),inset 0 1px 0 rgba(255,255,255,0.9); position:relative; overflow:hidden; transition:all 0.5s cubic-bezier(0.22,1,0.36,1); backdrop-filter:blur(8px); }
-        .dash-card-premium::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.65),transparent 40%); pointer-events:none; border-radius:22px; }
-        .dash-card-premium:hover { box-shadow:0 4px 8px rgba(0,0,0,0.03),0 16px 48px rgba(0,0,0,0.07),inset 0 1px 0 rgba(255,255,255,0.95); transform:translateY(-2px); }
+        .dash-card-premium { background:#ffffff; border:1px solid #E2EBF5; border-radius:22px; padding:1.75rem; box-shadow:0 4px 16px rgba(0,0,0,0.04); position:relative; overflow:hidden; transition:all 0.5s cubic-bezier(0.22,1,0.36,1); }
+        .dash-card-premium::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.6),transparent 40%); pointer-events:none; border-radius:22px; }
+        .dash-card-premium:hover { box-shadow:0 4px 8px rgba(0,0,0,0.03),0 16px 48px rgba(0,0,0,0.07); transform:translateY(-2px); }
         .dash-table-row { transition:all 0.3s cubic-bezier(0.22,1,0.36,1); }
         .dash-table-row:hover { background:linear-gradient(135deg,rgba(1,69,168,0.02),rgba(253,188,1,0.02)) !important; }
         .dash-input { width:100%; padding:0.9rem 1.2rem; border-radius:14px; border:1.5px solid #E8EDF4; outline:none; font-family:var(--font-body); font-size:0.9rem; color:#0F172A; box-sizing:border-box; background:linear-gradient(145deg,#FAFBFD,#fff); transition:all 0.35s cubic-bezier(0.22,1,0.36,1); }
@@ -420,7 +420,7 @@ export default function DashboardPage() {
           .dash-course-card { flex-wrap:wrap !important; padding:1rem !important; gap:1rem !important; }
           .dash-course-card .dash-course-icon { width:44px !important; height:44px !important; font-size:0.8rem !important; }
         }
-        .dash-course-card { display:flex; align-items:center; background:linear-gradient(135deg,rgba(255,255,255,0.98),#FAFBFD); padding:1.25rem 1.5rem; border-radius:16px; border:1px solid #E8EDF4; gap:1.5rem; transition:all 0.4s cubic-bezier(0.22,1,0.36,1); position:relative; overflow:hidden; }
+        .dash-course-card { display:flex; align-items:center; background:#ffffff; padding:1.25rem 1.5rem; border-radius:16px; border:1px solid #E8EDF4; gap:1.5rem; transition:all 0.4s cubic-bezier(0.22,1,0.36,1); position:relative; overflow:hidden; }
         .dash-course-card::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(1,69,168,0.02),rgba(253,188,1,0.02)); opacity:0; transition:opacity 0.4s; border-radius:16px; pointer-events:none; }
         .dash-course-card::after { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,${GOLD},${SKY_BLUE},transparent); opacity:0; transition:opacity 0.4s; }
         .dash-course-card:hover { transform:translateY(-4px); box-shadow:0 16px 48px rgba(1,69,168,0.1),0 0 0 1px rgba(253,188,1,0.08); border-color:rgba(253,188,1,0.3); }
@@ -432,7 +432,7 @@ export default function DashboardPage() {
         .dash-course-card { animation: dashCourseSlideIn 0.5s cubic-bezier(0.22,1,0.36,1) both; }
       `}</style>
 
-      <div style={{ minHeight:'100vh', background:'linear-gradient(135deg,#F0F4FA 0%,#E8EEF6 25%,#F5F7FB 50%,#EDF1F7 75%,#F0F4FA 100%)', backgroundSize:'400% 400%', animation:'dashGradientMove 20s ease infinite', display:'flex', flexDirection:'column' }}>
+      <div style={{ minHeight:'100vh', background:'#F8FAFD', display:'flex', flexDirection:'column' }}>
 
         <header style={{ position:'sticky', top:0, zIndex:100, background:'#0145A8', borderBottom:'1px solid rgba(253,188,1,0.2)', boxShadow:'0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(253,188,1,0.08)' }}>
           <div style={{ height:'2.5px', background:`linear-gradient(90deg,transparent 5%,${GOLD} 20%,${GOLD_BRIGHT} 35%,#fff 50%,${GOLD_BRIGHT} 65%,${GOLD} 80%,transparent 95%)` }} />
@@ -927,7 +927,7 @@ export default function DashboardPage() {
 
               {activeTab === 'support' && (
                 <div className="dash-chat-wrap" style={{ maxWidth:'1100px', margin:'0 auto', display:'flex', gap:'1rem', height:'clamp(500px,70vh,650px)' }}>
-                  <div className="dash-anim dash-chat-list" style={{ width:'260px', flexShrink:0, background:'linear-gradient(135deg,rgba(255,255,255,0.98),#FAFBFD)', borderRadius:'18px', border:'1px solid rgba(226,235,245,0.6)', boxShadow:'0 1px 3px rgba(0,0,0,0.02), 0 4px 16px rgba(0,0,0,0.03)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+                  <div className="dash-anim dash-chat-list" style={{ width:'260px', flexShrink:0, background:'#ffffff', borderRadius:'18px', border:'1px solid rgba(226,235,245,0.6)', boxShadow:'0 1px 3px rgba(0,0,0,0.02), 0 4px 16px rgba(0,0,0,0.03)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
                     <div style={{ padding:'1rem', borderBottom:'1px solid #E8EDF4' }}>
                       <button onClick={handleNewChat} style={{ width:'100%', padding:'0.65rem', background: chatMessages.length === 0 && !activeConvId ? 'rgba(1,69,168,0.06)' : 'transparent', border:'1.5px solid rgba(1,69,168,0.1)', borderRadius:'10px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:600, color:SKY_BLUE, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem', transition:'all 0.2s' }} onMouseEnter={(e) => { if (!(chatMessages.length === 0 && !activeConvId)) { e.currentTarget.style.background='rgba(1,69,168,0.04)'; e.currentTarget.style.borderColor='rgba(1,69,168,0.2)' } }} onMouseLeave={(e) => { if (!(chatMessages.length === 0 && !activeConvId)) { e.currentTarget.style.background='transparent'; e.currentTarget.style.borderColor='rgba(1,69,168,0.1)' } }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg> New Chat
@@ -951,7 +951,7 @@ export default function DashboardPage() {
                       )}
                     </div>
                   </div>
-                  <div className="dash-anim dash-d1 dash-chat-box" style={{ flex:1, background:'linear-gradient(135deg,rgba(255,255,255,0.98),#fff)', borderRadius:'20px', border:'1px solid rgba(226,235,245,0.6)', boxShadow:'0 1px 3px rgba(0,0,0,0.02), 0 8px 32px rgba(0,0,0,0.04)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+                  <div className="dash-anim dash-d1 dash-chat-box" style={{ flex:1, background:'#ffffff', borderRadius:'20px', border:'1px solid rgba(226,235,245,0.6)', boxShadow:'0 1px 3px rgba(0,0,0,0.02), 0 8px 32px rgba(0,0,0,0.04)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
                     <div style={{ flex:1, overflowY:'auto', padding:'2rem', display:'flex', flexDirection:'column', gap:'1.5rem' }}>
                       {chatMessages.length === 0 && (
                         <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'1.25rem' }}>
@@ -1100,7 +1100,7 @@ export default function DashboardPage() {
                         <div style={{ flex:1, height:'4px', borderRadius:'2px', background:moduleStep > activeMod.lessons.length ? GOLD : '#E8EDF4', transition:'all 0.3s' }} />
                       </div>
                       {moduleStep <= activeMod.lessons.length ? (
-                        <div className="dash-anim" style={{ background:'linear-gradient(135deg,rgba(255,255,255,0.95),rgba(255,255,255,1))', borderRadius:'20px', border:'1px solid rgba(226,235,245,0.6)', padding:'1.75rem', boxShadow:'0 1px 3px rgba(0,0,0,0.02), 0 8px 32px rgba(0,0,0,0.04)', position:'relative', overflow:'hidden' }}>
+                        <div className="dash-anim" style={{ background:'#ffffff', borderRadius:'20px', border:'1px solid rgba(226,235,245,0.6)', padding:'1.75rem', boxShadow:'0 1px 3px rgba(0,0,0,0.02), 0 8px 32px rgba(0,0,0,0.04)', position:'relative', overflow:'hidden' }}>
                           <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${SKY_BLUE})` }} />
                           <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:GOLD_DEEP, fontWeight:700, marginBottom:'0.5rem' }}>Lesson {moduleStep} of {activeMod.lessons.length}</p>
                           <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.3rem', color:DARK, fontWeight:700, marginBottom:'1rem' }}>{activeMod.lessons[moduleStep-1].title}</h3>
@@ -1108,7 +1108,7 @@ export default function DashboardPage() {
                           <button onClick={() => setModuleStep(moduleStep+1)} style={{ marginTop:'1.25rem', padding:'0.85rem 2rem', background:`linear-gradient(135deg,${GOLD},${GOLD_BRIGHT})`, color:DARK, border:'none', borderRadius:'12px', fontFamily:'var(--font-mono)', fontSize:'0.95rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, cursor:'pointer', transition:'all 0.3s', boxShadow:'0 4px 16px rgba(253,188,1,0.2)' }}>{moduleStep < activeMod.lessons.length ? 'Next Lesson' : 'Take Quiz'}</button>
                         </div>
                       ) : (
-                        <div className="dash-anim" style={{ background:'linear-gradient(135deg,rgba(255,255,255,0.95),rgba(255,255,255,1))', borderRadius:'20px', border:'1px solid rgba(226,235,245,0.6)', padding:'1.75rem', boxShadow:'0 1px 3px rgba(0,0,0,0.02), 0 8px 32px rgba(0,0,0,0.04)', position:'relative', overflow:'hidden' }}>
+                        <div className="dash-anim" style={{ background:'#ffffff', borderRadius:'20px', border:'1px solid rgba(226,235,245,0.6)', padding:'1.75rem', boxShadow:'0 1px 3px rgba(0,0,0,0.02), 0 8px 32px rgba(0,0,0,0.04)', position:'relative', overflow:'hidden' }}>
                           <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${SKY_BLUE})` }} />
                           <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:GOLD_DEEP, fontWeight:700, marginBottom:'0.5rem' }}>Module Quiz</p>
                           <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.3rem', color:DARK, fontWeight:700, marginBottom:'1.5rem' }}>{activeMod.title}</h3>
