@@ -19,23 +19,44 @@ const MONGO_URI = process.env.MONGO_URI
 const DB_NAME = 'driving_school'
 
 let db, usersCol, bookingsCol, contactCol, settingsCol, pricingCol, enrollmentsCol, areasCol, socialsCol
+let connectPromise = null
 
 async function connectDB() {
-  const client = new MongoClient(MONGO_URI)
-  await client.connect()
-  db = client.db(DB_NAME)
-  usersCol = db.collection('users')
-  bookingsCol = db.collection('bookings')
-  contactCol = db.collection('contact')
-  settingsCol = db.collection('settings')
-  pricingCol = db.collection('pricing')
-  enrollmentsCol = db.collection('enrollments')
-  areasCol = db.collection('areas')
-  socialsCol = db.collection('socials')
-  await usersCol.createIndex({ uid: 1 }, { unique: true })
-  await bookingsCol.createIndex({ userId: 1, date: 1 })
-  console.log('MongoDB connected')
+  if (connectPromise) return connectPromise
+  connectPromise = (async () => {
+    const client = new MongoClient(MONGO_URI)
+    await client.connect()
+    db = client.db(DB_NAME)
+    usersCol = db.collection('users')
+    bookingsCol = db.collection('bookings')
+    contactCol = db.collection('contact')
+    settingsCol = db.collection('settings')
+    pricingCol = db.collection('pricing')
+    enrollmentsCol = db.collection('enrollments')
+    areasCol = db.collection('areas')
+    socialsCol = db.collection('socials')
+    await usersCol.createIndex({ uid: 1 }, { unique: true })
+    await bookingsCol.createIndex({ userId: 1, date: 1 })
+    await seedPricing()
+    await seedAreas()
+    await seedSocials()
+    console.log('MongoDB connected')
+    return db
+  })().catch((e) => {
+    connectPromise = null
+    throw e
+  })
+  return connectPromise
 }
+
+app.use(async (req, res, next) => {
+  try {
+    await connectDB()
+    next()
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
 
 app.get('/api/health', (req, res) => res.json({ ok: true }))
 
@@ -797,14 +818,15 @@ async function seedSocials() {
   }
 }
 
-connectDB()
-  .then(async () => {
-    await seedPricing()
-    await seedAreas()
-    await seedSocials()
-    app.listen(PORT, () => console.log(`API running on port ${PORT}`))
-  })
-  .catch((e) => {
-    console.error('MongoDB connection failed:', e.message)
-    process.exit(1)
-  })
+if (process.env.VERCEL !== '1') {
+  connectDB()
+    .then(() => {
+      app.listen(PORT, () => console.log(`API running on port ${PORT}`))
+    })
+    .catch((e) => {
+      console.error('MongoDB connection failed:', e.message)
+      process.exit(1)
+    })
+}
+
+export default app
