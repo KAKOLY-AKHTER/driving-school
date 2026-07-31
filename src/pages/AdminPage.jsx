@@ -281,10 +281,17 @@ export default function AdminPage() {
         @keyframes dashGridSlide { from { background-position: 0 0; } to { background-position: 40px 40px; } }
         .admin-stat { transition: all 0.3s ease; }
         .admin-stat:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.08); }
-        .admin-nav-item { display: flex; align-items: center; gap: 0.7rem; padding: 0.7rem 1rem; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s ease; font-family: var(--font-body); font-size: 0.88rem; font-weight: 500; color: #666; border: none; background: none; width: 100%; text-align: left; }
-        .admin-nav-item:hover { background: rgba(1,69,168,0.05); color: ${DARK}; }
-        .admin-nav-item-active { background: linear-gradient(135deg, rgba(1,69,168,0.08), rgba(253,188,1,0.05)); color: ${SKY_BLUE}; font-weight: 700; border-left: 3px solid ${GOLD}; }
-        .admin-sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 998; }
+        .admin-nav-item { display:flex; align-items:center; gap:0.75rem; padding:0.75rem 1rem; border-radius:14px; cursor:pointer; transition:all 0.35s cubic-bezier(0.22,1,0.36,1); font-family:var(--font-body); font-size:0.88rem; font-weight:500; color:rgba(255,255,255,0.85); border:none; background:none; width:100%; text-align:left; position:relative; overflow:hidden; }
+        .admin-nav-item::after { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(253,188,1,0.10),rgba(255,255,255,0.03)); opacity:0; transition:opacity 0.3s; border-radius:14px; }
+        .admin-nav-item:hover { color:#FFFFFF; transform:translateX(6px); }
+        .admin-nav-item:not(.admin-logout-item):hover svg { stroke:#FDBC01; }
+        .admin-nav-item:hover::after { opacity:1; }
+        .admin-nav-active { background:linear-gradient(135deg,rgba(253,188,1,0.16),rgba(253,188,1,0.05)) !important; color:#FDBC01 !important; font-weight:700; box-shadow:0 4px 20px rgba(253,188,1,0.15); border:1px solid rgba(253,188,1,0.25); }
+        .admin-nav-active::after { opacity:1 !important; }
+        .admin-nav-active::before { content:''; position:absolute; left:0; top:8px; bottom:8px; width:3px; background:linear-gradient(180deg,#FDBC01,#FFD54F,#FDBC01); border-radius:0 4px 4px 0; box-shadow:0 0 12px rgba(253,188,1,0.5); }
+        .admin-nav-active svg { stroke:#FDBC01; filter:drop-shadow(0 0 4px rgba(253,188,1,0.35)); }
+        .admin-gold-line { height:1px; background:linear-gradient(90deg,transparent,rgba(253,188,1,0.4),rgba(253,188,1,0.15),rgba(253,188,1,0.4),transparent); margin:0.5rem 0.75rem; }
+        .admin-sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(10,22,40,0.7); backdrop-filter: blur(12px) saturate(120%); z-index: 998; }
         @media (max-width: 900px) {
           .admin-sidebar { position: fixed !important; left: -280px !important; z-index: 999; transition: left 0.3s ease !important; }
           .admin-sidebar-open { left: 0 !important; }
@@ -298,53 +305,69 @@ export default function AdminPage() {
 
       <div style={{ minHeight: '100vh', background: '#F8FAFD', display: 'flex', flexDirection: 'column' }}>
 
-        <header style={{ background: DARK, position: 'sticky', top: 0, zIndex: 100, padding: '0 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '60px', boxShadow: '0 2px 12px rgba(0,0,0,0.15)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0.25rem' }}>
-              {sidebarOpen ? SVG.close : SVG.menu}
-            </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <img src="/driving-logo.png" alt="" style={{ height: '32px', width: 'auto', filter: 'brightness(0) invert(1)' }} />
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: '#fff', fontWeight: 700 }}>Admin Panel</span>
+        <header style={{ position: 'sticky', top: 0, zIndex: 100, background: '#0145A8', borderBottom: '1px solid rgba(253,188,1,0.2)', boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(253,188,1,0.08)' }}>
+          <div style={{ height: '2.5px', background: `linear-gradient(90deg,transparent 5%,${GOLD} 20%,${GOLD_BRIGHT} 35%,#fff 50%,${GOLD_BRIGHT} 65%,${GOLD} 80%,transparent 95%)` }} />
+          <div style={{ padding: '0 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '72px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'rgba(253,188,1,0.08)', border: '1px solid rgba(253,188,1,0.15)', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0.4rem', width: '40px', height: '40px', justifyContent: 'center' }}>
+                {sidebarOpen ? SVG.close : SVG.menu}
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <img src="/driving-logo.png" alt="" style={{ height: '32px', width: 'auto', filter: 'brightness(0) invert(1)' }} />
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: '#fff', fontWeight: 700 }}>Admin Panel</span>
+              </div>
             </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ textAlign: 'right' }}>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#fff', margin: 0, fontWeight: 600 }}>{user?.displayName || 'Admin'}</p>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', margin: 0 }}>{user?.email}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#fff', margin: 0, fontWeight: 600 }}>{user?.displayName || 'Admin'}</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.65rem', color: 'rgba(255,255,255,0.65)', margin: 0 }}>{user?.email}</p>
+              </div>
+              <div style={{ position: 'relative' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 800, color: DARK, border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.3)', flexShrink: 0 }}>{initials}</div>
+                <div style={{ position: 'absolute', bottom: 0, right: 0, width: '11px', height: '11px', borderRadius: '50%', background: 'linear-gradient(135deg,#22C55E,#16A34A)', border: '2.5px solid #0145A8', boxShadow: '0 0 6px rgba(34,197,94,0.4)' }} />
+              </div>
             </div>
-            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_DEEP})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 800, color: DARK, flexShrink: 0 }}>{initials}</div>
           </div>
         </header>
 
         <div style={{ display: 'flex', flex: 1 }}>
 
-          <div className={`admin-sidebar ${sidebarOpen ? 'admin-sidebar-open' : ''}`} style={{ width: '260px', background: '#fff', borderRight: '1px solid #E2EBF5', padding: '1.5rem 0', position: 'sticky', top: '60px', height: 'calc(100vh - 60px)', overflowY: 'auto', flexShrink: 0, transition: 'left 0.3s ease' }}>
-            <div style={{ textAlign: 'center', padding: '0 1.25rem 1.5rem', borderBottom: '1px solid #f0f2f5', marginBottom: '1rem' }}>
-              <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_DEEP})`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.75rem', boxShadow: '0 4px 16px rgba(200,150,12,0.25)' }}>
-                {SVG.shield}
+          <div className={`admin-sidebar ${sidebarOpen ? 'admin-sidebar-open' : ''}`} style={{ width: '260px', background: 'linear-gradient(180deg,#0c2a5e 0%,#0145A8 50%,#082048 100%)', padding: 0, position: 'sticky', top: '76px', height: 'calc(100vh - 76px)', overflowY: 'auto', flexShrink: 0, transition: 'left 0.4s', borderRight: '1px solid rgba(253,188,1,0.12)', display: 'flex', flexDirection: 'column', boxShadow: 'inset -1px 0 0 rgba(253,188,1,0.05)' }}>
+            <div style={{ padding: '1.5rem 1rem 1.1rem', borderBottom: '1px solid rgba(253,188,1,0.12)', background: 'linear-gradient(135deg,rgba(253,188,1,0.07),transparent 65%)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_DEEP})`, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.35)' }}>{SVG.shield}</div>
+                  <div style={{ position: 'absolute', bottom: 0, right: 0, width: '13px', height: '13px', borderRadius: '50%', background: 'linear-gradient(135deg,#22C55E,#16A34A)', border: '2.5px solid #0145A8', boxShadow: '0 0 6px rgba(34,197,94,0.4)' }} />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.95rem', color: '#fff', margin: 0, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.displayName || 'Admin'}</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(253,188,1,0.85)', fontWeight: 700, margin: '0.2rem 0 0' }}>Administrator</p>
+                </div>
               </div>
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: DARK, margin: 0, fontWeight: 700 }}>{user?.displayName || 'Admin'}</p>
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: GOLD_DEEP, fontWeight: 700, marginTop: '0.2rem' }}>Administrator</p>
             </div>
 
-            <nav style={{ padding: '0 0.75rem' }}>
+            <nav style={{ padding: '1.25rem 0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0 0.75rem 0.75rem', marginBottom: '0.5rem' }}>
+                <span style={{ width: '18px', height: '2px', background: 'linear-gradient(90deg,transparent,#FDBC01)', borderRadius: '2px' }} />
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(253,188,1,0.75)', fontWeight: 700 }}>Menu</span>
+              </div>
               {navItems.map(item => (
-                <button key={item.id} onClick={() => switchTab(item.id)} className={`admin-nav-item ${activeTab === item.id ? 'admin-nav-item-active' : ''}`}>
-                  {item.icon}
-                  {item.label}
+                <button key={item.id} onClick={() => switchTab(item.id)} className={`admin-nav-item ${activeTab === item.id ? 'admin-nav-active' : ''}`} style={{ marginBottom: '4px' }}>
+                  <div style={{ flexShrink: 0, width: '34px', height: '34px', borderRadius: '10px', background: activeTab === item.id ? 'linear-gradient(135deg,rgba(253,188,1,0.25),rgba(253,188,1,0.10))' : 'linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s' }}>{item.icon}</div>
+                  <span>{item.label}</span>
                 </button>
               ))}
             </nav>
 
-            <div style={{ padding: '0 0.75rem', marginTop: 'auto', borderTop: '1px solid #f0f2f5', paddingTop: '1rem' }}>
-              <button onClick={() => navigate('/dashboard')} className="admin-nav-item" style={{ color: '#8899aa', marginBottom: '0.25rem' }}>
-                {SVG.home}
-                Student Dashboard
+            <div style={{ padding: '0.75rem', marginTop: 'auto' }}>
+              <div className="admin-gold-line" />
+              <button onClick={() => navigate('/dashboard')} className="admin-nav-item" style={{ marginBottom: '4px', marginTop: '0.5rem' }}>
+                <div style={{ flexShrink: 0, width: '34px', height: '34px', borderRadius: '10px', background: 'linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{SVG.home}</div>
+                <span>Student Dashboard</span>
               </button>
-              <button onClick={handleLogout} className="admin-nav-item" style={{ color: '#DC2626' }}>
-                {SVG.logout}
-                Sign Out
+              <button onClick={handleLogout} className="admin-nav-item admin-logout-item" style={{ marginBottom: '1rem', background: 'linear-gradient(135deg,rgba(220,38,38,0.22),rgba(220,38,38,0.10))', border: '1px solid rgba(220,38,38,0.35)', color: '#FCA5A5' }}>
+                <div style={{ flexShrink: 0, width: '34px', height: '34px', borderRadius: '10px', background: 'linear-gradient(135deg,#DC2626,#B91C1C)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(220,38,38,0.35)' }}>{SVG.logout}</div>
+                <span>Sign Out</span>
               </button>
             </div>
           </div>
@@ -352,19 +375,10 @@ export default function AdminPage() {
           <div className={`admin-sidebar-overlay ${sidebarOpen ? 'admin-sidebar-overlay-show' : ''}`} onClick={() => setSidebarOpen(false)} />
 
           <main className="admin-main" style={{ flex: 1, marginLeft: '0', minWidth: 0 }}>
-            <div style={{ background: `linear-gradient(135deg, ${DARK} 0%, #1a0a3e 50%, ${DARK} 100%)`, backgroundSize: '300% 300%', animation: 'dashBgPan 12s ease-in-out infinite', padding: '2.5rem 2rem', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(253,188,1,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(253,188,1,0.03) 1px, transparent 1px)', backgroundSize: '40px 40px', animation: 'dashGridSlide 8s linear infinite', pointerEvents: 'none' }} />
-              <div style={{ position: 'relative', zIndex: 1 }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
-                  <span style={{ width: '16px', height: '2px', background: `linear-gradient(90deg, transparent, ${GOLD})` }} />
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: GOLD_DEEP, fontWeight: 700 }}>
-                    {navItems.find(n => n.id === activeTab)?.label || 'Admin'}
-                  </span>
-                </div>
-                <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.5rem, 3vw, 2.2rem)', color: '#ffffff', lineHeight: 1.15, fontWeight: 800, margin: 0 }}>
-                  Admin Dashboard
-                </h1>
-              </div>
+            <div style={{ padding: 'clamp(1.5rem, 4vw, 2.5rem) clamp(1rem, 3vw, 2rem) 0' }}>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.5rem, 3vw, 2.2rem)', color: '#0F172A', lineHeight: 1.15, fontWeight: 800, margin: 0 }}>
+                {navItems.find(n => n.id === activeTab)?.label || 'Admin Dashboard'}
+              </h1>
             </div>
 
             <div style={{ padding: 'clamp(1.5rem, 3vw, 2.5rem)' }}>

@@ -42,10 +42,9 @@ export default function Nav() {
         position: 'fixed',
         top: 0, left: 0, right: 0,
         zIndex: 50,
-        backgroundColor: solidBg ? 'rgba(1, 69, 168, 0.85)' : 'transparent',
+        backgroundColor: 'transparent',
+        background: solidBg ? '#0145A8' : 'transparent',
         borderBottom: solidBg ? '1px solid rgba(253, 188, 1, 0.2)' : 'none',
-        backdropFilter: solidBg ? 'blur(24px) saturate(180%)' : 'none',
-        WebkitBackdropFilter: solidBg ? 'blur(24px) saturate(180%)' : 'none',
         boxShadow: solidBg
           ? '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(253,188,1,0.08)'
           : 'none',

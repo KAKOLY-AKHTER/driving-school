@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { signOut, updateProfile, reauthenticateWithCredential, EmailAuthProvider, updatePassword } from 'firebase/auth'
 import { auth } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
@@ -280,7 +280,7 @@ export default function DashboardPage() {
         setChatMessages([...newMessages, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }])
       }
     } catch {
-      setChatMessages([...newMessages, { role: 'assistant', content: 'Sorry, I am temporarily unavailable. Please try again later or contact us at (925) 555-0123.' }])
+      setChatMessages([...newMessages, { role: 'assistant', content: 'Sorry, I am temporarily unavailable. Please try again later or contact us at +1 925 329 1736.' }])
     }
     setChatLoading(false)
   }
@@ -346,14 +346,15 @@ export default function DashboardPage() {
         @keyframes dashCardHover { 0% { box-shadow:0 4px 16px rgba(0,0,0,0.04); } 100% { box-shadow:0 12px 48px rgba(1,69,168,0.12),0 0 0 1px rgba(1,69,168,0.06); } }
         .dash-anim { animation: dashFadeIn 0.6s cubic-bezier(0.22,1,0.36,1) both; }
         .dash-d1 { animation-delay:0.06s; } .dash-d2 { animation-delay:0.12s; } .dash-d3 { animation-delay:0.18s; } .dash-d4 { animation-delay:0.24s; } .dash-d5 { animation-delay:0.30s; } .dash-d6 { animation-delay:0.36s; } .dash-d7 { animation-delay:0.42s; }
-        .dash-nav-item { display:flex; align-items:center; gap:0.75rem; padding:0.75rem 1rem; border-radius:14px; cursor:pointer; transition:all 0.35s cubic-bezier(0.22,1,0.36,1); font-family:var(--font-body); font-size:0.88rem; font-weight:500; color:#334155; border:none; background:none; width:100%; text-align:left; position:relative; overflow:hidden; }
-        .dash-nav-item::after { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(1,69,168,0.06),rgba(253,188,1,0.04)); opacity:0; transition:opacity 0.3s; border-radius:14px; }
-        .dash-nav-item:hover { color:#0F172A; transform:translateX(6px); }
+        .dash-nav-item { display:flex; align-items:center; gap:0.75rem; padding:0.75rem 1rem; border-radius:14px; cursor:pointer; transition:all 0.35s cubic-bezier(0.22,1,0.36,1); font-family:var(--font-body); font-size:0.88rem; font-weight:500; color:rgba(255,255,255,0.85); border:none; background:none; width:100%; text-align:left; position:relative; overflow:hidden; }
+        .dash-nav-item::after { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(253,188,1,0.10),rgba(255,255,255,0.03)); opacity:0; transition:opacity 0.3s; border-radius:14px; }
+        .dash-nav-item:hover { color:#FFFFFF; transform:translateX(6px); }
+        .dash-nav-item:not(.dash-logout-item):hover svg { stroke:#FDBC01; }
         .dash-nav-item:hover::after { opacity:1; }
-        .dash-nav-active { background:linear-gradient(135deg,rgba(1,69,168,0.08),rgba(1,69,168,0.03)) !important; color:#0145A8 !important; font-weight:700; box-shadow:0 4px 20px rgba(1,69,168,0.1); border:1px solid rgba(1,69,168,0.08); }
+        .dash-nav-active { background:linear-gradient(135deg,rgba(253,188,1,0.16),rgba(253,188,1,0.05)) !important; color:#FDBC01 !important; font-weight:700; box-shadow:0 4px 20px rgba(253,188,1,0.15); border:1px solid rgba(253,188,1,0.25); }
         .dash-nav-active::after { opacity:1 !important; }
-        .dash-nav-active::before { content:''; position:absolute; left:0; top:8px; bottom:8px; width:3px; background:linear-gradient(180deg,#0145A8,#0145A8,${GOLD}); border-radius:0 4px 4px 0; box-shadow:0 0 12px rgba(1,69,168,0.3); }
-        .dash-nav-active svg { stroke:#0145A8; filter:drop-shadow(0 0 4px rgba(1,69,168,0.25)); }
+        .dash-nav-active::before { content:''; position:absolute; left:0; top:8px; bottom:8px; width:3px; background:linear-gradient(180deg,#FDBC01,#FFD54F,#FDBC01); border-radius:0 4px 4px 0; box-shadow:0 0 12px rgba(253,188,1,0.5); }
+        .dash-nav-active svg { stroke:#FDBC01; filter:drop-shadow(0 0 4px rgba(253,188,1,0.35)); }
         .dash-slot { padding:1.1rem; border:1.5px solid #E8EDF4; border-radius:16px; text-align:center; cursor:pointer; transition:all 0.4s cubic-bezier(0.22,1,0.36,1); background:linear-gradient(145deg,#fff,#FAFBFE); position:relative; overflow:hidden; }
         .dash-slot::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(253,188,1,0.1),transparent 60%); opacity:0; transition:opacity 0.35s; }
         .dash-slot::after { content:''; position:absolute; top:-50%; left:-50%; width:200%; height:200%; background:radial-gradient(circle,rgba(253,188,1,0.06) 0%,transparent 60%); opacity:0; transition:opacity 0.4s; }
@@ -433,17 +434,17 @@ export default function DashboardPage() {
 
       <div style={{ minHeight:'100vh', background:'linear-gradient(135deg,#F0F4FA 0%,#E8EEF6 25%,#F5F7FB 50%,#EDF1F7 75%,#F0F4FA 100%)', backgroundSize:'400% 400%', animation:'dashGradientMove 20s ease infinite', display:'flex', flexDirection:'column' }}>
 
-        <header style={{ position:'sticky', top:0, zIndex:100, background:'linear-gradient(135deg,rgba(8,18,35,0.97),rgba(12,28,52,0.97))', backdropFilter:'blur(40px) saturate(200%)', boxShadow:'0 4px 30px rgba(0,0,0,0.35),0 1px 0 rgba(253,188,1,0.08),inset 0 -1px 0 rgba(253,188,1,0.06)' }}>
+        <header style={{ position:'sticky', top:0, zIndex:100, background:'#0145A8', borderBottom:'1px solid rgba(253,188,1,0.2)', boxShadow:'0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(253,188,1,0.08)' }}>
           <div style={{ height:'2.5px', background:`linear-gradient(90deg,transparent 5%,${GOLD} 20%,${GOLD_BRIGHT} 35%,#fff 50%,${GOLD_BRIGHT} 65%,${GOLD} 80%,transparent 95%)` }} />
-          <div style={{ padding:'0 clamp(0.75rem,3vw,2rem)', display:'flex', alignItems:'center', justifyContent:'space-between', height:'64px' }}>
+          <div style={{ padding:'0 clamp(0.75rem,3vw,2rem)', display:'flex', alignItems:'center', justifyContent:'space-between', height:'72px' }}>
             <div style={{ display:'flex', alignItems:'center', gap:'1.25rem' }}>
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="dash-hamburger" style={{ width:'40px', height:'40px', background:'rgba(253,188,1,0.08)', border:'1px solid rgba(253,188,1,0.15)', borderRadius:'10px', cursor:'pointer', alignItems:'center', justifyContent:'center', transition:'all 0.2s', flexShrink:0 }}>
                 {sidebarOpen ? I.close : I.menu}
               </button>
-              <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
-                <div style={{ width:'40px', height:'40px', borderRadius:'12px', background:`linear-gradient(135deg,${GOLD},${GOLD_BRIGHT},${GOLD})`, backgroundSize:'200% 200%', animation:'dashGradientMove 4s ease infinite', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 20px rgba(253,188,1,0.4),inset 0 1px 0 rgba(255,255,255,0.3)', border:'1px solid rgba(253,188,1,0.3)' }}>
-                  <img src="/driving-logo.png" alt="" style={{ height:'24px', width:'auto', filter:'brightness(0) invert(1)' }} />
-                </div>
+              <div style={{ display:'flex', alignItems:'center', gap:'0.85rem' }}>
+                <Link to="/" style={{ display:'flex', alignItems:'center', flexShrink:0 }}>
+                  <img src="/driving-logo.png" alt="A Precision Driving School Logo" style={{ height:'52px', width:'auto', objectFit:'contain', filter:'drop-shadow(0 0 18px rgba(255,255,255,0.95)) drop-shadow(0 0 6px rgba(255,255,255,0.8))' }} />
+                </Link>
                 <div>
                   <p style={{ fontFamily:'var(--font-display)', fontSize:'1.05rem', color:'#fff', margin:0, fontWeight:800, lineHeight:1.2, textShadow:'0 1px 2px rgba(0,0,0,0.2)' }}>Dashboard</p>
                   <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.15em', textTransform:'uppercase', color:GOLD_BRIGHT, margin:0, fontWeight:700, textShadow:'0 0 8px rgba(253,188,1,0.3)' }}>A Precision Driving School</p>
@@ -451,31 +452,31 @@ export default function DashboardPage() {
               </div>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:'1rem' }}>
-              <button className="dash-bell" style={{ width:'42px', height:'42px', background:'linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)' }}>
+              <button className="dash-bell" style={{ width:'42px', height:'42px', background:'linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.08))', border:'1px solid rgba(255,255,255,0.28)', borderRadius:'12px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)', boxShadow:'0 2px 10px rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.15)' }}>
                 <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" /></svg>
-                {upcomingBookings.length > 0 && <div style={{ position:'absolute', top:'8px', right:'8px', width:'9px', height:'9px', borderRadius:'50%', background:'linear-gradient(135deg,#22C55E,#16A34A)', border:'2px solid rgba(12,28,52,0.97)', animation:'dashPulse 2s ease-in-out infinite', boxShadow:'0 0 8px rgba(34,197,94,0.5)' }} />}
+                {upcomingBookings.length > 0 && <div style={{ position:'absolute', top:'8px', right:'8px', width:'9px', height:'9px', borderRadius:'50%', background:'linear-gradient(135deg,#22C55E,#16A34A)', border:'2px solid #0145A8', animation:'dashPulse 2s ease-in-out infinite', boxShadow:'0 0 8px rgba(34,197,94,0.5)' }} />}
               </button>
               <div className="dash-header-divider" style={{ width:'1px', height:'28px', background:'linear-gradient(180deg,transparent,rgba(253,188,1,0.2),transparent)' }} />
               <div style={{ position:'relative' }} onClick={() => setProfileMenuOpen(!profileMenuOpen)} onMouseEnter={() => setProfileMenuOpen(true)} onMouseLeave={() => setProfileMenuOpen(false)}>
-                <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'0.45rem 0.85rem 0.45rem 0.55rem', background:profileMenuOpen ? 'linear-gradient(135deg,rgba(253,188,1,0.12),rgba(253,188,1,0.04))' : 'linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))', border:`1px solid ${profileMenuOpen ? 'rgba(253,188,1,0.25)' : 'rgba(255,255,255,0.08)'}`, borderRadius:'14px', cursor:'pointer', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'0.45rem 0.85rem 0.45rem 0.55rem', background:profileMenuOpen ? 'linear-gradient(135deg,rgba(253,188,1,0.18),rgba(253,188,1,0.08))' : 'linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.08))', border:`1px solid ${profileMenuOpen ? 'rgba(253,188,1,0.35)' : 'rgba(255,255,255,0.28)'}`, borderRadius:'14px', cursor:'pointer', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)', boxShadow:profileMenuOpen ? '0 2px 12px rgba(253,188,1,0.2)' : '0 2px 10px rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.15)' }}>
                   <div className="dash-profile-text" style={{ textAlign:'right' }}>
                     <p style={{ fontFamily:'var(--font-body)', fontSize:'0.82rem', color:'#fff', margin:0, fontWeight:600, lineHeight:1.2 }}>{user?.displayName || 'Student'}</p>
                     <p style={{ fontFamily:'var(--font-body)', fontSize:'0.65rem', color:'rgba(255,255,255,0.65)', margin:'0.1rem 0 0', maxWidth:'160px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
                   </div>
                   <div style={{ position:'relative' }}>
                     {user?.photoURL ? <img src={user.photoURL} alt="" style={{ width:'42px', height:'42px', borderRadius:'50%', objectFit:'cover', border:`2.5px solid ${GOLD}`, boxShadow:'0 0 20px rgba(253,188,1,0.3)' }} /> : <div style={{ width:'42px', height:'42px', borderRadius:'50%', background:`linear-gradient(135deg,${GOLD},${GOLD_BRIGHT})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.85rem', fontWeight:800, color:DARK, border:`2.5px solid ${GOLD}`, boxShadow:'0 0 20px rgba(253,188,1,0.3)' }}>{initials}</div>}
-                    <div style={{ position:'absolute', bottom:0, right:0, width:'11px', height:'11px', borderRadius:'50%', background:'linear-gradient(135deg,#22C55E,#16A34A)', border:'2.5px solid rgba(8,18,35,0.97)', boxShadow:'0 0 6px rgba(34,197,94,0.4)' }} />
+                    <div style={{ position:'absolute', bottom:0, right:0, width:'11px', height:'11px', borderRadius:'50%', background:'linear-gradient(135deg,#22C55E,#16A34A)', border:'2.5px solid #0145A8', boxShadow:'0 0 6px rgba(34,197,94,0.4)' }} />
                   </div>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="2.5" style={{ transition:'transform 0.25s', transform:profileMenuOpen ? 'rotate(180deg)' : 'rotate(0)' }}><path d="M6 9l6 6 6-6" /></svg>
                 </div>
                 {profileMenuOpen && (
-                  <div style={{ position:'absolute', top:'calc(100% + 10px)', right:0, width:'280px', background:'linear-gradient(160deg,rgba(12,28,52,0.97),rgba(8,18,35,0.98))', backdropFilter:'blur(40px) saturate(180%)', border:'1px solid rgba(253,188,1,0.12)', borderRadius:'18px', boxShadow:'0 24px 64px rgba(0,0,0,0.5),0 0 0 1px rgba(253,188,1,0.06)', overflow:'hidden', zIndex:200, animation:'dashFadeIn 0.25s cubic-bezier(0.22,1,0.36,1) both' }}>
-                    <div style={{ padding:'1.25rem', borderBottom:'1px solid rgba(253,188,1,0.08)', background:'linear-gradient(135deg,rgba(253,188,1,0.06),rgba(1,69,168,0.03))' }}>
+                  <div style={{ position:'absolute', top:'100%', right:0, width:'280px', background:'#FFFFFF', border:'2px solid #0145A8', borderRadius:'18px', boxShadow:'0 24px 64px rgba(1,69,168,0.25),0 0 0 1px rgba(1,69,168,0.08)', overflow:'hidden', zIndex:200, animation:'dashFadeIn 0.25s cubic-bezier(0.22,1,0.36,1) both' }}>
+                    <div style={{ padding:'1.25rem', borderBottom:'1px solid rgba(1,69,168,0.15)', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(253,188,1,0.04))' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
                         {user?.photoURL ? <img src={user.photoURL} alt="" style={{ width:'50px', height:'50px', borderRadius:'50%', objectFit:'cover', border:`2.5px solid ${GOLD}`, boxShadow:'0 0 16px rgba(253,188,1,0.25)' }} /> : <div style={{ width:'50px', height:'50px', borderRadius:'50%', background:`linear-gradient(135deg,${GOLD},${GOLD_BRIGHT})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.1rem', fontWeight:800, color:DARK, border:`2.5px solid ${GOLD}`, boxShadow:'0 0 16px rgba(253,188,1,0.25)' }}>{initials}</div>}
                         <div style={{ minWidth:0 }}>
-                          <p style={{ fontFamily:'var(--font-display)', fontSize:'0.95rem', color:'#fff', margin:0, fontWeight:700 }}>{user?.displayName || 'Student'}</p>
-                          <p style={{ fontFamily:'var(--font-body)', fontSize:'0.72rem', color:'rgba(255,255,255,0.85)', margin:'0.2rem 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
+                          <p style={{ fontFamily:'var(--font-display)', fontSize:'0.95rem', color:'#0F172A', margin:0, fontWeight:700 }}>{user?.displayName || 'Student'}</p>
+                          <p style={{ fontFamily:'var(--font-body)', fontSize:'0.72rem', color:'#475569', margin:'0.2rem 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
                         </div>
                       </div>
                     </div>
@@ -485,13 +486,13 @@ export default function DashboardPage() {
                         { label:'Book Lessons', icon:I.calendar, action:() => { setProfileMenuOpen(false); switchTab('bookings') } },
                         { label:'My Courses', icon:I.book, action:() => { setProfileMenuOpen(false); switchTab('courses') } },
                       ].map(item => (
-                        <button key={item.label} onClick={item.action} style={{ display:'flex', alignItems:'center', gap:'0.7rem', padding:'0.65rem 0.8rem', width:'100%', fontFamily:'var(--font-body)', fontSize:'0.82rem', color:'rgba(255,255,255,0.85)', background:'none', border:'none', borderRadius:'10px', cursor:'pointer', textAlign:'left', transition:'all 0.2s' }}>
+                        <button key={item.label} onClick={item.action} style={{ display:'flex', alignItems:'center', gap:'0.7rem', padding:'0.65rem 0.8rem', width:'100%', fontFamily:'var(--font-body)', fontSize:'0.82rem', color:'#334155', background:'none', border:'none', borderRadius:'10px', cursor:'pointer', textAlign:'left', transition:'all 0.2s' }}>
                           {item.icon} {item.label}
                         </button>
                       ))}
                     </div>
-                    <div style={{ padding:'0.5rem', borderTop:'1px solid rgba(253,188,1,0.1)' }}>
-                      <button onClick={async () => { setProfileMenuOpen(false); await signOut(auth); navigate('/') }} style={{ display:'flex', alignItems:'center', gap:'0.7rem', padding:'0.65rem 0.8rem', width:'100%', fontFamily:'var(--font-body)', fontSize:'0.82rem', color:'#EF4444', background:'none', border:'none', borderRadius:'10px', cursor:'pointer', textAlign:'left', transition:'all 0.2s' }}>
+                    <div style={{ padding:'0.5rem', borderTop:'1px solid rgba(1,69,168,0.1)' }}>
+                      <button onClick={async () => { setProfileMenuOpen(false); await signOut(auth); navigate('/') }} style={{ display:'flex', alignItems:'center', gap:'0.7rem', padding:'0.65rem 0.8rem', width:'100%', fontFamily:'var(--font-body)', fontSize:'0.82rem', color:'#DC2626', background:'none', border:'none', borderRadius:'10px', cursor:'pointer', textAlign:'left', transition:'all 0.2s' }}>
                         {I.logout} Sign Out
                       </button>
                     </div>
@@ -503,33 +504,49 @@ export default function DashboardPage() {
         </header>
 
         <div style={{ display:'flex', flex:1 }}>
-          <div className={`dash-sidebar ${sidebarOpen ? 'dash-sidebar-open' : ''}`} style={{ width:'260px', background:'linear-gradient(180deg,#FFFFFF 0%,#FAFBFD 50%,#F5F7FB 100%)', padding:0, position:'sticky', top:'68px', height:'calc(100vh - 68px)', overflowY:'auto', flexShrink:0, transition:'left 0.4s', borderRight:'1px solid rgba(226,235,245,0.6)', display:'flex', flexDirection:'column', boxShadow:'inset -1px 0 0 rgba(255,255,255,0.8)' }}>
+          <div className={`dash-sidebar ${sidebarOpen ? 'dash-sidebar-open' : ''}`} style={{ width:'260px', background:'linear-gradient(180deg,#0c2a5e 0%,#0145A8 50%,#082048 100%)', padding:0, position:'sticky', top:'76px', height:'calc(100vh - 76px)', overflowY:'auto', flexShrink:0, transition:'left 0.4s', borderRight:'1px solid rgba(253,188,1,0.12)', display:'flex', flexDirection:'column', boxShadow:'inset -1px 0 0 rgba(253,188,1,0.05)' }}>
+            <div style={{ padding:'1.5rem 1rem 1.1rem', borderBottom:'1px solid rgba(253,188,1,0.12)', background:'linear-gradient(135deg,rgba(253,188,1,0.07),transparent 65%)' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'0.85rem' }}>
+                <div style={{ position:'relative', flexShrink:0 }}>
+                  {user?.photoURL ? <img src={user.photoURL} alt="" style={{ width:'52px', height:'52px', borderRadius:'50%', objectFit:'cover', border:'2.5px solid #FDBC01', boxShadow:'0 0 20px rgba(253,188,1,0.35)' }} /> : <div style={{ width:'52px', height:'52px', borderRadius:'50%', background:'linear-gradient(135deg,#FDBC01,#FFD54F)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem', fontWeight:800, color:'#0a1628', border:'2.5px solid #FDBC01', boxShadow:'0 0 20px rgba(253,188,1,0.35)' }}>{initials}</div>}
+                  <div style={{ position:'absolute', bottom:0, right:0, width:'13px', height:'13px', borderRadius:'50%', background:'linear-gradient(135deg,#22C55E,#16A34A)', border:'2.5px solid #0145A8', boxShadow:'0 0 6px rgba(34,197,94,0.4)' }} />
+                </div>
+                <div style={{ minWidth:0 }}>
+                  <p style={{ fontFamily:'var(--font-display)', fontSize:'0.95rem', color:'#fff', margin:0, fontWeight:700, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{user?.displayName || 'Student'}</p>
+                  <p style={{ fontFamily:'var(--font-body)', fontSize:'0.7rem', color:'rgba(255,255,255,0.6)', margin:'0.2rem 0 0', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{user?.email}</p>
+                </div>
+              </div>
+            </div>
             <nav style={{ padding:'1.25rem 0.75rem' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', padding:'0 0.75rem 0.75rem', marginBottom:'0.5rem' }}>
+                <span style={{ width:'18px', height:'2px', background:'linear-gradient(90deg,transparent,#FDBC01)', borderRadius:'2px' }} />
+                <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.18em', textTransform:'uppercase', color:'rgba(253,188,1,0.75)', fontWeight:700 }}>Menu</span>
+              </div>
               {navItems.map(item => item.link ? (
                 <a key={item.id} href={item.link} onClick={() => setSidebarOpen(false)} className="dash-nav-item" style={{ textDecoration:'none', marginBottom:'4px' }}>
-                  <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', display:'flex', alignItems:'center', justifyContent:'center' }}>{item.icon}</div>
-                  <div style={{ display:'flex', flexDirection:'column' }}><span>{item.label}</span>{item.sublabel && <span style={{ fontSize:'0.62rem', fontWeight:400, color:'#475569', marginTop:'2px' }}>{item.sublabel}</span>}</div>
+                  <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:'linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))', display:'flex', alignItems:'center', justifyContent:'center' }}>{item.icon}</div>
+                  <div style={{ display:'flex', flexDirection:'column' }}><span>{item.label}</span>{item.sublabel && <span style={{ fontSize:'0.62rem', fontWeight:400, color:'rgba(255,255,255,0.55)', marginTop:'2px' }}>{item.sublabel}</span>}</div>
                 </a>
               ) : (
                 <button key={item.id} onClick={() => switchTab(item.id)} className={`dash-nav-item ${activeTab === item.id ? 'dash-nav-active' : ''}`} style={{ marginBottom:'4px' }}>
-                  <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:activeTab === item.id ? 'linear-gradient(135deg,rgba(1,69,168,0.12),rgba(1,69,168,0.06))' : 'linear-gradient(135deg,rgba(0,0,0,0.02),rgba(0,0,0,0.01))', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.3s' }}>{item.icon}</div>
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}><span>{item.label}</span>{item.sublabel && <span style={{ fontSize:'0.62rem', fontWeight:400, color:activeTab === item.id ? '#475569' : '#475569', marginTop:'2px' }}>{item.sublabel}</span>}</div>
+                  <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:activeTab === item.id ? 'linear-gradient(135deg,rgba(253,188,1,0.25),rgba(253,188,1,0.10))' : 'linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.3s' }}>{item.icon}</div>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}><span>{item.label}</span>{item.sublabel && <span style={{ fontSize:'0.62rem', fontWeight:400, color:activeTab === item.id ? 'rgba(253,188,1,0.85)' : 'rgba(255,255,255,0.55)', marginTop:'2px' }}>{item.sublabel}</span>}</div>
                 </button>
               ))}
             </nav>
             <div style={{ padding:'0.75rem', marginTop:'auto' }}>
               <div className="dash-gold-line" />
               <button onClick={() => navigate('/')} className="dash-nav-item" style={{ marginBottom:'4px', marginTop:'0.5rem' }}>
-                <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:'linear-gradient(135deg,rgba(0,0,0,0.02),rgba(0,0,0,0.01))', display:'flex', alignItems:'center', justifyContent:'center' }}>{I.home}</div>
+                <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:'linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))', display:'flex', alignItems:'center', justifyContent:'center' }}>{I.home}</div>
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}><span>Back to Home</span></div>
               </button>
-              <button onClick={handleLogout} className="dash-nav-item" style={{ marginBottom:'1rem' }}>
-                <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:'linear-gradient(135deg,rgba(220,38,38,0.04),rgba(220,38,38,0.02))', display:'flex', alignItems:'center', justifyContent:'center' }}>{I.logout}</div>
-                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}><span>Logout</span><span style={{ fontSize:'0.62rem', fontWeight:400, color:'#475569', marginTop:'2px' }}>Sign out</span></div>
+              <button onClick={handleLogout} className="dash-nav-item dash-logout-item" style={{ marginBottom:'1rem', background:'linear-gradient(135deg,rgba(220,38,38,0.22),rgba(220,38,38,0.10))', border:'1px solid rgba(220,38,38,0.35)', color:'#FCA5A5' }}>
+                <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:'linear-gradient(135deg,#DC2626,#B91C1C)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 12px rgba(220,38,38,0.35)' }}>{I.logout}</div>
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}><span>Logout</span><span style={{ fontSize:'0.62rem', fontWeight:400, color:'rgba(252,165,165,0.75)', marginTop:'2px' }}>Sign out</span></div>
               </button>
-              <div style={{ padding:'0.85rem 1rem', background:'linear-gradient(145deg,rgba(1,69,168,0.04),rgba(253,188,1,0.02))', borderRadius:'14px', border:'1px solid rgba(1,69,168,0.06)', boxShadow:'inset 0 1px 0 rgba(255,255,255,0.8)' }}>
-                <p style={{ fontFamily:'var(--font-display)', fontSize:'0.85rem', color:'#0F172A', margin:0, fontWeight:700, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{user?.displayName || 'Student'}</p>
-                <p style={{ fontFamily:'var(--font-body)', fontSize:'0.68rem', color:'#475569', margin:'0.25rem 0 0' }}>Member since {user?.metadata?.creationTime ? new Date(user.metadata.creationTime).toLocaleDateString('en-US', { month:'numeric', day:'numeric', year:'numeric' }) : 'recently'}</p>
+              <div style={{ padding:'0.85rem 1rem', background:'linear-gradient(145deg,rgba(253,188,1,0.10),rgba(255,255,255,0.03))', borderRadius:'14px', border:'1px solid rgba(253,188,1,0.2)', boxShadow:'inset 0 1px 0 rgba(255,255,255,0.06)' }}>
+                <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'rgba(253,188,1,0.85)', margin:0, fontWeight:700 }}>Member Since</p>
+                <p style={{ fontFamily:'var(--font-body)', fontSize:'0.78rem', color:'#FFFFFF', margin:'0.3rem 0 0', fontWeight:600 }}>{user?.metadata?.creationTime ? new Date(user.metadata.creationTime).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' }) : 'Recently'}</p>
               </div>
             </div>
           </div>
@@ -704,7 +721,7 @@ export default function DashboardPage() {
               {courseDetail && (
                 <div style={{ position:'fixed', inset:0, background:'rgba(10,22,40,0.6)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem', animation:'dashFadeIn 0.3s ease' }} onClick={(e) => { if (e.target === e.currentTarget) setCourseDetail(null) }}>
                   <div style={{ background:'#fff', borderRadius:'var(--radius-xl)', width:'100%', maxWidth:'440px', boxShadow:'0 24px 80px rgba(0,0,0,0.25)', animation:'dashSlideUp 0.4s cubic-bezier(0.22,1,0.36,1)', overflow:'hidden' }}>
-                    <div style={{ background:`linear-gradient(135deg,${DARK} 0%,#1a0a3e 50%,${DARK} 100%)`, padding:'2rem', position:'relative', overflow:'hidden' }}>
+                    <div style={{ background:`linear-gradient(135deg,#0145A8 0%,#0a2a5e 50%,#0145A8 100%)`, padding:'2rem', position:'relative', overflow:'hidden' }}>
                       <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(253,188,1,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(253,188,1,0.04) 1px, transparent 1px)', backgroundSize:'24px 24px', pointerEvents:'none' }} />
                       <button onClick={() => setCourseDetail(null)} style={{ position:'absolute', top:'1rem', right:'1rem', background:'rgba(255,255,255,0.1)', border:'none', borderRadius:'50%', width:'32px', height:'32px', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#fff', fontSize:'1.1rem', zIndex:2 }}>&times;</button>
                       <div style={{ position:'relative', zIndex:1 }}>
@@ -867,11 +884,11 @@ export default function DashboardPage() {
                         <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Medications</label>
                         <input type="text" value={sMedications} onChange={e => setSMedications(e.target.value)} className="dash-input" />
                       </div>
-                      <div style={{ gridColumn:'1 / 2' }}>
+                      <div style={{ gridColumn:'1 / -1' }}>
                         <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Address</label>
                         <textarea value={sAddress} onChange={e => setSAddress(e.target.value)} rows="3" className="dash-input" style={{ resize:'vertical' }} />
                       </div>
-                      <div style={{ gridColumn:'1 / 2' }}>
+                      <div style={{ gridColumn:'1 / -1' }}>
                         <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Notes</label>
                         <textarea value={sNotes} onChange={e => setSNotes(e.target.value)} rows="3" className="dash-input" style={{ resize:'vertical' }} />
                       </div>
