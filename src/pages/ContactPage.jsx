@@ -17,8 +17,6 @@ const CONTACTS = [
     label: 'Call Us',
     sublabel: 'Text only please',
     valueKey: 'phone',
-    hrefKey: 'tel:',
-    hrefPrefix: 'tel:+',
     icon: 'M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z',
   },
   {
@@ -36,7 +34,6 @@ const CONTACTS = [
     sublabel: 'DMV Licensed since 1989',
     valueKey: 'address',
     subvalueKey: 'subaddress',
-    hrefKey: 'https://maps.google.com/?q=',
     icon: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5',
   },
   {
@@ -493,7 +490,17 @@ export default function ContactPage() {
               const internal = c.href
               const val = internal ? (c.display || '') : (settings ? settings[c.valueKey] || c.fallback || '' : '')
               const subval = c.subvalueKey && settings ? settings[c.subvalueKey] || '' : ''
-              const href = internal || (c.hrefPrefix ? c.hrefPrefix + val : (settings ? settings[c.hrefKey] || '' : ''))
+              const href = internal || (() => {
+                if (c.key === 'call') {
+                  const p = (settings && settings.phone) || ''
+                  return `tel:${p.replace(/[^+\d]/g, '')}`
+                }
+                if (c.key === 'visit') {
+                  const q = [settings && settings.address, settings && settings.subaddress].filter(Boolean).join(' ').trim()
+                  return q ? `https://maps.google.com/?q=${encodeURIComponent(q)}` : ''
+                }
+                return c.hrefPrefix ? c.hrefPrefix + val : (settings ? settings[c.hrefKey] || '' : '')
+              })()
               const inner = (
                 <>
                   <div className="c-icon-wrap">
