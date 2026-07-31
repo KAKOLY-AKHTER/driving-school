@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Nav from './components/Nav'
 import Footer from './components/Footer'
 import Home from './pages/Home'
+import AboutPage from './pages/AboutPage'
 import PricingPage from './pages/PricingPage'
 import ContactPage from './pages/ContactPage'
 import RegisterPage from './pages/RegisterPage'
@@ -87,6 +88,7 @@ function AppRoutes() {
       <main style={{ minHeight: hideShell ? 'auto' : '100vh', display: 'flex', flexDirection: 'column' }}>
         <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/about" element={<AboutPage />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/register" element={<RegisterPage />} />
