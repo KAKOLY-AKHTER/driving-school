@@ -287,7 +287,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
           <div style={{ overflow: 'auto', marginInline: '-1rem', paddingInline: '1rem' }}>
             <div className="price-scroll">
               {TIERS.map((tier) => (
-                <div key={tier.id} className={`price-card${light ? ' price-card-light' : ''}`}>
+                <div key={tier.id} className={`price-card${light ? ' price-card-light' : ''}${tier.planName === 'IDEAL FOR STUDENTS' ? ' price-card-highlight' : ''}`}>
                   {/* Plan Name */}
                   <h3 style={{
                     fontFamily: 'var(--font-display)',
@@ -398,7 +398,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                         )}
                         <span style={{
                           fontFamily: 'var(--font-body)',
-                          color: opt.permission === 'Included' ? 'rgba(10,22,40,0.75)' : opt.permission === 'Not Included' ? 'rgba(10,22,40,0.3)' : 'rgba(10,22,40,0.4)',
+                          color: opt.permission === 'Included' ? 'rgba(10,22,40,0.75)' : opt.permission === 'Not Included' ? 'rgba(10,22,40,0.45)' : 'rgba(10,22,40,0.4)',
                           fontSize: '0.85rem',
                           lineHeight: 1.5,
                           textDecoration: opt.permission === 'Not Included' ? 'line-through' : 'none',
