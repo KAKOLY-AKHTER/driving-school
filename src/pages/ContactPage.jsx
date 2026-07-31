@@ -347,7 +347,7 @@ export default function ContactPage() {
         animation: 'cBgPan 12s ease-in-out infinite',
         position: 'relative',
         overflow: 'hidden',
-        paddingTop: '12rem',
+        paddingTop: '14rem',
         paddingBottom: '6rem',
         minHeight: '600px',
       }}>
