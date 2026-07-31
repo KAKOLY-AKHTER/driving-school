@@ -656,35 +656,35 @@ const DEFAULT_SOCIALS = [
 ]
 
 const DEFAULT_PRICING = [
-  { id: '1', planName: 'TEEN ONLINE DRIVERS ED', planPrice: '$24.99', planPriceTwo: '$24.99', options: [
+  { id: '1', planName: 'TEEN ONLINE DRIVERS ED', planPrice: '$39.99', planPriceTwo: '$39.99', options: [
     { text: 'CA DMV- Approved For Permit', permission: 'Included' },
     { text: 'Guaranteed to Pass!', permission: 'Included' },
     { text: 'Complete in Section, Easy & Convenient', permission: 'Included' },
     { text: 'Get Certificate of Completion', permission: 'Included' },
     { text: 'Fast Certificate Processing..', permission: 'Included' },
   ], order: 0 },
-  { id: '2', planName: 'BASIC PLAN', planPrice: '$156', planPriceTwo: '$195', options: [
+  { id: '2', planName: 'BASIC PLAN', planPrice: '$210', planPriceTwo: '$210', options: [
     { text: 'Online Course', permission: 'Included' },
     { text: '2 hours professional Training only', permission: 'Included' },
     { text: '2 Hours Behind-the-Wheel', permission: 'Included' },
     { text: '6-Hour Behind-the-Wheel-Training', permission: 'Not Included' },
     { text: '10-Hour Behind-the-Wheel-Training', permission: 'Not Included' },
   ], order: 1 },
-  { id: '3', planName: 'ESSENTIAL PLAN', planPrice: '$445', planPriceTwo: '$499', options: [
+  { id: '3', planName: 'ESSENTIAL PLAN', planPrice: '$599', planPriceTwo: '$599', options: [
     { text: 'Online Course', permission: 'Included' },
     { text: 'Behind the wheel only', permission: 'Included' },
     { text: '2 Hours Behind-the-Wheel', permission: 'Not Included' },
     { text: '6-Hour Behind-the-Wheel-Training', permission: 'Included' },
     { text: 'We will provide the required DL 400D certificate. (Teens Only)', permission: 'Included' },
   ], order: 2 },
-  { id: '4', planName: 'IDEAL FOR STUDENTS', planPrice: '$475', planPriceTwo: '$575', options: [
+  { id: '4', planName: 'IDEAL FOR STUDENTS', planPrice: '$615', planPriceTwo: '$615', options: [
     { text: 'Online Course', permission: 'Included' },
     { text: 'Everything you need to get licensed! Our most popular package!', permission: 'Included' },
     { text: 'Will provide a DL 400C certificate for the online course.', permission: 'Included' },
     { text: '6-Hour Behind-the-Wheel-Training', permission: 'Included' },
     { text: "You'll receive the DL 400D certificate (Teens Only)", permission: 'Included' },
   ], order: 3 },
-  { id: '5', planName: 'PREMIER PLAN', planPrice: '$749', planPriceTwo: '$890', options: [
+  { id: '5', planName: 'PREMIER PLAN', planPrice: '$999', planPriceTwo: '$999', options: [
     { text: 'Online Course', permission: 'Included' },
     { text: '6 Hours Behind-the-Wheel', permission: 'Included' },
     { text: 'Plus 4 Extra hours!', permission: 'Included' },
