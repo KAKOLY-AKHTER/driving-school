@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useSiteSettings, phoneHref } from '../useSiteSettings'
 
 const GOLD = '#FDBC01'
@@ -165,10 +166,8 @@ export default function CTABanner() {
             </p>
 
             {/* CTA Button */}
-            <a
-              href={settings.scheduleLink}
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              to="/schedule"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -198,7 +197,7 @@ export default function CTABanner() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
-            </a>
+            </Link>
 
             {/* Divider */}
             <div style={{

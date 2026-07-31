@@ -155,8 +155,8 @@ export default function Footer() {
                 <li><Link to="/#programs" className="ft-link">Programs</Link></li>
                 <li><Link to="/#pricing" className="ft-link">Pricing</Link></li>
                 <li><Link to="/#route" className="ft-link">The Route</Link></li>
-                <li><a href="https://www.aprecisiondrivingschool.com/script/register.php" target="_blank" rel="noopener noreferrer" className="ft-link ft-link-gold">Online Drivers Ed</a></li>
-                <li><a href="https://aprecisiondrivingschool.com/schedule/my_account.html" target="_blank" rel="noopener noreferrer" className="ft-link">Student Login</a></li>
+                <li><Link to="/register" className="ft-link ft-link-gold">Online Drivers Ed</Link></li>
+                <li><Link to="/login" className="ft-link">Student Login</Link></li>
               </ul>
             </div>
 
@@ -167,7 +167,7 @@ export default function Footer() {
                 <li><Link to="/#programs" className="ft-link">Teenager Lessons</Link></li>
                 <li><Link to="/#programs" className="ft-link">Adult Lessons</Link></li>
                 <li><Link to="/#pricing" className="ft-link">Behind-the-Wheel</Link></li>
-                <li><a href="https://www.aprecisiondrivingschool.com/script/register.php" target="_blank" rel="noopener noreferrer" className="ft-link">Online Drivers Ed</a></li>
+                <li><Link to="/register" className="ft-link">Online Drivers Ed</Link></li>
                 <li><Link to="/#contact" className="ft-link">Free Pickup & Drop</Link></li>
               </ul>
             </div>

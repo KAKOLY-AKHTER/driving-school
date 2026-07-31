@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useSiteSettings } from '../useSiteSettings'
+import { Link } from 'react-router-dom'
 
 const progCSS = `
   .prog-card {
@@ -78,7 +78,7 @@ const progCSS = `
   }
 `
 
-function buildPrograms(settings) {
+function buildPrograms() {
   return [
   {
     id: 'teens',
@@ -94,7 +94,7 @@ function buildPrograms(settings) {
     policyTitle: 'Important Requirements & Fees',
     policy: 'The permit must come to every lesson — it\'s the student\'s responsibility to bring it. A missed permit or late cancellation carries a $60 fee; a flat $60 processing fee applies to any refund.',
     cta: 'Book Teen Lessons',
-    href: settings.scheduleLink,
+    href: '/schedule',
     gradient: 'linear-gradient(90deg, #0145A8, #0145A8)',
     tagBg: '#0145A8',
     tagColor: '#ffffff',
@@ -113,7 +113,7 @@ function buildPrograms(settings) {
     policyTitle: 'Communication Policy',
     policy: 'Questions go to text only — please don\'t call or leave a voicemail. We reply by text or email, usually the same day.',
     cta: 'Book Adult Lessons',
-    href: settings.scheduleLink,
+    href: '/schedule',
     gradient: 'linear-gradient(90deg, #FDBC01, #FDBC01)',
     tagBg: '#FDBC01',
     tagColor: '#0145A8',
@@ -123,8 +123,7 @@ function buildPrograms(settings) {
 
 export default function Programs() {
   const [openId, setOpenId] = useState(null)
-  const settings = useSiteSettings()
-  const PROGRAMS = buildPrograms(settings)
+  const PROGRAMS = buildPrograms()
 
   return (
     <section id="programs" className="section-pad" style={{ backgroundColor: '#ffffff' }}>
@@ -207,9 +206,9 @@ export default function Programs() {
                   </div>
                 </div>
 
-                <a href={prog.href} target="_blank" rel="noopener noreferrer" className="btn-gold" style={{ display: 'inline-flex' }}>
+                <Link to={prog.href} className="btn-gold" style={{ display: 'inline-flex' }}>
                   {prog.cta}
-                </a>
+                </Link>
               </div>
 
             </div>

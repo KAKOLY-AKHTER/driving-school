@@ -1,4 +1,4 @@
-import { useSiteSettings } from '../useSiteSettings'
+import { Link } from 'react-router-dom'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -6,14 +6,14 @@ const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
 
-function buildSteps(settings) {
+function buildSteps() {
   return [
   {
     mile: '01',
     title: 'Online Driver\'s Ed',
     desc: 'State-approved coursework, paced on your schedule. Finish it from any device before you ever touch a wheel.',
     cta: 'Sign up for online ed',
-    href: 'https://www.aprecisiondrivingschool.com/script/register.php',
+    href: '/register',
     img: '/card1.png',
   },
   {
@@ -22,6 +22,7 @@ function buildSteps(settings) {
     desc: 'Walk into the DMV prepared, not hopeful. Our course is built around exactly what the written test covers.',
     cta: 'Visit dmv.ca.gov',
     href: 'https://www.dmv.ca.gov/',
+    external: true,
     img: '/card2.png',
   },
   {
@@ -29,15 +30,14 @@ function buildSteps(settings) {
     title: 'Behind-the-Wheel Training',
     desc: 'Three lessons, one instructor, real streets. Lesson 1 is fundamentals & defensive driving, lesson 2 is parking in every form, lesson 3 is the freeway.',
     cta: 'Schedule your lessons',
-    href: settings.scheduleLink,
+    href: '/schedule',
     img: '/card3.png',
   },
 ]
 }
 
 export default function TheRoute() {
-  const settings = useSiteSettings()
-  const STEPS = buildSteps(settings)
+  const STEPS = buildSteps()
   return (
     <>
       <style>{`
@@ -289,9 +289,15 @@ export default function TheRoute() {
                     </div>
 
                     {/* CTA */}
-                    <a href={step.href} target="_blank" rel="noopener noreferrer" className="route-cta">
-                      {step.cta}
-                    </a>
+                    {step.external ? (
+                      <a href={step.href} target="_blank" rel="noopener noreferrer" className="route-cta">
+                        {step.cta}
+                      </a>
+                    ) : (
+                      <Link to={step.href} className="route-cta">
+                        {step.cta}
+                      </Link>
+                    )}
                   </div>
 
                 </div>

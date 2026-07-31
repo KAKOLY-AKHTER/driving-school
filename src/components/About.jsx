@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useSiteSettings } from '../useSiteSettings'
 
 const GOLD = '#FDBC01'
@@ -298,10 +299,8 @@ export default function About() {
               </div>
 
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                <a
-                  href={settings.scheduleLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  to="/schedule"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -330,11 +329,9 @@ export default function About() {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
-                </a>
-                <a
-                  href="https://www.aprecisiondrivingschool.com/script/register.php"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                </Link>
+                <Link
+                  to="/register"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -361,7 +358,7 @@ export default function About() {
                   }}
                 >
                   Online Drivers Ed
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -599,10 +596,8 @@ export default function About() {
               ))}
             </div>
 
-            <a
-              href={settings.scheduleLink}
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              to="/schedule"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -631,7 +626,7 @@ export default function About() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
-            </a>
+            </Link>
           </div>
         </div>
       </section>
