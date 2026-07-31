@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { signInWithEmailAndPassword, signInWithPopup, sendPasswordResetEmail } from 'firebase/auth'
 import { auth, googleProvider } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
+import { usePageMeta } from '../usePageMeta'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -11,6 +12,7 @@ const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
 
 export default function LoginPage() {
+  usePageMeta('Login — A Precision Driving School', 'Log in to your A Precision Driving School student account to manage lessons, courses and payments.')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')

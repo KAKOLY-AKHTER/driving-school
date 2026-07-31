@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSiteSettings } from '../useSiteSettings'
 
 const progCSS = `
   .prog-card {
@@ -77,7 +78,8 @@ const progCSS = `
   }
 `
 
-const PROGRAMS = [
+function buildPrograms(settings) {
+  return [
   {
     id: 'teens',
     label: 'Teenagers',
@@ -92,7 +94,7 @@ const PROGRAMS = [
     policyTitle: 'Important Requirements & Fees',
     policy: 'The permit must come to every lesson — it\'s the student\'s responsibility to bring it. A missed permit or late cancellation carries a $60 fee; a flat $60 processing fee applies to any refund.',
     cta: 'Book Teen Lessons',
-    href: 'https://www.aprecisiondrivingschool.com/schedule/cart_home.html',
+    href: settings.scheduleLink,
     gradient: 'linear-gradient(90deg, #0145A8, #0145A8)',
     tagBg: '#0145A8',
     tagColor: '#ffffff',
@@ -111,15 +113,18 @@ const PROGRAMS = [
     policyTitle: 'Communication Policy',
     policy: 'Questions go to text only — please don\'t call or leave a voicemail. We reply by text or email, usually the same day.',
     cta: 'Book Adult Lessons',
-    href: 'https://www.aprecisiondrivingschool.com/schedule/cart_home.html',
+    href: settings.scheduleLink,
     gradient: 'linear-gradient(90deg, #FDBC01, #FDBC01)',
     tagBg: '#FDBC01',
     tagColor: '#0145A8',
   }
 ]
+}
 
 export default function Programs() {
   const [openId, setOpenId] = useState(null)
+  const settings = useSiteSettings()
+  const PROGRAMS = buildPrograms(settings)
 
   return (
     <section id="programs" className="section-pad" style={{ backgroundColor: '#ffffff' }}>

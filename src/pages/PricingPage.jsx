@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { api } from '../api'
 import Pricing from '../components/Pricing'
+import { usePageMeta } from '../usePageMeta'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -11,6 +12,10 @@ const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
 
 export default function PricingPage() {
+  usePageMeta(
+    'Packages & Pricing — A Precision Driving School San Ramon CA',
+    'Compare driving school packages: online drivers ed, 2, 6 and 10-hour behind-the-wheel training, DMV drive test car rental and freeway focused courses. 99% pass rate, free pickup & drop.'
+  )
   const { user } = useAuth()
   const navigate = useNavigate()
   const [step, setStep] = useState(null)
@@ -42,6 +47,7 @@ export default function PricingPage() {
         status: 'Enrolled',
         progress: 0,
         enrolledAt: new Date().toISOString(),
+        email: user.email,
       }
       const result = await api.addCourse(user.uid, course)
       if (result.ok) {

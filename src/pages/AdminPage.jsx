@@ -5,6 +5,7 @@ import { auth } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
 import { api, makeEmbedCode } from '../api'
 import { DEFAULT_SOCIALS, SOCIAL_PLATFORMS, socialIcon, socialPlatformLabel } from '../socials'
+import { usePageMeta } from '../usePageMeta'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -48,6 +49,7 @@ const SVG = {
 }
 
 export default function AdminPage() {
+  usePageMeta('Admin Panel — A Precision Driving School', 'A Precision Driving School admin panel.')
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -153,7 +155,8 @@ export default function AdminPage() {
   const handleAddCourse = async (uid) => {
     if (!selectedCourseId) return
     const courseName = COURSE_MAP[selectedCourseId] || selectedCourseId
-    const course = { id: selectedCourseId, title: courseName, status: 'Enrolled', progress: 0, enrolledAt: new Date().toISOString() }
+    const targetUser = users.find(u => u.uid === uid)
+    const course = { id: selectedCourseId, title: courseName, status: 'Enrolled', progress: 0, enrolledAt: new Date().toISOString(), email: targetUser?.email || '' }
     try {
       const result = await api.addCourse(uid, course)
       setUsers(prev => prev.map(u => u.uid === uid ? { ...u, courses: result.courses || [] } : u))

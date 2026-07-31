@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
 import { auth } from '../firebase'
 import { api } from '../api'
+import { usePageMeta } from '../usePageMeta'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -39,6 +40,10 @@ const STEPS = [
 ]
 
 export default function RegisterPage() {
+  usePageMeta(
+    'Register — A Precision Driving School | Online Drivers Ed & Lessons',
+    'Register with A Precision Driving School for online drivers ed, behind-the-wheel training and DMV test prep in San Ramon, CA. 99% first-time pass rate.'
+  )
   const [step, setStep] = useState(0)
   const [regError, setRegError] = useState('')
   const [regLoading, setRegLoading] = useState(false)

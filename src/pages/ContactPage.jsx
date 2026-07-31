@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import ServiceAreas from '../components/ServiceAreas'
 import { makeEmbedCode } from '../api'
+import { usePageMeta } from '../usePageMeta'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -55,6 +56,10 @@ const TRUST = [
 ]
 
 export default function ContactPage() {
+  usePageMeta(
+    'Contact Us — A Precision Driving School San Ramon CA',
+    'Contact A Precision Driving School in San Ramon, CA. Call or text +1 925 329 1736 or email aprecisiondrivingschool@gmail.com. Serving San Ramon, Dublin, Danville, Pleasanton, Livermore.'
+  )
   const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', email: '', comments: '' })
   const [formLoading, setFormLoading] = useState(false)
   const [formMsg, setFormMsg] = useState('')

@@ -1,4 +1,6 @@
 import { useNavigate, Link } from 'react-router-dom'
+import { useSiteSettings } from '../useSiteSettings'
+import { usePageMeta } from '../usePageMeta'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -36,7 +38,12 @@ const PACKAGES = [
 ]
 
 export default function SchedulePage() {
+  usePageMeta(
+    'Book Driving Lessons — A Precision Driving School',
+    'Book your behind-the-wheel driving lessons in San Ramon, CA. Choose from basic, essential, ideal and premier packages. Free pickup & drop, DMV-licensed instructors.'
+  )
   const navigate = useNavigate()
+  const settings = useSiteSettings()
   return (
     <>
       <style>{`
@@ -385,7 +392,7 @@ export default function SchedulePage() {
             marginInline: 'auto', lineHeight: 1.7, marginBottom: '2rem',
           }}>
             Choose a package and register online. For live chat call{' '}
-            <span style={{ color: GOLD, fontWeight: 700 }}>925-329-1736</span> (9am–5pm)
+            <span style={{ color: GOLD, fontWeight: 700 }}>{settings.phone.replace('+1 ', '')}</span> (9am–5pm)
           </p>
 
           {/* Trust Stats */}

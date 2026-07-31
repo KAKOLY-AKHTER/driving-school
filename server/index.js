@@ -4,6 +4,7 @@ import express from 'express'
 import cors from 'cors'
 import { MongoClient, ObjectId } from 'mongodb'
 import Groq from 'groq-sdk'
+import { sendBookingConfirmation, sendEnrollmentConfirmation, sendContactNotification } from './mail.js'
 
 dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1'])
 
@@ -45,6 +46,7 @@ app.post('/api/contact', async (req, res) => {
       return res.status(400).json({ error: 'All fields required' })
     }
     await contactCol.insertOne({ ...req.body, createdAt: new Date().toISOString() })
+    sendContactNotification(req.body)
     res.json({ ok: true })
   } catch (e) {
     res.status(500).json({ error: e.message })
@@ -100,6 +102,9 @@ app.post('/api/bookings', async (req, res) => {
       createdAt: new Date().toISOString(),
     }
     const result = await bookingsCol.insertOne(booking)
+    const bookingUser = await usersCol.findOne({ uid: req.body.userId })
+    const toEmail = bookingUser?.email || req.body.email
+    sendBookingConfirmation({ to: toEmail, date: booking.date, timeSlot: booking.timeSlot })
     res.json({ ...booking, _id: result.insertedId })
   } catch (e) {
     res.status(500).json({ error: e.message })
@@ -131,6 +136,8 @@ app.post('/api/users/:uid/courses', async (req, res) => {
       { upsert: true }
     )
     const updated = await usersCol.findOne({ uid })
+    const toEmail = updated?.email || user?.email || req.body.email
+    sendEnrollmentConfirmation({ to: toEmail, courseTitle: course.title, price: course.price })
     res.json({ ok: true, courses: updated?.courses || [] })
   } catch (e) {
     res.status(500).json({ error: e.message })

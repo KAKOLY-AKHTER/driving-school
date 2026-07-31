@@ -1,10 +1,13 @@
+import { useSiteSettings } from '../useSiteSettings'
+
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
 const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
 
-const STEPS = [
+function buildSteps(settings) {
+  return [
   {
     mile: '01',
     title: 'Online Driver\'s Ed',
@@ -26,12 +29,15 @@ const STEPS = [
     title: 'Behind-the-Wheel Training',
     desc: 'Three lessons, one instructor, real streets. Lesson 1 is fundamentals & defensive driving, lesson 2 is parking in every form, lesson 3 is the freeway.',
     cta: 'Schedule your lessons',
-    href: 'https://www.aprecisiondrivingschool.com/schedule/cart_home.html',
+    href: settings.scheduleLink,
     img: '/card3.png',
   },
 ]
+}
 
 export default function TheRoute() {
+  const settings = useSiteSettings()
+  const STEPS = buildSteps(settings)
   return (
     <>
       <style>{`

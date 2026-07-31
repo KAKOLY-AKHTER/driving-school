@@ -4,6 +4,7 @@ import { signOut, updateProfile, reauthenticateWithCredential, EmailAuthProvider
 import { auth } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
 import { api } from '../api'
+import { usePageMeta } from '../usePageMeta'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -47,6 +48,7 @@ const I = {
 }
 
 export default function DashboardPage() {
+  usePageMeta('Student Dashboard — A Precision Driving School', 'Manage your driving courses, lesson bookings and payments with A Precision Driving School.')
   const { user, isAdmin } = useAuth()
   const navigate = useNavigate()
   const [phone, setPhone] = useState('')
@@ -155,7 +157,7 @@ export default function DashboardPage() {
     setBookingLoading(true)
     try {
       const today = new Date().toISOString().split('T')[0]
-      const newBooking = await api.createBooking({ userId: user.uid, date: bookingDate, timeSlot: bookingSlot, status: bookingDate < today ? 'completed' : 'scheduled' })
+      const newBooking = await api.createBooking({ userId: user.uid, email: user.email, date: bookingDate, timeSlot: bookingSlot, status: bookingDate < today ? 'completed' : 'scheduled' })
       setBookings(prev => [newBooking, ...prev]); setBookingDate(''); setBookingSlot(''); setMsg('Lesson booked successfully!'); setTimeout(() => setMsg(''), 2000)
     } catch { setMsg('Failed to book lesson.') }
     setBookingLoading(false)
