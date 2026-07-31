@@ -378,12 +378,11 @@ export default function DashboardPage() {
         .dash-sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(10,22,40,0.7); backdrop-filter:blur(12px) saturate(120%); z-index:998; }
         .dash-hamburger { display:none; }
         .dash-card-premium { background:#ffffff; border:1px solid #E2EBF5; border-radius:22px; padding:1.75rem; box-shadow:0 4px 16px rgba(0,0,0,0.04); position:relative; overflow:hidden; transition:all 0.5s cubic-bezier(0.22,1,0.36,1); }
-        .dash-card-premium::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.6),transparent 40%); pointer-events:none; border-radius:22px; }
         .dash-card-premium:hover { box-shadow:0 4px 8px rgba(0,0,0,0.03),0 16px 48px rgba(0,0,0,0.07); transform:translateY(-2px); }
         .dash-table-row { transition:all 0.3s cubic-bezier(0.22,1,0.36,1); }
         .dash-table-row:hover { background:linear-gradient(135deg,rgba(1,69,168,0.02),rgba(253,188,1,0.02)) !important; }
-        .dash-input { width:100%; padding:0.9rem 1.2rem; border-radius:14px; border:1.5px solid #E8EDF4; outline:none; font-family:var(--font-body); font-size:0.9rem; color:#0F172A; box-sizing:border-box; background:linear-gradient(145deg,#FAFBFD,#fff); transition:all 0.35s cubic-bezier(0.22,1,0.36,1); }
-        .dash-input:focus { border-color:rgba(1,69,168,0.35); box-shadow:0 0 0 3px rgba(1,69,168,0.06),0 4px 16px rgba(1,69,168,0.06); background:linear-gradient(145deg,#fff,#F8FAFD); }
+        .dash-input { width:100%; padding:0.9rem 1.2rem; border-radius:14px; border:1.5px solid #E8EDF4; outline:none; font-family:var(--font-body); font-size:1.05rem; color:#0F172A; box-sizing:border-box; background:#ffffff; transition:all 0.35s cubic-bezier(0.22,1,0.36,1); }
+        .dash-input:focus { border-color:rgba(1,69,168,0.35); box-shadow:0 0 0 3px rgba(1,69,168,0.06),0 4px 16px rgba(1,69,168,0.06); background:#ffffff; }
         .dash-btn-primary { background:linear-gradient(135deg,${SKY_BLUE},#0a2a5e); color:#fff; padding:0.9rem 2rem; border-radius:14px; border:none; font-family:var(--font-body); fontSize:0.9rem; font-weight:600; cursor:pointer; transition:all 0.4s cubic-bezier(0.22,1,0.36,1); box-shadow:0 4px 16px rgba(1,69,168,0.2),inset 0 1px 0 rgba(255,255,255,0.1); position:relative; overflow:hidden; }
         .dash-btn-primary::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.15),transparent 50%); pointer-events:none; }
         .dash-btn-primary:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(1,69,168,0.3),inset 0 1px 0 rgba(255,255,255,0.15); }
