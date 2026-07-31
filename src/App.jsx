@@ -41,8 +41,21 @@ function LayoutSetup({ children }) {
   const observerRef = useRef(null)
 
   useEffect(() => {
+    if (location.hash) {
+      const id = location.hash.slice(1)
+      const timeout = setTimeout(() => {
+        const el = document.getElementById(id)
+        if (el) {
+          const top = el.getBoundingClientRect().top + window.scrollY - 180
+          window.scrollTo({ top, behavior: 'smooth' })
+        } else {
+          window.scrollTo(0, 0)
+        }
+      }, 150)
+      return () => clearTimeout(timeout)
+    }
     window.scrollTo(0, 0)
-  }, [location.pathname])
+  }, [location.pathname, location.hash])
 
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect()

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import ServiceAreas from '../components/ServiceAreas'
 import { makeEmbedCode } from '../api'
 import { usePageMeta } from '../usePageMeta'
@@ -42,8 +43,8 @@ const CONTACTS = [
     key: 'schedule',
     label: 'Schedule Online',
     sublabel: 'Book your lessons 24/7',
-    valueKey: 'scheduleLabel',
-    hrefKey: 'scheduleLink',
+    href: '/schedule',
+    display: 'Book Online 24/7',
     icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
   },
 ]
@@ -489,18 +490,12 @@ export default function ContactPage() {
             marginBottom: '4rem',
           }}>
             {CONTACTS.map((c) => {
-              const val = settings ? settings[c.valueKey] || c.fallback || '' : ''
+              const internal = c.href
+              const val = internal ? (c.display || '') : (settings ? settings[c.valueKey] || c.fallback || '' : '')
               const subval = c.subvalueKey && settings ? settings[c.subvalueKey] || '' : ''
-              const href = c.hrefPrefix ? c.hrefPrefix + val : (settings ? settings[c.hrefKey] || '' : '')
-              return (
-                <a
-                  key={c.key}
-                  href={href}
-                  target={href.startsWith('http') ? '_blank' : undefined}
-                  rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                  className="c-contact-card"
-                  style={{ textDecoration: 'none', color: 'inherit' }}
-                >
+              const href = internal || (c.hrefPrefix ? c.hrefPrefix + val : (settings ? settings[c.hrefKey] || '' : ''))
+              const inner = (
+                <>
                   <div className="c-icon-wrap">
                     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d={c.icon} />
@@ -525,13 +520,15 @@ export default function ContactPage() {
                     marginBottom: '0.6rem',
                   }}>{c.label}</h3>
 
-                  <p style={{
-                    fontFamily: 'var(--font-body)',
-                    fontSize: '0.9rem',
-                    color: SKY_BLUE,
-                    fontWeight: 600,
-                    wordBreak: 'break-word',
-                  }}>{val}</p>
+                  {val && (
+                    <p style={{
+                      fontFamily: 'var(--font-body)',
+                      fontSize: '0.9rem',
+                      color: SKY_BLUE,
+                      fontWeight: 600,
+                      wordBreak: 'break-word',
+                    }}>{val}</p>
+                  )}
 
                   {subval && (
                     <p style={{
@@ -541,6 +538,27 @@ export default function ContactPage() {
                       marginTop: '0.15rem',
                     }}>{subval}</p>
                   )}
+                </>
+              )
+              return internal ? (
+                <Link
+                  key={c.key}
+                  to={internal}
+                  className="c-contact-card"
+                  style={{ textDecoration: 'none', color: 'inherit' }}
+                >
+                  {inner}
+                </Link>
+              ) : (
+                <a
+                  key={c.key}
+                  href={href}
+                  target={href.startsWith('http') ? '_blank' : undefined}
+                  rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                  className="c-contact-card"
+                  style={{ textDecoration: 'none', color: 'inherit' }}
+                >
+                  {inner}
                 </a>
               )
             })}
