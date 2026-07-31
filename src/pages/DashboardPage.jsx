@@ -401,6 +401,24 @@ export default function DashboardPage() {
           .dash-hero-grid > * { grid-column:span 1 !important; }
         }
         @media (max-width:480px) { .dash-slot-grid { grid-template-columns:1fr !important; } }
+        @media (max-width:900px) {
+          .dash-grid { grid-template-columns:1fr !important; }
+          .dash-chat-wrap { flex-direction:column !important; height:auto !important; }
+          .dash-chat-list { width:100% !important; max-height:240px !important; }
+          .dash-chat-box { min-height:440px !important; }
+          .dash-hero-grid > * { grid-row:auto !important; }
+        }
+        @media (max-width:600px) {
+          .dash-bell, .dash-header-divider { display:none !important; }
+          .dash-profile-text { display:none !important; }
+          .dash-profile-card { flex-wrap:wrap !important; }
+          .dash-stat-grid { grid-template-columns:1fr !important; }
+          .dash-form-grid { grid-template-columns:1fr !important; }
+          .dash-modal-grid { grid-template-columns:1fr !important; }
+          .dash-chat-sugg { grid-template-columns:1fr !important; }
+          .dash-course-card { flex-wrap:wrap !important; padding:1rem !important; gap:1rem !important; }
+          .dash-course-card .dash-course-icon { width:44px !important; height:44px !important; font-size:0.8rem !important; }
+        }
         .dash-course-card { display:flex; align-items:center; background:linear-gradient(135deg,rgba(255,255,255,0.98),#FAFBFD); padding:1.25rem 1.5rem; border-radius:16px; border:1px solid #E8EDF4; gap:1.5rem; transition:all 0.4s cubic-bezier(0.22,1,0.36,1); position:relative; overflow:hidden; }
         .dash-course-card::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(1,69,168,0.02),rgba(253,188,1,0.02)); opacity:0; transition:opacity 0.4s; border-radius:16px; pointer-events:none; }
         .dash-course-card::after { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,${GOLD},${SKY_BLUE},transparent); opacity:0; transition:opacity 0.4s; }
@@ -417,7 +435,7 @@ export default function DashboardPage() {
 
         <header style={{ position:'sticky', top:0, zIndex:100, background:'linear-gradient(135deg,rgba(8,18,35,0.97),rgba(12,28,52,0.97))', backdropFilter:'blur(40px) saturate(200%)', boxShadow:'0 4px 30px rgba(0,0,0,0.35),0 1px 0 rgba(253,188,1,0.08),inset 0 -1px 0 rgba(253,188,1,0.06)' }}>
           <div style={{ height:'2.5px', background:`linear-gradient(90deg,transparent 5%,${GOLD} 20%,${GOLD_BRIGHT} 35%,#fff 50%,${GOLD_BRIGHT} 65%,${GOLD} 80%,transparent 95%)` }} />
-          <div style={{ padding:'0 2rem', display:'flex', alignItems:'center', justifyContent:'space-between', height:'64px' }}>
+          <div style={{ padding:'0 clamp(0.75rem,3vw,2rem)', display:'flex', alignItems:'center', justifyContent:'space-between', height:'64px' }}>
             <div style={{ display:'flex', alignItems:'center', gap:'1.25rem' }}>
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="dash-hamburger" style={{ width:'40px', height:'40px', background:'rgba(253,188,1,0.08)', border:'1px solid rgba(253,188,1,0.15)', borderRadius:'10px', cursor:'pointer', alignItems:'center', justifyContent:'center', transition:'all 0.2s', flexShrink:0 }}>
                 {sidebarOpen ? I.close : I.menu}
@@ -433,14 +451,14 @@ export default function DashboardPage() {
               </div>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:'1rem' }}>
-              <button style={{ width:'42px', height:'42px', background:'linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)' }}>
+              <button className="dash-bell" style={{ width:'42px', height:'42px', background:'linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)' }}>
                 <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" /></svg>
                 {upcomingBookings.length > 0 && <div style={{ position:'absolute', top:'8px', right:'8px', width:'9px', height:'9px', borderRadius:'50%', background:'linear-gradient(135deg,#22C55E,#16A34A)', border:'2px solid rgba(12,28,52,0.97)', animation:'dashPulse 2s ease-in-out infinite', boxShadow:'0 0 8px rgba(34,197,94,0.5)' }} />}
               </button>
-              <div style={{ width:'1px', height:'28px', background:'linear-gradient(180deg,transparent,rgba(253,188,1,0.2),transparent)' }} />
-              <div style={{ position:'relative' }} onMouseEnter={() => setProfileMenuOpen(true)} onMouseLeave={() => setProfileMenuOpen(false)}>
+              <div className="dash-header-divider" style={{ width:'1px', height:'28px', background:'linear-gradient(180deg,transparent,rgba(253,188,1,0.2),transparent)' }} />
+              <div style={{ position:'relative' }} onClick={() => setProfileMenuOpen(!profileMenuOpen)} onMouseEnter={() => setProfileMenuOpen(true)} onMouseLeave={() => setProfileMenuOpen(false)}>
                 <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'0.45rem 0.85rem 0.45rem 0.55rem', background:profileMenuOpen ? 'linear-gradient(135deg,rgba(253,188,1,0.12),rgba(253,188,1,0.04))' : 'linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))', border:`1px solid ${profileMenuOpen ? 'rgba(253,188,1,0.25)' : 'rgba(255,255,255,0.08)'}`, borderRadius:'14px', cursor:'pointer', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)' }}>
-                  <div style={{ textAlign:'right' }}>
+                  <div className="dash-profile-text" style={{ textAlign:'right' }}>
                     <p style={{ fontFamily:'var(--font-body)', fontSize:'0.82rem', color:'#fff', margin:0, fontWeight:600, lineHeight:1.2 }}>{user?.displayName || 'Student'}</p>
                     <p style={{ fontFamily:'var(--font-body)', fontSize:'0.65rem', color:'rgba(255,255,255,0.65)', margin:'0.1rem 0 0', maxWidth:'160px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
                   </div>
@@ -520,11 +538,11 @@ export default function DashboardPage() {
 
           <main className="dash-main" style={{ flex:1, marginLeft:0, minWidth:0 }}>
             {activeTab !== 'dashboard' && (
-              <div style={{ padding:'2.5rem 2rem 0' }}>
+              <div style={{ padding:'clamp(1.5rem,4vw,2.5rem) clamp(1rem,3vw,2rem) 0' }}>
                 <h1 style={{ fontFamily:'var(--font-display)', fontSize:'clamp(1.5rem,3vw,2.2rem)', color:'#0F172A', lineHeight:1.15, fontWeight:800, margin:0, animation:'dashFadeIn 0.4s ease both' }}>{navItems.find(n => n.id === activeTab)?.label || 'Dashboard'}</h1>
               </div>
             )}
-            <div style={{ padding:'clamp(1.5rem,3vw,2.5rem)' }}>
+            <div style={{ padding:'clamp(1rem,3vw,2.5rem)' }}>
               {msg && (
                 <div className="dash-anim" style={{ padding:'0.85rem 1.25rem', background:msg.includes('Failed') ? 'linear-gradient(135deg,#FEF2F2,#FFF5F5)' : 'linear-gradient(135deg,#F0FDF4,#F5FFF8)', border:`1px solid ${msg.includes('Failed') ? 'rgba(220,38,38,0.15)' : 'rgba(34,197,94,0.15)'}`, borderRadius:'14px', marginBottom:'1.5rem', fontFamily:'var(--font-body)', fontSize:'0.85rem', color:msg.includes('Failed') ? '#DC2626' : '#16A34A', boxShadow:msg.includes('Failed') ? '0 4px 16px rgba(220,38,38,0.08)' : '0 4px 16px rgba(34,197,94,0.08)', display:'flex', alignItems:'center', gap:'0.5rem' }}>
                   {msg.includes('Failed') ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>}
@@ -541,7 +559,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="dash-hero-grid" style={{ display:'grid', gridTemplateColumns:'repeat(12,1fr)', gap:'1.25rem' }}>
                     {/* Profile */}
-                    <div className="dash-anim dash-card-premium" style={{ gridColumn:'span 7', display:'flex', gap:'1.5rem', alignItems:'center' }}>
+                    <div className="dash-anim dash-card-premium dash-profile-card" style={{ gridColumn:'span 7', display:'flex', gap:'1.5rem', alignItems:'center' }}>
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${SKY_BLUE},${GOLD_BRIGHT},${SKY_BLUE})`, backgroundSize:'200% 100%', animation:'dashShimmer 4s linear infinite' }} />
                       <div style={{ width:'90px', height:'90px', borderRadius:'22px', background:`linear-gradient(145deg,${DARK},#1a2f50 50%,${SKY_BLUE})`, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:'2rem', fontWeight:800, fontFamily:'var(--font-display)', boxShadow:'0 12px 32px rgba(10,22,40,0.3),inset 0 1px 0 rgba(255,255,255,0.1)', flexShrink:0, position:'relative' }}>
                         {initials[0] || 'S'}
@@ -698,7 +716,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <div style={{ padding:'1.5rem 2rem 2rem' }}>
-                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem', marginBottom:'1.25rem' }}>
+                      <div className="dash-modal-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem', marginBottom:'1.25rem' }}>
                         <div style={{ background:'#F8FAFD', borderRadius:'12px', padding:'1rem', border:'1px solid #E8EDF4' }}>
                           <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Course ID</p>
                           <p style={{ fontFamily:'var(--font-display)', fontSize:'1rem', color:DARK, fontWeight:800, margin:0 }}>{courseDetail.id}</p>
@@ -770,7 +788,7 @@ export default function DashboardPage() {
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT},${GOLD})`, backgroundSize:'200% 100%', animation:'dashShimmer 5s linear infinite' }} />
                     <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600, animation:'dashTextReveal 0.8s ease both' }}>Billing</p>
                     <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'#0F172A', margin:'0 0 1.5rem', fontWeight:800, textTransform:'uppercase' }}>PAYMENT HISTORY</h2>
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1rem', marginBottom:'2rem' }}>
+                    <div className="dash-stat-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1rem', marginBottom:'2rem' }}>
                       <div style={{ background:'linear-gradient(135deg,rgba(5,150,105,0.04),rgba(5,150,105,0.01))', border:'1px solid rgba(5,150,105,0.1)', borderRadius:'var(--radius-md)', padding:'1.25rem' }}>
                         <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#059669', margin:'0 0 0.25rem', fontWeight:600 }}>Total Paid</p>
                         <p style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', color:'#059669', margin:0, fontWeight:800 }}>{payments.filter(p => p.status === 'Paid').length}</p>
@@ -828,7 +846,7 @@ export default function DashboardPage() {
                     <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600 }}>Settings</p>
                     <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'#0F172A', margin:'0 0 0.5rem', fontWeight:800, textTransform:'uppercase' }}>ACCOUNT SETTINGS</h2>
                     <p style={{ fontFamily:'var(--font-body)', fontSize:'0.9rem', color:'#475569', margin:'0 0 2rem' }}>Quick access to profile and security settings.</p>
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'1rem' }}>
+                    <div className="dash-form-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'1rem' }}>
                       <div>
                         <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Username</label>
                         <input type="text" value={sUsername} onChange={e => setSUsername(e.target.value)} className="dash-input" />
@@ -871,7 +889,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.1rem', color:'#475569', margin:'0 0 1.5rem', fontWeight:700 }}>Change password (optional)</h3>
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'1.5rem' }}>
+                    <div className="dash-form-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'1.5rem' }}>
                       <div>
                         <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Current password</label>
                         <input type="password" placeholder="Enter current password" value={sCurrentPass} onChange={e => setSCurrentPass(e.target.value)} className="dash-input" />
@@ -891,8 +909,8 @@ export default function DashboardPage() {
               )}
 
               {activeTab === 'support' && (
-                <div style={{ maxWidth:'1100px', margin:'0 auto', display:'flex', gap:'1rem', height:'650px' }}>
-                  <div className="dash-anim" style={{ width:'260px', flexShrink:0, background:'linear-gradient(135deg,rgba(255,255,255,0.98),#FAFBFD)', borderRadius:'18px', border:'1px solid rgba(226,235,245,0.6)', boxShadow:'0 1px 3px rgba(0,0,0,0.02), 0 4px 16px rgba(0,0,0,0.03)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+                <div className="dash-chat-wrap" style={{ maxWidth:'1100px', margin:'0 auto', display:'flex', gap:'1rem', height:'clamp(500px,70vh,650px)' }}>
+                  <div className="dash-anim dash-chat-list" style={{ width:'260px', flexShrink:0, background:'linear-gradient(135deg,rgba(255,255,255,0.98),#FAFBFD)', borderRadius:'18px', border:'1px solid rgba(226,235,245,0.6)', boxShadow:'0 1px 3px rgba(0,0,0,0.02), 0 4px 16px rgba(0,0,0,0.03)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
                     <div style={{ padding:'1rem', borderBottom:'1px solid #E8EDF4' }}>
                       <button onClick={handleNewChat} style={{ width:'100%', padding:'0.65rem', background: chatMessages.length === 0 && !activeConvId ? 'rgba(1,69,168,0.06)' : 'transparent', border:'1.5px solid rgba(1,69,168,0.1)', borderRadius:'10px', fontFamily:'var(--font-body)', fontSize:'0.8rem', fontWeight:600, color:SKY_BLUE, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem', transition:'all 0.2s' }} onMouseEnter={(e) => { if (!(chatMessages.length === 0 && !activeConvId)) { e.currentTarget.style.background='rgba(1,69,168,0.04)'; e.currentTarget.style.borderColor='rgba(1,69,168,0.2)' } }} onMouseLeave={(e) => { if (!(chatMessages.length === 0 && !activeConvId)) { e.currentTarget.style.background='transparent'; e.currentTarget.style.borderColor='rgba(1,69,168,0.1)' } }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg> New Chat
@@ -916,7 +934,7 @@ export default function DashboardPage() {
                       )}
                     </div>
                   </div>
-                  <div className="dash-anim dash-d1" style={{ flex:1, background:'linear-gradient(135deg,rgba(255,255,255,0.98),#fff)', borderRadius:'20px', border:'1px solid rgba(226,235,245,0.6)', boxShadow:'0 1px 3px rgba(0,0,0,0.02), 0 8px 32px rgba(0,0,0,0.04)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+                  <div className="dash-anim dash-d1 dash-chat-box" style={{ flex:1, background:'linear-gradient(135deg,rgba(255,255,255,0.98),#fff)', borderRadius:'20px', border:'1px solid rgba(226,235,245,0.6)', boxShadow:'0 1px 3px rgba(0,0,0,0.02), 0 8px 32px rgba(0,0,0,0.04)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
                     <div style={{ flex:1, overflowY:'auto', padding:'2rem', display:'flex', flexDirection:'column', gap:'1.5rem' }}>
                       {chatMessages.length === 0 && (
                         <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'1.25rem' }}>
@@ -925,7 +943,7 @@ export default function DashboardPage() {
                           </div>
                           <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.3rem', color:DARK, fontWeight:800, margin:0 }}>How can I help you today?</h3>
                           <p style={{ fontFamily:'var(--font-body)', fontSize:'0.9rem', color:'#475569', margin:0, textAlign:'center', maxWidth:'400px', lineHeight:1.6 }}>Ask me anything about our driving courses, scheduling, payments, permits, or driving rules in California.</p>
-                          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.6rem', marginTop:'0.5rem', maxWidth:'440px', width:'100%' }}>
+                          <div className="dash-chat-sugg" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.6rem', marginTop:'0.5rem', maxWidth:'440px', width:'100%' }}>
                             {[{ q:'What courses do you offer?' }, { q:'How do I schedule a lesson?' }, { q:'What is the refund policy?' }, { q:'Do I need a permit first?' }].map((s, i) => (
                               <button key={i} onClick={() => setChatInput(s.q)} style={{ padding:'0.75rem 1rem', background:'linear-gradient(135deg,rgba(1,69,168,0.03),rgba(1,69,168,0.01))', border:'1px solid rgba(1,69,168,0.08)', borderRadius:'12px', fontFamily:'var(--font-body)', fontSize:'0.78rem', color:DARK, fontWeight:500, cursor:'pointer', textAlign:'left', transition:'all 0.2s', lineHeight:1.4 }} onMouseEnter={(e) => { e.currentTarget.style.borderColor='rgba(1,69,168,0.2)'; e.currentTarget.style.background='rgba(1,69,168,0.05)' }} onMouseLeave={(e) => { e.currentTarget.style.borderColor='rgba(1,69,168,0.08)'; e.currentTarget.style.background='linear-gradient(135deg,rgba(1,69,168,0.03),rgba(1,69,168,0.01))' }}>{s.q}</button>
                             ))}
