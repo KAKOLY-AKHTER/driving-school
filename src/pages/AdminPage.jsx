@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+﻿import { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
@@ -46,10 +46,11 @@ const SVG = {
   book: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" /><line x1="8" y1="7" x2="16" y2="7" /><line x1="8" y1="11" x2="14" y2="11" /></svg>,
   map: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 20l-6 3V7l6-3 6 3 6-3v16l-6 3-6-3z" /><path d="M9 4v16M15 7v16" /></svg>,
   share: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></svg>,
+  refund: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" /></svg>,
 }
 
 export default function AdminPage() {
-  usePageMeta('Admin Panel — A Precision Driving School', 'A Precision Driving School admin panel.')
+  usePageMeta('Admin Panel â€” A Precision Driving School', 'A Precision Driving School admin panel.')
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -97,6 +98,15 @@ export default function AdminPage() {
   })
   const [enrollLoading, setEnrollLoading] = useState(false)
   const [enrollSearchTimer, setEnrollSearchTimer] = useState(null)
+  const [refunds, setRefunds] = useState([])
+  const [refundTotal, setRefundTotal] = useState(0)
+  const [refundPage, setRefundPage] = useState(1)
+  const [refundPages, setRefundPages] = useState(1)
+  const [refundLimit, setRefundLimit] = useState('10')
+  const [refundSearch, setRefundSearch] = useState('')
+  const [refundStats, setRefundStats] = useState({ totalRequests: 0, totalRefunded: 0, totalAmount: 0, pending: 0 })
+  const [refundEdit, setRefundEdit] = useState(null)
+  const [refundForm, setRefundForm] = useState({ Full_Name: '', Email: '', Phone: '', Course_Name: '', Amount: '', Reason: '', Status: 'pending' })
 
   useEffect(() => {
     const load = async () => {
@@ -238,6 +248,25 @@ export default function AdminPage() {
     load()
   }, [activeTab, enrollPage, enrollLimit, enrollSearch, enrollFrom, enrollTo])
 
+  useEffect(() => {
+    if (activeTab !== 'refunds') return
+    const load = async () => {
+      try {
+        const params = { page: refundPage, limit: refundLimit }
+        if (refundSearch) params.search = refundSearch
+        const [list, stats] = await Promise.all([
+          api.adminRefunds(params),
+          api.adminRefundsStats(),
+        ])
+        setRefunds(list.data || [])
+        setRefundTotal(list.total || 0)
+        setRefundPages(list.totalPages || 1)
+        setRefundStats(stats)
+      } catch {}
+    }
+    load()
+  }, [activeTab, refundPage, refundLimit, refundSearch])
+
   const filteredUsers = users.filter(u => {
     const q = userSearch.toLowerCase()
     return !q || (u.displayName || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q) || (u.phone || '').includes(q)
@@ -255,10 +284,10 @@ export default function AdminPage() {
   const upcomingCount = bookings.filter(b => b.date >= todayStr && b.status === 'scheduled').length
 
   const cardStyle = { background: '#ffffff', borderRadius: 'var(--radius-lg)', border: '1px solid #E2EBF5', padding: '1.75rem', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }
-  const labelStyle = { fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8899aa', fontWeight: 600, display: 'block', marginBottom: '0.3rem' }
-  const thStyle = { fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8899aa', fontWeight: 700, padding: '0.75rem 1rem', textAlign: 'left', borderBottom: '1px solid #E2EBF5' }
-  const tdStyle = { fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#1a2332', padding: '0.75rem 1rem', borderBottom: '1px solid #f0f2f5' }
-  const inputStyle = { width: '100%', padding: '0.65rem 0.8rem', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#1a2332', outline: 'none', boxSizing: 'border-box' }
+  const labelStyle = { fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#64748b', fontWeight: 600, display: 'block', marginBottom: '0.3rem' }
+  const thStyle = { fontFamily: 'var(--font-mono)', fontSize: '0.8rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, padding: '0.75rem 1rem', textAlign: 'left', borderBottom: '1px solid #E2EBF5' }
+  const tdStyle = { fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#1a2332', padding: '0.75rem 1rem', borderBottom: '1px solid #f0f2f5' }
+  const inputStyle = { width: '100%', padding: '0.65rem 0.8rem', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#1a2332', outline: 'none', boxSizing: 'border-box' }
 
   const navItems = [
     { id: 'dashboard', label: 'Overview', icon: SVG.dashboard },
@@ -266,6 +295,7 @@ export default function AdminPage() {
     { id: 'bookings', label: 'Bookings', icon: SVG.calendar },
     { id: 'contacts', label: 'Contacts', icon: SVG.mail },
     { id: 'enrolled', label: 'Enrolled Courses', icon: SVG.book },
+    { id: 'refunds', label: 'Refunds', icon: SVG.refund },
     { id: 'pricing', label: 'Pricing', icon: SVG.dollar },
     { id: 'maps', label: 'Maps', icon: SVG.map },
     { id: 'socials', label: 'Social Links', icon: SVG.share },
@@ -292,7 +322,9 @@ export default function AdminPage() {
         .admin-nav-active svg { stroke:#FDBC01; filter:drop-shadow(0 0 4px rgba(253,188,1,0.35)); }
         .admin-gold-line { height:1px; background:linear-gradient(90deg,transparent,rgba(253,188,1,0.4),rgba(253,188,1,0.15),rgba(253,188,1,0.4),transparent); margin:0.5rem 0.75rem; }
         .admin-sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(10,22,40,0.7); backdrop-filter: blur(12px) saturate(120%); z-index: 998; }
+        .admin-hamburger { display: none !important; }
         @media (max-width: 900px) {
+          .admin-hamburger { display: flex !important; }
           .admin-sidebar { position: fixed !important; left: -280px !important; z-index: 999; transition: left 0.3s ease !important; }
           .admin-sidebar-open { left: 0 !important; }
           .admin-sidebar-overlay-show { display: block !important; }
@@ -309,21 +341,26 @@ export default function AdminPage() {
           <div style={{ height: '2.5px', background: `linear-gradient(90deg,transparent 5%,${GOLD} 20%,${GOLD_BRIGHT} 35%,#fff 50%,${GOLD_BRIGHT} 65%,${GOLD} 80%,transparent 95%)` }} />
           <div style={{ padding: '0 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '72px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'rgba(253,188,1,0.08)', border: '1px solid rgba(253,188,1,0.15)', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0.4rem', width: '40px', height: '40px', justifyContent: 'center' }}>
+              <button className="admin-hamburger" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'rgba(253,188,1,0.08)', border: '1px solid rgba(253,188,1,0.15)', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0.4rem', width: '40px', height: '40px', justifyContent: 'center' }}>
                 {sidebarOpen ? SVG.close : SVG.menu}
               </button>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <img src="/driving-logo.png" alt="" style={{ height: '32px', width: 'auto', filter: 'brightness(0) invert(1)' }} />
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: '#fff', fontWeight: 700 }}>Admin Panel</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                <Link to="/" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                  <img src="/driving-logo.png" alt="A Precision Driving School Logo" style={{ height: '52px', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 0 18px rgba(255,255,255,0.95)) drop-shadow(0 0 6px rgba(255,255,255,0.8))' }} />
+                </Link>
+                <div>
+                  <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', color: '#fff', margin: 0, fontWeight: 800, lineHeight: 1.2, textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>Admin Panel</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: GOLD_BRIGHT, margin: 0, fontWeight: 700, textShadow: '0 0 8px rgba(253,188,1,0.3)' }}>A Precision Driving School</p>
+                </div>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ textAlign: 'right' }}>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: '#fff', margin: 0, fontWeight: 600 }}>{user?.displayName || 'Admin'}</p>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.65rem', color: 'rgba(255,255,255,0.65)', margin: 0 }}>{user?.email}</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.92rem', color: '#fff', margin: 0, fontWeight: 600 }}>{user?.displayName || 'Admin'}</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'rgba(255,255,255,0.65)', margin: 0 }}>{user?.email}</p>
               </div>
               <div style={{ position: 'relative' }}>
-                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 800, color: DARK, border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.3)', flexShrink: 0 }}>{initials}</div>
+                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', fontWeight: 800, color: DARK, border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.3)', flexShrink: 0 }}>{initials}</div>
                 <div style={{ position: 'absolute', bottom: 0, right: 0, width: '11px', height: '11px', borderRadius: '50%', background: 'linear-gradient(135deg,#22C55E,#16A34A)', border: '2.5px solid #0145A8', boxShadow: '0 0 6px rgba(34,197,94,0.4)' }} />
               </div>
             </div>
@@ -341,7 +378,7 @@ export default function AdminPage() {
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.95rem', color: '#fff', margin: 0, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.displayName || 'Admin'}</p>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(253,188,1,0.85)', fontWeight: 700, margin: '0.2rem 0 0' }}>Administrator</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(253,188,1,0.85)', fontWeight: 700, margin: '0.2rem 0 0' }}>Administrator</p>
                 </div>
               </div>
             </div>
@@ -349,7 +386,7 @@ export default function AdminPage() {
             <nav style={{ padding: '1.25rem 0.75rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0 0.75rem 0.75rem', marginBottom: '0.5rem' }}>
                 <span style={{ width: '18px', height: '2px', background: 'linear-gradient(90deg,transparent,#FDBC01)', borderRadius: '2px' }} />
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(253,188,1,0.75)', fontWeight: 700 }}>Menu</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(253,188,1,0.75)', fontWeight: 700 }}>Menu</span>
               </div>
               {navItems.map(item => (
                 <button key={item.id} onClick={() => switchTab(item.id)} className={`admin-nav-item ${activeTab === item.id ? 'admin-nav-active' : ''}`} style={{ marginBottom: '4px' }}>
@@ -384,7 +421,7 @@ export default function AdminPage() {
             <div style={{ padding: 'clamp(1.5rem, 3vw, 2.5rem)' }}>
 
               {msg && (
-                <div style={{ padding: '0.75rem 1rem', background: msg.includes('Failed') ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${msg.includes('Failed') ? '#FECACA' : '#BBF7D0'}`, borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: msg.includes('Failed') ? '#DC2626' : '#16A34A' }}>
+                <div style={{ padding: '0.75rem 1rem', background: msg.includes('Failed') ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${msg.includes('Failed') ? '#FECACA' : '#BBF7D0'}`, borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: msg.includes('Failed') ? '#DC2626' : '#16A34A' }}>
                   {msg}
                 </div>
               )}
@@ -399,7 +436,7 @@ export default function AdminPage() {
                     ].map(s => (
                       <div key={s.label} className="admin-stat" style={{ background: '#fff', borderRadius: 'var(--radius-lg)', border: '1px solid #E2EBF5', textAlign: 'center', padding: '1.5rem 1rem', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
                         <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 800, color: s.color, lineHeight: 1, marginBottom: '0.3rem' }}>{s.num}</div>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8899aa', fontWeight: 600 }}>{s.label}</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#64748b', fontWeight: 600 }}>{s.label}</div>
                       </div>
                     ))}
                   </div>
@@ -413,18 +450,18 @@ export default function AdminPage() {
                         {users.slice(0, 5).map(u => (
                           <div key={u.uid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 0.8rem', background: '#f8fafd', borderRadius: 'var(--radius-sm)', border: '1px solid #f0f2f5' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', fontWeight: 800, color: '#fff', flexShrink: 0 }}>
                                 {(u.displayName || u.email || '?')[0].toUpperCase()}
                               </div>
                               <div>
-                                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: DARK, fontWeight: 600, margin: 0 }}>{u.displayName || 'Unnamed'}</p>
-                                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.7rem', color: '#8899aa', margin: '0.1rem 0 0' }}>{u.email || 'No email'}</p>
+                                <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: DARK, fontWeight: 600, margin: 0 }}>{u.displayName || 'Unnamed'}</p>
+                                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: '#64748b', margin: '0.1rem 0 0' }}>{u.email || 'No email'}</p>
                               </div>
                             </div>
-                            {u.isAdmin && <span style={{ padding: '0.15rem 0.4rem', background: 'rgba(253,188,1,0.15)', color: GOLD_DEEP, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>Admin</span>}
+                            {u.isAdmin && <span style={{ padding: '0.15rem 0.4rem', background: 'rgba(253,188,1,0.15)', color: GOLD_DEEP, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>Admin</span>}
                           </div>
                         ))}
-                        {users.length === 0 && <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#8899aa', textAlign: 'center', padding: '1rem' }}>No users yet</p>}
+                        {users.length === 0 && <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#64748b', textAlign: 'center', padding: '1rem' }}>No users yet</p>}
                       </div>
                     </div>
 
@@ -439,14 +476,14 @@ export default function AdminPage() {
                           return (
                             <div key={b._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 0.8rem', background: '#f8fafd', borderRadius: 'var(--radius-sm)', border: '1px solid #f0f2f5' }}>
                               <div>
-                                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: DARK, fontWeight: 600, margin: 0 }}>{u?.displayName || 'Unknown'}</p>
-                                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.7rem', color: '#8899aa', margin: '0.1rem 0 0' }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} &middot; {TIME_SLOT_MAP[b.timeSlot] || b.timeSlot}</p>
+                                <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: DARK, fontWeight: 600, margin: 0 }}>{u?.displayName || 'Unknown'}</p>
+                                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: '#64748b', margin: '0.1rem 0 0' }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} &middot; {TIME_SLOT_MAP[b.timeSlot] || b.timeSlot}</p>
                               </div>
-                              <span style={{ padding: '0.2rem 0.5rem', background: isPast ? 'rgba(136,153,170,0.1)' : 'rgba(34,197,94,0.1)', color: isPast ? '#8899aa' : '#22C55E', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>{isPast ? 'Done' : 'Upcoming'}</span>
+                              <span style={{ padding: '0.2rem 0.5rem', background: isPast ? 'rgba(136,153,170,0.1)' : 'rgba(34,197,94,0.1)', color: isPast ? '#64748b' : '#22C55E', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>{isPast ? 'Done' : 'Upcoming'}</span>
                             </div>
                           )
                         })}
-                        {bookings.length === 0 && <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#8899aa', textAlign: 'center', padding: '1rem' }}>No bookings yet</p>}
+                        {bookings.length === 0 && <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#64748b', textAlign: 'center', padding: '1rem' }}>No bookings yet</p>}
                       </div>
                     </div>
                   </div>
@@ -476,56 +513,56 @@ export default function AdminPage() {
                           <tr key={u.uid}>
                             <td style={tdStyle}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                                <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 800, color: '#fff', flexShrink: 0 }}>
                                   {(u.displayName || u.email || '?')[0].toUpperCase()}
                                 </div>
                                 <span style={{ fontWeight: 600 }}>{u.displayName || 'Unnamed'}</span>
                               </div>
                             </td>
-                            <td style={tdStyle}>{u.email || '—'}</td>
-                            <td style={tdStyle}>{u.phone || '—'}</td>
+                            <td style={tdStyle}>{u.email || 'â€”'}</td>
+                            <td style={tdStyle}>{u.phone || 'â€”'}</td>
                             <td style={tdStyle}>
                               {u.courses && u.courses.length > 0 ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                                   {u.courses.map((c, i) => (
                                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                      <span style={{ padding: '0.15rem 0.4rem', background: 'rgba(34,197,94,0.1)', color: '#16A34A', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                      <span style={{ padding: '0.15rem 0.4rem', background: 'rgba(34,197,94,0.1)', color: '#16A34A', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 700, whiteSpace: 'nowrap' }}>
                                         {c.title || COURSE_MAP[c.id] || `Course ${c.id}`}
                                       </span>
-                                      <button onClick={() => handleRemoveCourse(u.uid, c.id)} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', padding: '0 0.2rem', fontSize: '0.7rem', lineHeight: 1 }} title="Remove course">&times;</button>
+                                      <button onClick={() => handleRemoveCourse(u.uid, c.id)} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', padding: '0 0.2rem', fontSize: '0.95rem', lineHeight: 1 }} title="Remove course">&times;</button>
                                     </div>
                                   ))}
                                 </div>
-                              ) : <span style={{ color: '#8899aa' }}>—</span>}
+                              ) : <span style={{ color: '#64748b' }}>â€”</span>}
                               {courseModal === u.uid ? (
                                 <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
-                                  <select value={selectedCourseId} onChange={(e) => setSelectedCourseId(e.target.value)} style={{ ...inputStyle, width: 'auto', flex: 1, padding: '0.3rem 0.5rem', fontSize: '0.75rem' }}>
+                                  <select value={selectedCourseId} onChange={(e) => setSelectedCourseId(e.target.value)} style={{ ...inputStyle, width: 'auto', flex: 1, padding: '0.3rem 0.5rem', fontSize: '1.05rem' }}>
                                     <option value="">Select course...</option>
                                     {Object.entries(COURSE_MAP).map(([id, name]) => (
                                       <option key={id} value={id}>{name}</option>
                                     ))}
                                   </select>
-                                  <button onClick={() => handleAddCourse(u.uid)} disabled={!selectedCourseId} style={{ padding: '0.3rem 0.6rem', background: selectedCourseId ? SKY_BLUE : '#ccc', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: selectedCourseId ? 'pointer' : 'not-allowed' }}>Add</button>
-                                  <button onClick={() => { setCourseModal(null); setSelectedCourseId('') }} style={{ padding: '0.3rem 0.6rem', background: 'none', border: '1px solid #ccc', color: '#8899aa', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                                  <button onClick={() => handleAddCourse(u.uid)} disabled={!selectedCourseId} style={{ padding: '0.3rem 0.6rem', background: selectedCourseId ? SKY_BLUE : '#ccc', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: selectedCourseId ? 'pointer' : 'not-allowed' }}>Add</button>
+                                  <button onClick={() => { setCourseModal(null); setSelectedCourseId('') }} style={{ padding: '0.3rem 0.6rem', background: 'none', border: '1px solid #ccc', color: '#64748b', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
                                 </div>
                               ) : (
-                                <button onClick={() => { setCourseModal(u.uid); setSelectedCourseId('') }} style={{ marginTop: '0.3rem', padding: '0.2rem 0.5rem', background: 'none', border: `1px dashed ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>+ Add</button>
+                                <button onClick={() => { setCourseModal(u.uid); setSelectedCourseId('') }} style={{ marginTop: '0.3rem', padding: '0.2rem 0.5rem', background: 'none', border: `1px dashed ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>+ Add</button>
                               )}
                             </td>
                             <td style={tdStyle}>
                               {u.isAdmin
-                                ? <span style={{ padding: '0.2rem 0.5rem', background: 'rgba(253,188,1,0.15)', color: GOLD_DEEP, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>Admin</span>
-                                : <span style={{ padding: '0.2rem 0.5rem', background: 'rgba(136,153,170,0.1)', color: '#8899aa', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>User</span>}
+                                ? <span style={{ padding: '0.2rem 0.5rem', background: 'rgba(253,188,1,0.15)', color: GOLD_DEEP, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>Admin</span>
+                                : <span style={{ padding: '0.2rem 0.5rem', background: 'rgba(136,153,170,0.1)', color: '#64748b', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>User</span>}
                             </td>
                             <td style={tdStyle}>
-                              <button onClick={() => handleToggleAdmin(u.uid, u.isAdmin)} style={{ background: 'none', border: `1.5px solid ${u.isAdmin ? '#DC2626' : SKY_BLUE}`, color: u.isAdmin ? '#DC2626' : SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.7rem', fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
+                              <button onClick={() => handleToggleAdmin(u.uid, u.isAdmin)} style={{ background: 'none', border: `1.5px solid ${u.isAdmin ? '#DC2626' : SKY_BLUE}`, color: u.isAdmin ? '#DC2626' : SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.7rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
                                 {u.isAdmin ? 'Remove Admin' : 'Make Admin'}
                               </button>
                             </td>
                           </tr>
                         ))}
                         {filteredUsers.length === 0 && (
-                          <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#8899aa' }}>No users found</td></tr>
+                          <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>No users found</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -559,16 +596,16 @@ export default function AdminPage() {
                               <td style={tdStyle}>
                                 <div>
                                   <p style={{ fontWeight: 600, margin: 0 }}>{u?.displayName || 'Unknown'}</p>
-                                  <p style={{ fontSize: '0.72rem', color: '#8899aa', margin: '0.1rem 0 0' }}>{u?.email || b.userId}</p>
+                                  <p style={{ fontSize: '0.95rem', color: '#64748b', margin: '0.1rem 0 0' }}>{u?.email || b.userId}</p>
                                 </div>
                               </td>
                               <td style={tdStyle}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</td>
                               <td style={tdStyle}>{TIME_SLOT_MAP[b.timeSlot] || b.timeSlot}</td>
                               <td style={tdStyle}>
-                                <span style={{ padding: '0.2rem 0.5rem', background: isPast ? 'rgba(136,153,170,0.1)' : 'rgba(34,197,94,0.1)', color: isPast ? '#8899aa' : '#22C55E', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>{isPast ? 'Completed' : 'Scheduled'}</span>
+                                <span style={{ padding: '0.2rem 0.5rem', background: isPast ? 'rgba(136,153,170,0.1)' : 'rgba(34,197,94,0.1)', color: isPast ? '#64748b' : '#22C55E', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>{isPast ? 'Completed' : 'Scheduled'}</span>
                               </td>
                               <td style={tdStyle}>
-                                <button onClick={() => handleDeleteBooking(b._id)} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.7rem', fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
+                                <button onClick={() => handleDeleteBooking(b._id)} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.7rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
                                   Delete
                                 </button>
                               </td>
@@ -576,7 +613,7 @@ export default function AdminPage() {
                           )
                         })}
                         {filteredBookings.length === 0 && (
-                          <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#8899aa' }}>No bookings found</td></tr>
+                          <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>No bookings found</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -610,19 +647,19 @@ export default function AdminPage() {
                             <td style={tdStyle}>{c.email}</td>
                             <td style={{ ...tdStyle, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.comments}</td>
                             <td style={tdStyle}>
-                              <span style={{ padding: '0.2rem 0.5rem', background: c.status === 'new' ? 'rgba(1,69,168,0.08)' : 'rgba(34,197,94,0.1)', color: c.status === 'new' ? SKY_BLUE : '#16A34A', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>{c.status || 'new'}</span>
+                              <span style={{ padding: '0.2rem 0.5rem', background: c.status === 'new' ? 'rgba(1,69,168,0.08)' : 'rgba(34,197,94,0.1)', color: c.status === 'new' ? SKY_BLUE : '#16A34A', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>{c.status || 'new'}</span>
                             </td>
-                            <td style={tdStyle}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</td>
+                            <td style={tdStyle}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'â€”'}</td>
                             <td style={tdStyle}>
                               <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                <button onClick={() => handleEditContact(c)} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
-                                <button onClick={() => handleDeleteContact(c._id)} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+                                <button onClick={() => handleEditContact(c)} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
+                                <button onClick={() => handleDeleteContact(c._id)} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
                               </div>
                             </td>
                           </tr>
                         ))}
                         {contacts.length === 0 && (
-                          <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#8899aa' }}>No contact messages yet</td></tr>
+                          <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>No contact messages yet</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -634,7 +671,7 @@ export default function AdminPage() {
                 <div style={cardStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.dollar} Pricing Plan ({pricing.length})</h3>
-                    <button onClick={() => { setPricingForm({ planName: '', id: '', planPrice: '', planPriceTwo: '', option1: '', perm1: 'Select', option2: '', perm2: 'Select', option3: '', perm3: 'Select', option4: '', perm4: 'Select', option5: '', perm5: 'Select' }); setPricingEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Pricing Plan</button>
+                    <button onClick={() => { setPricingForm({ planName: '', id: '', planPrice: '', planPriceTwo: '', option1: '', perm1: 'Select', option2: '', perm2: 'Select', option3: '', perm3: 'Select', option4: '', perm4: 'Select', option5: '', perm5: 'Select' }); setPricingEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Pricing Plan</button>
                   </div>
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -657,12 +694,12 @@ export default function AdminPage() {
                           const opts = t.options || []
                           return (
                             <tr key={t._id}>
-                              <td style={tdStyle}><span style={{ padding: '0.15rem 0.4rem', background: 'rgba(1,69,168,0.08)', color: SKY_BLUE, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 700 }}>{t.id}</span></td>
+                              <td style={tdStyle}><span style={{ padding: '0.15rem 0.4rem', background: 'rgba(1,69,168,0.08)', color: SKY_BLUE, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 700 }}>{t.id}</span></td>
                               <td style={{ ...tdStyle, fontWeight: 600, maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.planName}</td>
                               <td style={tdStyle}>{t.planPrice}</td>
                               <td style={tdStyle}>{t.planPriceTwo}</td>
                               {[0,1,2,3,4].map(i => (
-                                <td key={i} style={{ ...tdStyle, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.7rem', color: opts[i]?.permission === 'Included' ? '#16A34A' : opts[i]?.permission === 'Not Included' ? '#DC2626' : '#94A3B8' }}>
+                                <td key={i} style={{ ...tdStyle, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.95rem', color: opts[i]?.permission === 'Included' ? '#16A34A' : opts[i]?.permission === 'Not Included' ? '#DC2626' : '#64748b' }}>
                                   {opts[i]?.text ? `${opts[i].text.slice(0, 30)}${opts[i].text.length > 30 ? '...' : ''}` : opts[i]?.permission || 'Select'}
                                 </td>
                               ))}
@@ -679,15 +716,15 @@ export default function AdminPage() {
                                       option4: opts[3]?.text || '', perm4: opts[3]?.permission || 'Select',
                                       option5: opts[4]?.text || '', perm5: opts[4]?.permission || 'Select',
                                     }); setPricingEdit(t._id)
-                                  }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
-                                  <button onClick={async () => { if (!confirm('Delete this package?')) return; try { await api.adminDeletePricing(t._id); setPricing(prev => prev.filter(x => x._id !== t._id)); setMsg('Package deleted.'); setTimeout(() => setMsg(''), 2000) } catch { setMsg('Failed to delete.'); setTimeout(() => setMsg(''), 2000) } }} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+                                  }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
+                                  <button onClick={async () => { if (!confirm('Delete this package?')) return; try { await api.adminDeletePricing(t._id); setPricing(prev => prev.filter(x => x._id !== t._id)); setMsg('Package deleted.'); setTimeout(() => setMsg(''), 2000) } catch { setMsg('Failed to delete.'); setTimeout(() => setMsg(''), 2000) } }} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
                                 </div>
                               </td>
                             </tr>
                           )
                         })}
                         {pricing.length === 0 && (
-                          <tr><td colSpan={10} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#8899aa' }}>No pricing packages yet. Click "+ Add Pricing Plan" to create one.</td></tr>
+                          <tr><td colSpan={10} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>No pricing packages yet. Click "+ Add Pricing Plan" to create one.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -705,7 +742,7 @@ export default function AdminPage() {
                     ].map(s => (
                       <div key={s.label} className="admin-stat" style={{ background: '#fff', borderRadius: 'var(--radius-lg)', border: '1px solid #E2EBF5', textAlign: 'center', padding: '1.5rem 1rem', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
                         <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 800, color: s.color, lineHeight: 1, marginBottom: '0.3rem' }}>{s.num}</div>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8899aa', fontWeight: 600 }}>{s.label}</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#64748b', fontWeight: 600 }}>{s.label}</div>
                       </div>
                     ))}
                   </div>
@@ -714,22 +751,22 @@ export default function AdminPage() {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.book} Enrolled Courses ({enrollTotal})</h3>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <input type="date" value={enrollFrom} onChange={e => { setEnrollFrom(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '140px', fontSize: '0.75rem' }} title="From" />
-                        <span style={{ color: '#94A3B8', fontSize: '0.75rem' }}>to</span>
-                        <input type="date" value={enrollTo} onChange={e => { setEnrollTo(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '140px', fontSize: '0.75rem' }} title="To" />
+                        <input type="date" value={enrollFrom} onChange={e => { setEnrollFrom(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '140px', fontSize: '1.05rem' }} title="From" />
+                        <span style={{ color: '#64748b', fontSize: '1.05rem' }}>to</span>
+                        <input type="date" value={enrollTo} onChange={e => { setEnrollTo(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '140px', fontSize: '1.05rem' }} title="To" />
                         <input type="text" placeholder="Search..." value={enrollSearch} onChange={e => { setEnrollSearch(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '160px' }} />
-                        <select value={enrollLimit} onChange={e => { setEnrollLimit(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '90px', fontSize: '0.75rem' }}>
+                        <select value={enrollLimit} onChange={e => { setEnrollLimit(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '90px', fontSize: '1.05rem' }}>
                           <option value="10">10 / page</option>
                           <option value="20">20 / page</option>
                           <option value="50">50 / page</option>
                           <option value="100">100 / page</option>
                         </select>
-                        <button onClick={() => { setEnrollForm({ ID: '', Status: 'pending', Full_Name: '', Email: '', 'Student Phone': '', Gender: '', Date_of_Birth: '', Address: '', City: '', State: '', Zip: '', Permit: '', Issue_Date: '', Expire_Date: '', Parent_Phone: '', Pickup_Address: '', Course_Name: '', Booking_Date: '', Meds: '', Notes: '', Calender_booking_Id: '', Price: '', Total: '' }); setEnrollEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Add</button>
+                        <button onClick={() => { setEnrollForm({ ID: '', Status: 'pending', Full_Name: '', Email: '', 'Student Phone': '', Gender: '', Date_of_Birth: '', Address: '', City: '', State: '', Zip: '', Permit: '', Issue_Date: '', Expire_Date: '', Parent_Phone: '', Pickup_Address: '', Course_Name: '', Booking_Date: '', Meds: '', Notes: '', Calender_booking_Id: '', Price: '', Total: '' }); setEnrollEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Add</button>
                       </div>
                     </div>
 
                     <div className="admin-table-wrap" style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.72rem', minWidth: '2000px' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem', minWidth: '2000px' }}>
                         <thead>
                           <tr>
                             {['ID','Status','Action','Applied_date','Price','Total','Full_Name','Email','Student Phone','Gender','Date_of_Birth','Address','City','State','Zip','Permit','Issue_Date','Expire_Date','Parent_Phone','Pickup_Address','Course_Name','Booking_Date','Meds','Notes','Calender_booking_Id'].map(h => (
@@ -739,45 +776,45 @@ export default function AdminPage() {
                         </thead>
                         <tbody>
                           {enrollLoading ? (
-                            <tr><td colSpan={25} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#8899aa' }}>Loading...</td></tr>
+                            <tr><td colSpan={25} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>Loading...</td></tr>
                           ) : enrollments.length === 0 ? (
-                            <tr><td colSpan={25} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#8899aa' }}>No enrollments found</td></tr>
+                            <tr><td colSpan={25} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>No enrollments found</td></tr>
                           ) : enrollments.map(e => (
                             <tr key={e._id}>
-                              <td style={tdStyle}>{e.ID || '—'}</td>
+                              <td style={tdStyle}>{e.ID || 'â€”'}</td>
                               <td style={tdStyle}>
-                                <span style={{ padding: '0.15rem 0.4rem', background: e.Status === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(253,188,1,0.1)', color: e.Status === 'success' ? '#16A34A' : GOLD_DEEP, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 700, whiteSpace: 'nowrap' }}>{e.Status || 'pending'}</span>
+                                <span style={{ padding: '0.15rem 0.4rem', background: e.Status === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(253,188,1,0.1)', color: e.Status === 'success' ? '#16A34A' : GOLD_DEEP, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 700, whiteSpace: 'nowrap' }}>{e.Status || 'pending'}</span>
                               </td>
                               <td style={tdStyle}>
                                 <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'nowrap' }}>
-                                  <button title="Invoice" onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>Invoice - ${e.ID || e._id}</title><style>body{font-family:sans-serif;padding:40px}h1{font-size:20px;border-bottom:2px solid #0145A8;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:6px 10px;border-bottom:1px solid #eee;font-size:13px}.lbl{color:#94A3B8;width:140px}</style></head><body><h1>A Precision Driving School</h1><p style="color:#94A3B8">Invoice</p><table>${Object.entries({ID:e.ID,Student:e.Full_Name,Email:e.Email,Course:e.Course_Name,Price:e.Price,Total:e.Total,Status:e.Status,Date:e.Applied_date}).filter(([k,v])=>v).map(([k,v])=>`<tr><td class="lbl">${k}</td><td>${v}</td></tr>`).join('')}</table></body></html>`); w.document.close(); w.print() }} style={{ background:'none', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.15rem', fontSize:'0.75rem', lineHeight:1, textDecoration:'underline' }}>Invoice</button>
-                                  <button title="Form" onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>Enrollment Form - ${e.Full_Name || e.ID}</title><style>body{font-family:sans-serif;padding:40px}h1{font-size:18px;border-bottom:2px solid #FDBC01;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:5px 8px;border:1px solid #ddd;font-size:12px;vertical-align:top}.lbl{background:#f5f7fa;font-weight:600;width:160px;color:#1a2332}</style></head><body><h1>A Precision Driving School - Enrollment Form</h1><table>${Object.entries(e).filter(([k])=>k!=='_id'&&k!=='updatedAt'&&k!='__v').map(([k,v])=>`<tr><td class="lbl">${k}</td><td>${v||'—'}</td></tr>`).join('')}</table></body></html>`); w.document.close() }} style={{ background:'none', border:'none', color:GOLD_DEEP, cursor:'pointer', padding:'0.15rem', fontSize:'0.75rem', lineHeight:1, textDecoration:'underline' }}>Form</button>
-                                  <button onClick={() => { setEnrollForm({ ID: e.ID || '', Status: e.Status || 'pending', Full_Name: e.Full_Name || '', Email: e.Email || '', 'Student Phone': e['Student Phone'] || '', Gender: e.Gender || '', Date_of_Birth: e.Date_of_Birth || '', Address: e.Address || '', City: e.City || '', State: e.State || '', Zip: e.Zip || '', Permit: e.Permit || '', Issue_Date: e.Issue_Date || '', Expire_Date: e.Expire_Date || '', Parent_Phone: e.Parent_Phone || '', Pickup_Address: e.Pickup_Address || '', Course_Name: e.Course_Name || '', Booking_Date: e.Booking_Date || '', Meds: e.Meds || '', Notes: e.Notes || '', Calender_booking_Id: e.Calender_booking_Id || '', Price: e.Price || '', Total: e.Total || '' }); setEnrollEdit(e._id) }} style={{ background:'none', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.15rem', fontSize:'0.75rem', lineHeight:1, textDecoration:'underline' }}>Edit</button>
-                                  <button onClick={async () => { if (!confirm('Delete this enrollment?')) return; try { await api.adminDeleteEnrollment(e._id); setEnrollments(prev => prev.filter(x => x._id !== e._id)); setEnrollTotal(prev => prev - 1) } catch {} }} style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', padding:'0.15rem', fontSize:'0.75rem', lineHeight:1, textDecoration:'underline' }}>Delete</button>
+                                  <button title="Invoice" onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>Invoice - ${e.ID || e._id}</title><style>body{font-family:sans-serif;padding:40px}h1{font-size:20px;border-bottom:2px solid #0145A8;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:6px 10px;border-bottom:1px solid #eee;font-size:13px}.lbl{color:#64748b;width:140px}</style></head><body><h1>A Precision Driving School</h1><p style="color:#64748b">Invoice</p><table>${Object.entries({ID:e.ID,Student:e.Full_Name,Email:e.Email,Course:e.Course_Name,Price:e.Price,Total:e.Total,Status:e.Status,Date:e.Applied_date}).filter(([k,v])=>v).map(([k,v])=>`<tr><td class="lbl">${k}</td><td>${v}</td></tr>`).join('')}</table></body></html>`); w.document.close(); w.print() }} style={{ background:'none', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Invoice</button>
+                                  <button title="Form" onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>Enrollment Form - ${e.Full_Name || e.ID}</title><style>body{font-family:sans-serif;padding:40px}h1{font-size:18px;border-bottom:2px solid #FDBC01;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:5px 8px;border:1px solid #ddd;font-size:12px;vertical-align:top}.lbl{background:#f5f7fa;font-weight:600;width:160px;color:#1a2332}</style></head><body><h1>A Precision Driving School - Enrollment Form</h1><table>${Object.entries(e).filter(([k])=>k!=='_id'&&k!=='updatedAt'&&k!='__v').map(([k,v])=>`<tr><td class="lbl">${k}</td><td>${v||'â€”'}</td></tr>`).join('')}</table></body></html>`); w.document.close() }} style={{ background:'none', border:'none', color:GOLD_DEEP, cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Form</button>
+                                  <button onClick={() => { setEnrollForm({ ID: e.ID || '', Status: e.Status || 'pending', Full_Name: e.Full_Name || '', Email: e.Email || '', 'Student Phone': e['Student Phone'] || '', Gender: e.Gender || '', Date_of_Birth: e.Date_of_Birth || '', Address: e.Address || '', City: e.City || '', State: e.State || '', Zip: e.Zip || '', Permit: e.Permit || '', Issue_Date: e.Issue_Date || '', Expire_Date: e.Expire_Date || '', Parent_Phone: e.Parent_Phone || '', Pickup_Address: e.Pickup_Address || '', Course_Name: e.Course_Name || '', Booking_Date: e.Booking_Date || '', Meds: e.Meds || '', Notes: e.Notes || '', Calender_booking_Id: e.Calender_booking_Id || '', Price: e.Price || '', Total: e.Total || '' }); setEnrollEdit(e._id) }} style={{ background:'none', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Edit</button>
+                                  <button onClick={async () => { if (!confirm('Delete this enrollment?')) return; try { await api.adminDeleteEnrollment(e._id); setEnrollments(prev => prev.filter(x => x._id !== e._id)); setEnrollTotal(prev => prev - 1) } catch {} }} style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Delete</button>
                                 </div>
                               </td>
-                              <td style={tdStyle}>{e.Applied_date ? new Date(e.Applied_date).toLocaleString() : '—'}</td>
-                              <td style={tdStyle}>{e.Price || '—'}</td>
-                              <td style={tdStyle}>{e.Total || '—'}</td>
-                              <td style={{ ...tdStyle, fontWeight: 600 }}>{e.Full_Name || '—'}</td>
-                              <td style={tdStyle}>{e.Email || '—'}</td>
-                              <td style={tdStyle}>{e['Student Phone'] || '—'}</td>
-                              <td style={tdStyle}>{e.Gender || '—'}</td>
-                              <td style={tdStyle}>{e.Date_of_Birth || '—'}</td>
-                              <td style={tdStyle}>{e.Address || '—'}</td>
-                              <td style={tdStyle}>{e.City || '—'}</td>
-                              <td style={tdStyle}>{e.State || '—'}</td>
-                              <td style={tdStyle}>{e.Zip || '—'}</td>
-                              <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.65rem' }}>{e.Permit || '—'}</td>
-                              <td style={tdStyle}>{e.Issue_Date || '—'}</td>
-                              <td style={tdStyle}>{e.Expire_Date || '—'}</td>
-                              <td style={tdStyle}>{e.Parent_Phone || '—'}</td>
-                              <td style={tdStyle}>{e.Pickup_Address || '—'}</td>
-                              <td style={{ ...tdStyle, fontWeight: 600 }}>{e.Course_Name || '—'}</td>
-                              <td style={tdStyle}>{e.Booking_Date || '—'}</td>
-                              <td style={tdStyle}>{e.Meds || '—'}</td>
-                              <td style={{ ...tdStyle, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.Notes || '—'}</td>
-                              <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.65rem' }}>{e.Calender_booking_Id || '—'}</td>
+                              <td style={tdStyle}>{e.Applied_date ? new Date(e.Applied_date).toLocaleString() : 'â€”'}</td>
+                              <td style={tdStyle}>{e.Price || 'â€”'}</td>
+                              <td style={tdStyle}>{e.Total || 'â€”'}</td>
+                              <td style={{ ...tdStyle, fontWeight: 600 }}>{e.Full_Name || 'â€”'}</td>
+                              <td style={tdStyle}>{e.Email || 'â€”'}</td>
+                              <td style={tdStyle}>{e['Student Phone'] || 'â€”'}</td>
+                              <td style={tdStyle}>{e.Gender || 'â€”'}</td>
+                              <td style={tdStyle}>{e.Date_of_Birth || 'â€”'}</td>
+                              <td style={tdStyle}>{e.Address || 'â€”'}</td>
+                              <td style={tdStyle}>{e.City || 'â€”'}</td>
+                              <td style={tdStyle}>{e.State || 'â€”'}</td>
+                              <td style={tdStyle}>{e.Zip || 'â€”'}</td>
+                              <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>{e.Permit || 'â€”'}</td>
+                              <td style={tdStyle}>{e.Issue_Date || 'â€”'}</td>
+                              <td style={tdStyle}>{e.Expire_Date || 'â€”'}</td>
+                              <td style={tdStyle}>{e.Parent_Phone || 'â€”'}</td>
+                              <td style={tdStyle}>{e.Pickup_Address || 'â€”'}</td>
+                              <td style={{ ...tdStyle, fontWeight: 600 }}>{e.Course_Name || 'â€”'}</td>
+                              <td style={tdStyle}>{e.Booking_Date || 'â€”'}</td>
+                              <td style={tdStyle}>{e.Meds || 'â€”'}</td>
+                              <td style={{ ...tdStyle, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.Notes || 'â€”'}</td>
+                              <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>{e.Calender_booking_Id || 'â€”'}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -786,14 +823,97 @@ export default function AdminPage() {
 
                     {enrollPages > 1 && (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
-                        <button disabled={enrollPage <= 1} onClick={() => setEnrollPage(prev => Math.max(1, prev - 1))} style={{ padding: '0.4rem 0.8rem', background: enrollPage <= 1 ? '#f0f2f5' : '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', fontWeight: 700, color: enrollPage <= 1 ? '#ccc' : DARK, cursor: enrollPage <= 1 ? 'not-allowed' : 'pointer' }}>Prev</button>
+                        <button disabled={enrollPage <= 1} onClick={() => setEnrollPage(prev => Math.max(1, prev - 1))} style={{ padding: '0.4rem 0.8rem', background: enrollPage <= 1 ? '#f0f2f5' : '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, color: enrollPage <= 1 ? '#ccc' : DARK, cursor: enrollPage <= 1 ? 'not-allowed' : 'pointer' }}>Prev</button>
                         {Array.from({ length: Math.min(enrollPages, 10) }, (_, i) => {
                           const start = Math.max(1, enrollPage - 4)
                           const p = start + i
                           if (p > enrollPages) return null
-                          return <button key={p} onClick={() => setEnrollPage(p)} style={{ padding: '0.4rem 0.7rem', background: p === enrollPage ? SKY_BLUE : '#fff', border: `1px solid ${p === enrollPage ? SKY_BLUE : '#E2EBF5'}`, borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', fontWeight: 700, color: p === enrollPage ? '#fff' : DARK, cursor: 'pointer' }}>{p}</button>
+                          return <button key={p} onClick={() => setEnrollPage(p)} style={{ padding: '0.4rem 0.7rem', background: p === enrollPage ? SKY_BLUE : '#fff', border: `1px solid ${p === enrollPage ? SKY_BLUE : '#E2EBF5'}`, borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, color: p === enrollPage ? '#fff' : DARK, cursor: 'pointer' }}>{p}</button>
                         })}
-                        <button disabled={enrollPage >= enrollPages} onClick={() => setEnrollPage(prev => Math.min(enrollPages, prev + 1))} style={{ padding: '0.4rem 0.8rem', background: enrollPage >= enrollPages ? '#f0f2f5' : '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', fontWeight: 700, color: enrollPage >= enrollPages ? '#ccc' : DARK, cursor: enrollPage >= enrollPages ? 'not-allowed' : 'pointer' }}>Next</button>
+                        <button disabled={enrollPage >= enrollPages} onClick={() => setEnrollPage(prev => Math.min(enrollPages, prev + 1))} style={{ padding: '0.4rem 0.8rem', background: enrollPage >= enrollPages ? '#f0f2f5' : '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, color: enrollPage >= enrollPages ? '#ccc' : DARK, cursor: enrollPage >= enrollPages ? 'not-allowed' : 'pointer' }}>Next</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'refunds' && (
+                <div>
+                  <div className="admin-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+                    {[
+                      { num: refundStats.totalRequests, label: 'Total Requests', color: SKY_BLUE },
+                      { num: refundStats.totalRefunded, label: 'Refunded', color: '#22C55E' },
+                      { num: refundStats.pending, label: 'Pending', color: GOLD },
+                      { num: `$${(refundStats.totalAmount || 0).toFixed(2)}`, label: 'Total Refunded', color: '#DC2626' },
+                    ].map(s => (
+                      <div key={s.label} className="admin-stat" style={{ background: '#fff', borderRadius: 'var(--radius-lg)', border: '1px solid #E2EBF5', textAlign: 'center', padding: '1.5rem 1rem', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 800, color: s.color, lineHeight: 1, marginBottom: '0.3rem' }}>{s.num}</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#64748b', fontWeight: 600 }}>{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={cardStyle}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.refund} Refunds ({refundTotal})</h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <input type="text" placeholder="Search by name, email, course..." value={refundSearch} onChange={e => { setRefundSearch(e.target.value); setRefundPage(1) }} style={{ ...inputStyle, width: '220px' }} />
+                        <select value={refundLimit} onChange={e => { setRefundLimit(e.target.value); setRefundPage(1) }} style={{ ...inputStyle, width: '90px', fontSize: '1.05rem' }}>
+                          <option value="10">10 / page</option>
+                          <option value="20">20 / page</option>
+                          <option value="50">50 / page</option>
+                        </select>
+                        <button onClick={() => { setRefundForm({ Full_Name: '', Email: '', Phone: '', Course_Name: '', Amount: '', Reason: '', Status: 'pending' }); setRefundEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Refund</button>
+                      </div>
+                    </div>
+
+                    <div className="admin-table-wrap">
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr>
+                            <th style={thStyle}>Student</th>
+                            <th style={thStyle}>Email</th>
+                            <th style={thStyle}>Phone</th>
+                            <th style={thStyle}>Course</th>
+                            <th style={thStyle}>Amount</th>
+                            <th style={thStyle}>Reason</th>
+                            <th style={thStyle}>Status</th>
+                            <th style={thStyle}>Date</th>
+                            <th style={thStyle}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {refunds.length === 0 ? (
+                            <tr><td colSpan={9} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>No refunds found. Click "+ Add Refund" to create one.</td></tr>
+                          ) : refunds.map(r => (
+                            <tr key={r._id}>
+                              <td style={{ ...tdStyle, fontWeight: 600 }}>{r.Full_Name || 'â€”'}</td>
+                              <td style={tdStyle}>{r.Email || 'â€”'}</td>
+                              <td style={tdStyle}>{r.Phone || 'â€”'}</td>
+                              <td style={{ ...tdStyle, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.Course_Name || 'â€”'}</td>
+                              <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '1.05rem', fontWeight: 700 }}>{r.Amount || 'â€”'}</td>
+                              <td style={{ ...tdStyle, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.Reason}>{r.Reason || 'â€”'}</td>
+                              <td style={tdStyle}>
+                                <span style={{ padding: '0.2rem 0.5rem', background: r.Status === 'refunded' ? 'rgba(34,197,94,0.1)' : r.Status === 'denied' ? 'rgba(220,38,38,0.1)' : 'rgba(253,188,1,0.15)', color: r.Status === 'refunded' ? '#16A34A' : r.Status === 'denied' ? '#DC2626' : GOLD_DEEP, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, whiteSpace: 'nowrap' }}>{r.Status || 'pending'}</span>
+                              </td>
+                              <td style={tdStyle}>{r.created_at ? r.created_at.slice(0, 10) : 'â€”'}</td>
+                              <td style={tdStyle}>
+                                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                  <button onClick={() => { setRefundForm({ Full_Name: r.Full_Name || '', Email: r.Email || '', Phone: r.Phone || '', Course_Name: r.Course_Name || '', Amount: r.Amount || '', Reason: r.Reason || '', Status: r.Status || 'pending' }); setRefundEdit(r._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
+                                  <button onClick={async () => { if (!confirm('Delete this refund?')) return; try { await api.adminDeleteRefund(r._id); setRefunds(prev => prev.filter(x => x._id !== r._id)); setRefundTotal(prev => prev - 1); setMsg('Refund deleted.'); setTimeout(() => setMsg(''), 2000) } catch { setMsg('Failed to delete refund.'); setTimeout(() => setMsg(''), 2000) } }} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {refundPages > 1 && (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
+                        <button disabled={refundPage <= 1} onClick={() => setRefundPage(prev => Math.max(1, prev - 1))} style={{ padding: '0.4rem 0.8rem', background: refundPage <= 1 ? '#f0f2f5' : '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, color: refundPage <= 1 ? '#ccc' : DARK, cursor: refundPage <= 1 ? 'not-allowed' : 'pointer' }}>Prev</button>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: '#64748b' }}>Page {refundPage} of {refundPages}</span>
+                        <button disabled={refundPage >= refundPages} onClick={() => setRefundPage(prev => Math.min(refundPages, prev + 1))} style={{ padding: '0.4rem 0.8rem', background: refundPage >= refundPages ? '#f0f2f5' : '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, color: refundPage >= refundPages ? '#ccc' : DARK, cursor: refundPage >= refundPages ? 'not-allowed' : 'pointer' }}>Next</button>
                       </div>
                     )}
                   </div>
@@ -804,7 +924,7 @@ export default function AdminPage() {
                 <div style={cardStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.map} Maps / Locations ({areas.length})</h3>
-                    <button onClick={() => { setAreasForm({ name: '', map: '', icon: '' }); setAreasEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Location</button>
+                    <button onClick={() => { setAreasForm({ name: '', map: '', icon: '' }); setAreasEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Location</button>
                   </div>
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -820,7 +940,7 @@ export default function AdminPage() {
                         {areas.map(a => (
                           <tr key={a._id}>
                             <td style={{ ...tdStyle, fontWeight: 600 }}>{a.name}</td>
-                            <td style={{ ...tdStyle, maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#64748b' }} title={a.map}>{a.map}</td>
+                            <td style={{ ...tdStyle, maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#64748b' }} title={a.map}>{a.map}</td>
                             <td style={tdStyle}>
                               <button
                                 onClick={async () => {
@@ -838,21 +958,21 @@ export default function AdminPage() {
                                   setCopiedArea(a._id)
                                   setTimeout(() => setCopiedArea(null), 2000)
                                 }}
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.8rem', background: copiedArea === a._id ? 'rgba(34,197,94,0.1)' : 'rgba(1,69,168,0.06)', border: `1px solid ${copiedArea === a._id ? 'rgba(34,197,94,0.3)' : 'rgba(1,69,168,0.2)'}`, borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, color: copiedArea === a._id ? '#16A34A' : SKY_BLUE, cursor: 'pointer', transition: 'all 0.2s' }}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.8rem', background: copiedArea === a._id ? 'rgba(34,197,94,0.1)' : 'rgba(1,69,168,0.06)', border: `1px solid ${copiedArea === a._id ? 'rgba(34,197,94,0.3)' : 'rgba(1,69,168,0.2)'}`, borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, color: copiedArea === a._id ? '#16A34A' : SKY_BLUE, cursor: 'pointer', transition: 'all 0.2s' }}
                               >
                                 {copiedArea === a._id ? 'Copied!' : 'Copy Embed'}
                               </button>
                             </td>
                             <td style={tdStyle}>
                               <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                <button onClick={() => { setAreasForm({ name: a.name, map: a.map, icon: a.icon || '' }); setAreasEdit(a._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
-                                <button onClick={async () => { if (!confirm('Delete this location?')) return; try { await api.adminDeleteArea(a._id); setAreas(prev => prev.filter(x => x._id !== a._id)); setMsg('Location deleted.'); setTimeout(() => setMsg(''), 2000) } catch { setMsg('Failed to delete.'); setTimeout(() => setMsg(''), 2000) } }} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+                                <button onClick={() => { setAreasForm({ name: a.name, map: a.map, icon: a.icon || '' }); setAreasEdit(a._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
+                                <button onClick={async () => { if (!confirm('Delete this location?')) return; try { await api.adminDeleteArea(a._id); setAreas(prev => prev.filter(x => x._id !== a._id)); setMsg('Location deleted.'); setTimeout(() => setMsg(''), 2000) } catch { setMsg('Failed to delete.'); setTimeout(() => setMsg(''), 2000) } }} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
                               </div>
                             </td>
                           </tr>
                         ))}
                         {areas.length === 0 && (
-                          <tr><td colSpan={4} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#8899aa' }}>No locations yet. Click "+ Add Location" to create one.</td></tr>
+                          <tr><td colSpan={4} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>No locations yet. Click "+ Add Location" to create one.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -864,7 +984,7 @@ export default function AdminPage() {
                 <div style={cardStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.share} Social Links ({socials.length})</h3>
-                    <button onClick={() => { setSocialsForm({ platform: 'facebook', url: '', order: socials.length }); setSocialsEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Social Link</button>
+                    <button onClick={() => { setSocialsForm({ platform: 'facebook', url: '', order: socials.length }); setSocialsEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Social Link</button>
                   </div>
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -885,18 +1005,18 @@ export default function AdminPage() {
                                 {socialPlatformLabel(s.platform)}
                               </span>
                             </td>
-                            <td style={{ ...tdStyle, maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#64748b' }} title={s.url}>{s.url || '—'}</td>
-                            <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.6rem' }}>{s.order ?? 0}</td>
+                            <td style={{ ...tdStyle, maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#64748b' }} title={s.url}>{s.url || 'â€”'}</td>
+                            <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>{s.order ?? 0}</td>
                             <td style={tdStyle}>
                               <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                <button onClick={() => { setSocialsForm({ platform: s.platform || 'link', url: s.url || '', order: s.order ?? 0 }); setSocialsEdit(s._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
-                                <button onClick={async () => { if (!confirm('Delete this social link?')) return; try { await api.adminDeleteSocial(s._id); setSocials(prev => prev.filter(x => x._id !== s._id)); setMsg('Social link deleted.'); setTimeout(() => setMsg(''), 2000) } catch { setMsg('Failed to delete.'); setTimeout(() => setMsg(''), 2000) } }} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+                                <button onClick={() => { setSocialsForm({ platform: s.platform || 'link', url: s.url || '', order: s.order ?? 0 }); setSocialsEdit(s._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
+                                <button onClick={async () => { if (!confirm('Delete this social link?')) return; try { await api.adminDeleteSocial(s._id); setSocials(prev => prev.filter(x => x._id !== s._id)); setMsg('Social link deleted.'); setTimeout(() => setMsg(''), 2000) } catch { setMsg('Failed to delete.'); setTimeout(() => setMsg(''), 2000) } }} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
                               </div>
                             </td>
                           </tr>
                         ))}
                         {socials.length === 0 && (
-                          <tr><td colSpan={4} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#8899aa' }}>No social links yet. Click "+ Add Social Link" to create one.</td></tr>
+                          <tr><td colSpan={4} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>No social links yet. Click "+ Add Social Link" to create one.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -908,33 +1028,33 @@ export default function AdminPage() {
                 <div style={cardStyle}>
                   <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>{SVG.settings} Contact Information</h3>
                   {settingsMsg && (
-                    <div style={{ padding: '0.75rem 1rem', background: settingsMsg.includes('Failed') ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${settingsMsg.includes('Failed') ? '#FECACA' : '#BBF7D0'}`, borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: settingsMsg.includes('Failed') ? '#DC2626' : '#16A34A' }}>
+                    <div style={{ padding: '0.75rem 1rem', background: settingsMsg.includes('Failed') ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${settingsMsg.includes('Failed') ? '#FECACA' : '#BBF7D0'}`, borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: settingsMsg.includes('Failed') ? '#DC2626' : '#16A34A' }}>
                       {settingsMsg}
                     </div>
                   )}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', maxWidth: '800px' }}>
                     <div>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Phone</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Phone</label>
                       <input type="text" value={settings.phone} onChange={e => setSettings(prev => ({ ...prev, phone: e.target.value }))} style={inputStyle} />
                     </div>
                     <div>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Email</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Email</label>
                       <input type="text" value={settings.email} onChange={e => setSettings(prev => ({ ...prev, email: e.target.value }))} style={inputStyle} />
                     </div>
                     <div>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Address</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Address</label>
                       <input type="text" value={settings.address} onChange={e => setSettings(prev => ({ ...prev, address: e.target.value }))} style={inputStyle} />
                     </div>
                     <div>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>City / State / ZIP</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>City / State / ZIP</label>
                       <input type="text" value={settings.subaddress} onChange={e => setSettings(prev => ({ ...prev, subaddress: e.target.value }))} style={inputStyle} />
                     </div>
                     <div>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Schedule Label</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Schedule Label</label>
                       <input type="text" value={settings.scheduleLabel} onChange={e => setSettings(prev => ({ ...prev, scheduleLabel: e.target.value }))} style={inputStyle} />
                     </div>
                     <div>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Schedule Link</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Schedule Link</label>
                       <input type="text" value={settings.scheduleLink} onChange={e => setSettings(prev => ({ ...prev, scheduleLink: e.target.value }))} style={inputStyle} />
                     </div>
                   </div>
@@ -948,7 +1068,7 @@ export default function AdminPage() {
                         setSettingsMsg('Failed to save settings.')
                         setTimeout(() => setSettingsMsg(''), 2000)
                       }
-                    }} style={{ padding: '0.75rem 2rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
+                    }} style={{ padding: '0.75rem 2rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
                       Save Settings
                     </button>
                   </div>
@@ -960,34 +1080,34 @@ export default function AdminPage() {
                   <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '500px', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>Edit Contact</h3>
-                      <button onClick={() => setContactEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#94A3B8', cursor: 'pointer' }}>&times;</button>
+                      <button onClick={() => setContactEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>First Name</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>First Name</label>
                         <input type="text" value={contactForm.firstName} onChange={e => setContactForm(prev => ({ ...prev, firstName: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Last Name</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Last Name</label>
                         <input type="text" value={contactForm.lastName} onChange={e => setContactForm(prev => ({ ...prev, lastName: e.target.value }))} style={inputStyle} />
                       </div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Phone</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Phone</label>
                         <input type="text" value={contactForm.phone} onChange={e => setContactForm(prev => ({ ...prev, phone: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Email</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Email</label>
                         <input type="text" value={contactForm.email} onChange={e => setContactForm(prev => ({ ...prev, email: e.target.value }))} style={inputStyle} />
                       </div>
                     </div>
                     <div style={{ marginBottom: '1rem' }}>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Comments</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Comments</label>
                       <textarea rows="4" value={contactForm.comments} onChange={e => setContactForm(prev => ({ ...prev, comments: e.target.value }))} style={{ ...inputStyle, resize: 'vertical' }} />
                     </div>
                     <div style={{ marginBottom: '1.5rem' }}>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Status</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Status</label>
                       <select value={contactForm.status} onChange={e => setContactForm(prev => ({ ...prev, status: e.target.value }))} style={inputStyle}>
                         <option value="new">New</option>
                         <option value="read">Read</option>
@@ -995,8 +1115,8 @@ export default function AdminPage() {
                       </select>
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
-                      <button onClick={() => setContactEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#94A3B8', cursor: 'pointer' }}>Cancel</button>
-                      <button onClick={handleSaveContact} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>Save</button>
+                      <button onClick={() => setContactEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={handleSaveContact} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>Save</button>
                     </div>
                   </div>
                 </div>
@@ -1009,23 +1129,23 @@ export default function AdminPage() {
                       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>
                         {pricingEdit === 'new' ? 'Add Pricing Plan' : 'Edit Pricing Plan'}
                       </h3>
-                      <button onClick={() => setPricingEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#94A3B8', cursor: 'pointer' }}>&times;</button>
+                      <button onClick={() => setPricingEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Plan Name *</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Plan Name *</label>
                         <input type="text" value={pricingForm.planName} onChange={e => setPricingForm(prev => ({ ...prev, planName: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>ID *</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>ID *</label>
                         <input type="text" value={pricingForm.id} onChange={e => setPricingForm(prev => ({ ...prev, id: e.target.value }))} style={inputStyle} placeholder="e.g. 1, 2, 3..." />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Plan Price *</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Plan Price *</label>
                         <input type="text" value={pricingForm.planPrice} onChange={e => setPricingForm(prev => ({ ...prev, planPrice: e.target.value }))} style={inputStyle} placeholder="$24.99" />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Original Price (strikethrough) *</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Original Price (strikethrough) *</label>
                         <input type="text" value={pricingForm.planPriceTwo} onChange={e => setPricingForm(prev => ({ ...prev, planPriceTwo: e.target.value }))} style={inputStyle} placeholder="$24.99" />
                       </div>
                     </div>
@@ -1035,7 +1155,7 @@ export default function AdminPage() {
                       const permKey = `perm${i}`
                       return (
                         <div key={i} style={{ marginBottom: '1rem', padding: '1rem', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)' }}>
-                          <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>
+                          <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>
                             Package Option {i}
                           </label>
                           <input
@@ -1045,7 +1165,7 @@ export default function AdminPage() {
                             style={{ ...inputStyle, marginBottom: '0.5rem' }}
                             placeholder={`Option ${i} text`}
                           />
-                          <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>
+                          <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>
                             Package Permission
                           </label>
                           <select
@@ -1063,7 +1183,7 @@ export default function AdminPage() {
                     })}
 
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
-                      <button onClick={() => setPricingEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#94A3B8', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={() => setPricingEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Cancel</button>
                       <button onClick={async () => {
                         if (!pricingForm.planName || !pricingForm.id || !pricingForm.planPrice || !pricingForm.planPriceTwo) { setMsg('Plan Name, ID, Plan Price, and Plan Price Two are required.'); setTimeout(() => setMsg(''), 2000); return }
                         const options = [1,2,3,4,5].map(i => ({
@@ -1083,7 +1203,7 @@ export default function AdminPage() {
                           setMsg(pricingEdit === 'new' ? 'Plan added!' : 'Plan updated!')
                           setTimeout(() => setMsg(''), 2000)
                         } catch { setMsg('Failed to save plan.'); setTimeout(() => setMsg(''), 2000) }
-                      }} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
+                      }} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
                         {pricingEdit === 'new' ? 'Add Pricing Plan' : 'Save Changes'}
                       </button>
                     </div>
@@ -1096,27 +1216,27 @@ export default function AdminPage() {
                   <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{areasEdit === 'new' ? 'Add Location' : 'Edit Location'}</h3>
-                      <button onClick={() => setAreasEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#94A3B8', cursor: 'pointer' }}>&times;</button>
+                      <button onClick={() => setAreasEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Name *</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Name *</label>
                         <input type="text" value={areasForm.name} onChange={e => setAreasForm(prev => ({ ...prev, name: e.target.value }))} style={inputStyle} placeholder="San Ramon" />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Order</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Order</label>
                         <input type="number" value={areasForm.order} onChange={e => setAreasForm(prev => ({ ...prev, order: Number(e.target.value) }))} style={inputStyle} />
                       </div>
                     </div>
                     <div style={{ marginBottom: '1.5rem' }}>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Google Maps Embed URL *</label>
-                      <textarea rows="4" value={areasForm.map} onChange={e => setAreasForm(prev => ({ ...prev, map: e.target.value }))} style={{ ...inputStyle, resize: 'vertical', fontFamily: 'var(--font-mono)', fontSize: '0.65rem' }} placeholder="https://www.google.com/maps/embed?pb=..." />
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.7rem', color: '#94A3B8', margin: '0.4rem 0 0', lineHeight: 1.5 }}>
-                        Google Maps te location search kore "Share" → "Embed a map" → iframe er <code>src="..."</code> value ta ekhane paste korun.
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Google Maps Embed URL *</label>
+                      <textarea rows="4" value={areasForm.map} onChange={e => setAreasForm(prev => ({ ...prev, map: e.target.value }))} style={{ ...inputStyle, resize: 'vertical', fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }} placeholder="https://www.google.com/maps/embed?pb=..." />
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: '#64748b', margin: '0.4rem 0 0', lineHeight: 1.5 }}>
+                        Google Maps te location search kore "Share" â†’ "Embed a map" â†’ iframe er <code>src="..."</code> value ta ekhane paste korun.
                       </p>
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
-                      <button onClick={() => setAreasEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#94A3B8', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={() => setAreasEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Cancel</button>
                       <button onClick={async () => {
                         if (!areasForm.name || !areasForm.map) { setMsg('Name and Map URL are required.'); setTimeout(() => setMsg(''), 2000); return }
                         const doc = { name: areasForm.name, map: areasForm.map, icon: areasForm.icon || '', order: areasForm.order || 0 }
@@ -1132,7 +1252,7 @@ export default function AdminPage() {
                           setMsg(areasEdit === 'new' ? 'Location added!' : 'Location updated!')
                           setTimeout(() => setMsg(''), 2000)
                         } catch { setMsg('Failed to save location.'); setTimeout(() => setMsg(''), 2000) }
-                      }} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
+                      }} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
                         {areasEdit === 'new' ? 'Add Location' : 'Save Changes'}
                       </button>
                     </div>
@@ -1145,29 +1265,29 @@ export default function AdminPage() {
                   <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '500px', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{socialsEdit === 'new' ? 'Add Social Link' : 'Edit Social Link'}</h3>
-                      <button onClick={() => setSocialsEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#94A3B8', cursor: 'pointer' }}>&times;</button>
+                      <button onClick={() => setSocialsEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Platform *</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Platform *</label>
                         <select value={socialsForm.platform} onChange={e => setSocialsForm(prev => ({ ...prev, platform: e.target.value }))} style={inputStyle}>
                           {SOCIAL_PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                         </select>
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Order</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Order</label>
                         <input type="number" value={socialsForm.order} onChange={e => setSocialsForm(prev => ({ ...prev, order: Number(e.target.value) }))} style={inputStyle} />
                       </div>
                     </div>
                     <div style={{ marginBottom: '1.5rem' }}>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>URL *</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>URL *</label>
                       <input type="text" value={socialsForm.url} onChange={e => setSocialsForm(prev => ({ ...prev, url: e.target.value }))} style={inputStyle} placeholder="https://facebook.com/yourpage" />
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.7rem', color: '#94A3B8', margin: '0.4rem 0 0', lineHeight: 1.5 }}>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: '#64748b', margin: '0.4rem 0 0', lineHeight: 1.5 }}>
                         Link nosto hoye gele ekhane notun link diye save korlei footer e update hoye jabe.
                       </p>
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
-                      <button onClick={() => setSocialsEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#94A3B8', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={() => setSocialsEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Cancel</button>
                       <button onClick={async () => {
                         if (!socialsForm.url) { setMsg('URL is required.'); setTimeout(() => setMsg(''), 2000); return }
                         const doc = { platform: socialsForm.platform, url: socialsForm.url, order: Number(socialsForm.order) || 0 }
@@ -1183,8 +1303,74 @@ export default function AdminPage() {
                           setMsg(socialsEdit === 'new' ? 'Social link added!' : 'Social link updated!')
                           setTimeout(() => setMsg(''), 2000)
                         } catch { setMsg('Failed to save social link.'); setTimeout(() => setMsg(''), 2000) }
-                      }} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
+                      }} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
                         {socialsEdit === 'new' ? 'Add Social Link' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {refundEdit && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setRefundEdit(null) }}>
+                  <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{refundEdit === 'new' ? 'Add Refund' : 'Edit Refund'}</h3>
+                      <button onClick={() => setRefundEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Student Name *</label>
+                        <input type="text" value={refundForm.Full_Name} onChange={e => setRefundForm(prev => ({ ...prev, Full_Name: e.target.value }))} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Amount *</label>
+                        <input type="text" value={refundForm.Amount} onChange={e => setRefundForm(prev => ({ ...prev, Amount: e.target.value }))} style={inputStyle} placeholder="$210" />
+                      </div>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Email</label>
+                        <input type="text" value={refundForm.Email} onChange={e => setRefundForm(prev => ({ ...prev, Email: e.target.value }))} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Phone</label>
+                        <input type="text" value={refundForm.Phone} onChange={e => setRefundForm(prev => ({ ...prev, Phone: e.target.value }))} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Course</label>
+                        <input type="text" value={refundForm.Course_Name} onChange={e => setRefundForm(prev => ({ ...prev, Course_Name: e.target.value }))} style={inputStyle} placeholder="IDEAL FOR STUDENTS" />
+                      </div>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Status</label>
+                        <select value={refundForm.Status} onChange={e => setRefundForm(prev => ({ ...prev, Status: e.target.value }))} style={inputStyle}>
+                          <option value="pending">Pending</option>
+                          <option value="refunded">Refunded</option>
+                          <option value="denied">Denied</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Reason</label>
+                      <textarea rows="3" value={refundForm.Reason} onChange={e => setRefundForm(prev => ({ ...prev, Reason: e.target.value }))} style={{ ...inputStyle, resize: 'vertical' }} placeholder="Why is this being refunded?" />
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                      <button onClick={() => setRefundEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={async () => {
+                        if (!refundForm.Full_Name || !refundForm.Amount) { setMsg('Student Name and Amount are required.'); setTimeout(() => setMsg(''), 2000); return }
+                        const doc = { ...refundForm }
+                        try {
+                          if (refundEdit === 'new') {
+                            const r = await api.adminAddRefund(doc)
+                            if (r.ok) { doc._id = r._id; setRefunds(prev => [doc, ...prev]); setRefundTotal(prev => prev + 1) }
+                          } else {
+                            await api.adminUpdateRefund(refundEdit, doc)
+                            setRefunds(prev => prev.map(x => x._id === refundEdit ? { ...x, ...doc } : x))
+                          }
+                          setRefundEdit(null)
+                          setMsg(refundEdit === 'new' ? 'Refund added!' : 'Refund updated!')
+                          setTimeout(() => setMsg(''), 2000)
+                        } catch { setMsg('Failed to save refund.'); setTimeout(() => setMsg(''), 2000) }
+                      }} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
+                        {refundEdit === 'new' ? 'Add Refund' : 'Save Changes'}
                       </button>
                     </div>
                   </div>
@@ -1196,7 +1382,7 @@ export default function AdminPage() {
                   <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{enrollEdit === 'new' ? 'Add Enrollment' : 'Edit Enrollment'}</h3>
-                      <button onClick={() => setEnrollEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#94A3B8', cursor: 'pointer' }}>&times;</button>
+                      <button onClick={() => setEnrollEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
                       {[
@@ -1218,7 +1404,7 @@ export default function AdminPage() {
                         { k: 'Booking_Date', label: 'Booking Date' },
                       ].map(({ k, label, type, opts, ph }) => (
                         <div key={k}>
-                          <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>{label}</label>
+                          <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>{label}</label>
                           {type === 'select' ? (
                             <select value={enrollForm[k] || ''} onChange={e => setEnrollForm(prev => ({ ...prev, [k]: e.target.value }))} style={inputStyle}>
                               {opts.map(o => <option key={o} value={o}>{o}</option>)}
@@ -1231,36 +1417,36 @@ export default function AdminPage() {
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Address</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Address</label>
                         <input type="text" value={enrollForm.Address || ''} onChange={e => setEnrollForm(prev => ({ ...prev, Address: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Pickup Address</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Pickup Address</label>
                         <input type="text" value={enrollForm.Pickup_Address || ''} onChange={e => setEnrollForm(prev => ({ ...prev, Pickup_Address: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>City</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>City</label>
                         <input type="text" value={enrollForm.City || ''} onChange={e => setEnrollForm(prev => ({ ...prev, City: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>State</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>State</label>
                         <input type="text" value={enrollForm.State || ''} onChange={e => setEnrollForm(prev => ({ ...prev, State: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Zip</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Zip</label>
                         <input type="text" value={enrollForm.Zip || ''} onChange={e => setEnrollForm(prev => ({ ...prev, Zip: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Meds</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Meds</label>
                         <input type="text" value={enrollForm.Meds || ''} onChange={e => setEnrollForm(prev => ({ ...prev, Meds: e.target.value }))} style={inputStyle} placeholder="N/A" />
                       </div>
                     </div>
                     <div style={{ marginBottom: '1.5rem' }}>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Notes</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Notes</label>
                       <textarea rows="3" value={enrollForm.Notes || ''} onChange={e => setEnrollForm(prev => ({ ...prev, Notes: e.target.value }))} style={{ ...inputStyle, resize: 'vertical' }} />
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
-                      <button onClick={() => setEnrollEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#94A3B8', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={() => setEnrollEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Cancel</button>
                       <button onClick={async () => {
                         if (!enrollForm.Full_Name) { setMsg('Full Name is required.'); setTimeout(() => setMsg(''), 2000); return }
                         try {
@@ -1275,7 +1461,7 @@ export default function AdminPage() {
                           setMsg(enrollEdit === 'new' ? 'Enrollment added!' : 'Enrollment updated!')
                           setTimeout(() => setMsg(''), 2000)
                         } catch { setMsg('Failed to save enrollment.'); setTimeout(() => setMsg(''), 2000) }
-                      }} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
+                      }} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
                         {enrollEdit === 'new' ? 'Add Enrollment' : 'Save Changes'}
                       </button>
                     </div>

@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 3001
 const MONGO_URI = process.env.MONGO_URI
 const DB_NAME = 'driving_school'
 
-let db, usersCol, bookingsCol, contactCol, settingsCol, pricingCol, enrollmentsCol, areasCol, socialsCol
+let db, usersCol, bookingsCol, contactCol, settingsCol, pricingCol, enrollmentsCol, areasCol, socialsCol, refundsCol
 let connectPromise = null
 
 async function connectDB() {
@@ -35,6 +35,7 @@ async function connectDB() {
     enrollmentsCol = db.collection('enrollments')
     areasCol = db.collection('areas')
     socialsCol = db.collection('socials')
+    refundsCol = db.collection('refunds')
     await usersCol.createIndex({ uid: 1 }, { unique: true })
     await bookingsCol.createIndex({ userId: 1, date: 1 })
     await seedPricing()
@@ -786,6 +787,79 @@ app.delete('/api/admin/enrollments/:id', async (req, res) => {
     res.status(500).json({ error: e.message })
   }
 })
+
+app.get('/api/admin/refunds', async (req, res) => {
+  try {
+    const { search, page = 1, limit = 10 } = req.query
+    const p = Math.max(1, parseInt(page))
+    const l = Math.min(100, Math.max(1, parseInt(limit)))
+    const filter = {}
+    if (search) {
+      const r = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+      filter.$or = [{ Full_Name: r }, { Email: r }, { Phone: r }, { Course_Name: r }, { Reason: r }]
+    }
+    const total = await refundsCol.countDocuments(filter)
+    const data = await refundsCol.find(filter)
+      .sort({ created_at: -1, _id: -1 })
+      .skip((p - 1) * l)
+      .limit(l)
+      .toArray()
+    res.json({ data, total, page: p, limit: l, totalPages: Math.ceil(total / l) })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.get('/api/admin/refunds/stats', async (req, res) => {
+  try {
+    const all = await refundsCol.find({}).toArray()
+    const totalRequests = all.length
+    const totalRefunded = all.filter(x => x.Status === 'refunded').length
+    const totalAmount = all
+      .filter(x => x.Status === 'refunded' && x.Amount)
+      .reduce((sum, x) => sum + (parseFloat(String(x.Amount).replace(/[^0-9.]/g, '')) || 0), 0)
+    const pending = all.filter(x => x.Status === 'pending' || !x.Status).length
+    res.json({ totalRequests, totalRefunded, totalAmount, pending })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.post('/api/admin/refunds', async (req, res) => {
+  try {
+    const doc = {
+      ...req.body,
+      Status: req.body.Status || 'pending',
+      created_at: new Date().toISOString().replace('T', ' ').slice(0, 19),
+    }
+    const r = await refundsCol.insertOne(doc)
+    res.json({ ok: true, _id: r.insertedId })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.put('/api/admin/refunds/:id', async (req, res) => {
+  try {
+    await refundsCol.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { ...req.body, updated_at: new Date().toISOString().replace('T', ' ').slice(0, 19) } }
+    )
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.delete('/api/admin/refunds/:id', async (req, res) => {
+  try {
+    await refundsCol.deleteOne({ _id: new ObjectId(req.params.id) })
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
 
 async function seedPricing() {
   const count = await pricingCol.countDocuments()

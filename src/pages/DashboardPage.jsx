@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { signOut, updateProfile, reauthenticateWithCredential, EmailAuthProvider, updatePassword } from 'firebase/auth'
 import { auth } from '../firebase'
@@ -48,7 +48,7 @@ const I = {
 }
 
 export default function DashboardPage() {
-  usePageMeta('Student Dashboard — A Precision Driving School', 'Manage your driving courses, lesson bookings and payments with A Precision Driving School.')
+  usePageMeta('Student Dashboard â€” A Precision Driving School', 'Manage your driving courses, lesson bookings and payments with A Precision Driving School.')
   const { user, isAdmin } = useAuth()
   const navigate = useNavigate()
   const [phone, setPhone] = useState('')
@@ -447,7 +447,7 @@ export default function DashboardPage() {
                 </Link>
                 <div>
                   <p style={{ fontFamily:'var(--font-display)', fontSize:'1.05rem', color:'#fff', margin:0, fontWeight:800, lineHeight:1.2, textShadow:'0 1px 2px rgba(0,0,0,0.2)' }}>Dashboard</p>
-                  <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.15em', textTransform:'uppercase', color:GOLD_BRIGHT, margin:0, fontWeight:700, textShadow:'0 0 8px rgba(253,188,1,0.3)' }}>A Precision Driving School</p>
+                  <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.65rem', letterSpacing:'0.15em', textTransform:'uppercase', color:GOLD_BRIGHT, margin:0, fontWeight:700, textShadow:'0 0 8px rgba(253,188,1,0.3)' }}>A Precision Driving School</p>
                 </div>
               </div>
             </div>
@@ -460,11 +460,11 @@ export default function DashboardPage() {
               <div style={{ position:'relative' }} onClick={() => setProfileMenuOpen(!profileMenuOpen)} onMouseEnter={() => setProfileMenuOpen(true)} onMouseLeave={() => setProfileMenuOpen(false)}>
                 <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'0.45rem 0.85rem 0.45rem 0.55rem', background:profileMenuOpen ? 'linear-gradient(135deg,rgba(253,188,1,0.18),rgba(253,188,1,0.08))' : 'linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.08))', border:`1px solid ${profileMenuOpen ? 'rgba(253,188,1,0.35)' : 'rgba(255,255,255,0.28)'}`, borderRadius:'14px', cursor:'pointer', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)', boxShadow:profileMenuOpen ? '0 2px 12px rgba(253,188,1,0.2)' : '0 2px 10px rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.15)' }}>
                   <div className="dash-profile-text" style={{ textAlign:'right' }}>
-                    <p style={{ fontFamily:'var(--font-body)', fontSize:'0.82rem', color:'#fff', margin:0, fontWeight:600, lineHeight:1.2 }}>{user?.displayName || 'Student'}</p>
-                    <p style={{ fontFamily:'var(--font-body)', fontSize:'0.65rem', color:'rgba(255,255,255,0.65)', margin:'0.1rem 0 0', maxWidth:'160px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
+                    <p style={{ fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#fff', margin:0, fontWeight:600, lineHeight:1.2 }}>{user?.displayName || 'Student'}</p>
+                    <p style={{ fontFamily:'var(--font-body)', fontSize:'0.8rem', color:'rgba(255,255,255,0.65)', margin:'0.1rem 0 0', maxWidth:'160px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
                   </div>
                   <div style={{ position:'relative' }}>
-                    {user?.photoURL ? <img src={user.photoURL} alt="" style={{ width:'42px', height:'42px', borderRadius:'50%', objectFit:'cover', border:`2.5px solid ${GOLD}`, boxShadow:'0 0 20px rgba(253,188,1,0.3)' }} /> : <div style={{ width:'42px', height:'42px', borderRadius:'50%', background:`linear-gradient(135deg,${GOLD},${GOLD_BRIGHT})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.85rem', fontWeight:800, color:DARK, border:`2.5px solid ${GOLD}`, boxShadow:'0 0 20px rgba(253,188,1,0.3)' }}>{initials}</div>}
+                    {user?.photoURL ? <img src={user.photoURL} alt="" style={{ width:'42px', height:'42px', borderRadius:'50%', objectFit:'cover', border:`2.5px solid ${GOLD}`, boxShadow:'0 0 20px rgba(253,188,1,0.3)' }} /> : <div style={{ width:'42px', height:'42px', borderRadius:'50%', background:`linear-gradient(135deg,${GOLD},${GOLD_BRIGHT})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.95rem', fontWeight:800, color:DARK, border:`2.5px solid ${GOLD}`, boxShadow:'0 0 20px rgba(253,188,1,0.3)' }}>{initials}</div>}
                     <div style={{ position:'absolute', bottom:0, right:0, width:'11px', height:'11px', borderRadius:'50%', background:'linear-gradient(135deg,#22C55E,#16A34A)', border:'2.5px solid #0145A8', boxShadow:'0 0 6px rgba(34,197,94,0.4)' }} />
                   </div>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="2.5" style={{ transition:'transform 0.25s', transform:profileMenuOpen ? 'rotate(180deg)' : 'rotate(0)' }}><path d="M6 9l6 6 6-6" /></svg>
@@ -476,7 +476,7 @@ export default function DashboardPage() {
                         {user?.photoURL ? <img src={user.photoURL} alt="" style={{ width:'50px', height:'50px', borderRadius:'50%', objectFit:'cover', border:`2.5px solid ${GOLD}`, boxShadow:'0 0 16px rgba(253,188,1,0.25)' }} /> : <div style={{ width:'50px', height:'50px', borderRadius:'50%', background:`linear-gradient(135deg,${GOLD},${GOLD_BRIGHT})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.1rem', fontWeight:800, color:DARK, border:`2.5px solid ${GOLD}`, boxShadow:'0 0 16px rgba(253,188,1,0.25)' }}>{initials}</div>}
                         <div style={{ minWidth:0 }}>
                           <p style={{ fontFamily:'var(--font-display)', fontSize:'0.95rem', color:'#0F172A', margin:0, fontWeight:700 }}>{user?.displayName || 'Student'}</p>
-                          <p style={{ fontFamily:'var(--font-body)', fontSize:'0.72rem', color:'#475569', margin:'0.2rem 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
+                          <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', margin:'0.2rem 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
                         </div>
                       </div>
                     </div>
@@ -486,13 +486,13 @@ export default function DashboardPage() {
                         { label:'Book Lessons', icon:I.calendar, action:() => { setProfileMenuOpen(false); switchTab('bookings') } },
                         { label:'My Courses', icon:I.book, action:() => { setProfileMenuOpen(false); switchTab('courses') } },
                       ].map(item => (
-                        <button key={item.label} onClick={item.action} style={{ display:'flex', alignItems:'center', gap:'0.7rem', padding:'0.65rem 0.8rem', width:'100%', fontFamily:'var(--font-body)', fontSize:'0.82rem', color:'#334155', background:'none', border:'none', borderRadius:'10px', cursor:'pointer', textAlign:'left', transition:'all 0.2s' }}>
+                        <button key={item.label} onClick={item.action} style={{ display:'flex', alignItems:'center', gap:'0.7rem', padding:'0.65rem 0.8rem', width:'100%', fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#334155', background:'none', border:'none', borderRadius:'10px', cursor:'pointer', textAlign:'left', transition:'all 0.2s' }}>
                           {item.icon} {item.label}
                         </button>
                       ))}
                     </div>
                     <div style={{ padding:'0.5rem', borderTop:'1px solid rgba(1,69,168,0.1)' }}>
-                      <button onClick={async () => { setProfileMenuOpen(false); await signOut(auth); navigate('/') }} style={{ display:'flex', alignItems:'center', gap:'0.7rem', padding:'0.65rem 0.8rem', width:'100%', fontFamily:'var(--font-body)', fontSize:'0.82rem', color:'#DC2626', background:'none', border:'none', borderRadius:'10px', cursor:'pointer', textAlign:'left', transition:'all 0.2s' }}>
+                      <button onClick={async () => { setProfileMenuOpen(false); await signOut(auth); navigate('/') }} style={{ display:'flex', alignItems:'center', gap:'0.7rem', padding:'0.65rem 0.8rem', width:'100%', fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#DC2626', background:'none', border:'none', borderRadius:'10px', cursor:'pointer', textAlign:'left', transition:'all 0.2s' }}>
                         {I.logout} Sign Out
                       </button>
                     </div>
@@ -513,24 +513,24 @@ export default function DashboardPage() {
                 </div>
                 <div style={{ minWidth:0 }}>
                   <p style={{ fontFamily:'var(--font-display)', fontSize:'0.95rem', color:'#fff', margin:0, fontWeight:700, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{user?.displayName || 'Student'}</p>
-                  <p style={{ fontFamily:'var(--font-body)', fontSize:'0.7rem', color:'rgba(255,255,255,0.6)', margin:'0.2rem 0 0', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{user?.email}</p>
+                  <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'rgba(255,255,255,0.6)', margin:'0.2rem 0 0', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{user?.email}</p>
                 </div>
               </div>
             </div>
             <nav style={{ padding:'1.25rem 0.75rem' }}>
               <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', padding:'0 0.75rem 0.75rem', marginBottom:'0.5rem' }}>
                 <span style={{ width:'18px', height:'2px', background:'linear-gradient(90deg,transparent,#FDBC01)', borderRadius:'2px' }} />
-                <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.18em', textTransform:'uppercase', color:'rgba(253,188,1,0.75)', fontWeight:700 }}>Menu</span>
+                <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.7rem', letterSpacing:'0.18em', textTransform:'uppercase', color:'rgba(253,188,1,0.75)', fontWeight:700 }}>Menu</span>
               </div>
               {navItems.map(item => item.link ? (
                 <a key={item.id} href={item.link} onClick={() => setSidebarOpen(false)} className="dash-nav-item" style={{ textDecoration:'none', marginBottom:'4px' }}>
                   <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:'linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))', display:'flex', alignItems:'center', justifyContent:'center' }}>{item.icon}</div>
-                  <div style={{ display:'flex', flexDirection:'column' }}><span>{item.label}</span>{item.sublabel && <span style={{ fontSize:'0.62rem', fontWeight:400, color:'rgba(255,255,255,0.55)', marginTop:'2px' }}>{item.sublabel}</span>}</div>
+                  <div style={{ display:'flex', flexDirection:'column' }}><span>{item.label}</span>{item.sublabel && <span style={{ fontSize:'0.75rem', fontWeight:400, color:'rgba(255,255,255,0.55)', marginTop:'2px' }}>{item.sublabel}</span>}</div>
                 </a>
               ) : (
                 <button key={item.id} onClick={() => switchTab(item.id)} className={`dash-nav-item ${activeTab === item.id ? 'dash-nav-active' : ''}`} style={{ marginBottom:'4px' }}>
                   <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:activeTab === item.id ? 'linear-gradient(135deg,rgba(253,188,1,0.25),rgba(253,188,1,0.10))' : 'linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.3s' }}>{item.icon}</div>
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}><span>{item.label}</span>{item.sublabel && <span style={{ fontSize:'0.62rem', fontWeight:400, color:activeTab === item.id ? 'rgba(253,188,1,0.85)' : 'rgba(255,255,255,0.55)', marginTop:'2px' }}>{item.sublabel}</span>}</div>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}><span>{item.label}</span>{item.sublabel && <span style={{ fontSize:'0.85rem', fontWeight:400, color:activeTab === item.id ? 'rgba(253,188,1,0.85)' : 'rgba(255,255,255,0.55)', marginTop:'2px' }}>{item.sublabel}</span>}</div>
                 </button>
               ))}
             </nav>
@@ -542,11 +542,11 @@ export default function DashboardPage() {
               </button>
               <button onClick={handleLogout} className="dash-nav-item dash-logout-item" style={{ marginBottom:'1rem', background:'linear-gradient(135deg,rgba(220,38,38,0.22),rgba(220,38,38,0.10))', border:'1px solid rgba(220,38,38,0.35)', color:'#FCA5A5' }}>
                 <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:'linear-gradient(135deg,#DC2626,#B91C1C)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 12px rgba(220,38,38,0.35)' }}>{I.logout}</div>
-                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}><span>Logout</span><span style={{ fontSize:'0.62rem', fontWeight:400, color:'rgba(252,165,165,0.75)', marginTop:'2px' }}>Sign out</span></div>
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}><span>Logout</span><span style={{ fontSize:'0.85rem', fontWeight:400, color:'rgba(252,165,165,0.75)', marginTop:'2px' }}>Sign out</span></div>
               </button>
               <div style={{ padding:'0.85rem 1rem', background:'linear-gradient(145deg,rgba(253,188,1,0.10),rgba(255,255,255,0.03))', borderRadius:'14px', border:'1px solid rgba(253,188,1,0.2)', boxShadow:'inset 0 1px 0 rgba(255,255,255,0.06)' }}>
-                <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'rgba(253,188,1,0.85)', margin:0, fontWeight:700 }}>Member Since</p>
-                <p style={{ fontFamily:'var(--font-body)', fontSize:'0.78rem', color:'#FFFFFF', margin:'0.3rem 0 0', fontWeight:600 }}>{user?.metadata?.creationTime ? new Date(user.metadata.creationTime).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' }) : 'Recently'}</p>
+                <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'rgba(253,188,1,0.85)', margin:0, fontWeight:700 }}>Member Since</p>
+                <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#FFFFFF', margin:'0.3rem 0 0', fontWeight:600 }}>{user?.metadata?.creationTime ? new Date(user.metadata.creationTime).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' }) : 'Recently'}</p>
               </div>
             </div>
           </div>
@@ -561,7 +561,7 @@ export default function DashboardPage() {
             )}
             <div style={{ padding:'clamp(1rem,3vw,2.5rem)' }}>
               {msg && (
-                <div className="dash-anim" style={{ padding:'0.85rem 1.25rem', background:msg.includes('Failed') ? 'linear-gradient(135deg,#FEF2F2,#FFF5F5)' : 'linear-gradient(135deg,#F0FDF4,#F5FFF8)', border:`1px solid ${msg.includes('Failed') ? 'rgba(220,38,38,0.15)' : 'rgba(34,197,94,0.15)'}`, borderRadius:'14px', marginBottom:'1.5rem', fontFamily:'var(--font-body)', fontSize:'0.85rem', color:msg.includes('Failed') ? '#DC2626' : '#16A34A', boxShadow:msg.includes('Failed') ? '0 4px 16px rgba(220,38,38,0.08)' : '0 4px 16px rgba(34,197,94,0.08)', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                <div className="dash-anim" style={{ padding:'0.85rem 1.25rem', background:msg.includes('Failed') ? 'linear-gradient(135deg,#FEF2F2,#FFF5F5)' : 'linear-gradient(135deg,#F0FDF4,#F5FFF8)', border:`1px solid ${msg.includes('Failed') ? 'rgba(220,38,38,0.15)' : 'rgba(34,197,94,0.15)'}`, borderRadius:'14px', marginBottom:'1.5rem', fontFamily:'var(--font-body)', fontSize:'1.05rem', color:msg.includes('Failed') ? '#DC2626' : '#16A34A', boxShadow:msg.includes('Failed') ? '0 4px 16px rgba(220,38,38,0.08)' : '0 4px 16px rgba(34,197,94,0.08)', display:'flex', alignItems:'center', gap:'0.5rem' }}>
                   {msg.includes('Failed') ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>}
                   {msg}
                 </div>
@@ -570,9 +570,9 @@ export default function DashboardPage() {
               {activeTab === 'dashboard' && (
                 <div>
                   <div style={{ marginBottom:'2.5rem' }}>
-                    <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600 }}>Welcome back</p>
+                    <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600 }}>Welcome back</p>
                     <h2 style={{ fontFamily:'var(--font-display)', fontSize:'clamp(1.8rem,3vw,2.4rem)', color:'#0F172A', margin:'0 0 0.5rem', fontWeight:800, lineHeight:1.1 }}>Dashboard</h2>
-                    <p style={{ fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#475569', margin:0 }}>Your profile details and quick summary</p>
+                    <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:0 }}>Your profile details and quick summary</p>
                   </div>
                   <div className="dash-hero-grid" style={{ display:'grid', gridTemplateColumns:'repeat(12,1fr)', gap:'1.25rem' }}>
                     {/* Profile */}
@@ -584,9 +584,9 @@ export default function DashboardPage() {
                       </div>
                       <div>
                         <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.25rem', color:'#0F172A', fontWeight:800, margin:'0 0 0.5rem', lineHeight:1.2 }}>{user?.displayName || 'Student'}</h3>
-                        <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', margin:'0 0 0.25rem', display:'flex', alignItems:'center', gap:'0.4rem' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg> {user?.email}</p>
-                        <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', margin:'0 0 0.25rem', display:'flex', alignItems:'center', gap:'0.4rem' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" /></svg> {phone || '—'}</p>
-                        <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', margin:0, display:'flex', alignItems:'center', gap:'0.4rem' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg> {address || '—'}</p>
+                        <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:'0 0 0.25rem', display:'flex', alignItems:'center', gap:'0.4rem' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg> {user?.email}</p>
+                        <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:'0 0 0.25rem', display:'flex', alignItems:'center', gap:'0.4rem' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" /></svg> {phone || 'â€”'}</p>
+                        <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:0, display:'flex', alignItems:'center', gap:'0.4rem' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg> {address || 'â€”'}</p>
                       </div>
                     </div>
 
@@ -595,9 +595,9 @@ export default function DashboardPage() {
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:'linear-gradient(90deg,#DC2626,#F97316)' }} />
                       <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.75rem' }}>
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(220,38,38,0.08),rgba(220,38,38,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0016.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 002 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg></div>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Medications</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Medications</p>
                       </div>
-                      <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#0F172A', margin:0, fontWeight:600 }}>{medications || '—'}</p>
+                      <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#0F172A', margin:0, fontWeight:600 }}>{medications || 'â€”'}</p>
                     </div>
 
                     {/* Permit */}
@@ -605,9 +605,9 @@ export default function DashboardPage() {
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${SKY_BLUE},#3B82F6)` }} />
                       <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.75rem' }}>
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(1,69,168,0.08),rgba(1,69,168,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="2"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg></div>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Permit</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Permit</p>
                       </div>
-                      <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#0F172A', margin:0, fontWeight:600 }}>{permit || '—'}</p>
+                      <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#0F172A', margin:0, fontWeight:600 }}>{permit || 'â€”'}</p>
                     </div>
 
                     {/* Submitted */}
@@ -615,9 +615,9 @@ export default function DashboardPage() {
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT})` }} />
                       <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.75rem' }}>
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(253,188,1,0.1),rgba(253,188,1,0.04))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={GOLD_DEEP} strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg></div>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Submitted</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Submitted</p>
                       </div>
-                      <p style={{ fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#0F172A', margin:0, fontWeight:600 }}>{submittedAt ? new Date(submittedAt + 'T12:00:00').toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' }) : '—'}</p>
+                      <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#0F172A', margin:0, fontWeight:600 }}>{submittedAt ? new Date(submittedAt + 'T12:00:00').toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' }) : 'â€”'}</p>
                     </div>
 
                     {/* Notes */}
@@ -625,9 +625,9 @@ export default function DashboardPage() {
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:'linear-gradient(90deg,#8B5CF6,#A78BFA)' }} />
                       <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.75rem' }}>
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(139,92,246,0.08),rgba(139,92,246,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg></div>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Notes</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Notes</p>
                       </div>
-                      <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#0F172A', margin:0, lineHeight:1.7, fontWeight:500 }}>{notes || '—'}</p>
+                      <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#0F172A', margin:0, lineHeight:1.7, fontWeight:500 }}>{notes || 'â€”'}</p>
                     </div>
 
                     {/* Issue Date */}
@@ -635,9 +635,9 @@ export default function DashboardPage() {
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:'linear-gradient(90deg,#059669,#10B981)' }} />
                       <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.75rem' }}>
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(5,150,105,0.08),rgba(5,150,105,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg></div>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Issue Date</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Issue Date</p>
                       </div>
-                      <p style={{ fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#0F172A', margin:0, fontWeight:600 }}>{issueDate ? new Date(issueDate + 'T12:00:00').toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' }) : '—'}</p>
+                      <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#0F172A', margin:0, fontWeight:600 }}>{issueDate ? new Date(issueDate + 'T12:00:00').toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' }) : 'â€”'}</p>
                     </div>
 
                     {/* Expiry */}
@@ -645,9 +645,9 @@ export default function DashboardPage() {
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:'linear-gradient(90deg,#DC2626,#EF4444)' }} />
                       <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.75rem' }}>
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(220,38,38,0.08),rgba(220,38,38,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg></div>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Expiry</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Expiry</p>
                       </div>
-                      <p style={{ fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#0F172A', margin:0, fontWeight:600 }}>{expiryDate ? new Date(expiryDate + 'T12:00:00').toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' }) : '—'}</p>
+                      <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#0F172A', margin:0, fontWeight:600 }}>{expiryDate ? new Date(expiryDate + 'T12:00:00').toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' }) : 'â€”'}</p>
                     </div>
                   </div>
                 </div>
@@ -659,24 +659,24 @@ export default function DashboardPage() {
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${SKY_BLUE},${GOLD_BRIGHT},${SKY_BLUE})`, backgroundSize:'200% 100%', animation:'dashShimmer 5s linear infinite' }} />
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'0.75rem', marginBottom:'0.5rem' }}>
                       <div>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600, animation:'dashTextReveal 0.8s ease both' }}>COURSES</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600, animation:'dashTextReveal 0.8s ease both' }}>COURSES</p>
                         <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'#0F172A', margin:0, fontWeight:800, textTransform:'uppercase' }}>YOUR ENROLLED COURSES</h2>
                       </div>
                       {courses.length > 0 && (
                         <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', padding:'0.5rem 1rem', borderRadius:'12px', border:'1px solid rgba(1,69,168,0.08)' }}>
                           <span style={{ fontFamily:'var(--font-display)', fontSize:'1.3rem', fontWeight:800, color:SKY_BLUE }}>{courses.length}</span>
-                          <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', fontWeight:600 }}>enrolled</span>
+                          <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', fontWeight:600 }}>enrolled</span>
                         </div>
                       )}
                     </div>
-                    <p style={{ fontFamily:'var(--font-body)', fontSize:'0.9rem', color:'#475569', margin:'0 0 1.5rem' }}>Here are your currently enrolled courses... you can add more packages.</p>
+                    <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:'0 0 1.5rem' }}>Here are your currently enrolled courses... you can add more packages.</p>
                     <button onClick={() => navigate('/pricing')} className="dash-btn-primary" style={{ marginBottom:'2rem' }}>Add more packages</button>
                     <div style={{ display:'flex', flexDirection:'column', gap:'0.75rem' }}>
                       {courses.length === 0 && (
                         <div style={{ textAlign:'center', padding:'2.5rem 1rem' }}>
                           <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="1.5"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z" /><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z" /></svg></div>
-                          <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', marginBottom:'1rem' }}>No courses enrolled yet.</p>
-                          <button onClick={() => navigate('/pricing')} className="dash-btn-gold" style={{ fontSize:'0.65rem', padding:'0.7rem 1.5rem' }}>Browse Courses</button>
+                          <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', marginBottom:'1rem' }}>No courses enrolled yet.</p>
+                          <button onClick={() => navigate('/pricing')} className="dash-btn-gold" style={{ fontSize:'0.9rem', padding:'0.7rem 1.5rem' }}>Browse Courses</button>
                         </div>
                       )}
                       {[...courses].sort((a, b) => {
@@ -684,28 +684,28 @@ export default function DashboardPage() {
                         return (order[a.status] ?? 1) - (order[b.status] ?? 1)
                       }).map((course, i) => (
                         <div key={course.id || i} className="dash-course-card" style={{ animationDelay:`${i * 0.06}s` }}>
-                          <div className="dash-course-icon" style={{ width:'52px', height:'52px', borderRadius:'14px', background:'linear-gradient(135deg,rgba(1,69,168,0.08),rgba(1,69,168,0.03))', color:SKY_BLUE, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-display)', fontSize:'0.95rem', fontWeight:800, flexShrink:0, border:'1px solid rgba(1,69,168,0.08)' }}>{course.id}</div>
+                          <div className="dash-course-icon" style={{ width:'52px', height:'52px', borderRadius:'14px', background:'linear-gradient(135deg,rgba(1,69,168,0.08),rgba(1,69,168,0.03))', color:SKY_BLUE, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-display)', fontSize:'1.05rem', fontWeight:800, flexShrink:0, border:'1px solid rgba(1,69,168,0.08)' }}>{course.id}</div>
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', flexWrap:'wrap', marginBottom:'0.25rem' }}>
-                              <h4 style={{ fontFamily:'var(--font-display)', fontSize:'0.95rem', color:'#0F172A', fontWeight:800, margin:0, textTransform:'uppercase' }}>{course.title}</h4>
-                              <span style={{ padding:'0.15rem 0.5rem', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.45rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700, ...(course.status === 'Enrolled' || course.status === 'Paid' ? { background:'rgba(34,197,94,0.08)', color:'#16A34A' } : course.status === 'Completed' ? { background:'rgba(1,69,168,0.08)', color:SKY_BLUE } : course.status === 'Refunded' || course.status === 'Cancelled' ? { background:'rgba(220,38,38,0.06)', color:'#DC2626' } : { background:'rgba(234,179,8,0.08)', color:'#CA8A04' }) }}>{course.status}</span>
+                              <h4 style={{ fontFamily:'var(--font-display)', fontSize:'1.05rem', color:'#0F172A', fontWeight:800, margin:0, textTransform:'uppercase' }}>{course.title}</h4>
+                              <span style={{ padding:'0.15rem 0.5rem', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.7rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700, ...(course.status === 'Enrolled' || course.status === 'Paid' ? { background:'rgba(34,197,94,0.08)', color:'#16A34A' } : course.status === 'Completed' ? { background:'rgba(1,69,168,0.08)', color:SKY_BLUE } : course.status === 'Refunded' || course.status === 'Cancelled' ? { background:'rgba(220,38,38,0.06)', color:'#DC2626' } : { background:'rgba(234,179,8,0.08)', color:'#CA8A04' }) }}>{course.status}</span>
                             </div>
-                            <p style={{ fontFamily:'var(--font-body)', fontSize:'0.8rem', color:'#475569', margin:'0 0 0.5rem' }}>{course.price}</p>
+                            <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', margin:'0 0 0.5rem' }}>{course.price}</p>
                             <div style={{ height:'6px', background:'#E8EDF4', borderRadius:'3px', overflow:'hidden', marginBottom:'0.4rem', maxWidth:'300px' }}>
                               <div style={{ width:`${course.progress || 0}%`, height:'100%', background:`linear-gradient(90deg,${SKY_BLUE},#3B82F6)`, borderRadius:'3px', transition:'width 0.8s cubic-bezier(0.22,1,0.36,1)' }} />
                             </div>
-                            <p style={{ fontFamily:'var(--font-body)', fontSize:'0.75rem', color:'#475569', margin:0 }}>{course.progress || 0}% complete</p>
+                            <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:0 }}>{course.progress || 0}% complete</p>
                           </div>
                           <div style={{ display:'flex', gap:'0.5rem', flexShrink:0, flexWrap:'wrap', justifyContent:'flex-end', alignItems:'center' }}>
-                            <button onClick={() => setCourseDetail(course)} style={{ padding:'0.5rem 1rem', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', color:SKY_BLUE, border:'1px solid rgba(1,69,168,0.1)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'0.8rem', fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:'0.4rem', transition:'all 0.2s' }}>
+                            <button onClick={() => setCourseDetail(course)} style={{ padding:'0.5rem 1rem', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', color:SKY_BLUE, border:'1px solid rgba(1,69,168,0.1)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:'0.4rem', transition:'all 0.2s' }}>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></svg> Details
                             </button>
                             {course.status !== 'Refunded' && course.status !== 'Cancelled' && (
                               <>
-                                <button onClick={() => setCancelConfirm(course.id)} style={{ padding:'0.5rem 1rem', background:'none', color:'#DC2626', border:'1px solid rgba(220,38,38,0.15)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'0.8rem', fontWeight:700, cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background='rgba(220,38,38,0.04)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.3)' }} onMouseLeave={(e) => { e.currentTarget.style.background='none'; e.currentTarget.style.borderColor='rgba(220,38,38,0.15)' }}>
+                                <button onClick={() => setCancelConfirm(course.id)} style={{ padding:'0.5rem 1rem', background:'none', color:'#DC2626', border:'1px solid rgba(220,38,38,0.15)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:700, cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background='rgba(220,38,38,0.04)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.3)' }} onMouseLeave={(e) => { e.currentTarget.style.background='none'; e.currentTarget.style.borderColor='rgba(220,38,38,0.15)' }}>
                                   Cancel
                                 </button>
-                                <button onClick={() => setRefundConfirm(course.id)} style={{ padding:'0.5rem 1rem', background:'none', color:'#CA8A04', border:'1px solid rgba(202,138,4,0.15)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'0.8rem', fontWeight:700, cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background='rgba(202,138,4,0.04)'; e.currentTarget.style.borderColor='rgba(202,138,4,0.3)' }} onMouseLeave={(e) => { e.currentTarget.style.background='none'; e.currentTarget.style.borderColor='rgba(202,138,4,0.15)' }}>
+                                <button onClick={() => setRefundConfirm(course.id)} style={{ padding:'0.5rem 1rem', background:'none', color:'#CA8A04', border:'1px solid rgba(202,138,4,0.15)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:700, cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background='rgba(202,138,4,0.04)'; e.currentTarget.style.borderColor='rgba(202,138,4,0.3)' }} onMouseLeave={(e) => { e.currentTarget.style.background='none'; e.currentTarget.style.borderColor='rgba(202,138,4,0.15)' }}>
                                   Refund
                                 </button>
                               </>
@@ -727,7 +727,7 @@ export default function DashboardPage() {
                       <div style={{ position:'relative', zIndex:1 }}>
                         <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'0.5rem' }}>
                           <span style={{ width:'16px', height:'2px', background:`linear-gradient(90deg, transparent, ${GOLD})` }} />
-                          <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.2em', textTransform:'uppercase', color:GOLD_DEEP, fontWeight:700 }}>Course Details</span>
+                          <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.2em', textTransform:'uppercase', color:GOLD_DEEP, fontWeight:700 }}>Course Details</span>
                         </div>
                         <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.3rem', color:'#fff', fontWeight:800, margin:0 }}>{courseDetail.title}</h2>
                       </div>
@@ -735,29 +735,29 @@ export default function DashboardPage() {
                     <div style={{ padding:'1.5rem 2rem 2rem' }}>
                       <div className="dash-modal-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem', marginBottom:'1.25rem' }}>
                         <div style={{ background:'#F8FAFD', borderRadius:'12px', padding:'1rem', border:'1px solid #E8EDF4' }}>
-                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Course ID</p>
+                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Course ID</p>
                           <p style={{ fontFamily:'var(--font-display)', fontSize:'1rem', color:DARK, fontWeight:800, margin:0 }}>{courseDetail.id}</p>
                         </div>
                         <div style={{ background:'#F8FAFD', borderRadius:'12px', padding:'1rem', border:'1px solid #E8EDF4' }}>
-                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Price</p>
+                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Price</p>
                           <p style={{ fontFamily:'var(--font-display)', fontSize:'1rem', color:GOLD, fontWeight:800, margin:0 }}>{courseDetail.price}</p>
                         </div>
                         <div style={{ background:'#F8FAFD', borderRadius:'12px', padding:'1rem', border:'1px solid #E8EDF4' }}>
-                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Status</p>
-                          <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:courseDetail.status === 'Enrolled' || courseDetail.status === 'Paid' ? '#16A34A' : '#DC2626', fontWeight:700, margin:0 }}>{courseDetail.status}</p>
+                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Status</p>
+                          <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:courseDetail.status === 'Enrolled' || courseDetail.status === 'Paid' ? '#16A34A' : '#DC2626', fontWeight:700, margin:0 }}>{courseDetail.status}</p>
                         </div>
                         <div style={{ background:'#F8FAFD', borderRadius:'12px', padding:'1rem', border:'1px solid #E8EDF4' }}>
-                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Progress</p>
+                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Progress</p>
                           <p style={{ fontFamily:'var(--font-display)', fontSize:'1rem', color:DARK, fontWeight:800, margin:0 }}>{courseDetail.progress || 0}%</p>
                         </div>
                       </div>
                       {courseDetail.enrolledAt && (
                         <div style={{ background:'#F8FAFD', borderRadius:'12px', padding:'1rem', border:'1px solid #E8EDF4', marginBottom:'1.25rem' }}>
-                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Enrolled On</p>
-                          <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:DARK, fontWeight:600, margin:0 }}>{new Date(courseDetail.enrolledAt).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' })}</p>
+                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Enrolled On</p>
+                          <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:DARK, fontWeight:600, margin:0 }}>{new Date(courseDetail.enrolledAt).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' })}</p>
                         </div>
                       )}
-                      <button onClick={() => setCourseDetail(null)} style={{ width:'100%', padding:'0.85rem', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.15em', textTransform:'uppercase', fontWeight:700, color:'#fff', background:`linear-gradient(135deg,${SKY_BLUE},#0a2a5e)`, border:'none', borderRadius:'var(--radius-sm)', cursor:'pointer', boxShadow:'0 4px 16px rgba(1,69,168,0.2)' }}>Close</button>
+                      <button onClick={() => setCourseDetail(null)} style={{ width:'100%', padding:'0.85rem', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.15em', textTransform:'uppercase', fontWeight:700, color:'#fff', background:`linear-gradient(135deg,${SKY_BLUE},#0a2a5e)`, border:'none', borderRadius:'var(--radius-sm)', cursor:'pointer', boxShadow:'0 4px 16px rgba(1,69,168,0.2)' }}>Close</button>
                     </div>
                   </div>
                 </div>
@@ -771,11 +771,11 @@ export default function DashboardPage() {
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
                       </div>
                       <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.2rem', color:'#0F172A', fontWeight:800, margin:'0 0 0.5rem' }}>Cancel Enrollment</h3>
-                      <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', margin:0, lineHeight:1.5 }}>Are you sure you want to cancel this course? This action cannot be undone.</p>
+                      <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:0, lineHeight:1.5 }}>Are you sure you want to cancel this course? This action cannot be undone.</p>
                     </div>
                     <div style={{ padding:'0 2rem 2rem', display:'flex', gap:'0.75rem' }}>
-                      <button onClick={() => setCancelConfirm(null)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#475569', background:'transparent', border:'1.5px solid #E2EBF5', borderRadius:'var(--radius-sm)', cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.borderColor='#CBD5E0'; e.currentTarget.style.color='#0F172A' }} onMouseLeave={(e) => { e.currentTarget.style.borderColor='#E2EBF5'; e.currentTarget.style.color='#475569' }}>Keep Course</button>
-                      <button onClick={() => handleCancelCourse(cancelConfirm)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#fff', background:'linear-gradient(135deg,#DC2626,#B91C1C)', border:'none', borderRadius:'var(--radius-sm)', cursor:'pointer', transition:'all 0.3s', boxShadow:'0 4px 16px rgba(220,38,38,0.25)' }} onMouseEnter={(e) => { e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(220,38,38,0.35)' }} onMouseLeave={(e) => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 4px 16px rgba(220,38,38,0.25)' }}>Yes, Cancel</button>
+                      <button onClick={() => setCancelConfirm(null)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#475569', background:'transparent', border:'1.5px solid #E2EBF5', borderRadius:'var(--radius-sm)', cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.borderColor='#CBD5E0'; e.currentTarget.style.color='#0F172A' }} onMouseLeave={(e) => { e.currentTarget.style.borderColor='#E2EBF5'; e.currentTarget.style.color='#475569' }}>Keep Course</button>
+                      <button onClick={() => handleCancelCourse(cancelConfirm)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#fff', background:'linear-gradient(135deg,#DC2626,#B91C1C)', border:'none', borderRadius:'var(--radius-sm)', cursor:'pointer', transition:'all 0.3s', boxShadow:'0 4px 16px rgba(220,38,38,0.25)' }} onMouseEnter={(e) => { e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(220,38,38,0.35)' }} onMouseLeave={(e) => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 4px 16px rgba(220,38,38,0.25)' }}>Yes, Cancel</button>
                     </div>
                   </div>
                 </div>
@@ -789,11 +789,11 @@ export default function DashboardPage() {
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#CA8A04" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" /></svg>
                       </div>
                       <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.2rem', color:'#0F172A', fontWeight:800, margin:'0 0 0.5rem' }}>Request Refund</h3>
-                      <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', margin:0, lineHeight:1.5 }}>Are you sure you want to request a refund for this course? The course will be removed from your dashboard.</p>
+                      <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:0, lineHeight:1.5 }}>Are you sure you want to request a refund for this course? The course will be removed from your dashboard.</p>
                     </div>
                     <div style={{ padding:'0 2rem 2rem', display:'flex', gap:'0.75rem' }}>
-                      <button onClick={() => setRefundConfirm(null)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#475569', background:'transparent', border:'1.5px solid #E2EBF5', borderRadius:'var(--radius-sm)', cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.borderColor='#CBD5E0'; e.currentTarget.style.color='#0F172A' }} onMouseLeave={(e) => { e.currentTarget.style.borderColor='#E2EBF5'; e.currentTarget.style.color='#475569' }}>Keep Course</button>
-                      <button onClick={() => handleRefundCourse(refundConfirm)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#fff', background:'linear-gradient(135deg,#CA8A04,#A16207)', border:'none', borderRadius:'var(--radius-sm)', cursor:'pointer', transition:'all 0.3s', boxShadow:'0 4px 16px rgba(202,138,4,0.25)' }} onMouseEnter={(e) => { e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(202,138,4,0.35)' }} onMouseLeave={(e) => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 4px 16px rgba(202,138,4,0.25)' }}>Yes, Refund</button>
+                      <button onClick={() => setRefundConfirm(null)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#475569', background:'transparent', border:'1.5px solid #E2EBF5', borderRadius:'var(--radius-sm)', cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.borderColor='#CBD5E0'; e.currentTarget.style.color='#0F172A' }} onMouseLeave={(e) => { e.currentTarget.style.borderColor='#E2EBF5'; e.currentTarget.style.color='#475569' }}>Keep Course</button>
+                      <button onClick={() => handleRefundCourse(refundConfirm)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#fff', background:'linear-gradient(135deg,#CA8A04,#A16207)', border:'none', borderRadius:'var(--radius-sm)', cursor:'pointer', transition:'all 0.3s', boxShadow:'0 4px 16px rgba(202,138,4,0.25)' }} onMouseEnter={(e) => { e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(202,138,4,0.35)' }} onMouseLeave={(e) => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 4px 16px rgba(202,138,4,0.25)' }}>Yes, Refund</button>
                     </div>
                   </div>
                 </div>
@@ -803,19 +803,19 @@ export default function DashboardPage() {
                 <div style={{ maxWidth:'1000px', margin:'0 auto' }}>
                   <div className="dash-anim dash-card-premium" style={{ padding:'2.5rem' }}>
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT},${GOLD})`, backgroundSize:'200% 100%', animation:'dashShimmer 5s linear infinite' }} />
-                    <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600, animation:'dashTextReveal 0.8s ease both' }}>Billing</p>
+                    <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600, animation:'dashTextReveal 0.8s ease both' }}>Billing</p>
                     <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'#0F172A', margin:'0 0 1.5rem', fontWeight:800, textTransform:'uppercase' }}>PAYMENT HISTORY</h2>
                     <div className="dash-stat-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1rem', marginBottom:'2rem' }}>
                       <div style={{ background:'linear-gradient(135deg,rgba(5,150,105,0.04),rgba(5,150,105,0.01))', border:'1px solid rgba(5,150,105,0.1)', borderRadius:'var(--radius-md)', padding:'1.25rem' }}>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#059669', margin:'0 0 0.25rem', fontWeight:600 }}>Total Paid</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#059669', margin:'0 0 0.25rem', fontWeight:600 }}>Total Paid</p>
                         <p style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', color:'#059669', margin:0, fontWeight:800 }}>{payments.filter(p => p.status === 'Paid').length}</p>
                       </div>
                       <div style={{ background:'linear-gradient(135deg,rgba(234,179,8,0.04),rgba(234,179,8,0.01))', border:'1px solid rgba(234,179,8,0.1)', borderRadius:'var(--radius-md)', padding:'1.25rem' }}>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#CA8A04', margin:'0 0 0.25rem', fontWeight:600 }}>Pending</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#CA8A04', margin:'0 0 0.25rem', fontWeight:600 }}>Pending</p>
                         <p style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', color:'#CA8A04', margin:0, fontWeight:800 }}>{payments.filter(p => p.status !== 'Paid').length}</p>
                       </div>
                       <div style={{ background:'linear-gradient(135deg,rgba(1,69,168,0.04),rgba(1,69,168,0.01))', border:'1px solid rgba(1,69,168,0.1)', borderRadius:'var(--radius-md)', padding:'1.25rem' }}>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.1em', textTransform:'uppercase', color:SKY_BLUE, margin:'0 0 0.25rem', fontWeight:600 }}>Transactions</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:SKY_BLUE, margin:'0 0 0.25rem', fontWeight:600 }}>Transactions</p>
                         <p style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', color:SKY_BLUE, margin:0, fontWeight:800 }}>{payments.length}</p>
                       </div>
                     </div>
@@ -824,7 +824,7 @@ export default function DashboardPage() {
                       <thead>
                         <tr>
                           {['Date','Ref','Email','Item','Amount','Status','Receipt'].map((th, i) => (
-                            <th key={th} style={{ textAlign:i===6?'center':'left', padding:'0.85rem 1rem', fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', fontWeight:700, borderBottom:'2px solid #E8EDF4', background:'linear-gradient(135deg,#FAFBFD,#F5F7FB)', ...(i===0?{borderTopLeftRadius:'10px',borderBottomLeftRadius:'10px'}:{}), ...(i===6?{borderTopRightRadius:'10px',borderBottomRightRadius:'10px'}:{}) }}>{th}</th>
+                            <th key={th} style={{ textAlign:i===6?'center':'left', padding:'0.85rem 1rem', fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', fontWeight:700, borderBottom:'2px solid #E8EDF4', background:'linear-gradient(135deg,#FAFBFD,#F5F7FB)', ...(i===0?{borderTopLeftRadius:'10px',borderBottomLeftRadius:'10px'}:{}), ...(i===6?{borderTopRightRadius:'10px',borderBottomRightRadius:'10px'}:{}) }}>{th}</th>
                           ))}
                         </tr>
                       </thead>
@@ -833,19 +833,19 @@ export default function DashboardPage() {
                           <tr>
                             <td colSpan="7" style={{ padding:'2.5rem 1rem', textAlign:'center' }}>
                               <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="1.5"><rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg></div>
-                              <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', marginBottom:'1rem' }}>No payment history yet.</p>
-                              <button onClick={() => navigate('/pricing')} className="dash-btn-gold" style={{ fontSize:'0.65rem', padding:'0.7rem 1.5rem' }}>Browse Courses</button>
+                              <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', marginBottom:'1rem' }}>No payment history yet.</p>
+                              <button onClick={() => navigate('/pricing')} className="dash-btn-gold" style={{ fontSize:'0.9rem', padding:'0.7rem 1.5rem' }}>Browse Courses</button>
                             </td>
                           </tr>
                         )}
                         {payments.map((p, i) => (
                           <tr key={i} className="dash-table-row" style={{ borderBottom:'1px solid #F1F5F9' }}>
-                            <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'0.8rem', color:'#475569' }}>{p.date}</td>
-                            <td style={{ padding:'1rem', fontFamily:'var(--font-mono)', fontSize:'0.75rem', color:'#475569', fontWeight:600 }}>{p.ref}</td>
-                            <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'0.8rem', color:'#475569' }}>{p.email}</td>
-                            <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'0.8rem', color:'#475569', fontWeight:600 }}>{p.item}</td>
-                            <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#0F172A', fontWeight:700 }}>{p.amount}</td>
-                            <td style={{ padding:'1rem' }}><span style={{ padding:'0.25rem 0.7rem', background:p.status==='Paid' ? 'rgba(5,150,105,0.06)' : 'rgba(220,38,38,0.04)', color:p.status==='Paid' ? '#059669' : '#DC2626', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:700 }}>{p.status}</span></td>
+                            <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569' }}>{p.date}</td>
+                            <td style={{ padding:'1rem', fontFamily:'var(--font-mono)', fontSize:'1.05rem', color:'#475569', fontWeight:600 }}>{p.ref}</td>
+                            <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569' }}>{p.email}</td>
+                            <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', fontWeight:600 }}>{p.item}</td>
+                            <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#0F172A', fontWeight:700 }}>{p.amount}</td>
+                            <td style={{ padding:'1rem' }}><span style={{ padding:'0.25rem 0.7rem', background:p.status==='Paid' ? 'rgba(5,150,105,0.06)' : 'rgba(220,38,38,0.04)', color:p.status==='Paid' ? '#059669' : '#DC2626', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:700 }}>{p.status}</span></td>
                             <td style={{ padding:'1rem', textAlign:'center' }}><button onClick={() => { const r = window.open('','_blank'); r.document.write(`<html><head><title>Receipt - ${p.ref}</title><style>body{font-family:sans-serif;padding:40px;color:#333}h1{font-size:20px;border-bottom:2px solid #0145A8;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:8px 12px;border-bottom:1px solid #eee}.lbl{color:#475569;width:120px}</style></head><body><h1>A Precision Driving School</h1><p style="color:#475569">Payment Receipt</p><table><tr><td class="lbl">Date</td><td>${p.date}</td></tr><tr><td class="lbl">Reference</td><td>${p.ref}</td></tr><tr><td class="lbl">Email</td><td>${p.email}</td></tr><tr><td class="lbl">Item</td><td>${p.item}</td></tr><tr><td class="lbl">Amount</td><td><strong>${p.amount}</strong></td></tr><tr><td class="lbl">Status</td><td>${p.status}</td></tr></table><p style="margin-top:40px;color:#475569;font-size:12px">A Precision Driving School - San Ramon, CA</p></body></html>`); r.document.close(); r.print() }} style={{ background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.35rem', borderRadius:'8px', display:'inline-flex' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg></button></td>
                           </tr>
                         ))}
@@ -860,63 +860,63 @@ export default function DashboardPage() {
                 <div style={{ maxWidth:'1000px', margin:'0 auto' }}>
                   <div className="dash-anim dash-card-premium" style={{ padding:'2.5rem' }}>
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${SKY_BLUE},${GOLD_BRIGHT},${SKY_BLUE})`, backgroundSize:'200% 100%', animation:'dashShimmer 5s linear infinite' }} />
-                    <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600 }}>Settings</p>
+                    <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600 }}>Settings</p>
                     <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'#0F172A', margin:'0 0 0.5rem', fontWeight:800, textTransform:'uppercase' }}>ACCOUNT SETTINGS</h2>
-                    <p style={{ fontFamily:'var(--font-body)', fontSize:'0.9rem', color:'#475569', margin:'0 0 2rem' }}>Quick access to profile and security settings.</p>
+                    <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:'0 0 2rem' }}>Quick access to profile and security settings.</p>
                     <div className="dash-form-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'1rem' }}>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Username</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Username</label>
                         <input type="text" value={sUsername} onChange={e => setSUsername(e.target.value)} className="dash-input" />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Email</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Email</label>
                         <input type="email" value={user?.email || ''} readOnly className="dash-input" style={{ color:'#475569', background:'linear-gradient(145deg,#F0F0F0,#e8e8e8)', cursor:'not-allowed' }} />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Phone</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Phone</label>
                         <input type="tel" value={sPhone} onChange={e => setSPhone(e.target.value)} className="dash-input" />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Permit</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Permit</label>
                         <input type="text" value={sPermit} onChange={e => setSPermit(e.target.value)} className="dash-input" />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Medications</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Medications</label>
                         <input type="text" value={sMedications} onChange={e => setSMedications(e.target.value)} className="dash-input" />
                       </div>
                       <div style={{ gridColumn:'1 / -1' }}>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Address</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Address</label>
                         <textarea value={sAddress} onChange={e => setSAddress(e.target.value)} rows="3" className="dash-input" style={{ resize:'vertical' }} />
                       </div>
                       <div style={{ gridColumn:'1 / -1' }}>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Notes</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Notes</label>
                         <textarea value={sNotes} onChange={e => setSNotes(e.target.value)} rows="3" className="dash-input" style={{ resize:'vertical' }} />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Submitted Date</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Submitted Date</label>
                         <input type="date" value={sSubmittedAt} onChange={e => setSSubmittedAt(e.target.value)} className="dash-input" />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Issue Date</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Issue Date</label>
                         <input type="date" value={sIssueDate} onChange={e => setSIssueDate(e.target.value)} className="dash-input" />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Expiry Date</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Expiry Date</label>
                         <input type="date" value={sExpiryDate} onChange={e => setSExpiryDate(e.target.value)} className="dash-input" />
                       </div>
                     </div>
                     <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.1rem', color:'#475569', margin:'0 0 1.5rem', fontWeight:700 }}>Change password (optional)</h3>
                     <div className="dash-form-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'1.5rem' }}>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Current password</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Current password</label>
                         <input type="password" placeholder="Enter current password" value={sCurrentPass} onChange={e => setSCurrentPass(e.target.value)} className="dash-input" />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>New password</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>New password</label>
                         <input type="password" placeholder="Min 8 characters" value={sNewPass} onChange={e => setSNewPass(e.target.value)} className="dash-input" />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Confirm new password</label>
+                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Confirm new password</label>
                         <input type="password" placeholder="Repeat new password" value={sConfirmPass} onChange={e => setSConfirmPass(e.target.value)} className="dash-input" />
                       </div>
                     </div>
@@ -929,20 +929,20 @@ export default function DashboardPage() {
                 <div className="dash-chat-wrap" style={{ maxWidth:'1100px', margin:'0 auto', display:'flex', gap:'1rem', height:'clamp(500px,70vh,650px)' }}>
                   <div className="dash-anim dash-chat-list" style={{ width:'260px', flexShrink:0, background:'linear-gradient(135deg,rgba(255,255,255,0.98),#FAFBFD)', borderRadius:'18px', border:'1px solid rgba(226,235,245,0.6)', boxShadow:'0 1px 3px rgba(0,0,0,0.02), 0 4px 16px rgba(0,0,0,0.03)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
                     <div style={{ padding:'1rem', borderBottom:'1px solid #E8EDF4' }}>
-                      <button onClick={handleNewChat} style={{ width:'100%', padding:'0.65rem', background: chatMessages.length === 0 && !activeConvId ? 'rgba(1,69,168,0.06)' : 'transparent', border:'1.5px solid rgba(1,69,168,0.1)', borderRadius:'10px', fontFamily:'var(--font-body)', fontSize:'0.8rem', fontWeight:600, color:SKY_BLUE, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem', transition:'all 0.2s' }} onMouseEnter={(e) => { if (!(chatMessages.length === 0 && !activeConvId)) { e.currentTarget.style.background='rgba(1,69,168,0.04)'; e.currentTarget.style.borderColor='rgba(1,69,168,0.2)' } }} onMouseLeave={(e) => { if (!(chatMessages.length === 0 && !activeConvId)) { e.currentTarget.style.background='transparent'; e.currentTarget.style.borderColor='rgba(1,69,168,0.1)' } }}>
+                      <button onClick={handleNewChat} style={{ width:'100%', padding:'0.65rem', background: chatMessages.length === 0 && !activeConvId ? 'rgba(1,69,168,0.06)' : 'transparent', border:'1.5px solid rgba(1,69,168,0.1)', borderRadius:'10px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:600, color:SKY_BLUE, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem', transition:'all 0.2s' }} onMouseEnter={(e) => { if (!(chatMessages.length === 0 && !activeConvId)) { e.currentTarget.style.background='rgba(1,69,168,0.04)'; e.currentTarget.style.borderColor='rgba(1,69,168,0.2)' } }} onMouseLeave={(e) => { if (!(chatMessages.length === 0 && !activeConvId)) { e.currentTarget.style.background='transparent'; e.currentTarget.style.borderColor='rgba(1,69,168,0.1)' } }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg> New Chat
                       </button>
                     </div>
                     <div style={{ flex:1, overflowY:'auto', padding:'0.5rem' }}>
                       {conversations.length === 0 ? (
                         <div style={{ textAlign:'center', padding:'2rem 1rem' }}>
-                          <p style={{ fontFamily:'var(--font-body)', fontSize:'0.75rem', color:'#B0B8C4', margin:0 }}>No conversations yet.</p>
+                          <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#B0B8C4', margin:0 }}>No conversations yet.</p>
                         </div>
                       ) : (
                         conversations.map(conv => (
                           <div key={conv.id} onClick={() => handleSelectConv(conv.id)} style={{ padding:'0.6rem 0.75rem', borderRadius:'10px', cursor:'pointer', marginBottom:'0.2rem', background: activeConvId === conv.id ? 'rgba(1,69,168,0.06)' : 'transparent', border: activeConvId === conv.id ? '1px solid rgba(1,69,168,0.1)' : '1px solid transparent', transition:'all 0.15s', display:'flex', alignItems:'center', gap:'0.5rem', position:'relative' }} onMouseEnter={(e) => { if (activeConvId !== conv.id) e.currentTarget.style.background='rgba(0,0,0,0.02)' }} onMouseLeave={(e) => { if (activeConvId !== conv.id) e.currentTarget.style.background='transparent' }}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="1.5" style={{ flexShrink:0 }}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
-                            <p style={{ fontFamily:'var(--font-body)', fontSize:'0.75rem', color: activeConvId === conv.id ? DARK : '#475569', margin:0, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontWeight: activeConvId === conv.id ? 600 : 400 }}>{conv.title}</p>
+                            <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color: activeConvId === conv.id ? DARK : '#475569', margin:0, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontWeight: activeConvId === conv.id ? 600 : 400 }}>{conv.title}</p>
                             <button onClick={(e) => handleDeleteConv(e, conv.id)} style={{ background:'none', border:'none', cursor:'pointer', padding:'2px', borderRadius:'4px', display:'flex', opacity:0.4, transition:'opacity 0.2s', flexShrink:0 }} onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(220,38,38,0.06)' }} onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.background = 'none' }}>
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
                             </button>
@@ -959,10 +959,10 @@ export default function DashboardPage() {
                             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
                           </div>
                           <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.3rem', color:DARK, fontWeight:800, margin:0 }}>How can I help you today?</h3>
-                          <p style={{ fontFamily:'var(--font-body)', fontSize:'0.9rem', color:'#475569', margin:0, textAlign:'center', maxWidth:'400px', lineHeight:1.6 }}>Ask me anything about our driving courses, scheduling, payments, permits, or driving rules in California.</p>
+                          <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:0, textAlign:'center', maxWidth:'400px', lineHeight:1.6 }}>Ask me anything about our driving courses, scheduling, payments, permits, or driving rules in California.</p>
                           <div className="dash-chat-sugg" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.6rem', marginTop:'0.5rem', maxWidth:'440px', width:'100%' }}>
                             {[{ q:'What courses do you offer?' }, { q:'How do I schedule a lesson?' }, { q:'What is the refund policy?' }, { q:'Do I need a permit first?' }].map((s, i) => (
-                              <button key={i} onClick={() => setChatInput(s.q)} style={{ padding:'0.75rem 1rem', background:'linear-gradient(135deg,rgba(1,69,168,0.03),rgba(1,69,168,0.01))', border:'1px solid rgba(1,69,168,0.08)', borderRadius:'12px', fontFamily:'var(--font-body)', fontSize:'0.78rem', color:DARK, fontWeight:500, cursor:'pointer', textAlign:'left', transition:'all 0.2s', lineHeight:1.4 }} onMouseEnter={(e) => { e.currentTarget.style.borderColor='rgba(1,69,168,0.2)'; e.currentTarget.style.background='rgba(1,69,168,0.05)' }} onMouseLeave={(e) => { e.currentTarget.style.borderColor='rgba(1,69,168,0.08)'; e.currentTarget.style.background='linear-gradient(135deg,rgba(1,69,168,0.03),rgba(1,69,168,0.01))' }}>{s.q}</button>
+                              <button key={i} onClick={() => setChatInput(s.q)} style={{ padding:'0.75rem 1rem', background:'linear-gradient(135deg,rgba(1,69,168,0.03),rgba(1,69,168,0.01))', border:'1px solid rgba(1,69,168,0.08)', borderRadius:'12px', fontFamily:'var(--font-body)', fontSize:'1rem', color:DARK, fontWeight:500, cursor:'pointer', textAlign:'left', transition:'all 0.2s', lineHeight:1.4 }} onMouseEnter={(e) => { e.currentTarget.style.borderColor='rgba(1,69,168,0.2)'; e.currentTarget.style.background='rgba(1,69,168,0.05)' }} onMouseLeave={(e) => { e.currentTarget.style.borderColor='rgba(1,69,168,0.08)'; e.currentTarget.style.background='linear-gradient(135deg,rgba(1,69,168,0.03),rgba(1,69,168,0.01))' }}>{s.q}</button>
                             ))}
                           </div>
                         </div>
@@ -975,13 +975,13 @@ export default function DashboardPage() {
                             </div>
                           )}
                           <div style={{ flex:1, maxWidth: m.role === 'assistant' ? 'calc(100% - 40px)' : '100%', display:'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                            <div style={{ padding:'0.85rem 1.15rem', borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: m.role === 'user' ? `linear-gradient(135deg,${SKY_BLUE},#0a2a5e)` : 'linear-gradient(135deg,#F1F5F9,#E8EDF4)', color: m.role === 'user' ? '#fff' : DARK, fontFamily:'var(--font-body)', fontSize:'0.88rem', lineHeight:1.7, maxWidth:'85%', boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}>
+                            <div style={{ padding:'0.85rem 1.15rem', borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: m.role === 'user' ? `linear-gradient(135deg,${SKY_BLUE},#0a2a5e)` : 'linear-gradient(135deg,#F1F5F9,#E8EDF4)', color: m.role === 'user' ? '#fff' : DARK, fontFamily:'var(--font-body)', fontSize:'1.05rem', lineHeight:1.7, maxWidth:'85%', boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}>
                               {m.content}
                             </div>
                           </div>
                           {m.role === 'user' && (
                             <div style={{ width:'32px', height:'32px', borderRadius:'10px', background:'linear-gradient(135deg,rgba(253,188,1,0.15),rgba(253,188,1,0.05))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:'2px' }}>
-                              <span style={{ fontFamily:'var(--font-display)', fontSize:'0.8rem', fontWeight:800, color:GOLD_DEEP }}>{user?.displayName?.[0] || user?.email?.[0] || '?'}</span>
+                              <span style={{ fontFamily:'var(--font-display)', fontSize:'1rem', fontWeight:800, color:GOLD_DEEP }}>{user?.displayName?.[0] || user?.email?.[0] || '?'}</span>
                             </div>
                           )}
                         </div>
@@ -1001,7 +1001,7 @@ export default function DashboardPage() {
                       <div ref={chatEndRef} />
                     </div>
                     <div style={{ padding:'1rem 1.5rem', borderTop:'1px solid #E8EDF4', background:'linear-gradient(135deg,#FAFBFD,#F5F7FB)', display:'flex', gap:'0.6rem', alignItems:'flex-end' }}>
-                      <textarea value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChat() } }} rows="1" placeholder="Ask about courses, scheduling, payments..." className="dash-input" style={{ flex:1, background:'#fff', borderRadius:'14px', padding:'0.75rem 1rem', fontSize:'0.88rem', resize:'none', minHeight:'44px', maxHeight:'100px' }} />
+                      <textarea value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChat() } }} rows="1" placeholder="Ask about courses, scheduling, payments..." className="dash-input" style={{ flex:1, background:'#fff', borderRadius:'14px', padding:'0.75rem 1rem', fontSize:'1.05rem', resize:'none', minHeight:'44px', maxHeight:'100px' }} />
                       <button onClick={handleChat} disabled={chatLoading || !chatInput.trim()} style={{ width:'44px', height:'44px', borderRadius:'14px', border:'none', background:(!chatInput.trim() || chatLoading) ? '#E2EBF5' : `linear-gradient(135deg,${SKY_BLUE},#0a2a5e)`, color:(!chatInput.trim() || chatLoading) ? '#475569' : '#fff', cursor:(!chatInput.trim() || chatLoading) ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.3s', boxShadow:(!chatInput.trim() || chatLoading) ? 'none' : '0 4px 12px rgba(1,69,168,0.25)', flexShrink:0 }}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
                       </button>
@@ -1019,22 +1019,22 @@ export default function DashboardPage() {
                       Schedule a Lesson
                     </h3>
                     <div style={{ marginBottom:'1.25rem' }}>
-                      <label style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', fontWeight:600, display:'block', marginBottom:'0.35rem' }}>Select Date</label>
+                      <label style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', fontWeight:600, display:'block', marginBottom:'0.35rem' }}>Select Date</label>
                       <input type="date" min={todayStr} value={bookingDate} onChange={(e) => setBookingDate(e.target.value)} className="dash-input" />
                     </div>
                     <div style={{ marginBottom:'1.5rem' }}>
-                      <label style={{ fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', fontWeight:600, display:'block', marginBottom:'0.35rem' }}>Select Time Slot</label>
+                      <label style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', fontWeight:600, display:'block', marginBottom:'0.35rem' }}>Select Time Slot</label>
                       <div className="dash-slot-grid" style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:'0.75rem', marginTop:'0.4rem' }}>
                         {TIME_SLOTS.map(slot => (
                           <div key={slot.id} onClick={() => setBookingSlot(slot.id)} className={`dash-slot ${bookingSlot === slot.id ? 'dash-slot-sel' : ''}`}>
-                            <div style={{ fontFamily:'var(--font-display)', fontSize:'0.85rem', color:bookingSlot === slot.id ? GOLD_DEEP : DARK, fontWeight:700, marginBottom:'0.2rem', position:'relative', zIndex:1 }}>{slot.label}</div>
-                            <div style={{ fontFamily:'var(--font-body)', fontSize:'0.75rem', color:'#475569', marginBottom:'0.15rem', position:'relative', zIndex:1 }}>{slot.time}</div>
-                            <div style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.1em', textTransform:'uppercase', color:bookingSlot === slot.id ? GOLD_DEEP : '#aaa', fontWeight:600, position:'relative', zIndex:1 }}>{slot.hours} Hours</div>
+                            <div style={{ fontFamily:'var(--font-display)', fontSize:'1.05rem', color:bookingSlot === slot.id ? GOLD_DEEP : DARK, fontWeight:700, marginBottom:'0.2rem', position:'relative', zIndex:1 }}>{slot.label}</div>
+                            <div style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', marginBottom:'0.15rem', position:'relative', zIndex:1 }}>{slot.time}</div>
+                            <div style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.1em', textTransform:'uppercase', color:bookingSlot === slot.id ? GOLD_DEEP : '#aaa', fontWeight:600, position:'relative', zIndex:1 }}>{slot.hours} Hours</div>
                           </div>
                         ))}
                       </div>
                     </div>
-                    <button onClick={handleBookLesson} disabled={bookingLoading || !bookingDate || !bookingSlot} className={!bookingDate || !bookingSlot ? '' : 'dash-btn-gold'} style={{ width:'100%', padding:'0.9rem', background:(!bookingDate || !bookingSlot) ? 'linear-gradient(135deg,#ccc,#ddd)' : undefined, color:(!bookingDate || !bookingSlot) ? '#999' : undefined, borderRadius:'14px', border:'none', fontFamily:'var(--font-mono)', fontSize:'0.7rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, cursor:(!bookingDate || !bookingSlot) ? 'not-allowed' : 'pointer', transition:'all 0.4s cubic-bezier(0.22,1,0.36,1)', boxShadow:(!bookingDate || !bookingSlot) ? 'none' : undefined }}>{bookingLoading ? 'Booking...' : 'Book Lesson'}</button>
+                    <button onClick={handleBookLesson} disabled={bookingLoading || !bookingDate || !bookingSlot} className={!bookingDate || !bookingSlot ? '' : 'dash-btn-gold'} style={{ width:'100%', padding:'0.9rem', background:(!bookingDate || !bookingSlot) ? 'linear-gradient(135deg,#ccc,#ddd)' : undefined, color:(!bookingDate || !bookingSlot) ? '#999' : undefined, borderRadius:'14px', border:'none', fontFamily:'var(--font-mono)', fontSize:'0.95rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, cursor:(!bookingDate || !bookingSlot) ? 'not-allowed' : 'pointer', transition:'all 0.4s cubic-bezier(0.22,1,0.36,1)', boxShadow:(!bookingDate || !bookingSlot) ? 'none' : undefined }}>{bookingLoading ? 'Booking...' : 'Book Lesson'}</button>
                   </div>
                   <div className="dash-anim dash-d1 dash-card-premium">
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${SKY_BLUE},${GOLD_BRIGHT},${SKY_BLUE})`, backgroundSize:'200% 100%', animation:'dashShimmer 5s linear infinite' }} />
@@ -1045,22 +1045,22 @@ export default function DashboardPage() {
                     {bookings.length === 0 ? (
                       <div style={{ textAlign:'center', padding:'2.5rem 1rem' }}>
                         <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg></div>
-                        <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569' }}>No bookings yet. Schedule your first lesson!</p>
+                        <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569' }}>No bookings yet. Schedule your first lesson!</p>
                       </div>
                     ) : (
                       <div style={{ display:'flex', flexDirection:'column', gap:'0.75rem', maxHeight:'400px', overflowY:'auto' }}>
                         {upcomingBookings.length > 0 && <>
-                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', fontWeight:600, margin:'0.25rem 0' }}>Upcoming</p>
+                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', fontWeight:600, margin:'0.25rem 0' }}>Upcoming</p>
                           {upcomingBookings.map(b => {
                             const slot = TIME_SLOTS.find(s => s.id === b.timeSlot)
                             return (
                               <div key={b._id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.85rem 1rem', background:'linear-gradient(135deg,rgba(34,197,94,0.04),rgba(34,197,94,0.01))', borderRadius:'14px', border:'1px solid rgba(34,197,94,0.1)' }}>
                                 <div>
-                                  <p style={{ fontFamily:'var(--font-body)', fontSize:'0.9rem', color:DARK, fontWeight:600, margin:0 }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })}</p>
-                                  <p style={{ fontFamily:'var(--font-body)', fontSize:'0.78rem', color:'#475569', margin:'0.15rem 0 0' }}>{slot?.time || b.timeSlot}</p>
+                                  <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:DARK, fontWeight:600, margin:0 }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })}</p>
+                                  <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', margin:'0.15rem 0 0' }}>{slot?.time || b.timeSlot}</p>
                                 </div>
                                 <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                                  <span style={{ padding:'0.25rem 0.7rem', background:'linear-gradient(135deg,rgba(34,197,94,0.12),rgba(34,197,94,0.06))', color:'#16A34A', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700 }}>Scheduled</span>
+                                  <span style={{ padding:'0.25rem 0.7rem', background:'linear-gradient(135deg,rgba(34,197,94,0.12),rgba(34,197,94,0.06))', color:'#16A34A', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700 }}>Scheduled</span>
                                   <button onClick={() => handleCancelBooking(b._id)} style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', padding:'0.25rem', borderRadius:'6px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
                                 </div>
                               </div>
@@ -1068,16 +1068,16 @@ export default function DashboardPage() {
                           })}
                         </>}
                         {pastBookings.length > 0 && <>
-                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', fontWeight:600, margin:'0.5rem 0 0.25rem' }}>Past</p>
+                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', fontWeight:600, margin:'0.5rem 0 0.25rem' }}>Past</p>
                           {pastBookings.slice(0, 10).map(b => {
                             const slot = TIME_SLOTS.find(s => s.id === b.timeSlot)
                             return (
                               <div key={b._id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.85rem 1rem', background:'#FAFBFD', borderRadius:'14px', border:'1px solid #F1F5F9', opacity:0.7 }}>
                                 <div>
-                                  <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#666', fontWeight:500, margin:0 }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })}</p>
-                                  <p style={{ fontFamily:'var(--font-body)', fontSize:'0.75rem', color:'#999', margin:'0.15rem 0 0' }}>{slot?.time || b.timeSlot}</p>
+                                  <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#666', fontWeight:500, margin:0 }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })}</p>
+                                  <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#999', margin:'0.15rem 0 0' }}>{slot?.time || b.timeSlot}</p>
                                 </div>
-                                <span style={{ padding:'0.25rem 0.7rem', background:'rgba(136,153,170,0.08)', color:'#475569', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:600 }}>Completed</span>
+                                <span style={{ padding:'0.25rem 0.7rem', background:'rgba(136,153,170,0.08)', color:'#475569', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:600 }}>Completed</span>
                               </div>
                             )
                           })}
@@ -1092,7 +1092,7 @@ export default function DashboardPage() {
                 <div>
                   {activeMod && moduleStep > 0 ? (
                     <div>
-                      <button onClick={() => { setActiveModule(null); setModuleStep(0); }} style={{ background:'none', border:'none', color:SKY_BLUE, fontFamily:'var(--font-mono)', fontSize:'0.65rem', letterSpacing:'0.1em', textTransform:'uppercase', cursor:'pointer', fontWeight:700, marginBottom:'1.25rem', display:'flex', alignItems:'center', gap:'0.4rem' }}>
+                      <button onClick={() => { setActiveModule(null); setModuleStep(0); }} style={{ background:'none', border:'none', color:SKY_BLUE, fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.1em', textTransform:'uppercase', cursor:'pointer', fontWeight:700, marginBottom:'1.25rem', display:'flex', alignItems:'center', gap:'0.4rem' }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7" /></svg> Back to Modules
                       </button>
                       <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'1.25rem' }}>
@@ -1102,15 +1102,15 @@ export default function DashboardPage() {
                       {moduleStep <= activeMod.lessons.length ? (
                         <div className="dash-anim" style={{ background:'linear-gradient(135deg,rgba(255,255,255,0.95),rgba(255,255,255,1))', borderRadius:'20px', border:'1px solid rgba(226,235,245,0.6)', padding:'1.75rem', boxShadow:'0 1px 3px rgba(0,0,0,0.02), 0 8px 32px rgba(0,0,0,0.04)', position:'relative', overflow:'hidden' }}>
                           <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${SKY_BLUE})` }} />
-                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:GOLD_DEEP, fontWeight:700, marginBottom:'0.5rem' }}>Lesson {moduleStep} of {activeMod.lessons.length}</p>
+                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:GOLD_DEEP, fontWeight:700, marginBottom:'0.5rem' }}>Lesson {moduleStep} of {activeMod.lessons.length}</p>
                           <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.3rem', color:DARK, fontWeight:700, marginBottom:'1rem' }}>{activeMod.lessons[moduleStep-1].title}</h3>
-                          <div className="dash-lesson"><p style={{ fontFamily:'var(--font-body)', fontSize:'0.92rem', color:'#333', lineHeight:1.8, margin:0 }}>{activeMod.lessons[moduleStep-1].content}</p></div>
-                          <button onClick={() => setModuleStep(moduleStep+1)} style={{ marginTop:'1.25rem', padding:'0.85rem 2rem', background:`linear-gradient(135deg,${GOLD},${GOLD_BRIGHT})`, color:DARK, border:'none', borderRadius:'12px', fontFamily:'var(--font-mono)', fontSize:'0.7rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, cursor:'pointer', transition:'all 0.3s', boxShadow:'0 4px 16px rgba(253,188,1,0.2)' }}>{moduleStep < activeMod.lessons.length ? 'Next Lesson' : 'Take Quiz'}</button>
+                          <div className="dash-lesson"><p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#333', lineHeight:1.8, margin:0 }}>{activeMod.lessons[moduleStep-1].content}</p></div>
+                          <button onClick={() => setModuleStep(moduleStep+1)} style={{ marginTop:'1.25rem', padding:'0.85rem 2rem', background:`linear-gradient(135deg,${GOLD},${GOLD_BRIGHT})`, color:DARK, border:'none', borderRadius:'12px', fontFamily:'var(--font-mono)', fontSize:'0.95rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, cursor:'pointer', transition:'all 0.3s', boxShadow:'0 4px 16px rgba(253,188,1,0.2)' }}>{moduleStep < activeMod.lessons.length ? 'Next Lesson' : 'Take Quiz'}</button>
                         </div>
                       ) : (
                         <div className="dash-anim" style={{ background:'linear-gradient(135deg,rgba(255,255,255,0.95),rgba(255,255,255,1))', borderRadius:'20px', border:'1px solid rgba(226,235,245,0.6)', padding:'1.75rem', boxShadow:'0 1px 3px rgba(0,0,0,0.02), 0 8px 32px rgba(0,0,0,0.04)', position:'relative', overflow:'hidden' }}>
                           <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${SKY_BLUE})` }} />
-                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', color:GOLD_DEEP, fontWeight:700, marginBottom:'0.5rem' }}>Module Quiz</p>
+                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:GOLD_DEEP, fontWeight:700, marginBottom:'0.5rem' }}>Module Quiz</p>
                           <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.3rem', color:DARK, fontWeight:700, marginBottom:'1.5rem' }}>{activeMod.title}</h3>
                           {!quizSubmitted ? (
                             <div>
@@ -1122,7 +1122,7 @@ export default function DashboardPage() {
                                   </div>
                                 </div>
                               ))}
-                              <button onClick={() => { let c=0; activeMod.quiz.forEach((q,qi) => { if(quizAnswers[qi]===q.correct) c++ }); handleCompleteQuiz(activeMod.id,c) }} disabled={Object.keys(quizAnswers).length < activeMod.quiz.length} style={{ padding:'0.85rem 2rem', background:Object.keys(quizAnswers).length < activeMod.quiz.length ? '#ccc' : `linear-gradient(135deg,${SKY_BLUE},#0a2a5e)`, color:'#fff', border:'none', borderRadius:'12px', fontFamily:'var(--font-mono)', fontSize:'0.7rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, cursor:Object.keys(quizAnswers).length < activeMod.quiz.length ? 'not-allowed' : 'pointer', transition:'all 0.3s', boxShadow:Object.keys(quizAnswers).length < activeMod.quiz.length ? 'none' : '0 4px 16px rgba(1,69,168,0.2)' }}>Submit Quiz</button>
+                              <button onClick={() => { let c=0; activeMod.quiz.forEach((q,qi) => { if(quizAnswers[qi]===q.correct) c++ }); handleCompleteQuiz(activeMod.id,c) }} disabled={Object.keys(quizAnswers).length < activeMod.quiz.length} style={{ padding:'0.85rem 2rem', background:Object.keys(quizAnswers).length < activeMod.quiz.length ? '#ccc' : `linear-gradient(135deg,${SKY_BLUE},#0a2a5e)`, color:'#fff', border:'none', borderRadius:'12px', fontFamily:'var(--font-mono)', fontSize:'0.95rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, cursor:Object.keys(quizAnswers).length < activeMod.quiz.length ? 'not-allowed' : 'pointer', transition:'all 0.3s', boxShadow:Object.keys(quizAnswers).length < activeMod.quiz.length ? 'none' : '0 4px 16px rgba(1,69,168,0.2)' }}>Submit Quiz</button>
                             </div>
                           ) : (
                             <div style={{ textAlign:'center', padding:'1.5rem 0' }}>
@@ -1130,9 +1130,9 @@ export default function DashboardPage() {
                                 <span style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', fontWeight:800, color:quizScore >= 2 ? '#22C55E' : '#DC2626' }}>{quizScore}/{activeMod.quiz.length}</span>
                               </div>
                               <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.2rem', color:DARK, fontWeight:700, marginBottom:'0.5rem' }}>{quizScore >= 2 ? 'Congratulations! Module Passed' : 'Not Passed'}</h3>
-                              <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', marginBottom:'1.5rem' }}>{quizScore >= 2 ? 'You have successfully completed this module.' : 'You need at least 2 correct answers to pass.'}</p>
-                              {quizScore < 2 && <button onClick={() => { setModuleStep(0); setQuizAnswers({}); setQuizSubmitted(false) }} style={{ padding:'0.7rem 1.5rem', background:SKY_BLUE, color:'#fff', border:'none', borderRadius:'10px', fontFamily:'var(--font-mono)', fontSize:'0.65rem', letterSpacing:'0.1em', textTransform:'uppercase', fontWeight:700, cursor:'pointer' }}>Review Lessons</button>}
-                              {quizScore >= 2 && <button onClick={() => { setActiveModule(null); setModuleStep(0) }} style={{ padding:'0.7rem 1.5rem', background:GOLD, color:DARK, border:'none', borderRadius:'10px', fontFamily:'var(--font-mono)', fontSize:'0.65rem', letterSpacing:'0.1em', textTransform:'uppercase', fontWeight:700, cursor:'pointer' }}>Back to Modules</button>}
+                              <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', marginBottom:'1.5rem' }}>{quizScore >= 2 ? 'You have successfully completed this module.' : 'You need at least 2 correct answers to pass.'}</p>
+                              {quizScore < 2 && <button onClick={() => { setModuleStep(0); setQuizAnswers({}); setQuizSubmitted(false) }} style={{ padding:'0.7rem 1.5rem', background:SKY_BLUE, color:'#fff', border:'none', borderRadius:'10px', fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.1em', textTransform:'uppercase', fontWeight:700, cursor:'pointer' }}>Review Lessons</button>}
+                              {quizScore >= 2 && <button onClick={() => { setActiveModule(null); setModuleStep(0) }} style={{ padding:'0.7rem 1.5rem', background:GOLD, color:DARK, border:'none', borderRadius:'10px', fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.1em', textTransform:'uppercase', fontWeight:700, cursor:'pointer' }}>Back to Modules</button>}
                             </div>
                           )}
                         </div>
@@ -1142,11 +1142,11 @@ export default function DashboardPage() {
                     <div>
                       <div style={{ marginBottom:'1.5rem' }}>
                         <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.15rem', color:DARK, fontWeight:700, marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.6rem' }}>{I.book} Online Driver Education</h3>
-                        <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', margin:0 }}>Complete all 3 modules to finish your course.</p>
+                        <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:0 }}>Complete all 3 modules to finish your course.</p>
                         <div style={{ marginTop:'0.75rem', background:'#E8EDF4', borderRadius:'999px', height:'8px', overflow:'hidden' }}>
                           <div style={{ width:`${Math.round((completedModules.length/3)*100)}%`, height:'100%', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT})`, borderRadius:'999px', transition:'width 0.5s' }} />
                         </div>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.55rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', fontWeight:600, marginTop:'0.35rem' }}>{completedModules.length} of 3 modules completed</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', fontWeight:600, marginTop:'0.35rem' }}>{completedModules.length} of 3 modules completed</p>
                       </div>
                       <div className="dash-mod-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1.25rem' }}>
                         {COURSE_MODULES.map((mod, i) => {
@@ -1157,11 +1157,11 @@ export default function DashboardPage() {
                                 <div style={{ width:'44px', height:'44px', borderRadius:'12px', background:done ? 'linear-gradient(135deg,rgba(34,197,94,0.1),rgba(34,197,94,0.2))' : `linear-gradient(135deg,rgba(1,69,168,0.08),rgba(253,188,1,0.08))`, border:`1.5px solid ${done ? '#22C55E' : '#E8EDF4'}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
                                   {done ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg> : <span style={{ fontFamily:'var(--font-display)', fontSize:'1.1rem', fontWeight:800, color:SKY_BLUE }}>{i+1}</span>}
                                 </div>
-                                {done && <span style={{ padding:'0.2rem 0.5rem', background:'rgba(34,197,94,0.1)', color:'#22C55E', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.5rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700 }}>Done</span>}
+                                {done && <span style={{ padding:'0.2rem 0.5rem', background:'rgba(34,197,94,0.1)', color:'#22C55E', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700 }}>Done</span>}
                               </div>
                               <h4 style={{ fontFamily:'var(--font-display)', fontSize:'1rem', color:DARK, fontWeight:700, marginBottom:'0.4rem' }}>{mod.title}</h4>
-                              <p style={{ fontFamily:'var(--font-body)', fontSize:'0.8rem', color:'#475569', margin:0, lineHeight:1.6 }}>{mod.description}</p>
-                              <div style={{ marginTop:'1rem', display:'flex', alignItems:'center', gap:'0.4rem', color:done ? '#22C55E' : SKY_BLUE, fontFamily:'var(--font-mono)', fontSize:'0.6rem', letterSpacing:'0.1em', textTransform:'uppercase', fontWeight:700 }}>
+                              <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', margin:0, lineHeight:1.6 }}>{mod.description}</p>
+                              <div style={{ marginTop:'1rem', display:'flex', alignItems:'center', gap:'0.4rem', color:done ? '#22C55E' : SKY_BLUE, fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', fontWeight:700 }}>
                                 {done ? 'Review Module' : 'Start Module'}
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                               </div>
