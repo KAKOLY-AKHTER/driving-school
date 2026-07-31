@@ -99,7 +99,7 @@ export default function AboutPage() {
           position: 'relative',
           overflow: 'hidden',
           background: `linear-gradient(135deg, ${DARK} 0%, ${DARK_MID} 50%, ${DARK} 100%)`,
-          paddingTop: '12rem',
+          paddingTop: '14rem',
           paddingBottom: '7rem',
           textAlign: 'center',
         }}
