@@ -513,7 +513,7 @@ export default function About() {
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', color: '#ffffff', fontWeight: 700 }}>
                     100% Safety Guaranteed
                   </div>
-                  <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)' }}>
                     No other local school has this
                   </div>
                 </div>
@@ -590,7 +590,7 @@ export default function About() {
                   <div className="ab-step-num">{step.num}</div>
                   <div>
                     <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, color: '#ffffff', fontSize: '0.9rem' }}>{step.title}</span>
-                    <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.45)', fontSize: '0.9rem' }}> — {step.desc}</span>
+                    <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.65)', fontSize: '0.9rem' }}> — {step.desc}</span>
                   </div>
                 </div>
               ))}

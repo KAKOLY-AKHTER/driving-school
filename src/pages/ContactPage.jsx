@@ -466,7 +466,7 @@ export default function ContactPage() {
                   fontSize: '0.55rem',
                   letterSpacing: '0.15em',
                   textTransform: 'uppercase',
-                  color: 'rgba(255,255,255,0.4)',
+                  color: 'rgba(255,255,255,0.6)',
                   fontWeight: 600,
                 }}>{t.label}</div>
               </div>

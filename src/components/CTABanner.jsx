@@ -213,7 +213,7 @@ export default function CTABanner() {
               fontSize: '0.6rem',
               letterSpacing: '0.25em',
               textTransform: 'uppercase',
-              color: 'rgba(255,255,255,0.3)',
+              color: 'rgba(255,255,255,0.6)',
               fontWeight: 600,
               marginBottom: '1rem',
             }}>

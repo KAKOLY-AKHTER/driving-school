@@ -27,7 +27,7 @@ export default function Footer() {
     <>
       <style>{`
         .ft-link {
-          color: rgba(255,255,255,0.45);
+          color: rgba(255,255,255,0.65);
           font-family: var(--font-body);
           font-size: 0.9rem;
           text-decoration: none;
@@ -55,7 +55,7 @@ export default function Footer() {
           display: flex;
           align-items: center;
           justify-content: center;
-          color: rgba(255,255,255,0.4);
+          color: rgba(255,255,255,0.6);
           transition: all 0.3s cubic-bezier(0.22,1,0.36,1);
           text-decoration: none;
         }
@@ -131,7 +131,7 @@ export default function Footer() {
               </div>
               <p style={{
                 fontFamily: 'var(--font-body)',
-                color: 'rgba(255,255,255,0.35)',
+                color: 'rgba(255,255,255,0.55)',
                 fontSize: '0.85rem',
                 lineHeight: 1.7,
                 maxWidth: '30ch',
@@ -209,7 +209,7 @@ export default function Footer() {
                     </svg>
                   </div>
                   <div>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', fontWeight: 600, display: 'block', marginBottom: '0.15rem' }}>Text Only</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)', fontWeight: 600, display: 'block', marginBottom: '0.15rem' }}>Text Only</span>
                     <a href={phoneHref(settings.phone)} style={{ fontFamily: 'var(--font-display)', color: '#ffffff', fontSize: '1rem', fontWeight: 700, textDecoration: 'none', transition: 'color 0.3s ease' }}
                       onMouseEnter={(e) => { e.currentTarget.style.color = GOLD }}
                       onMouseLeave={(e) => { e.currentTarget.style.color = '#ffffff' }}
@@ -231,7 +231,7 @@ export default function Footer() {
                     </svg>
                   </div>
                   <div>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', fontWeight: 600, display: 'block', marginBottom: '0.15rem' }}>DMV License</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)', fontWeight: 600, display: 'block', marginBottom: '0.15rem' }}>DMV License</span>
                     <span style={{ fontFamily: 'var(--font-display)', color: GOLD, fontSize: '1rem', fontWeight: 700 }}>#E4566</span>
                   </div>
                 </li>
@@ -250,14 +250,14 @@ export default function Footer() {
           }}>
             <p style={{
               fontFamily: 'var(--font-body)',
-              color: 'rgba(255,255,255,0.4)',
+              color: 'rgba(255,255,255,0.6)',
               fontSize: '0.78rem',
             }}>
               &copy; {currentYear} A Precision Driving School. All rights reserved.
             </p>
             <div style={{ display: 'flex', gap: '1.5rem' }}>
-              <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.45)', fontSize: '0.75rem', cursor: 'default' }}>Privacy Policy</span>
-              <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.45)', fontSize: '0.75rem', cursor: 'default' }}>Terms of Service</span>
+              <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', cursor: 'default' }}>Privacy Policy</span>
+              <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', cursor: 'default' }}>Terms of Service</span>
             </div>
           </div>
 

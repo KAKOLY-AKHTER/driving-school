@@ -429,7 +429,7 @@ export default function RegisterPage() {
             }}>Drivers Ed</span>
           </h1>
           <p className="rw-hero-sub" style={{
-            fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.45)',
+            fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.65)',
             fontSize: 'clamp(0.85rem, 1.3vw, 1rem)', maxWidth: '36ch',
             marginInline: 'auto', lineHeight: 1.7,
           }}>Register and pay via credit card to get started today.</p>

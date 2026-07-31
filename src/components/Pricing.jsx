@@ -275,7 +275,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
             <p style={{
               fontFamily: 'var(--font-body)',
               fontSize: 'clamp(0.85rem, 1.5vw, 1rem)',
-              color: light ? 'rgba(10,22,40,0.45)' : 'rgba(255,255,255,0.45)',
+              color: light ? 'rgba(10,22,40,0.6)' : 'rgba(255,255,255,0.65)',
               maxWidth: '32rem',
               marginInline: 'auto',
             }}>

@@ -412,7 +412,7 @@ export default function SchedulePage() {
                 }}>{t.num}</div>
                 <div style={{
                   fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.15em',
-                  textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', fontWeight: 600,
+                  textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)', fontWeight: 600,
                 }}>{t.label}</div>
               </div>
             ))}
