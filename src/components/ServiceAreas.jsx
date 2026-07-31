@@ -1,3 +1,6 @@
+import { useState, useEffect } from 'react'
+import { api, makeEmbedCode } from '../api'
+
 const LOCATIONS = [
   { name: 'San Ramon', map: 'https://www.google.com/maps/embed/v1/place?q=SAN+RAMON+CA&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8', icon: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5' },
   { name: 'Danville', map: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d100863.97399194786!2d-122.04184640146435!3d37.813488021706846!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x808ff31209500587%3A0x185b7b97f3832fd5!2sDanville%2C%20CA%2C%20USA!5e0!3m2!1sen!2sin!4v1714387044634!5m2!1sen!2sin', icon: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5' },
@@ -12,6 +15,125 @@ const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
 
 export default function ServiceAreas() {
+  const [areas, setAreas] = useState(null)
+  const [copied, setCopied] = useState(null)
+
+  useEffect(() => {
+    api.getAreas().then(d => { if (Array.isArray(d) && d.length) setAreas(d) }).catch(() => {})
+  }, [])
+
+  const list = areas && areas.length ? areas : LOCATIONS
+
+  const copyEmbed = async (loc) => {
+    const code = makeEmbedCode(loc.map)
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(loc.name)
+      setTimeout(() => setCopied(null), 2000)
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = code
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+      setCopied(loc.name)
+      setTimeout(() => setCopied(null), 2000)
+    }
+  }
+
+  const renderCard = (loc, extraStyle = undefined) => (
+    <div key={loc.name} className="area-card" style={extraStyle}>
+      <div className="area-map-wrap">
+        <iframe
+          src={loc.map}
+          style={{ width: '100%', height: '100%', border: 0 }}
+          allowFullScreen=""
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          title={`${loc.name} map`}
+        />
+        <div className="area-pin">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#0a1628">
+            <path d={loc.icon} />
+          </svg>
+        </div>
+      </div>
+
+      <div className="area-info">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
+          <div
+            style={{
+              width: '8px',
+              height: '8px',
+              background: GOLD,
+              transform: 'rotate(45deg)',
+              flexShrink: 0,
+            }}
+          />
+          <h3
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '1.15rem',
+              color: '#1a2332',
+              fontWeight: 700,
+              margin: 0,
+            }}
+          >
+            {loc.name}
+          </h3>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', paddingLeft: '14px', flexWrap: 'wrap' }}>
+          <p
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.82rem',
+              color: '#8899aa',
+              margin: 0,
+            }}
+          >
+            Bay Area, California
+          </p>
+          <button
+            onClick={() => copyEmbed(loc)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.35rem 0.7rem',
+              background: copied === loc.name ? 'rgba(34,197,94,0.1)' : 'rgba(1,69,168,0.06)',
+              border: `1px solid ${copied === loc.name ? 'rgba(34,197,94,0.3)' : 'rgba(1,69,168,0.15)'}`,
+              borderRadius: '999px',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '0.45rem',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              fontWeight: 700,
+              color: copied === loc.name ? '#16A34A' : SKY_BLUE,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => { if (copied !== loc.name) { e.currentTarget.style.background = 'rgba(1,69,168,0.12)'; e.currentTarget.style.borderColor = SKY_BLUE } }}
+            onMouseLeave={(e) => { if (copied !== loc.name) { e.currentTarget.style.background = 'rgba(1,69,168,0.06)'; e.currentTarget.style.borderColor = 'rgba(1,69,168,0.15)' } }}
+            title="Copy embed code"
+          >
+            {copied === loc.name ? (
+              <>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                Copied!
+              </>
+            ) : (
+              <>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" /></svg>
+                Copy Embed
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <>
       <style>{`
@@ -184,61 +306,7 @@ export default function ServiceAreas() {
               gap: '1.5rem',
             }}
           >
-            {LOCATIONS.slice(0, 3).map((loc) => (
-              <div key={loc.name} className="area-card">
-                <div className="area-map-wrap">
-                  <iframe
-                    src={loc.map}
-                    style={{ width: '100%', height: '100%', border: 0 }}
-                    allowFullScreen=""
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    title={`${loc.name} map`}
-                  />
-                  <div className="area-pin">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#0a1628">
-                      <path d={loc.icon} />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className="area-info">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
-                    <div
-                      style={{
-                        width: '8px',
-                        height: '8px',
-                        background: GOLD,
-                        transform: 'rotate(45deg)',
-                        flexShrink: 0,
-                      }}
-                    />
-                    <h3
-                      style={{
-                        fontFamily: 'var(--font-display)',
-                        fontSize: '1.15rem',
-                        color: '#1a2332',
-                        fontWeight: 700,
-                        margin: 0,
-                      }}
-                    >
-                      {loc.name}
-                    </h3>
-                  </div>
-                  <p
-                    style={{
-                      fontFamily: 'var(--font-body)',
-                      fontSize: '0.82rem',
-                      color: '#8899aa',
-                      margin: 0,
-                      paddingLeft: '14px',
-                    }}
-                  >
-                    Bay Area, California
-                  </p>
-                </div>
-              </div>
-            ))}
+            {list.slice(0, 3).map((loc) => renderCard(loc))}
           </div>
 
           <div
@@ -251,61 +319,7 @@ export default function ServiceAreas() {
               flexWrap: 'wrap',
             }}
           >
-            {LOCATIONS.slice(3).map((loc) => (
-              <div key={loc.name} className="area-card" style={{ flex: '1 1 300px', maxWidth: 'calc(33.333% - 1rem)' }}>
-                <div className="area-map-wrap">
-                  <iframe
-                    src={loc.map}
-                    style={{ width: '100%', height: '100%', border: 0 }}
-                    allowFullScreen=""
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    title={`${loc.name} map`}
-                  />
-                  <div className="area-pin">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#0a1628">
-                      <path d={loc.icon} />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className="area-info">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
-                    <div
-                      style={{
-                        width: '8px',
-                        height: '8px',
-                        background: GOLD,
-                        transform: 'rotate(45deg)',
-                        flexShrink: 0,
-                      }}
-                    />
-                    <h3
-                      style={{
-                        fontFamily: 'var(--font-display)',
-                        fontSize: '1.15rem',
-                        color: '#1a2332',
-                        fontWeight: 700,
-                        margin: 0,
-                      }}
-                    >
-                      {loc.name}
-                    </h3>
-                  </div>
-                  <p
-                    style={{
-                      fontFamily: 'var(--font-body)',
-                      fontSize: '0.82rem',
-                      color: '#8899aa',
-                      margin: 0,
-                      paddingLeft: '14px',
-                    }}
-                  >
-                    Bay Area, California
-                  </p>
-                </div>
-              </div>
-            ))}
+            {list.slice(3).map((loc) => renderCard(loc, { flex: '1 1 300px', maxWidth: 'calc(33.333% - 1rem)' }))}
           </div>
         </div>
       </section>

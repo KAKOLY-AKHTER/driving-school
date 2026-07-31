@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
-import { api } from '../api'
+import { api, makeEmbedCode } from '../api'
+import { DEFAULT_SOCIALS, SOCIAL_PLATFORMS, socialIcon, socialPlatformLabel } from '../socials'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -12,13 +13,14 @@ const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
 
 const COURSE_MAP = {
-  '1': 'Online Driver Ed',
-  '7': 'Duplicate Certificate 400C',
-  '2': 'Basic BTW (Package A - 2h)',
-  '12': 'Basic BTW (Package D - 4h)',
-  '3': 'Essential BTW (Package B - 6h)',
-  '8': 'Ideal BTW + Online (Package C - 6h)',
-  '4': 'Premier BTW (Package E - 10h)',
+  '1': 'TEEN ONLINE DRIVERS ED',
+  '2': 'BASIC PLAN',
+  '3': 'ESSENTIAL PLAN',
+  '4': 'IDEAL FOR STUDENTS',
+  '5': 'PREMIER PLAN',
+  '6': 'DMV Drive Test Car Rental',
+  '7': 'DMV Drive Test Car Rental.',
+  '8': 'Freeway Focused Course',
 }
 
 const TIME_SLOT_MAP = {
@@ -38,6 +40,11 @@ const SVG = {
   home: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>,
   shield: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>,
   mail: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>,
+  settings: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" /></svg>,
+  dollar: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" /></svg>,
+  book: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" /><line x1="8" y1="7" x2="16" y2="7" /><line x1="8" y1="11" x2="14" y2="11" /></svg>,
+  map: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 20l-6 3V7l6-3 6 3 6-3v16l-6 3-6-3z" /><path d="M9 4v16M15 7v16" /></svg>,
+  share: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></svg>,
 }
 
 export default function AdminPage() {
@@ -58,20 +65,58 @@ export default function AdminPage() {
   const [selectedCourseId, setSelectedCourseId] = useState('')
   const [contactEdit, setContactEdit] = useState(null)
   const [contactForm, setContactForm] = useState({ firstName: '', lastName: '', phone: '', email: '', comments: '', status: '' })
+  const [settings, setSettings] = useState({ phone: '', email: '', address: '', subaddress: '', scheduleLabel: '', scheduleLink: '' })
+  const [settingsMsg, setSettingsMsg] = useState('')
+  const [pricing, setPricing] = useState([])
+  const [pricingEdit, setPricingEdit] = useState(null)
+  const [pricingForm, setPricingForm] = useState({ planName: '', id: '', planPrice: '', planPriceTwo: '', option1: '', perm1: 'Select', option2: '', perm2: 'Select', option3: '', perm3: 'Select', option4: '', perm4: 'Select', option5: '', perm5: 'Select' })
+  const [areas, setAreas] = useState([])
+  const [areasEdit, setAreasEdit] = useState(null)
+  const [areasForm, setAreasForm] = useState({ name: '', map: '', icon: '' })
+  const [copiedArea, setCopiedArea] = useState(null)
+  const [socials, setSocials] = useState([])
+  const [socialsEdit, setSocialsEdit] = useState(null)
+  const [socialsForm, setSocialsForm] = useState({ platform: 'facebook', url: '', order: 0 })
+  const [enrollments, setEnrollments] = useState([])
+  const [enrollTotal, setEnrollTotal] = useState(0)
+  const [enrollPage, setEnrollPage] = useState(1)
+  const [enrollPages, setEnrollPages] = useState(1)
+  const [enrollLimit, setEnrollLimit] = useState('10')
+  const [enrollSearch, setEnrollSearch] = useState('')
+  const [enrollFrom, setEnrollFrom] = useState('')
+  const [enrollTo, setEnrollTo] = useState('')
+  const [enrollStats, setEnrollStats] = useState({ totalStudents: 0, totalPackages: 0, totalEnrolled: 0 })
+  const [enrollEdit, setEnrollEdit] = useState(null)
+  const [enrollForm, setEnrollForm] = useState({
+    ID: '', Status: 'pending', Full_Name: '', Email: '', 'Student Phone': '', Gender: '',
+    Date_of_Birth: '', Address: '', City: '', State: '', Zip: '', Permit: '',
+    Issue_Date: '', Expire_Date: '', Parent_Phone: '', Pickup_Address: '', Course_Name: '',
+    Booking_Date: '', Meds: '', Notes: '', Calender_booking_Id: '', Price: '', Total: '',
+  })
+  const [enrollLoading, setEnrollLoading] = useState(false)
+  const [enrollSearchTimer, setEnrollSearchTimer] = useState(null)
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [s, u, b, c] = await Promise.all([
+        const [s, u, b, c, st, p, a, so] = await Promise.all([
           api.adminStats(),
           api.adminUsers(),
           api.adminBookings(),
           api.adminContacts(),
+          api.getSettings().catch(() => ({})),
+          api.getPricing().catch(() => []),
+          api.getAreas().catch(() => []),
+          api.getSocials().catch(() => DEFAULT_SOCIALS),
         ])
         setStats(s)
         setUsers(u)
         setBookings(b)
         setContacts(c)
+        setSettings(prev => ({ ...prev, ...st }))
+        setPricing(Array.isArray(p) ? p : [])
+        setAreas(Array.isArray(a) ? a : [])
+        setSocials(Array.isArray(so) ? so : [])
       } catch {}
       setLoading(false)
     }
@@ -167,6 +212,29 @@ export default function AdminPage() {
   const todayStr = new Date().toISOString().split('T')[0]
   const initials = user?.displayName ? user.displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : user?.email?.[0]?.toUpperCase() || '?'
 
+  useEffect(() => {
+    if (activeTab !== 'enrolled') return
+    const load = async () => {
+      setEnrollLoading(true)
+      try {
+        const params = { page: enrollPage, limit: enrollLimit }
+        if (enrollSearch) params.search = enrollSearch
+        if (enrollFrom) params.from = enrollFrom
+        if (enrollTo) params.to = enrollTo
+        const [list, stats] = await Promise.all([
+          api.adminEnrollments(params),
+          api.adminEnrollmentsStats(),
+        ])
+        setEnrollments(list.data || [])
+        setEnrollTotal(list.total || 0)
+        setEnrollPages(list.totalPages || 1)
+        setEnrollStats(stats)
+      } catch {}
+      setEnrollLoading(false)
+    }
+    load()
+  }, [activeTab, enrollPage, enrollLimit, enrollSearch, enrollFrom, enrollTo])
+
   const filteredUsers = users.filter(u => {
     const q = userSearch.toLowerCase()
     return !q || (u.displayName || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q) || (u.phone || '').includes(q)
@@ -194,6 +262,11 @@ export default function AdminPage() {
     { id: 'users', label: 'Users', icon: SVG.users },
     { id: 'bookings', label: 'Bookings', icon: SVG.calendar },
     { id: 'contacts', label: 'Contacts', icon: SVG.mail },
+    { id: 'enrolled', label: 'Enrolled Courses', icon: SVG.book },
+    { id: 'pricing', label: 'Pricing', icon: SVG.dollar },
+    { id: 'maps', label: 'Maps', icon: SVG.map },
+    { id: 'socials', label: 'Social Links', icon: SVG.share },
+    { id: 'settings', label: 'Site Settings', icon: SVG.settings },
   ]
 
   const switchTab = (tab) => { setActiveTab(tab); setSidebarOpen(false) }
@@ -540,6 +613,331 @@ export default function AdminPage() {
                 </div>
               )}
 
+              {activeTab === 'pricing' && (
+                <div style={cardStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.dollar} Pricing Plan ({pricing.length})</h3>
+                    <button onClick={() => { setPricingForm({ planName: '', id: '', planPrice: '', planPriceTwo: '', option1: '', perm1: 'Select', option2: '', perm2: 'Select', option3: '', perm3: 'Select', option4: '', perm4: 'Select', option5: '', perm5: 'Select' }); setPricingEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Pricing Plan</button>
+                  </div>
+                  <div className="admin-table-wrap">
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr>
+                          <th style={thStyle}>ID</th>
+                          <th style={thStyle}>Plan Name</th>
+                          <th style={thStyle}>Price</th>
+                          <th style={thStyle}>Price Two</th>
+                          <th style={thStyle}>Option 1</th>
+                          <th style={thStyle}>Option 2</th>
+                          <th style={thStyle}>Option 3</th>
+                          <th style={thStyle}>Option 4</th>
+                          <th style={thStyle}>Option 5</th>
+                          <th style={thStyle}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pricing.map(t => {
+                          const opts = t.options || []
+                          return (
+                            <tr key={t._id}>
+                              <td style={tdStyle}><span style={{ padding: '0.15rem 0.4rem', background: 'rgba(1,69,168,0.08)', color: SKY_BLUE, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 700 }}>{t.id}</span></td>
+                              <td style={{ ...tdStyle, fontWeight: 600, maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.planName}</td>
+                              <td style={tdStyle}>{t.planPrice}</td>
+                              <td style={tdStyle}>{t.planPriceTwo}</td>
+                              {[0,1,2,3,4].map(i => (
+                                <td key={i} style={{ ...tdStyle, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.7rem', color: opts[i]?.permission === 'Included' ? '#16A34A' : opts[i]?.permission === 'Not Included' ? '#DC2626' : '#94A3B8' }}>
+                                  {opts[i]?.text ? `${opts[i].text.slice(0, 30)}${opts[i].text.length > 30 ? '...' : ''}` : opts[i]?.permission || 'Select'}
+                                </td>
+                              ))}
+                              <td style={tdStyle}>
+                                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                  <button onClick={() => {
+                                    const opts = t.options || []
+                                    setPricingForm({
+                                      planName: t.planName || '', id: t.id || '',
+                                      planPrice: t.planPrice || '', planPriceTwo: t.planPriceTwo || '',
+                                      option1: opts[0]?.text || '', perm1: opts[0]?.permission || 'Select',
+                                      option2: opts[1]?.text || '', perm2: opts[1]?.permission || 'Select',
+                                      option3: opts[2]?.text || '', perm3: opts[2]?.permission || 'Select',
+                                      option4: opts[3]?.text || '', perm4: opts[3]?.permission || 'Select',
+                                      option5: opts[4]?.text || '', perm5: opts[4]?.permission || 'Select',
+                                    }); setPricingEdit(t._id)
+                                  }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
+                                  <button onClick={async () => { if (!confirm('Delete this package?')) return; try { await api.adminDeletePricing(t._id); setPricing(prev => prev.filter(x => x._id !== t._id)); setMsg('Package deleted.'); setTimeout(() => setMsg(''), 2000) } catch { setMsg('Failed to delete.'); setTimeout(() => setMsg(''), 2000) } }} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                        {pricing.length === 0 && (
+                          <tr><td colSpan={10} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#8899aa' }}>No pricing packages yet. Click "+ Add Pricing Plan" to create one.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'enrolled' && (
+                <div>
+                  <div className="admin-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+                    {[
+                      { num: enrollStats.totalStudents, label: 'Total Students', color: SKY_BLUE },
+                      { num: enrollStats.totalPackages, label: 'Total Packages', color: GOLD },
+                      { num: enrollStats.totalEnrolled, label: 'Enrolled Course', color: '#22C55E' },
+                    ].map(s => (
+                      <div key={s.label} className="admin-stat" style={{ background: '#fff', borderRadius: 'var(--radius-lg)', border: '1px solid #E2EBF5', textAlign: 'center', padding: '1.5rem 1rem', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 800, color: s.color, lineHeight: 1, marginBottom: '0.3rem' }}>{s.num}</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8899aa', fontWeight: 600 }}>{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={cardStyle}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.book} Enrolled Courses ({enrollTotal})</h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <input type="date" value={enrollFrom} onChange={e => { setEnrollFrom(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '140px', fontSize: '0.75rem' }} title="From" />
+                        <span style={{ color: '#94A3B8', fontSize: '0.75rem' }}>to</span>
+                        <input type="date" value={enrollTo} onChange={e => { setEnrollTo(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '140px', fontSize: '0.75rem' }} title="To" />
+                        <input type="text" placeholder="Search..." value={enrollSearch} onChange={e => { setEnrollSearch(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '160px' }} />
+                        <select value={enrollLimit} onChange={e => { setEnrollLimit(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '90px', fontSize: '0.75rem' }}>
+                          <option value="10">10 / page</option>
+                          <option value="20">20 / page</option>
+                          <option value="50">50 / page</option>
+                          <option value="100">100 / page</option>
+                        </select>
+                        <button onClick={() => { setEnrollForm({ ID: '', Status: 'pending', Full_Name: '', Email: '', 'Student Phone': '', Gender: '', Date_of_Birth: '', Address: '', City: '', State: '', Zip: '', Permit: '', Issue_Date: '', Expire_Date: '', Parent_Phone: '', Pickup_Address: '', Course_Name: '', Booking_Date: '', Meds: '', Notes: '', Calender_booking_Id: '', Price: '', Total: '' }); setEnrollEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Add</button>
+                      </div>
+                    </div>
+
+                    <div className="admin-table-wrap" style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.72rem', minWidth: '2000px' }}>
+                        <thead>
+                          <tr>
+                            {['ID','Status','Action','Applied_date','Price','Total','Full_Name','Email','Student Phone','Gender','Date_of_Birth','Address','City','State','Zip','Permit','Issue_Date','Expire_Date','Parent_Phone','Pickup_Address','Course_Name','Booking_Date','Meds','Notes','Calender_booking_Id'].map(h => (
+                              <th key={h} style={thStyle}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {enrollLoading ? (
+                            <tr><td colSpan={25} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#8899aa' }}>Loading...</td></tr>
+                          ) : enrollments.length === 0 ? (
+                            <tr><td colSpan={25} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#8899aa' }}>No enrollments found</td></tr>
+                          ) : enrollments.map(e => (
+                            <tr key={e._id}>
+                              <td style={tdStyle}>{e.ID || '—'}</td>
+                              <td style={tdStyle}>
+                                <span style={{ padding: '0.15rem 0.4rem', background: e.Status === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(253,188,1,0.1)', color: e.Status === 'success' ? '#16A34A' : GOLD_DEEP, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 700, whiteSpace: 'nowrap' }}>{e.Status || 'pending'}</span>
+                              </td>
+                              <td style={tdStyle}>
+                                <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'nowrap' }}>
+                                  <button title="Invoice" onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>Invoice - ${e.ID || e._id}</title><style>body{font-family:sans-serif;padding:40px}h1{font-size:20px;border-bottom:2px solid #0145A8;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:6px 10px;border-bottom:1px solid #eee;font-size:13px}.lbl{color:#94A3B8;width:140px}</style></head><body><h1>A Precision Driving School</h1><p style="color:#94A3B8">Invoice</p><table>${Object.entries({ID:e.ID,Student:e.Full_Name,Email:e.Email,Course:e.Course_Name,Price:e.Price,Total:e.Total,Status:e.Status,Date:e.Applied_date}).filter(([k,v])=>v).map(([k,v])=>`<tr><td class="lbl">${k}</td><td>${v}</td></tr>`).join('')}</table></body></html>`); w.document.close(); w.print() }} style={{ background:'none', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.15rem', fontSize:'0.75rem', lineHeight:1, textDecoration:'underline' }}>Invoice</button>
+                                  <button title="Form" onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>Enrollment Form - ${e.Full_Name || e.ID}</title><style>body{font-family:sans-serif;padding:40px}h1{font-size:18px;border-bottom:2px solid #FDBC01;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:5px 8px;border:1px solid #ddd;font-size:12px;vertical-align:top}.lbl{background:#f5f7fa;font-weight:600;width:160px;color:#1a2332}</style></head><body><h1>A Precision Driving School - Enrollment Form</h1><table>${Object.entries(e).filter(([k])=>k!=='_id'&&k!=='updatedAt'&&k!='__v').map(([k,v])=>`<tr><td class="lbl">${k}</td><td>${v||'—'}</td></tr>`).join('')}</table></body></html>`); w.document.close() }} style={{ background:'none', border:'none', color:GOLD_DEEP, cursor:'pointer', padding:'0.15rem', fontSize:'0.75rem', lineHeight:1, textDecoration:'underline' }}>Form</button>
+                                  <button onClick={() => { setEnrollForm({ ID: e.ID || '', Status: e.Status || 'pending', Full_Name: e.Full_Name || '', Email: e.Email || '', 'Student Phone': e['Student Phone'] || '', Gender: e.Gender || '', Date_of_Birth: e.Date_of_Birth || '', Address: e.Address || '', City: e.City || '', State: e.State || '', Zip: e.Zip || '', Permit: e.Permit || '', Issue_Date: e.Issue_Date || '', Expire_Date: e.Expire_Date || '', Parent_Phone: e.Parent_Phone || '', Pickup_Address: e.Pickup_Address || '', Course_Name: e.Course_Name || '', Booking_Date: e.Booking_Date || '', Meds: e.Meds || '', Notes: e.Notes || '', Calender_booking_Id: e.Calender_booking_Id || '', Price: e.Price || '', Total: e.Total || '' }); setEnrollEdit(e._id) }} style={{ background:'none', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.15rem', fontSize:'0.75rem', lineHeight:1, textDecoration:'underline' }}>Edit</button>
+                                  <button onClick={async () => { if (!confirm('Delete this enrollment?')) return; try { await api.adminDeleteEnrollment(e._id); setEnrollments(prev => prev.filter(x => x._id !== e._id)); setEnrollTotal(prev => prev - 1) } catch {} }} style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', padding:'0.15rem', fontSize:'0.75rem', lineHeight:1, textDecoration:'underline' }}>Delete</button>
+                                </div>
+                              </td>
+                              <td style={tdStyle}>{e.Applied_date ? new Date(e.Applied_date).toLocaleString() : '—'}</td>
+                              <td style={tdStyle}>{e.Price || '—'}</td>
+                              <td style={tdStyle}>{e.Total || '—'}</td>
+                              <td style={{ ...tdStyle, fontWeight: 600 }}>{e.Full_Name || '—'}</td>
+                              <td style={tdStyle}>{e.Email || '—'}</td>
+                              <td style={tdStyle}>{e['Student Phone'] || '—'}</td>
+                              <td style={tdStyle}>{e.Gender || '—'}</td>
+                              <td style={tdStyle}>{e.Date_of_Birth || '—'}</td>
+                              <td style={tdStyle}>{e.Address || '—'}</td>
+                              <td style={tdStyle}>{e.City || '—'}</td>
+                              <td style={tdStyle}>{e.State || '—'}</td>
+                              <td style={tdStyle}>{e.Zip || '—'}</td>
+                              <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.65rem' }}>{e.Permit || '—'}</td>
+                              <td style={tdStyle}>{e.Issue_Date || '—'}</td>
+                              <td style={tdStyle}>{e.Expire_Date || '—'}</td>
+                              <td style={tdStyle}>{e.Parent_Phone || '—'}</td>
+                              <td style={tdStyle}>{e.Pickup_Address || '—'}</td>
+                              <td style={{ ...tdStyle, fontWeight: 600 }}>{e.Course_Name || '—'}</td>
+                              <td style={tdStyle}>{e.Booking_Date || '—'}</td>
+                              <td style={tdStyle}>{e.Meds || '—'}</td>
+                              <td style={{ ...tdStyle, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.Notes || '—'}</td>
+                              <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.65rem' }}>{e.Calender_booking_Id || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {enrollPages > 1 && (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
+                        <button disabled={enrollPage <= 1} onClick={() => setEnrollPage(prev => Math.max(1, prev - 1))} style={{ padding: '0.4rem 0.8rem', background: enrollPage <= 1 ? '#f0f2f5' : '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', fontWeight: 700, color: enrollPage <= 1 ? '#ccc' : DARK, cursor: enrollPage <= 1 ? 'not-allowed' : 'pointer' }}>Prev</button>
+                        {Array.from({ length: Math.min(enrollPages, 10) }, (_, i) => {
+                          const start = Math.max(1, enrollPage - 4)
+                          const p = start + i
+                          if (p > enrollPages) return null
+                          return <button key={p} onClick={() => setEnrollPage(p)} style={{ padding: '0.4rem 0.7rem', background: p === enrollPage ? SKY_BLUE : '#fff', border: `1px solid ${p === enrollPage ? SKY_BLUE : '#E2EBF5'}`, borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', fontWeight: 700, color: p === enrollPage ? '#fff' : DARK, cursor: 'pointer' }}>{p}</button>
+                        })}
+                        <button disabled={enrollPage >= enrollPages} onClick={() => setEnrollPage(prev => Math.min(enrollPages, prev + 1))} style={{ padding: '0.4rem 0.8rem', background: enrollPage >= enrollPages ? '#f0f2f5' : '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', fontWeight: 700, color: enrollPage >= enrollPages ? '#ccc' : DARK, cursor: enrollPage >= enrollPages ? 'not-allowed' : 'pointer' }}>Next</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'maps' && (
+                <div style={cardStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.map} Maps / Locations ({areas.length})</h3>
+                    <button onClick={() => { setAreasForm({ name: '', map: '', icon: '' }); setAreasEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Location</button>
+                  </div>
+                  <div className="admin-table-wrap">
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr>
+                          <th style={thStyle}>Name</th>
+                          <th style={thStyle}>Map URL</th>
+                          <th style={thStyle}>Embed Code</th>
+                          <th style={thStyle}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {areas.map(a => (
+                          <tr key={a._id}>
+                            <td style={{ ...tdStyle, fontWeight: 600 }}>{a.name}</td>
+                            <td style={{ ...tdStyle, maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#64748b' }} title={a.map}>{a.map}</td>
+                            <td style={tdStyle}>
+                              <button
+                                onClick={async () => {
+                                  const code = makeEmbedCode(a.map)
+                                  try {
+                                    await navigator.clipboard.writeText(code)
+                                  } catch {
+                                    const ta = document.createElement('textarea')
+                                    ta.value = code
+                                    document.body.appendChild(ta)
+                                    ta.select()
+                                    document.execCommand('copy')
+                                    document.body.removeChild(ta)
+                                  }
+                                  setCopiedArea(a._id)
+                                  setTimeout(() => setCopiedArea(null), 2000)
+                                }}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.8rem', background: copiedArea === a._id ? 'rgba(34,197,94,0.1)' : 'rgba(1,69,168,0.06)', border: `1px solid ${copiedArea === a._id ? 'rgba(34,197,94,0.3)' : 'rgba(1,69,168,0.2)'}`, borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, color: copiedArea === a._id ? '#16A34A' : SKY_BLUE, cursor: 'pointer', transition: 'all 0.2s' }}
+                              >
+                                {copiedArea === a._id ? 'Copied!' : 'Copy Embed'}
+                              </button>
+                            </td>
+                            <td style={tdStyle}>
+                              <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                <button onClick={() => { setAreasForm({ name: a.name, map: a.map, icon: a.icon || '' }); setAreasEdit(a._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
+                                <button onClick={async () => { if (!confirm('Delete this location?')) return; try { await api.adminDeleteArea(a._id); setAreas(prev => prev.filter(x => x._id !== a._id)); setMsg('Location deleted.'); setTimeout(() => setMsg(''), 2000) } catch { setMsg('Failed to delete.'); setTimeout(() => setMsg(''), 2000) } }} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {areas.length === 0 && (
+                          <tr><td colSpan={4} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#8899aa' }}>No locations yet. Click "+ Add Location" to create one.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'socials' && (
+                <div style={cardStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.share} Social Links ({socials.length})</h3>
+                    <button onClick={() => { setSocialsForm({ platform: 'facebook', url: '', order: socials.length }); setSocialsEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Social Link</button>
+                  </div>
+                  <div className="admin-table-wrap">
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr>
+                          <th style={thStyle}>Platform</th>
+                          <th style={thStyle}>URL</th>
+                          <th style={thStyle}>Order</th>
+                          <th style={thStyle}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {socials.map(s => (
+                          <tr key={s._id || s.platform}>
+                            <td style={{ ...tdStyle, fontWeight: 600 }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span style={{ color: SKY_BLUE }}>{socialIcon(s.platform, 16)}</span>
+                                {socialPlatformLabel(s.platform)}
+                              </span>
+                            </td>
+                            <td style={{ ...tdStyle, maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#64748b' }} title={s.url}>{s.url || '—'}</td>
+                            <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.6rem' }}>{s.order ?? 0}</td>
+                            <td style={tdStyle}>
+                              <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                <button onClick={() => { setSocialsForm({ platform: s.platform || 'link', url: s.url || '', order: s.order ?? 0 }); setSocialsEdit(s._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
+                                <button onClick={async () => { if (!confirm('Delete this social link?')) return; try { await api.adminDeleteSocial(s._id); setSocials(prev => prev.filter(x => x._id !== s._id)); setMsg('Social link deleted.'); setTimeout(() => setMsg(''), 2000) } catch { setMsg('Failed to delete.'); setTimeout(() => setMsg(''), 2000) } }} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {socials.length === 0 && (
+                          <tr><td colSpan={4} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#8899aa' }}>No social links yet. Click "+ Add Social Link" to create one.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'settings' && (
+                <div style={cardStyle}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>{SVG.settings} Contact Information</h3>
+                  {settingsMsg && (
+                    <div style={{ padding: '0.75rem 1rem', background: settingsMsg.includes('Failed') ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${settingsMsg.includes('Failed') ? '#FECACA' : '#BBF7D0'}`, borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: settingsMsg.includes('Failed') ? '#DC2626' : '#16A34A' }}>
+                      {settingsMsg}
+                    </div>
+                  )}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', maxWidth: '800px' }}>
+                    <div>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Phone</label>
+                      <input type="text" value={settings.phone} onChange={e => setSettings(prev => ({ ...prev, phone: e.target.value }))} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Email</label>
+                      <input type="text" value={settings.email} onChange={e => setSettings(prev => ({ ...prev, email: e.target.value }))} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Address</label>
+                      <input type="text" value={settings.address} onChange={e => setSettings(prev => ({ ...prev, address: e.target.value }))} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>City / State / ZIP</label>
+                      <input type="text" value={settings.subaddress} onChange={e => setSettings(prev => ({ ...prev, subaddress: e.target.value }))} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Schedule Label</label>
+                      <input type="text" value={settings.scheduleLabel} onChange={e => setSettings(prev => ({ ...prev, scheduleLabel: e.target.value }))} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Schedule Link</label>
+                      <input type="text" value={settings.scheduleLink} onChange={e => setSettings(prev => ({ ...prev, scheduleLink: e.target.value }))} style={inputStyle} />
+                    </div>
+                  </div>
+                  <div style={{ marginTop: '1.5rem' }}>
+                    <button onClick={async () => {
+                      try {
+                        await api.adminUpdateSettings(settings)
+                        setSettingsMsg('Settings saved!')
+                        setTimeout(() => setSettingsMsg(''), 2000)
+                      } catch {
+                        setSettingsMsg('Failed to save settings.')
+                        setTimeout(() => setSettingsMsg(''), 2000)
+                      }
+                    }} style={{ padding: '0.75rem 2rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
+                      Save Settings
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {contactEdit && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setContactEdit(null) }}>
                   <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '500px', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
@@ -582,6 +980,287 @@ export default function AdminPage() {
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
                       <button onClick={() => setContactEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#94A3B8', cursor: 'pointer' }}>Cancel</button>
                       <button onClick={handleSaveContact} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>Save</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {pricingEdit && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setPricingEdit(null) }}>
+                  <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>
+                        {pricingEdit === 'new' ? 'Add Pricing Plan' : 'Edit Pricing Plan'}
+                      </h3>
+                      <button onClick={() => setPricingEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#94A3B8', cursor: 'pointer' }}>&times;</button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Plan Name *</label>
+                        <input type="text" value={pricingForm.planName} onChange={e => setPricingForm(prev => ({ ...prev, planName: e.target.value }))} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>ID *</label>
+                        <input type="text" value={pricingForm.id} onChange={e => setPricingForm(prev => ({ ...prev, id: e.target.value }))} style={inputStyle} placeholder="e.g. 1, 2, 3..." />
+                      </div>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Plan Price *</label>
+                        <input type="text" value={pricingForm.planPrice} onChange={e => setPricingForm(prev => ({ ...prev, planPrice: e.target.value }))} style={inputStyle} placeholder="$24.99" />
+                      </div>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Plan Price Two *</label>
+                        <input type="text" value={pricingForm.planPriceTwo} onChange={e => setPricingForm(prev => ({ ...prev, planPriceTwo: e.target.value }))} style={inputStyle} placeholder="$24.99" />
+                      </div>
+                    </div>
+
+                    {[1,2,3,4,5].map(i => {
+                      const optKey = `option${i}`
+                      const permKey = `perm${i}`
+                      return (
+                        <div key={i} style={{ marginBottom: '1rem', padding: '1rem', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)' }}>
+                          <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>
+                            Package Option {i}
+                          </label>
+                          <input
+                            type="text"
+                            value={pricingForm[optKey]}
+                            onChange={e => setPricingForm(prev => ({ ...prev, [optKey]: e.target.value }))}
+                            style={{ ...inputStyle, marginBottom: '0.5rem' }}
+                            placeholder={`Option ${i} text`}
+                          />
+                          <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>
+                            Package Permission
+                          </label>
+                          <select
+                            value={pricingForm[permKey]}
+                            onChange={e => setPricingForm(prev => ({ ...prev, [permKey]: e.target.value }))}
+                            style={inputStyle}
+                          >
+                            <option value="Select">Select</option>
+                            <option value="Included">Included</option>
+                            <option value="Optional">Optional</option>
+                            <option value="Not Included">Not Included</option>
+                          </select>
+                        </div>
+                      )
+                    })}
+
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                      <button onClick={() => setPricingEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#94A3B8', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={async () => {
+                        if (!pricingForm.planName || !pricingForm.id || !pricingForm.planPrice || !pricingForm.planPriceTwo) { setMsg('Plan Name, ID, Plan Price, and Plan Price Two are required.'); setTimeout(() => setMsg(''), 2000); return }
+                        const options = [1,2,3,4,5].map(i => ({
+                          text: pricingForm[`option${i}`] || '',
+                          permission: pricingForm[`perm${i}`] || 'Select',
+                        }))
+                        const doc = { planName: pricingForm.planName, id: pricingForm.id, planPrice: pricingForm.planPrice, planPriceTwo: pricingForm.planPriceTwo, options }
+                        try {
+                          if (pricingEdit === 'new') {
+                            const r = await api.adminAddPricing(doc)
+                            if (r.ok) { doc._id = r._id; setPricing(prev => [...prev, doc]) }
+                          } else {
+                            await api.adminUpdatePricing(pricingEdit, doc)
+                            setPricing(prev => prev.map(x => x._id === pricingEdit ? { ...x, ...doc } : x))
+                          }
+                          setPricingEdit(null)
+                          setMsg(pricingEdit === 'new' ? 'Plan added!' : 'Plan updated!')
+                          setTimeout(() => setMsg(''), 2000)
+                        } catch { setMsg('Failed to save plan.'); setTimeout(() => setMsg(''), 2000) }
+                      }} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
+                        {pricingEdit === 'new' ? 'Add Pricing Plan' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {areasEdit && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setAreasEdit(null) }}>
+                  <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{areasEdit === 'new' ? 'Add Location' : 'Edit Location'}</h3>
+                      <button onClick={() => setAreasEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#94A3B8', cursor: 'pointer' }}>&times;</button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Name *</label>
+                        <input type="text" value={areasForm.name} onChange={e => setAreasForm(prev => ({ ...prev, name: e.target.value }))} style={inputStyle} placeholder="San Ramon" />
+                      </div>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Order</label>
+                        <input type="number" value={areasForm.order} onChange={e => setAreasForm(prev => ({ ...prev, order: Number(e.target.value) }))} style={inputStyle} />
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Google Maps Embed URL *</label>
+                      <textarea rows="4" value={areasForm.map} onChange={e => setAreasForm(prev => ({ ...prev, map: e.target.value }))} style={{ ...inputStyle, resize: 'vertical', fontFamily: 'var(--font-mono)', fontSize: '0.65rem' }} placeholder="https://www.google.com/maps/embed?pb=..." />
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.7rem', color: '#94A3B8', margin: '0.4rem 0 0', lineHeight: 1.5 }}>
+                        Google Maps te location search kore "Share" → "Embed a map" → iframe er <code>src="..."</code> value ta ekhane paste korun.
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                      <button onClick={() => setAreasEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#94A3B8', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={async () => {
+                        if (!areasForm.name || !areasForm.map) { setMsg('Name and Map URL are required.'); setTimeout(() => setMsg(''), 2000); return }
+                        const doc = { name: areasForm.name, map: areasForm.map, icon: areasForm.icon || '', order: areasForm.order || 0 }
+                        try {
+                          if (areasEdit === 'new') {
+                            const r = await api.adminAddArea(doc)
+                            if (r.ok) { doc._id = r._id; setAreas(prev => [...prev, doc]) }
+                          } else {
+                            await api.adminUpdateArea(areasEdit, doc)
+                            setAreas(prev => prev.map(x => x._id === areasEdit ? { ...x, ...doc } : x))
+                          }
+                          setAreasEdit(null)
+                          setMsg(areasEdit === 'new' ? 'Location added!' : 'Location updated!')
+                          setTimeout(() => setMsg(''), 2000)
+                        } catch { setMsg('Failed to save location.'); setTimeout(() => setMsg(''), 2000) }
+                      }} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
+                        {areasEdit === 'new' ? 'Add Location' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {socialsEdit && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setSocialsEdit(null) }}>
+                  <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '500px', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{socialsEdit === 'new' ? 'Add Social Link' : 'Edit Social Link'}</h3>
+                      <button onClick={() => setSocialsEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#94A3B8', cursor: 'pointer' }}>&times;</button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Platform *</label>
+                        <select value={socialsForm.platform} onChange={e => setSocialsForm(prev => ({ ...prev, platform: e.target.value }))} style={inputStyle}>
+                          {SOCIAL_PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Order</label>
+                        <input type="number" value={socialsForm.order} onChange={e => setSocialsForm(prev => ({ ...prev, order: Number(e.target.value) }))} style={inputStyle} />
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>URL *</label>
+                      <input type="text" value={socialsForm.url} onChange={e => setSocialsForm(prev => ({ ...prev, url: e.target.value }))} style={inputStyle} placeholder="https://facebook.com/yourpage" />
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.7rem', color: '#94A3B8', margin: '0.4rem 0 0', lineHeight: 1.5 }}>
+                        Link nosto hoye gele ekhane notun link diye save korlei footer e update hoye jabe.
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                      <button onClick={() => setSocialsEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#94A3B8', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={async () => {
+                        if (!socialsForm.url) { setMsg('URL is required.'); setTimeout(() => setMsg(''), 2000); return }
+                        const doc = { platform: socialsForm.platform, url: socialsForm.url, order: Number(socialsForm.order) || 0 }
+                        try {
+                          if (socialsEdit === 'new') {
+                            const r = await api.adminAddSocial(doc)
+                            if (r.ok) { doc._id = r._id; setSocials(prev => [...prev, doc]) }
+                          } else {
+                            await api.adminUpdateSocial(socialsEdit, doc)
+                            setSocials(prev => prev.map(x => x._id === socialsEdit ? { ...x, ...doc } : x))
+                          }
+                          setSocialsEdit(null)
+                          setMsg(socialsEdit === 'new' ? 'Social link added!' : 'Social link updated!')
+                          setTimeout(() => setMsg(''), 2000)
+                        } catch { setMsg('Failed to save social link.'); setTimeout(() => setMsg(''), 2000) }
+                      }} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
+                        {socialsEdit === 'new' ? 'Add Social Link' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {enrollEdit && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setEnrollEdit(null) }}>
+                  <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{enrollEdit === 'new' ? 'Add Enrollment' : 'Edit Enrollment'}</h3>
+                      <button onClick={() => setEnrollEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#94A3B8', cursor: 'pointer' }}>&times;</button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                      {[
+                        { k: 'ID', label: 'ID', ph: 'Auto or manual' },
+                        { k: 'Status', label: 'Status', type: 'select', opts: ['pending', 'success', 'failed'] },
+                        { k: 'Full_Name', label: 'Full Name *' },
+                        { k: 'Email', label: 'Email' },
+                        { k: 'Student Phone', label: 'Student Phone' },
+                        { k: 'Gender', label: 'Gender', type: 'select', opts: ['Male', 'Female', 'Other'] },
+                        { k: 'Date_of_Birth', label: 'Date of Birth', type: 'date' },
+                        { k: 'Course_Name', label: 'Course Name' },
+                        { k: 'Price', label: 'Price', ph: '$249' },
+                        { k: 'Total', label: 'Total', ph: '$249' },
+                        { k: 'Permit', label: 'Permit #' },
+                        { k: 'Issue_Date', label: 'Issue Date', type: 'date' },
+                        { k: 'Expire_Date', label: 'Expire Date', type: 'date' },
+                        { k: 'Parent_Phone', label: 'Parent Phone' },
+                        { k: 'Calender_booking_Id', label: 'Booking ID' },
+                        { k: 'Booking_Date', label: 'Booking Date' },
+                      ].map(({ k, label, type, opts, ph }) => (
+                        <div key={k}>
+                          <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>{label}</label>
+                          {type === 'select' ? (
+                            <select value={enrollForm[k] || ''} onChange={e => setEnrollForm(prev => ({ ...prev, [k]: e.target.value }))} style={inputStyle}>
+                              {opts.map(o => <option key={o} value={o}>{o}</option>)}
+                            </select>
+                          ) : (
+                            <input type={type || 'text'} value={enrollForm[k] || ''} onChange={e => setEnrollForm(prev => ({ ...prev, [k]: e.target.value }))} style={inputStyle} placeholder={ph || ''} />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Address</label>
+                        <input type="text" value={enrollForm.Address || ''} onChange={e => setEnrollForm(prev => ({ ...prev, Address: e.target.value }))} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Pickup Address</label>
+                        <input type="text" value={enrollForm.Pickup_Address || ''} onChange={e => setEnrollForm(prev => ({ ...prev, Pickup_Address: e.target.value }))} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>City</label>
+                        <input type="text" value={enrollForm.City || ''} onChange={e => setEnrollForm(prev => ({ ...prev, City: e.target.value }))} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>State</label>
+                        <input type="text" value={enrollForm.State || ''} onChange={e => setEnrollForm(prev => ({ ...prev, State: e.target.value }))} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Zip</label>
+                        <input type="text" value={enrollForm.Zip || ''} onChange={e => setEnrollForm(prev => ({ ...prev, Zip: e.target.value }))} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Meds</label>
+                        <input type="text" value={enrollForm.Meds || ''} onChange={e => setEnrollForm(prev => ({ ...prev, Meds: e.target.value }))} style={inputStyle} placeholder="N/A" />
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Notes</label>
+                      <textarea rows="3" value={enrollForm.Notes || ''} onChange={e => setEnrollForm(prev => ({ ...prev, Notes: e.target.value }))} style={{ ...inputStyle, resize: 'vertical' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                      <button onClick={() => setEnrollEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#94A3B8', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={async () => {
+                        if (!enrollForm.Full_Name) { setMsg('Full Name is required.'); setTimeout(() => setMsg(''), 2000); return }
+                        try {
+                          if (enrollEdit === 'new') {
+                            const r = await api.adminAddEnrollment(enrollForm)
+                            if (r.ok) { enrollForm._id = r._id; setEnrollments(prev => [enrollForm, ...prev]); setEnrollTotal(prev => prev + 1) }
+                          } else {
+                            await api.adminUpdateEnrollment(enrollEdit, enrollForm)
+                            setEnrollments(prev => prev.map(x => x._id === enrollEdit ? { ...x, ...enrollForm } : x))
+                          }
+                          setEnrollEdit(null)
+                          setMsg(enrollEdit === 'new' ? 'Enrollment added!' : 'Enrollment updated!')
+                          setTimeout(() => setMsg(''), 2000)
+                        } catch { setMsg('Failed to save enrollment.'); setTimeout(() => setMsg(''), 2000) }
+                      }} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
+                        {enrollEdit === 'new' ? 'Add Enrollment' : 'Save Changes'}
+                      </button>
                     </div>
                   </div>
                 </div>

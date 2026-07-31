@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { api } from '../api'
@@ -16,6 +16,11 @@ export default function PricingPage() {
   const [step, setStep] = useState(null)
   const [selectedTier, setSelectedTier] = useState(null)
   const [error, setError] = useState('')
+  const [tiers, setTiers] = useState(null)
+
+  useEffect(() => {
+    api.getPricing().then(d => { if (Array.isArray(d) && d.length) setTiers(d) }).catch(() => {})
+  }, [])
 
   const handleChoose = (tier) => {
     if (!user) {
@@ -32,8 +37,8 @@ export default function PricingPage() {
     try {
       const course = {
         id: selectedTier.id,
-        title: selectedTier.name,
-        price: selectedTier.price,
+        title: selectedTier.planName,
+        price: selectedTier.planPrice,
         status: 'Enrolled',
         progress: 0,
         enrolledAt: new Date().toISOString(),
@@ -49,8 +54,8 @@ export default function PricingPage() {
           date: new Date().toISOString().split('T')[0],
           ref: `INV-${Date.now().toString(36).toUpperCase()}`,
           email: user.email,
-          item: selectedTier.name,
-          amount: selectedTier.price,
+          item: selectedTier.planName,
+          amount: selectedTier.planPrice,
           status: 'Pending',
         }
         await api.addPayment(user.uid, payment)
@@ -109,7 +114,7 @@ export default function PricingPage() {
         @keyframes pulseRing { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(2.2); opacity: 0; } }
       `}</style>
 
-      <Pricing light onEnroll={handleChoose} />
+      <Pricing light onEnroll={handleChoose} tiers={tiers} />
 
       {step === 'confirm' && selectedTier && (
         <div style={backdropStyle} onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}>
@@ -129,30 +134,46 @@ export default function PricingPage() {
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: GOLD_DEEP, fontWeight: 700 }}>Confirm Enrollment</span>
                 </div>
                 <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: '#fff', fontWeight: 800, margin: 0, lineHeight: 1.2 }}>
-                  {selectedTier.name}
+                  {selectedTier.planName}
                 </h2>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: '0.3rem' }}>
-                  {selectedTier.tagline}
-                </p>
               </div>
             </div>
 
             <div style={{ padding: '1.5rem 2rem 2rem' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', marginBottom: '1.5rem' }}>
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: '2.4rem', color: GOLD, fontWeight: 800, lineHeight: 1 }}>{selectedTier.price}</span>
-                {selectedTier.period && <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8899aa' }}>/{selectedTier.period}</span>}
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Price</span>
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: GOLD, fontWeight: 800, lineHeight: 1 }}>{selectedTier.planPrice}</span>
+                </div>
+                <div>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Price Two</span>
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: DARK, fontWeight: 800, lineHeight: 1 }}>{selectedTier.planPriceTwo}</span>
+                </div>
               </div>
 
               <div style={{ width: '100%', height: '1px', background: '#E2EBF5', marginBottom: '1.25rem' }} />
 
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8899aa', fontWeight: 700, marginBottom: '0.75rem' }}>What's included</p>
               <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', listStyle: 'none', padding: 0, margin: '0 0 1.75rem 0' }}>
-                {selectedTier.features.map((f) => (
-                  <li key={f} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    <span style={{ fontFamily: 'var(--font-body)', color: '#4a5568', fontSize: '0.85rem', lineHeight: 1.5 }}>{f}</span>
+                {selectedTier.options.map((opt, i) => (
+                  <li key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
+                    {opt.permission === 'Included' ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
+                        <circle cx="12" cy="12" r="10" />
+                      </svg>
+                    )}
+                    <span style={{
+                      fontFamily: 'var(--font-body)',
+                      color: opt.permission === 'Included' ? '#4a5568' : '#94A3B8',
+                      fontSize: '0.85rem',
+                      lineHeight: 1.5,
+                    }}>
+                      {opt.text || opt.permission}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -206,7 +227,7 @@ export default function PricingPage() {
                 You've been enrolled in
               </p>
               <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', color: SKY_BLUE, fontWeight: 700, margin: '0 0 1.5rem' }}>
-                {selectedTier.name} ({selectedTier.price})
+                {selectedTier.planName} ({selectedTier.planPrice})
               </p>
 
               <div style={{ width: '100%', height: '1px', background: '#E2EBF5', marginBottom: '1.5rem' }} />

@@ -1,9 +1,12 @@
+import { useSiteSettings, phoneHref } from '../useSiteSettings'
+
 const GOLD = '#FDBC01'
 const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
 
 export default function CTABanner() {
+  const settings = useSiteSettings()
   return (
     <>
       <style>{`
@@ -163,7 +166,7 @@ export default function CTABanner() {
 
             {/* CTA Button */}
             <a
-              href="https://www.aprecisiondrivingschool.com/schedule/cart_home.html"
+              href={settings.scheduleLink}
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -220,7 +223,7 @@ export default function CTABanner() {
 
             <div className="cta-phone-ring" style={{ display: 'inline-flex', marginBottom: '0.5rem' }}>
               <a
-                href="tel:+19253291736"
+                href={phoneHref(settings.phone)}
                 style={{
                   fontFamily: 'var(--font-display)',
                   fontSize: 'clamp(1.5rem, 3vw, 2rem)',
@@ -233,7 +236,7 @@ export default function CTABanner() {
                 onMouseEnter={(e) => { e.currentTarget.style.color = GOLD }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = '#ffffff' }}
               >
-                +1 925 329 1736
+                {settings.phone}
               </a>
             </div>
 

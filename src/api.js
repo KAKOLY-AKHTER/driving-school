@@ -36,4 +36,28 @@ export const api = {
   createConversation: (uid, title, messages) => request(`/api/users/${uid}/conversations`, { method: 'POST', body: JSON.stringify({ title, messages }) }),
   updateConversation: (uid, convId, data) => request(`/api/users/${uid}/conversations/${convId}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteConversation: (uid, convId) => request(`/api/users/${uid}/conversations/${convId}`, { method: 'DELETE' }),
+  getSettings: () => request('/api/settings'),
+  adminUpdateSettings: (data) => request('/api/admin/settings', { method: 'PUT', body: JSON.stringify(data) }),
+  getPricing: () => request('/api/pricing'),
+  adminEnrollments: (params) => request(`/api/admin/enrollments?${new URLSearchParams(params)}`),
+  adminEnrollmentsStats: () => request('/api/admin/enrollments/stats'),
+  adminAddEnrollment: (data) => request('/api/admin/enrollments', { method: 'POST', body: JSON.stringify(data) }),
+  adminUpdateEnrollment: (id, data) => request(`/api/admin/enrollments/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  adminDeleteEnrollment: (id) => request(`/api/admin/enrollments/${id}`, { method: 'DELETE' }),
+  adminAddPricing: (data) => request('/api/admin/pricing', { method: 'POST', body: JSON.stringify(data) }),
+  adminUpdatePricing: (id, data) => request(`/api/admin/pricing/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  adminDeletePricing: (id) => request(`/api/admin/pricing/${id}`, { method: 'DELETE' }),
+  getAreas: () => request('/api/areas'),
+  adminAddArea: (data) => request('/api/admin/areas', { method: 'POST', body: JSON.stringify(data) }),
+  adminUpdateArea: (id, data) => request(`/api/admin/areas/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  adminDeleteArea: (id) => request(`/api/admin/areas/${id}`, { method: 'DELETE' }),
+  getSocials: () => request('/api/socials'),
+  adminAddSocial: (data) => request('/api/admin/socials', { method: 'POST', body: JSON.stringify(data) }),
+  adminUpdateSocial: (id, data) => request(`/api/admin/socials/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  adminDeleteSocial: (id) => request(`/api/admin/socials/${id}`, { method: 'DELETE' }),
+}
+
+export function makeEmbedCode(mapUrl) {
+  if (!mapUrl) return ''
+  return `<iframe src="${mapUrl}" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Google Map"></iframe>`
 }

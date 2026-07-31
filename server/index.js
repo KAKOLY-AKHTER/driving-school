@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 3001
 const MONGO_URI = process.env.MONGO_URI
 const DB_NAME = 'driving_school'
 
-let db, usersCol, bookingsCol, contactCol
+let db, usersCol, bookingsCol, contactCol, settingsCol, pricingCol, enrollmentsCol, areasCol, socialsCol
 
 async function connectDB() {
   const client = new MongoClient(MONGO_URI)
@@ -26,6 +26,11 @@ async function connectDB() {
   usersCol = db.collection('users')
   bookingsCol = db.collection('bookings')
   contactCol = db.collection('contact')
+  settingsCol = db.collection('settings')
+  pricingCol = db.collection('pricing')
+  enrollmentsCol = db.collection('enrollments')
+  areasCol = db.collection('areas')
+  socialsCol = db.collection('socials')
   await usersCol.createIndex({ uid: 1 }, { unique: true })
   await bookingsCol.createIndex({ userId: 1, date: 1 })
   console.log('MongoDB connected')
@@ -440,8 +445,356 @@ app.delete('/api/admin/contacts/:id', async (req, res) => {
   }
 })
 
+app.get('/api/pricing', async (req, res) => {
+  try {
+    const tiers = await pricingCol.find().sort({ order: 1, name: 1 }).toArray()
+    res.json(tiers)
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.post('/api/admin/pricing', async (req, res) => {
+  try {
+    const doc = {
+      ...req.body,
+      features: req.body.features || [],
+      createdAt: new Date().toISOString(),
+    }
+    const result = await pricingCol.insertOne(doc)
+    res.json({ ok: true, _id: result.insertedId })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.put('/api/admin/pricing/:id', async (req, res) => {
+  try {
+    await pricingCol.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { ...req.body, updatedAt: new Date().toISOString() } }
+    )
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.delete('/api/admin/pricing/:id', async (req, res) => {
+  try {
+    await pricingCol.deleteOne({ _id: new ObjectId(req.params.id) })
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.get('/api/areas', async (req, res) => {
+  try {
+    const areas = await areasCol.find().sort({ order: 1, name: 1 }).toArray()
+    res.json(areas)
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.post('/api/admin/areas', async (req, res) => {
+  try {
+    const doc = {
+      ...req.body,
+      createdAt: new Date().toISOString(),
+    }
+    const result = await areasCol.insertOne(doc)
+    res.json({ ok: true, _id: result.insertedId })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.put('/api/admin/areas/:id', async (req, res) => {
+  try {
+    await areasCol.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { ...req.body, updatedAt: new Date().toISOString() } }
+    )
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.delete('/api/admin/areas/:id', async (req, res) => {
+  try {
+    await areasCol.deleteOne({ _id: new ObjectId(req.params.id) })
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.get('/api/socials', async (req, res) => {
+  try {
+    const socials = await socialsCol.find().sort({ order: 1, platform: 1 }).toArray()
+    res.json(socials)
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.post('/api/admin/socials', async (req, res) => {
+  try {
+    const doc = {
+      platform: req.body.platform || 'website',
+      url: req.body.url || '',
+      order: Number(req.body.order) || 0,
+      createdAt: new Date().toISOString(),
+    }
+    const result = await socialsCol.insertOne(doc)
+    res.json({ ok: true, _id: result.insertedId })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.put('/api/admin/socials/:id', async (req, res) => {
+  try {
+    await socialsCol.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { ...req.body, updatedAt: new Date().toISOString() } }
+    )
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.delete('/api/admin/socials/:id', async (req, res) => {
+  try {
+    await socialsCol.deleteOne({ _id: new ObjectId(req.params.id) })
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.get('/api/settings', async (req, res) => {
+  try {
+    const settings = await settingsCol.findOne({ _id: 'site' })
+    if (!settings) {
+      return res.json({
+        phone: '+1 925 329 1736',
+        email: 'aprecisiondrivingschool@gmail.com',
+        address: '2001 Omega Rd, Ste 205',
+        subaddress: 'San Ramon, CA 94583',
+        scheduleLabel: 'aprecisiondrivingschool.com',
+        scheduleLink: 'https://www.aprecisiondrivingschool.com/schedule/cart_home.html',
+      })
+    }
+    res.json(settings)
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.put('/api/admin/settings', async (req, res) => {
+  try {
+    await settingsCol.updateOne(
+      { _id: 'site' },
+      { $set: { ...req.body, updatedAt: new Date().toISOString() } },
+      { upsert: true }
+    )
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+const PERMISSION_OPTIONS = ['Select', 'Included', 'Optional', 'Not Included']
+
+const AREA_ICON = 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5'
+
+const DEFAULT_AREAS = [
+  { name: 'San Ramon', map: 'https://www.google.com/maps/embed/v1/place?q=SAN+RAMON+CA&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8', icon: AREA_ICON, order: 0 },
+  { name: 'Danville', map: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d100863.97399194786!2d-122.04184640146435!3d37.813488021706846!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x808ff31209500587%3A0x185b7b97f3832fd5!2sDanville%2C%20CA%2C%20USA!5e0!3m2!1sen!2sin!4v1714387044634!5m2!1sen!2sin', icon: AREA_ICON, order: 1 },
+  { name: 'Livermore', map: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d101045.39924703917!2d-121.85476100892504!3d37.68049120011074!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x808fe586385a2071%3A0x98d32231cb6bd871!2sLivermore%2C%20CA%2C%20USA!5e0!3m2!1sen!2sin!4v1714386912208!5m2!1sen!2sin', icon: AREA_ICON, order: 2 },
+  { name: 'Pleasanton', map: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d202142.65679680137!2d-122.1723057097092!3d37.66145075852708!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x808fe9a261ba755f%3A0xb3ab6847e1ea7d16!2sPleasanton%2C%20CA%2C%20USA!5e0!3m2!1sen!2sin!4v1714386614013!5m2!1sen!2sin', icon: AREA_ICON, order: 3 },
+  { name: 'Dublin', map: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d100989.52971764698!2d-121.99252020662772!3d37.7214898142999!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x808fe65cd6892231%3A0x3b327c848ef64057!2sDublin%2C%20CA%2094568%2C%20USA!5e0!3m2!1sen!2sin!4v1715787261489!5m2!1sen!2sin', icon: AREA_ICON, order: 4 },
+]
+
+const DEFAULT_SOCIALS = [
+  { platform: 'facebook', url: 'https://www.facebook.com/people/A-Precision-Driving-School/61561300479300/', order: 0 },
+  { platform: 'instagram', url: 'https://www.instagram.com/aprecisiondrivingschool/', order: 1 },
+  { platform: 'youtube', url: 'https://www.youtube.com/@aprecisiondrivingschool', order: 2 },
+]
+
+const DEFAULT_PRICING = [
+  { id: '1', planName: 'TEEN ONLINE DRIVERS ED', planPrice: '$24.99', planPriceTwo: '$24.99', options: [
+    { text: 'CA DMV- Approved For Permit', permission: 'Included' },
+    { text: 'Guaranteed to Pass!', permission: 'Included' },
+    { text: 'Complete in Section, Easy & Convenient', permission: 'Included' },
+    { text: 'Get Certificate of Completion', permission: 'Included' },
+    { text: 'Fast Certificate Processing..', permission: 'Included' },
+  ], order: 0 },
+  { id: '2', planName: 'BASIC PLAN', planPrice: '$156', planPriceTwo: '$195', options: [
+    { text: 'Online Course', permission: 'Included' },
+    { text: '2 hours professional Training only', permission: 'Included' },
+    { text: '2 Hours Behind-the-Wheel', permission: 'Included' },
+    { text: '6-Hour Behind-the-Wheel-Training', permission: 'Not Included' },
+    { text: '10-Hour Behind-the-Wheel-Training', permission: 'Not Included' },
+  ], order: 1 },
+  { id: '3', planName: 'ESSENTIAL PLAN', planPrice: '$445', planPriceTwo: '$499', options: [
+    { text: 'Online Course', permission: 'Included' },
+    { text: 'Behind the wheel only', permission: 'Included' },
+    { text: '2 Hours Behind-the-Wheel', permission: 'Not Included' },
+    { text: '6-Hour Behind-the-Wheel-Training', permission: 'Included' },
+    { text: 'We will provide the required DL 400D certificate. (Teens Only)', permission: 'Included' },
+  ], order: 2 },
+  { id: '4', planName: 'IDEAL FOR STUDENTS', planPrice: '$475', planPriceTwo: '$575', options: [
+    { text: 'Online Course', permission: 'Included' },
+    { text: 'Everything you need to get licensed! Our most popular package!', permission: 'Included' },
+    { text: 'Will provide a DL 400C certificate for the online course.', permission: 'Included' },
+    { text: '6-Hour Behind-the-Wheel-Training', permission: 'Included' },
+    { text: "You'll receive the DL 400D certificate (Teens Only)", permission: 'Included' },
+  ], order: 3 },
+  { id: '5', planName: 'PREMIER PLAN', planPrice: '$749', planPriceTwo: '$890', options: [
+    { text: 'Online Course', permission: 'Included' },
+    { text: '6 Hours Behind-the-Wheel', permission: 'Included' },
+    { text: 'Plus 4 Extra hours!', permission: 'Included' },
+    { text: '10-Hour Training', permission: 'Included' },
+    { text: '', permission: 'Select' },
+  ], order: 4 },
+  { id: '6', planName: 'DMV Drive Test Car Rental', planPrice: '$225', planPriceTwo: '$290', options: [
+    { text: 'DMV Drive Test Car Rental with 30 minutes practice', permission: 'Included' },
+    { text: 'Use the school\'s car for DMV Drive Test.', permission: 'Included' },
+    { text: 'Instructor accompanies you to the DMV.', permission: 'Included' },
+    { text: '', permission: 'Select' },
+    { text: '', permission: 'Select' },
+  ], order: 5 },
+  { id: '7', planName: 'DMV Drive Test Car Rental.', planPrice: '$249', planPriceTwo: '$320', options: [
+    { text: 'DMV Drive Test Car Rental with 1 hour practice', permission: 'Included' },
+    { text: 'Use the school\'s car for DMV Drive Test.', permission: 'Included' },
+    { text: 'Instructor accompanies you to the DMV.', permission: 'Included' },
+    { text: '', permission: 'Select' },
+    { text: '', permission: 'Select' },
+  ], order: 6 },
+  { id: '8', planName: 'Freeway Focused Course', planPrice: '$200', planPriceTwo: '$249', options: [
+    { text: '2-hour special training', permission: 'Included' },
+    { text: 'Designed to help drivers feel confident on the freeway', permission: 'Included' },
+    { text: 'Designed to teach merging', permission: 'Included' },
+    { text: 'Exiting, lane changing, highway laws', permission: 'Included' },
+    { text: 'Using dual-control vehicles.', permission: 'Included' },
+  ], order: 7 },
+]
+
+app.get('/api/admin/enrollments', async (req, res) => {
+  try {
+    const { search, page = 1, limit = 10, from, to } = req.query
+    const p = Math.max(1, parseInt(page))
+    const l = Math.min(100, Math.max(1, parseInt(limit)))
+    const filter = {}
+    if (search) {
+      const r = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+      filter.$or = [
+        { Full_Name: r }, { Email: r }, { Phone: r },
+        { Course_Name: r }, { Address: r }, { City: r },
+        { 'Permit.Calender_booking_Id': r },
+      ]
+    }
+    if (from || to) {
+      filter.Applied_date = {}
+      if (from) filter.Applied_date.$gte = from
+      if (to) filter.Applied_date.$lte = to
+    }
+    const total = await enrollmentsCol.countDocuments(filter)
+    const data = await enrollmentsCol.find(filter)
+      .sort({ Applied_date: -1, _id: -1 })
+      .skip((p - 1) * l)
+      .limit(l)
+      .toArray()
+    res.json({ data, total, page: p, limit: l, totalPages: Math.ceil(total / l) })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.get('/api/admin/enrollments/stats', async (req, res) => {
+  try {
+    const totalStudents = await enrollmentsCol.distinct('Email').then(e => e.length)
+    const totalPackages = await enrollmentsCol.distinct('Course_Name').then(e => e.length)
+    const totalEnrolled = await enrollmentsCol.countDocuments()
+    res.json({ totalStudents, totalPackages, totalEnrolled })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.post('/api/admin/enrollments', async (req, res) => {
+  try {
+    const doc = { ...req.body, Applied_date: new Date().toISOString().replace('T', ' ').slice(0, 19) }
+    const r = await enrollmentsCol.insertOne(doc)
+    res.json({ ok: true, _id: r.insertedId })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.put('/api/admin/enrollments/:id', async (req, res) => {
+  try {
+    await enrollmentsCol.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { ...req.body, updatedAt: new Date().toISOString() } }
+    )
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.delete('/api/admin/enrollments/:id', async (req, res) => {
+  try {
+    await enrollmentsCol.deleteOne({ _id: new ObjectId(req.params.id) })
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+async function seedPricing() {
+  const count = await pricingCol.countDocuments()
+  if (count === 0) {
+    await pricingCol.insertMany(DEFAULT_PRICING.map(t => ({ ...t, createdAt: new Date().toISOString() })))
+    console.log('Seeded default pricing packages')
+  } else {
+    const first = await pricingCol.findOne()
+    if (first && first.name && !first.planName) {
+      await pricingCol.drop()
+      await pricingCol.insertMany(DEFAULT_PRICING.map(t => ({ ...t, createdAt: new Date().toISOString() })))
+      console.log('Replaced old-format pricing with new schema')
+    }
+  }
+}
+
+async function seedAreas() {
+  const count = await areasCol.countDocuments()
+  if (count === 0) {
+    await areasCol.insertMany(DEFAULT_AREAS.map(a => ({ ...a, createdAt: new Date().toISOString() })))
+    console.log('Seeded default service areas')
+  }
+}
+
+async function seedSocials() {
+  const count = await socialsCol.countDocuments()
+  if (count === 0) {
+    await socialsCol.insertMany(DEFAULT_SOCIALS.map(s => ({ ...s, createdAt: new Date().toISOString() })))
+    console.log('Seeded default social links')
+  }
+}
+
 connectDB()
-  .then(() => {
+  .then(async () => {
+    await seedPricing()
+    await seedAreas()
+    await seedSocials()
     app.listen(PORT, () => console.log(`API running on port ${PORT}`))
   })
   .catch((e) => {

@@ -12,15 +12,16 @@ const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
 
 const COURSE_MAP = {
-  '1': 'Online Driver Ed',
-  '7': 'Duplicate Certificate 400C',
-  '2': 'Basic Behind the Wheel (Package A - 2 Hours)',
-  '12': 'Basic Behind the Wheel (Package D - 4 Hours)',
-  '3': 'Essential Behind the Wheel (Package B - 6 Hours)',
-  '8': 'Ideal BTW + Online Driver Ed (Package C - 6 Hours)',
-  '4': 'Premier Behind the Wheel (Package E - 10 Hours)',
+  '1': 'TEEN ONLINE DRIVERS ED',
+  '2': 'BASIC PLAN',
+  '3': 'ESSENTIAL PLAN',
+  '4': 'IDEAL FOR STUDENTS',
+  '5': 'PREMIER PLAN',
+  '6': 'DMV Drive Test Car Rental',
+  '7': 'DMV Drive Test Car Rental.',
+  '8': 'Freeway Focused Course',
 }
-const COURSE_HOURS = { '2': 2, '12': 4, '3': 6, '8': 6, '4': 10 }
+const COURSE_HOURS = { '1': 0, '2': 2, '3': 6, '4': 6, '5': 10, '6': 0.5, '7': 1, '8': 2 }
 const TIME_SLOTS = [
   { id: 'slot1', label: 'Morning 1', time: '9:00 AM - 11:00 AM', hours: 2 },
   { id: 'slot2', label: 'Morning 2', time: '11:00 AM - 1:00 PM', hours: 2 },
@@ -87,7 +88,7 @@ export default function DashboardPage() {
   const [sCurrentPass, setSCurrentPass] = useState('')
   const [sNewPass, setSNewPass] = useState('')
   const [sConfirmPass, setSConfirmPass] = useState('')
-  const showCourse = courseType === '1' || courseType === '8' || courses.some(c => c.id === '1' || c.id === '8')
+  const showCourse = courseType === '1' || courses.some(c => c.id === '1')
 
   useEffect(() => {
     if (!user) return

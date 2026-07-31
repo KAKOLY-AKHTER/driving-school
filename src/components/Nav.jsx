@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
+import { useSiteSettings } from '../useSiteSettings'
 
 const NAV_LINKS = [
   { label: 'Home', href: '/', external: false },
@@ -14,6 +15,7 @@ const NAV_LINKS = [
 
 export default function Nav() {
   const { user, isAdmin } = useAuth()
+  const settings = useSiteSettings()
   const [open, setOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -60,11 +62,11 @@ export default function Nav() {
       }}>
         <div className="container" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.75rem 2rem', fontSize: '0.9rem', fontWeight: '600' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
-            <span style={{ color: '#0a1628', transform: 'rotate(90deg)' }}>📞</span> +1 925 329 1736
+            <span style={{ color: '#0a1628', transform: 'rotate(90deg)' }}>📞</span> {settings.phone}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
             <span style={{ color: '#0a1628', flexShrink: 0 }}>✉️</span>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>aprecisiondrivingschool@gmail.com</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{settings.email}</span>
           </div>
         </div>
       </div>

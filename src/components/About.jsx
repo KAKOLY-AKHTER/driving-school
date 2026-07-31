@@ -1,3 +1,5 @@
+import { useSiteSettings } from '../useSiteSettings'
+
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
 const GOLD_BRIGHT = '#FFD54F'
@@ -6,6 +8,7 @@ const DARK = '#0a1628'
 const DARK_MID = '#0d1f3c'
 
 export default function About() {
+  const settings = useSiteSettings()
   return (
     <>
       <style>{`
@@ -296,7 +299,7 @@ export default function About() {
 
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                 <a
-                  href="https://www.aprecisiondrivingschool.com/schedule/cart_home.html"
+                  href={settings.scheduleLink}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
@@ -597,7 +600,7 @@ export default function About() {
             </div>
 
             <a
-              href="https://www.aprecisiondrivingschool.com/schedule/cart_home.html"
+              href={settings.scheduleLink}
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -774,7 +777,7 @@ export default function About() {
                   marginTop: '1rem',
                 }}>
                   <p style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', lineHeight: 1.65, margin: 0 }}>
-                    Text us at <strong style={{ color: GOLD }}>+1 925-329-1736</strong> or email <strong style={{ color: GOLD }}>aprecisiondrivingschool@gmail.com</strong>
+                    Text us at <strong style={{ color: GOLD }}>{settings.phone}</strong> or email <strong style={{ color: GOLD }}>{settings.email}</strong>
                   </p>
                 </div>
               </div>

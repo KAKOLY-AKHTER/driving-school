@@ -5,90 +5,67 @@ const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
 const DARK_MID = '#0d1f3c'
 
-const TIERS = [
-  {
-    name: 'Online Driver\'s Ed',
-    id: '1',
-    price: '$39.99',
-    period: 'one-time',
-    tagline: 'DMV Test Only · Online Only',
-    features: [
-      'Fully online state-approved course',
-      '1 lesson or DMV Test Only',
-    ],
-    cta: 'Get Started',
-    href: 'https://www.aprecisiondrivingschool.com/script/register.php',
-    highlight: false,
-    icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
-  },
-  {
-    name: 'Basic',
-    id: '2',
-    price: '$210',
-    period: null,
-    tagline: 'DMV Test Only',
-    features: [
-      'Online course included',
-      '2 hrs professional training',
-      '2 Hours Behind-the-Wheel',
-    ],
-    cta: 'Choose Basic',
-    href: 'https://www.aprecisiondrivingschool.com/schedule/cart_home.html',
-    highlight: false,
-    icon: 'M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z',
-  },
-  {
-    name: 'Essential',
-    id: '3',
-    price: '$599',
-    period: null,
-    tagline: 'Test Included',
-    features: [
-      'Online course included',
-      'Behind-the-wheel only',
-      '6-Hour Behind-the-Wheel Training',
-    ],
-    cta: 'Choose Essential',
-    href: 'https://www.aprecisiondrivingschool.com/schedule/cart_home.html',
-    highlight: false,
-    icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
-  },
-  {
-    name: 'Ideal for Students',
-    id: '8',
-    badge: 'Most Popular',
-    price: '$615',
-    period: null,
-    tagline: 'DMV Test Included',
-    features: [
-      'Online course included',
-      'Everything needed to get licensed',
-      '6-Hour Behind-the-Wheel Training',
-    ],
-    cta: 'Choose Ideal',
-    href: 'https://www.aprecisiondrivingschool.com/schedule/cart_home.html',
-    highlight: true,
-    icon: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z',
-  },
-  {
-    name: 'Premier',
-    id: '4',
-    price: '$999',
-    period: null,
-    tagline: 'Advanced Track',
-    features: [
-      'Online course included',
-      '6 hrs behind-the-wheel + 4 extra hrs',
-      '10-Hour Behind-the-Wheel Training*',
-    ],
-    cta: 'Choose Premier',
-    href: 'https://www.aprecisiondrivingschool.com/schedule/cart_home.html',
-    highlight: false,
-    icon: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z',
-  },
+const DEFAULT_TIERS = [
+  { id: '1', planName: 'TEEN ONLINE DRIVERS ED', planPrice: '$24.99', planPriceTwo: '$24.99', options: [
+    { text: 'CA DMV- Approved For Permit', permission: 'Included' },
+    { text: 'Guaranteed to Pass!', permission: 'Included' },
+    { text: 'Complete in Section, Easy & Convenient', permission: 'Included' },
+    { text: 'Get Certificate of Completion', permission: 'Included' },
+    { text: 'Fast Certificate Processing..', permission: 'Included' },
+  ], order: 0 },
+  { id: '2', planName: 'BASIC PLAN', planPrice: '$156', planPriceTwo: '$195', options: [
+    { text: 'Online Course', permission: 'Included' },
+    { text: '2 hours professional Training only', permission: 'Included' },
+    { text: '2 Hours Behind-the-Wheel', permission: 'Included' },
+    { text: '6-Hour Behind-the-Wheel-Training', permission: 'Not Included' },
+    { text: '10-Hour Behind-the-Wheel-Training', permission: 'Not Included' },
+  ], order: 1 },
+  { id: '3', planName: 'ESSENTIAL PLAN', planPrice: '$445', planPriceTwo: '$499', options: [
+    { text: 'Online Course', permission: 'Included' },
+    { text: 'Behind the wheel only', permission: 'Included' },
+    { text: '2 Hours Behind-the-Wheel', permission: 'Not Included' },
+    { text: '6-Hour Behind-the-Wheel-Training', permission: 'Included' },
+    { text: 'We will provide the required DL 400D certificate. (Teens Only)', permission: 'Included' },
+  ], order: 2 },
+  { id: '4', planName: 'IDEAL FOR STUDENTS', planPrice: '$475', planPriceTwo: '$575', options: [
+    { text: 'Online Course', permission: 'Included' },
+    { text: 'Everything you need to get licensed! Our most popular package!', permission: 'Included' },
+    { text: 'Will provide a DL 400C certificate for the online course.', permission: 'Included' },
+    { text: '6-Hour Behind-the-Wheel-Training', permission: 'Included' },
+    { text: "You'll receive the DL 400D certificate (Teens Only)", permission: 'Included' },
+  ], order: 3 },
+  { id: '5', planName: 'PREMIER PLAN', planPrice: '$749', planPriceTwo: '$890', options: [
+    { text: 'Online Course', permission: 'Included' },
+    { text: '6 Hours Behind-the-Wheel', permission: 'Included' },
+    { text: 'Plus 4 Extra hours!', permission: 'Included' },
+    { text: '10-Hour Training', permission: 'Included' },
+    { text: '', permission: 'Select' },
+  ], order: 4 },
+  { id: '6', planName: 'DMV Drive Test Car Rental', planPrice: '$225', planPriceTwo: '$290', options: [
+    { text: 'DMV Drive Test Car Rental with 30 minutes practice', permission: 'Included' },
+    { text: "Use the school's car for DMV Drive Test.", permission: 'Included' },
+    { text: 'Instructor accompanies you to the DMV.', permission: 'Included' },
+    { text: '', permission: 'Select' },
+    { text: '', permission: 'Select' },
+  ], order: 5 },
+  { id: '7', planName: 'DMV Drive Test Car Rental.', planPrice: '$249', planPriceTwo: '$320', options: [
+    { text: 'DMV Drive Test Car Rental with 1 hour practice', permission: 'Included' },
+    { text: "Use the school's car for DMV Drive Test.", permission: 'Included' },
+    { text: 'Instructor accompanies you to the DMV.', permission: 'Included' },
+    { text: '', permission: 'Select' },
+    { text: '', permission: 'Select' },
+  ], order: 6 },
+  { id: '8', planName: 'Freeway Focused Course', planPrice: '$200', planPriceTwo: '$249', options: [
+    { text: '2-hour special training', permission: 'Included' },
+    { text: 'Designed to help drivers feel confident on the freeway', permission: 'Included' },
+    { text: 'Designed to teach merging', permission: 'Included' },
+    { text: 'Exiting, lane changing, highway laws', permission: 'Included' },
+    { text: 'Using dual-control vehicles.', permission: 'Included' },
+  ], order: 7 },
 ]
 
-export default function Pricing({ light = false, onEnroll = null }) {
+export default function Pricing({ light = false, onEnroll = null, tiers: propTiers = null }) {
+  const TIERS = propTiers && propTiers.length ? propTiers : DEFAULT_TIERS
   return (
     <>
       <style>{`
@@ -132,6 +109,9 @@ export default function Pricing({ light = false, onEnroll = null }) {
         .price-card:nth-child(3) { animation-delay: 0.15s; }
         .price-card:nth-child(4) { animation-delay: 0.2s; }
         .price-card:nth-child(5) { animation-delay: 0.25s; }
+        .price-card:nth-child(6) { animation-delay: 0.3s; }
+        .price-card:nth-child(7) { animation-delay: 0.35s; }
+        .price-card:nth-child(8) { animation-delay: 0.4s; }
         .price-card-highlight {
           background: #ffffff !important;
           border: 2px solid ${GOLD} !important;
@@ -219,7 +199,7 @@ export default function Pricing({ light = false, onEnroll = null }) {
         @media (min-width: 768px) {
           .price-scroll {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             width: 100%;
             gap: 0;
           }
@@ -234,7 +214,7 @@ export default function Pricing({ light = false, onEnroll = null }) {
             width: max-content;
           }
           .price-card {
-            min-width: 260px;
+            min-width: 280px;
             flex-shrink: 0;
           }
           .price-scroll-hint {
@@ -302,108 +282,117 @@ export default function Pricing({ light = false, onEnroll = null }) {
           <div style={{ overflow: 'auto', marginInline: '-1rem', paddingInline: '1rem' }}>
             <div className="price-scroll">
               {TIERS.map((tier) => (
-                <div key={tier.name} className={`price-card${light ? ' price-card-light' : ''}${tier.highlight ? ' price-card-highlight' : ''}`}>
-
-                  {tier.badge && (
-                    <div className="price-badge">{tier.badge}</div>
-                  )}
-
-                  {/* Icon */}
-                  <div style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: 'var(--radius-md)',
-                    background: tier.highlight ? 'rgba(253,188,1,0.1)' : 'rgba(1,69,168,0.06)',
-                    border: `1px solid ${tier.highlight ? 'rgba(253,188,1,0.2)' : 'rgba(1,69,168,0.1)'}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: '1.25rem',
-                  }}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={tier.highlight ? GOLD : SKY_BLUE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d={tier.icon} />
-                    </svg>
-                  </div>
-
-                  {/* Tagline */}
-                  <p style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '0.6rem',
-                    letterSpacing: '0.15em',
-                    textTransform: 'uppercase',
-                    color: 'rgba(10,22,40,0.4)',
-                    fontWeight: 600,
-                    marginBottom: '0.5rem',
-                  }}>
-                    {tier.tagline}
-                  </p>
-
-                  {/* Name */}
+                <div key={tier.id} className={`price-card${light ? ' price-card-light' : ''}`}>
+                  {/* Plan Name */}
                   <h3 style={{
                     fontFamily: 'var(--font-display)',
                     fontSize: '1.15rem',
                     color: '#0a1628',
                     marginBottom: '1rem',
                     fontWeight: 700,
+                    minHeight: '2.8rem',
+                    display: 'flex',
+                    alignItems: 'center',
                   }}>
-                    {tier.name}
+                    {tier.planName}
                   </h3>
 
-                  {/* Price */}
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', marginBottom: '1.5rem' }}>
-                    <span style={{
-                      fontFamily: 'var(--font-display)',
-                      fontSize: '2.2rem',
-                      color: tier.highlight ? GOLD_BRIGHT : GOLD,
-                      fontWeight: 800,
-                      lineHeight: 1,
-                    }}>
-                      {tier.price}
-                    </span>
-                    {tier.period && (
+                  {/* Prices */}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', marginBottom: '1.5rem' }}>
+                    <div>
                       <span style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: '0.6rem',
-                        letterSpacing: '0.1em',
+                        fontFamily: 'var(--font-body)',
+                        fontSize: '0.55rem',
+                        letterSpacing: '0.08em',
                         textTransform: 'uppercase',
-                        color: 'rgba(10,22,40,0.35)',
+                        color: '#94A3B8',
+                        fontWeight: 600,
+                        display: 'block',
+                        marginBottom: '0.15rem',
                       }}>
-                        /{tier.period}
+                        Price
                       </span>
-                    )}
+                      <span style={{
+                        fontFamily: 'var(--font-display)',
+                        fontSize: '2rem',
+                        color: GOLD,
+                        fontWeight: 800,
+                        lineHeight: 1,
+                      }}>
+                        {tier.planPrice}
+                      </span>
+                    </div>
+                    <div>
+                      <span style={{
+                        fontFamily: 'var(--font-body)',
+                        fontSize: '0.55rem',
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        color: '#94A3B8',
+                        fontWeight: 600,
+                        display: 'block',
+                        marginBottom: '0.15rem',
+                      }}>
+                        Price Two
+                      </span>
+                      <span style={{
+                        fontFamily: 'var(--font-display)',
+                        fontSize: '2rem',
+                        color: '#0a1628',
+                        fontWeight: 800,
+                        lineHeight: 1,
+                      }}>
+                        {tier.planPriceTwo}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Divider */}
                   <div style={{
                     width: '100%',
                     height: '1px',
-                    background: tier.highlight ? 'rgba(253,188,1,0.15)' : 'rgba(10,22,40,0.08)',
-                    marginBottom: '1.5rem',
+                    background: 'rgba(10,22,40,0.08)',
+                    marginBottom: '1.25rem',
                   }} />
 
-                  {/* Features */}
+                  {/* Options */}
                   <ul style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '0.85rem',
+                    gap: '0.7rem',
                     flexGrow: 1,
                     marginBottom: '2rem',
                     listStyle: 'none',
                     padding: 0,
                     margin: '0 0 2rem 0',
                   }}>
-                    {tier.features.map((f) => (
-                      <li key={f} style={{ display: 'flex', gap: '0.7rem', alignItems: 'flex-start' }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={tier.highlight ? GOLD : SKY_BLUE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '3px' }}>
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
+                    {tier.options.map((opt, i) => (
+                      <li key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
+                        {opt.permission === 'Included' ? (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '3px' }}>
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        ) : opt.permission === 'Not Included' ? (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '3px' }}>
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        ) : (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '3px' }}>
+                            <circle cx="12" cy="12" r="10" />
+                          </svg>
+                        )}
                         <span style={{
                           fontFamily: 'var(--font-body)',
-                          color: 'rgba(10,22,40,0.6)',
+                          color: opt.permission === 'Included' ? 'rgba(10,22,40,0.75)' : opt.permission === 'Not Included' ? 'rgba(10,22,40,0.3)' : 'rgba(10,22,40,0.4)',
                           fontSize: '0.85rem',
                           lineHeight: 1.5,
+                          textDecoration: opt.permission === 'Not Included' ? 'line-through' : 'none',
                         }}>
-                          {f}
+                          {opt.text}
+                          {!opt.text && (
+                            <span style={{ fontStyle: 'italic', fontSize: '0.7rem' }}>{opt.permission}</span>
+                          )}
                         </span>
                       </li>
                     ))}
@@ -429,96 +418,24 @@ export default function Pricing({ light = false, onEnroll = null }) {
                         transition: 'all 0.3s ease',
                         border: 'none',
                         cursor: 'pointer',
-                        ...(tier.highlight
-                          ? {
-                              color: DARK,
-                              background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`,
-                            }
-                          : {
-                              color: SKY_BLUE,
-                              background: 'transparent',
-                              border: '1px solid rgba(1,69,168,0.2)',
-                            }),
+                        color: DARK,
+                        background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`,
                       }}
                       onMouseEnter={(e) => {
-                        if (tier.highlight) {
-                          e.currentTarget.style.transform = 'translateY(-2px)'
-                          e.currentTarget.style.boxShadow = '0 8px 25px rgba(253,188,1,0.35)'
-                        } else {
-                          e.currentTarget.style.borderColor = GOLD
-                          e.currentTarget.style.color = GOLD
-                        }
+                        e.currentTarget.style.transform = 'translateY(-2px)'
+                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(253,188,1,0.35)'
                       }}
                       onMouseLeave={(e) => {
-                        if (tier.highlight) {
-                          e.currentTarget.style.transform = 'translateY(0)'
-                          e.currentTarget.style.boxShadow = 'none'
-                        } else {
-                          e.currentTarget.style.borderColor = 'rgba(1,69,168,0.2)'
-                          e.currentTarget.style.color = SKY_BLUE
-                        }
+                        e.currentTarget.style.transform = 'translateY(0)'
+                        e.currentTarget.style.boxShadow = 'none'
                       }}
                     >
-                      {tier.cta}
+                      Enroll Now
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <path d="M5 12h14M12 5l7 7-7 7" />
                       </svg>
                     </button>
-                  ) : (
-                    <a
-                      href={tier.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.5rem',
-                        width: '100%',
-                        padding: '0.85rem 1.5rem',
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: '0.65rem',
-                        letterSpacing: '0.15em',
-                        textTransform: 'uppercase',
-                        fontWeight: 700,
-                        textDecoration: 'none',
-                        transition: 'all 0.3s ease',
-                        ...(tier.highlight
-                          ? {
-                              color: DARK,
-                              background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`,
-                            }
-                          : {
-                              color: SKY_BLUE,
-                              background: 'transparent',
-                              border: '1px solid rgba(1,69,168,0.2)',
-                            }),
-                      }}
-                      onMouseEnter={(e) => {
-                        if (tier.highlight) {
-                          e.currentTarget.style.transform = 'translateY(-2px)'
-                          e.currentTarget.style.boxShadow = '0 8px 25px rgba(253,188,1,0.35)'
-                        } else {
-                          e.currentTarget.style.borderColor = GOLD
-                          e.currentTarget.style.color = GOLD
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (tier.highlight) {
-                          e.currentTarget.style.transform = 'translateY(0)'
-                          e.currentTarget.style.boxShadow = 'none'
-                        } else {
-                          e.currentTarget.style.borderColor = 'rgba(1,69,168,0.2)'
-                          e.currentTarget.style.color = SKY_BLUE
-                        }
-                      }}
-                    >
-                      {tier.cta}
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                      </svg>
-                    </a>
-                  )}
+                  ) : null}
                 </div>
               ))}
             </div>

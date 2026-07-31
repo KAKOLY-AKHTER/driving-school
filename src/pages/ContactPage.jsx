@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ServiceAreas from '../components/ServiceAreas'
+import { makeEmbedCode } from '../api'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -10,32 +11,38 @@ const API = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 const CONTACTS = [
   {
+    key: 'call',
     label: 'Call Us',
     sublabel: 'Text only please',
-    value: '+1 925 329 1736',
-    href: 'tel:+19253291736',
+    valueKey: 'phone',
+    hrefKey: 'tel:',
+    hrefPrefix: 'tel:+',
     icon: 'M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z',
   },
   {
+    key: 'email',
     label: 'Email Us',
     sublabel: 'We reply within 24 hours',
-    value: 'aprecisiondrivingschool@gmail.com',
-    href: 'mailto:aprecisiondrivingschool@gmail.com',
+    valueKey: 'email',
+    hrefKey: 'mailto:',
+    hrefPrefix: 'mailto:',
     icon: 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22 6l-10 7L2 6',
   },
   {
+    key: 'visit',
     label: 'Visit Us',
     sublabel: 'DMV Licensed since 1989',
-    value: '2001 Omega Rd, Ste 205',
-    subvalue: 'San Ramon, CA 94583',
-    href: 'https://maps.google.com/?q=2001+Omega+Rd+Ste+205+San+Ramon+CA+94583',
+    valueKey: 'address',
+    subvalueKey: 'subaddress',
+    hrefKey: 'https://maps.google.com/?q=',
     icon: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5',
   },
   {
+    key: 'schedule',
     label: 'Schedule Online',
     sublabel: 'Book your lessons 24/7',
-    value: 'aprecisiondrivingschool.com',
-    href: 'https://www.aprecisiondrivingschool.com/schedule/cart_home.html',
+    valueKey: 'scheduleLabel',
+    hrefKey: 'scheduleLink',
     icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
   },
 ]
@@ -51,6 +58,33 @@ export default function ContactPage() {
   const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', email: '', comments: '' })
   const [formLoading, setFormLoading] = useState(false)
   const [formMsg, setFormMsg] = useState('')
+  const [settings, setSettings] = useState(null)
+  const [copied, setCopied] = useState(false)
+
+  const copyMapEmbed = async () => {
+    const q = settings ? `${(settings.address || '')} ${(settings.subaddress || '')}` : '2001 Omega Rd Ste 205 San Ramon CA 94583'
+    const url = `https://maps.google.com/maps?q=${encodeURIComponent(q)}&t=&z=15&ie=UTF8&iwloc=&output=embed`
+    const code = makeEmbedCode(url)
+    try {
+      await navigator.clipboard.writeText(code)
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = code
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  useEffect(() => {
+    fetch(`${API}/api/settings`)
+      .then(r => r.json())
+      .then(d => setSettings(d))
+      .catch(() => {})
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -449,57 +483,62 @@ export default function ContactPage() {
             gap: '1.5rem',
             marginBottom: '4rem',
           }}>
-            {CONTACTS.map((c) => (
-              <a
-                key={c.label}
-                href={c.href}
-                target={c.href.startsWith('http') ? '_blank' : undefined}
-                rel={c.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                className="c-contact-card"
-                style={{ textDecoration: 'none', color: 'inherit' }}
-              >
-                <div className="c-icon-wrap">
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d={c.icon} />
-                  </svg>
-                </div>
+            {CONTACTS.map((c) => {
+              const val = settings ? settings[c.valueKey] || c.fallback || '' : ''
+              const subval = c.subvalueKey && settings ? settings[c.subvalueKey] || '' : ''
+              const href = c.hrefPrefix ? c.hrefPrefix + val : (settings ? settings[c.hrefKey] || '' : '')
+              return (
+                <a
+                  key={c.key}
+                  href={href}
+                  target={href.startsWith('http') ? '_blank' : undefined}
+                  rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                  className="c-contact-card"
+                  style={{ textDecoration: 'none', color: 'inherit' }}
+                >
+                  <div className="c-icon-wrap">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d={c.icon} />
+                    </svg>
+                  </div>
 
-                <p style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '0.6rem',
-                  letterSpacing: '0.2em',
-                  textTransform: 'uppercase',
-                  color: '#8899aa',
-                  fontWeight: 600,
-                  marginBottom: '0.35rem',
-                }}>{c.sublabel}</p>
+                  <p style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '0.6rem',
+                    letterSpacing: '0.2em',
+                    textTransform: 'uppercase',
+                    color: '#8899aa',
+                    fontWeight: 600,
+                    marginBottom: '0.35rem',
+                  }}>{c.sublabel}</p>
 
-                <h3 style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: '1.2rem',
-                  color: DARK,
-                  fontWeight: 700,
-                  marginBottom: '0.6rem',
-                }}>{c.label}</h3>
+                  <h3 style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: '1.2rem',
+                    color: DARK,
+                    fontWeight: 700,
+                    marginBottom: '0.6rem',
+                  }}>{c.label}</h3>
 
-                <p style={{
-                  fontFamily: 'var(--font-body)',
-                  fontSize: '0.9rem',
-                  color: SKY_BLUE,
-                  fontWeight: 600,
-                  wordBreak: 'break-word',
-                }}>{c.value}</p>
-
-                {c.subvalue && (
                   <p style={{
                     fontFamily: 'var(--font-body)',
-                    fontSize: '0.85rem',
-                    color: '#364B6B',
-                    marginTop: '0.15rem',
-                  }}>{c.subvalue}</p>
-                )}
-              </a>
-            ))}
+                    fontSize: '0.9rem',
+                    color: SKY_BLUE,
+                    fontWeight: 600,
+                    wordBreak: 'break-word',
+                  }}>{val}</p>
+
+                  {subval && (
+                    <p style={{
+                      fontFamily: 'var(--font-body)',
+                      fontSize: '0.85rem',
+                      color: '#364B6B',
+                      marginTop: '0.15rem',
+                    }}>{subval}</p>
+                  )}
+                </a>
+              )
+            })}
           </div>
 
           {/* ═══ Map + Hours Side by Side ═══ */}
@@ -510,9 +549,9 @@ export default function ContactPage() {
             marginBottom: '2rem',
           }}>
             {/* Map */}
-            <div className="c-map-card">
+            <div className="c-map-card" style={{ position: 'relative' }}>
               <iframe
-                src="https://maps.google.com/maps?q=2001%20Omega%20Rd%20Ste%20205%20San%20Ramon%20CA%2094583&t=&z=15&ie=UTF8&iwloc=&output=embed"
+                src={settings ? `https://maps.google.com/maps?q=${encodeURIComponent((settings.address || '') + ' ' + (settings.subaddress || ''))}&t=&z=15&ie=UTF8&iwloc=&output=embed` : `https://maps.google.com/maps?q=2001%20Omega%20Rd%20Ste%20205%20San%20Ramon%20CA%2094583&t=&z=15&ie=UTF8&iwloc=&output=embed`}
                 width="100%"
                 height="420"
                 style={{ border: 0, display: 'block' }}
@@ -521,6 +560,46 @@ export default function ContactPage() {
                 referrerPolicy="no-referrer-when-downgrade"
                 title="A Precision Driving School Location"
               />
+              <button
+                onClick={copyMapEmbed}
+                style={{
+                  position: 'absolute',
+                  bottom: '0.75rem',
+                  right: '0.75rem',
+                  zIndex: 5,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.45rem 0.9rem',
+                  background: copied ? 'rgba(34,197,94,0.95)' : 'rgba(255,255,255,0.95)',
+                  border: 'none',
+                  borderRadius: '999px',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.5rem',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  fontWeight: 700,
+                  color: copied ? '#fff' : SKY_BLUE,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => { if (!copied) { e.currentTarget.style.background = 'rgba(1,69,168,0.08)' } }}
+                onMouseLeave={(e) => { if (!copied) { e.currentTarget.style.background = 'rgba(255,255,255,0.95)' } }}
+                title="Copy embed code"
+              >
+                {copied ? (
+                  <>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" /></svg>
+                    Copy Embed
+                  </>
+                )}
+              </button>
             </div>
 
             {/* Contact Form */}
