@@ -16,6 +16,7 @@ export default function AdminLoginPage() {
   usePageMeta('Admin Login — A Precision Driving School', 'Admin login for A Precision Driving School.')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPass, setShowPass] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
@@ -38,9 +39,9 @@ export default function AdminLoginPage() {
         return
       }
     } catch (err) {
-      if (err.code === 'auth/user-not-found') setError('No admin account found with this email.')
-      else if (err.code === 'auth/wrong-password') setError('Incorrect password.')
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') setError('Incorrect email or password.')
       else if (err.code === 'auth/invalid-email') setError('Invalid email address.')
+      else if (err.code === 'auth/too-many-requests') setError('Too many attempts. Please wait a few minutes and try again.')
       else setError('Login failed. Please try again.')
     } finally {
       setLoading(false)
@@ -109,7 +110,16 @@ export default function AdminLoginPage() {
 
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8899aa', fontWeight: 600, marginBottom: '0.4rem' }}>Password</label>
-                <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="adml-input" style={inputStyle} placeholder="Enter your password" autoComplete="current-password" />
+                <div style={{ position: 'relative' }}>
+                  <input type={showPass ? 'text' : 'password'} required value={password} onChange={(e) => setPassword(e.target.value)} className="adml-input" style={{ ...inputStyle, paddingRight: '3rem' }} placeholder="Enter your password" autoComplete="current-password" />
+                  <button type="button" onClick={() => setShowPass(!showPass)} aria-label={showPass ? 'Hide password' : 'Show password'} title={showPass ? 'Hide password' : 'Show password'} style={{ position: 'absolute', right: '0.4rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8899aa', transition: 'color 0.2s' }}>
+                    {showPass ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {error && (
