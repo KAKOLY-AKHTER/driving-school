@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { signOut } from 'firebase/auth'
+import { signOut, updateProfile, updateEmail, reauthenticateWithCredential, EmailAuthProvider, updatePassword } from 'firebase/auth'
 import { auth } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
 import { api, makeEmbedCode } from '../api'
@@ -107,6 +107,14 @@ export default function AdminPage() {
   const [refundStats, setRefundStats] = useState({ totalRequests: 0, totalRefunded: 0, totalAmount: 0, pending: 0 })
   const [refundEdit, setRefundEdit] = useState(null)
   const [refundForm, setRefundForm] = useState({ Full_Name: '', Email: '', Phone: '', Course_Name: '', Amount: '', Reason: '', Status: 'pending' })
+  const [accName, setAccName] = useState('')
+  const [accPhoto, setAccPhoto] = useState('')
+  const [accEmail, setAccEmail] = useState('')
+  const [accPass, setAccPass] = useState('')
+  const [accNewPass, setAccNewPass] = useState('')
+  const [accMsg, setAccMsg] = useState('')
+  const [accErr, setAccErr] = useState('')
+  const [accLoading, setAccLoading] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -136,6 +144,67 @@ export default function AdminPage() {
   }, [])
 
   const handleLogout = async () => { await signOut(auth); navigate('/') }
+
+  useEffect(() => {
+    if (user) {
+      setAccName(user.displayName || '')
+      setAccPhoto(user.photoURL || '')
+      setAccEmail(user.email || '')
+    }
+  }, [user])
+
+  const handleSaveProfile = async () => {
+    setAccErr(''); setAccMsg(''); setAccLoading(true)
+    try {
+      const cur = auth.currentUser
+      await updateProfile(cur, { displayName: accName, photoURL: accPhoto })
+      await api.saveUser(user.uid, { name: accName, email: accEmail, photoURL: accPhoto })
+      setAccMsg('Profile updated!')
+      setTimeout(() => setAccMsg(''), 2500)
+    } catch (e) {
+      setAccErr(e.message || 'Failed to update profile.')
+    } finally {
+      setAccLoading(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    setAccErr(''); setAccMsg(''); setAccLoading(true)
+    try {
+      const cur = auth.currentUser
+      await reauthenticateWithCredential(cur, EmailAuthProvider.credential(user.email, accPass))
+      await updatePassword(cur, accNewPass)
+      setAccPass(''); setAccNewPass('')
+      setAccMsg('Password changed!')
+      setTimeout(() => setAccMsg(''), 2500)
+    } catch (e) {
+      if (e.code === 'auth/wrong-password') setAccErr('Incorrect current password.')
+      else if (e.code === 'auth/weak-password') setAccErr('New password must be at least 6 characters.')
+      else setAccErr(e.message || 'Failed to change password.')
+    } finally {
+      setAccLoading(false)
+    }
+  }
+
+  const handleChangeEmail = async () => {
+    setAccErr(''); setAccMsg(''); setAccLoading(true)
+    try {
+      const cur = auth.currentUser
+      await reauthenticateWithCredential(cur, EmailAuthProvider.credential(user.email, accPass))
+      await updateEmail(cur, accEmail)
+      await api.saveUser(user.uid, { email: accEmail })
+      setAccPass('')
+      setAccMsg('Email updated!')
+      setTimeout(() => setAccMsg(''), 2500)
+    } catch (e) {
+      if (e.code === 'auth/wrong-password') setAccErr('Incorrect current password.')
+      else if (e.code === 'auth/email-already-in-use') setAccErr('This email is already in use.')
+      else if (e.code === 'auth/invalid-email') setAccErr('Invalid email address.')
+      else setAccErr(e.message || 'Failed to change email.')
+    } finally {
+      setAccLoading(false)
+    }
+  }
 
   const handleToggleAdmin = async (uid, currentIsAdmin) => {
     try {
@@ -300,6 +369,7 @@ export default function AdminPage() {
     { id: 'maps', label: 'Maps', icon: SVG.map },
     { id: 'socials', label: 'Social Links', icon: SVG.share },
     { id: 'settings', label: 'Site Settings', icon: SVG.settings },
+    { id: 'account', label: 'Admin Account', icon: SVG.shield },
   ]
 
   const switchTab = (tab) => { setActiveTab(tab); setSidebarOpen(false) }
@@ -360,7 +430,7 @@ export default function AdminPage() {
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'rgba(255,255,255,0.65)', margin: 0 }}>{user?.email}</p>
               </div>
               <div style={{ position: 'relative' }}>
-                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', fontWeight: 800, color: DARK, border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.3)', flexShrink: 0 }}>{initials}</div>
+                {user?.photoURL ? <img src={user.photoURL} alt="" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.3)', flexShrink: 0 }} /> : <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', fontWeight: 800, color: DARK, border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.3)', flexShrink: 0 }}>{initials}</div>}
                 <div style={{ position: 'absolute', bottom: 0, right: 0, width: '11px', height: '11px', borderRadius: '50%', background: 'linear-gradient(135deg,#22C55E,#16A34A)', border: '2.5px solid #0145A8', boxShadow: '0 0 6px rgba(34,197,94,0.4)' }} />
               </div>
             </div>
@@ -1072,6 +1142,63 @@ export default function AdminPage() {
                       Save Settings
                     </button>
                   </div>
+                </div>
+              )}
+
+              {activeTab === 'account' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }} className="admin-grid-responsive">
+                  <div style={cardStyle}>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>{SVG.shield} Profile</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                      {accPhoto ? <img src={accPhoto} alt="" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.35)', flexShrink: 0 }} /> : <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', fontWeight: 800, color: DARK, border: '2.5px solid #FDBC01', flexShrink: 0 }}>{initials}</div>}
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#64748b', margin: 0, lineHeight: 1.5 }}>Change your display name and profile photo. The photo can be any image URL.</p>
+                    </div>
+                    <div style={{ marginBottom: '1.25rem' }}>
+                      <label style={labelStyle}>Display Name</label>
+                      <input type="text" value={accName} onChange={e => setAccName(e.target.value)} style={inputStyle} />
+                    </div>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <label style={labelStyle}>Profile Photo URL</label>
+                      <input type="text" value={accPhoto} onChange={e => setAccPhoto(e.target.value)} style={inputStyle} placeholder="https://example.com/photo.jpg" />
+                    </div>
+                    <button onClick={handleSaveProfile} disabled={accLoading} style={{ padding: '0.75rem 2rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)', opacity: accLoading ? 0.6 : 1 }}>
+                      {accLoading ? 'Saving...' : 'Save Profile'}
+                    </button>
+                  </div>
+
+                  <div style={cardStyle}>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>{SVG.settings} Email & Password</h3>
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#64748b', margin: '0 0 1.25rem', lineHeight: 1.5 }}>Changing email or password requires your current password.</p>
+                    <div style={{ marginBottom: '1.25rem' }}>
+                      <label style={labelStyle}>Admin Email</label>
+                      <input type="email" value={accEmail} onChange={e => setAccEmail(e.target.value)} style={inputStyle} />
+                    </div>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <label style={labelStyle}>Current Password</label>
+                      <input type="password" value={accPass} onChange={e => setAccPass(e.target.value)} style={inputStyle} autoComplete="current-password" />
+                    </div>
+                    <button onClick={handleChangeEmail} disabled={accLoading || !accPass} style={{ padding: '0.75rem 2rem', background: 'linear-gradient(135deg,#FDBC01,#FFD54F)', color: DARK, border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(253,188,1,0.25)', opacity: accLoading || !accPass ? 0.6 : 1, marginRight: '0.75rem' }}>
+                      {accLoading ? 'Saving...' : 'Save Email'}
+                    </button>
+
+                    <div style={{ borderTop: '1px solid #E2EBF5', margin: '1.5rem 0' }} />
+
+                    <div style={{ marginBottom: '1.25rem' }}>
+                      <label style={labelStyle}>New Password</label>
+                      <input type="password" value={accNewPass} onChange={e => setAccNewPass(e.target.value)} style={inputStyle} autoComplete="new-password" placeholder="At least 6 characters" />
+                    </div>
+                    <button onClick={handleChangePassword} disabled={accLoading || !accPass || !accNewPass} style={{ padding: '0.75rem 2rem', background: 'linear-gradient(135deg,#FDBC01,#FFD54F)', color: DARK, border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(253,188,1,0.25)', opacity: accLoading || !accPass || !accNewPass ? 0.6 : 1 }}>
+                      {accLoading ? 'Saving...' : 'Change Password'}
+                    </button>
+                  </div>
+
+                  {(accMsg || accErr) && (
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <div style={{ padding: '0.85rem 1.1rem', background: accErr ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${accErr ? '#FECACA' : '#BBF7D0'}`, borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: accErr ? '#DC2626' : '#16A34A' }}>
+                        {accErr || accMsg}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

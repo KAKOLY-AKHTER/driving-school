@@ -124,7 +124,7 @@ export default function AdminLoginPage() {
             </form>
           </div>
 
-          <div style={{ textAlign: 'center', marginTop: '1.75rem', display: 'flex', justifyContent: 'center', gap: '1.5rem' }}>
+          <div style={{ textAlign: 'center', marginTop: '1.75rem', display: 'flex', justifyContent: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
             <Link to="/" style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'rgba(255,255,255,0.75)', textDecoration: 'none', fontWeight: 600 }}>
               ← Back to website
             </Link>
@@ -132,6 +132,13 @@ export default function AdminLoginPage() {
               Student login
             </Link>
           </div>
+
+          <p style={{ textAlign: 'center', marginTop: '1.25rem', fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)' }}>
+            First time?{' '}
+            <Link to="/admin/setup" style={{ color: '#fff', fontWeight: 700, textDecoration: 'none', borderBottom: '1px solid rgba(253,188,1,0.5)' }}>
+              Create admin account
+            </Link>
+          </p>
         </div>
       </div>
     </>

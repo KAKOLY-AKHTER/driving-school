@@ -15,6 +15,7 @@ import DashboardPage from './pages/DashboardPage'
 import CartPage from './pages/CartPage'
 import AdminPage from './pages/AdminPage'
 import AdminLoginPage from './pages/AdminLoginPage'
+import AdminSetupPage from './pages/AdminSetupPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -96,7 +97,7 @@ function LayoutSetup({ children }) {
 
 function AppRoutes() {
   const location = useLocation()
-  const hideShell = location.pathname === '/dashboard' || location.pathname === '/admin' || location.pathname === '/admin/login'
+  const hideShell = location.pathname === '/dashboard' || location.pathname === '/admin' || location.pathname === '/admin/login' || location.pathname === '/admin/setup'
 
   return (
     <>
@@ -120,6 +121,7 @@ function AppRoutes() {
                   <CartPage />
                 </ProtectedRoute>
               } />
+              <Route path="/admin/setup" element={<AdminSetupPage />} />
               <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/admin" element={
                 <AdminRoute>
