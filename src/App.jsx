@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { CartProvider } from './contexts/CartContext'
 import Nav from './components/Nav'
 import Footer from './components/Footer'
 import Home from './pages/Home'
@@ -11,6 +12,7 @@ import RegisterPage from './pages/RegisterPage'
 import SchedulePage from './pages/SchedulePage'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
+import CartPage from './pages/CartPage'
 import AdminPage from './pages/AdminPage'
 
 function ProtectedRoute({ children }) {
@@ -112,6 +114,11 @@ function AppRoutes() {
                   <DashboardPage />
                 </ProtectedRoute>
               } />
+              <Route path="/cart" element={
+                <ProtectedRoute>
+                  <CartPage />
+                </ProtectedRoute>
+              } />
               <Route path="/admin" element={
                 <AdminRoute>
                   <AdminPage />
@@ -136,9 +143,11 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <LayoutSetup>
-          <AppRoutes />
-        </LayoutSetup>
+        <CartProvider>
+          <LayoutSetup>
+            <AppRoutes />
+          </LayoutSetup>
+        </CartProvider>
       </AuthProvider>
     </BrowserRouter>
   )

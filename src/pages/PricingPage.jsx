@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useCart } from '../contexts/CartContext'
 import { api } from '../api'
 import Pricing from '../components/Pricing'
 import { usePageMeta } from '../usePageMeta'
@@ -22,6 +23,7 @@ export default function PricingPage() {
     'Compare driving school packages: online drivers ed, 2, 6 and 10-hour behind-the-wheel training, DMV drive test car rental and freeway focused courses. 99% pass rate, free pickup & drop.'
   )
   const { user } = useAuth()
+  const { addToCart } = useCart()
   const navigate = useNavigate()
   const [step, setStep] = useState(null)
   const [selectedTier, setSelectedTier] = useState(null)
@@ -49,34 +51,21 @@ export default function PricingPage() {
         id: selectedTier.id,
         title: selectedTier.planName,
         price: selectedTier.planPrice,
-        status: 'Enrolled',
-        progress: 0,
-        enrolledAt: new Date().toISOString(),
-        email: user.email,
       }
-      const result = await api.addCourse(user.uid, course)
+      const result = await addToCart(course)
       if (result.ok) {
         if (result.duplicate) {
-          setError('You are already enrolled in this course.')
+          setError('This course is already in your cart.')
           setStep('confirm')
           return
         }
-        const payment = {
-          date: new Date().toISOString().split('T')[0],
-          ref: `INV-${Date.now().toString(36).toUpperCase()}`,
-          email: user.email,
-          item: selectedTier.planName,
-          amount: selectedTier.planPrice,
-          status: 'Pending',
-        }
-        await api.addPayment(user.uid, payment)
         setStep('success')
       } else {
-        setError('Enrollment failed. Please try again.')
+        setError(result.error || 'Failed to add to cart. Please try again.')
         setStep('confirm')
       }
     } catch {
-      setError('Enrollment failed. Please try again.')
+      setError('Failed to add to cart. Please try again.')
       setStep('confirm')
     }
   }
@@ -142,7 +131,7 @@ export default function PricingPage() {
               <div style={{ position: 'relative', zIndex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <span style={{ width: '16px', height: '2px', background: `linear-gradient(90deg, transparent, ${GOLD})` }} />
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: GOLD_DEEP, fontWeight: 700 }}>Confirm Enrollment</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: GOLD_DEEP, fontWeight: 700 }}>Confirm Selection</span>
                 </div>
                 <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: '#fff', fontWeight: 800, margin: 0, lineHeight: 1.2 }}>
                   {selectedTier.planName}
@@ -208,7 +197,7 @@ export default function PricingPage() {
                 <button onClick={handleConfirm} style={{
                   flex: 2, padding: '0.85rem 1.5rem', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, color: DARK, background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'all 0.3s', boxShadow: '0 4px 16px rgba(253,188,1,0.25)',
                 }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(253,188,1,0.4)' }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(253,188,1,0.25)' }}>
-                  Confirm Enrollment
+                  Add to Cart
                 </button>
               </div>
             </div>
@@ -220,8 +209,8 @@ export default function PricingPage() {
         <div style={backdropStyle}>
           <div style={{ ...modalStyle, maxWidth: '360px', padding: '3rem 2rem', textAlign: 'center' }}>
             <div style={{ width: '56px', height: '56px', border: `3px solid #E2EBF5`, borderTopColor: SKY_BLUE, borderRadius: '50%', animation: 'spinLoader 0.8s linear infinite', margin: '0 auto 1.5rem' }} />
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: DARK, fontWeight: 700, margin: '0 0 0.4rem' }}>Processing Enrollment</h3>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#8899aa', margin: 0 }}>Setting up your course access...</p>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: DARK, fontWeight: 700, margin: '0 0 0.4rem' }}>Adding to Cart</h3>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#8899aa', margin: 0 }}>Saving your selection...</p>
           </div>
         </div>
       )}
@@ -239,9 +228,9 @@ export default function PricingPage() {
                 </svg>
               </div>
 
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: DARK, fontWeight: 800, margin: '0 0 0.4rem' }}>Enrollment Successful!</h2>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: DARK, fontWeight: 800, margin: '0 0 0.4rem' }}>Added to Cart!</h2>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: '#8899aa', margin: '0 0 0.3rem' }}>
-                You've been enrolled in
+                Added to your cart:
               </p>
               <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', color: SKY_BLUE, fontWeight: 700, margin: '0 0 1.5rem' }}>
                 {selectedTier.planName} ({selectedTier.planPrice})
@@ -250,10 +239,10 @@ export default function PricingPage() {
               <div style={{ width: '100%', height: '1px', background: '#E2EBF5', marginBottom: '1.5rem' }} />
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                <button onClick={() => { handleClose(); navigate('/dashboard') }} style={{
+                <button onClick={() => { handleClose(); navigate('/cart') }} style={{
                   width: '100%', padding: '0.85rem 1.5rem', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, color: DARK, background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'all 0.3s', boxShadow: '0 4px 16px rgba(253,188,1,0.25)',
                 }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(253,188,1,0.4)' }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(253,188,1,0.25)' }}>
-                  Go to Dashboard
+                  Go to Cart
                 </button>
                 <button onClick={handleClose} style={{
                   width: '100%', padding: '0.75rem 1.5rem', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, color: '#8899aa', background: 'transparent', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'all 0.2s',

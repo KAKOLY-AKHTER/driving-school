@@ -4,7 +4,7 @@ import express from 'express'
 import cors from 'cors'
 import { MongoClient, ObjectId } from 'mongodb'
 import Groq from 'groq-sdk'
-import { sendBookingConfirmation, sendEnrollmentConfirmation, sendContactNotification } from './mail.js'
+
 
 dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1'])
 
@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 3001
 const MONGO_URI = process.env.MONGO_URI
 const DB_NAME = 'driving_school'
 
-let db, usersCol, bookingsCol, contactCol, settingsCol, pricingCol, enrollmentsCol, areasCol, socialsCol, refundsCol
+let db, usersCol, bookingsCol, contactCol, settingsCol, pricingCol, enrollmentsCol, areasCol, socialsCol, refundsCol, cartsCol
 let connectPromise = null
 
 async function connectDB() {
@@ -36,8 +36,10 @@ async function connectDB() {
     areasCol = db.collection('areas')
     socialsCol = db.collection('socials')
     refundsCol = db.collection('refunds')
+    cartsCol = db.collection('carts')
     await usersCol.createIndex({ uid: 1 }, { unique: true })
     await bookingsCol.createIndex({ userId: 1, date: 1 })
+    await cartsCol.createIndex({ uid: 1 }, { unique: true })
     await seedPricing()
     await seedAreas()
     await seedSocials()
@@ -68,7 +70,6 @@ app.post('/api/contact', async (req, res) => {
       return res.status(400).json({ error: 'All fields required' })
     }
     await contactCol.insertOne({ ...req.body, createdAt: new Date().toISOString() })
-    sendContactNotification(req.body)
     res.json({ ok: true })
   } catch (e) {
     res.status(500).json({ error: e.message })
@@ -124,9 +125,6 @@ app.post('/api/bookings', async (req, res) => {
       createdAt: new Date().toISOString(),
     }
     const result = await bookingsCol.insertOne(booking)
-    const bookingUser = await usersCol.findOne({ uid: req.body.userId })
-    const toEmail = bookingUser?.email || req.body.email
-    sendBookingConfirmation({ to: toEmail, date: booking.date, timeSlot: booking.timeSlot })
     res.json({ ...booking, _id: result.insertedId })
   } catch (e) {
     res.status(500).json({ error: e.message })
@@ -158,8 +156,6 @@ app.post('/api/users/:uid/courses', async (req, res) => {
       { upsert: true }
     )
     const updated = await usersCol.findOne({ uid })
-    const toEmail = updated?.email || user?.email || req.body.email
-    sendEnrollmentConfirmation({ to: toEmail, courseTitle: course.title, price: course.price })
     res.json({ ok: true, courses: updated?.courses || [] })
   } catch (e) {
     res.status(500).json({ error: e.message })
@@ -192,6 +188,91 @@ app.post('/api/users/:uid/payments', async (req, res) => {
     )
     const user = await usersCol.findOne({ uid })
     res.json({ ok: true, payments: user?.payments || [] })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.get('/api/users/:uid/cart', async (req, res) => {
+  try {
+    const cart = await cartsCol.findOne({ uid: req.params.uid })
+    res.json(cart?.items || [])
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.post('/api/users/:uid/cart', async (req, res) => {
+  try {
+    const { uid } = req.params
+    const course = req.body
+    if (!course || !course.id) return res.status(400).json({ error: 'Course id required' })
+    const cart = await cartsCol.findOne({ uid })
+    const existing = (cart?.items || []).find(c => c.id === course.id)
+    if (existing) {
+      return res.json({ ok: true, items: cart.items, duplicate: true })
+    }
+    const items = [...(cart?.items || []), course]
+    await cartsCol.updateOne({ uid }, { $set: { items, updatedAt: new Date().toISOString() } }, { upsert: true })
+    res.json({ ok: true, items })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.delete('/api/users/:uid/cart/:courseId', async (req, res) => {
+  try {
+    const { uid, courseId } = req.params
+    const cart = await cartsCol.findOne({ uid })
+    const items = (cart?.items || []).filter(c => c.id !== courseId)
+    await cartsCol.updateOne({ uid }, { $set: { items, updatedAt: new Date().toISOString() } }, { upsert: true })
+    res.json({ ok: true, items })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+app.post('/api/users/:uid/cart/checkout', async (req, res) => {
+  try {
+    const { uid } = req.params
+    const cart = await cartsCol.findOne({ uid })
+    const items = cart?.items || []
+    if (items.length === 0) return res.json({ ok: true, enrolled: 0 })
+    const user = await usersCol.findOne({ uid })
+    const existingCourses = user?.courses || []
+    const toAdd = []
+    for (const item of items) {
+      if (existingCourses.some(c => c.id === item.id)) continue
+      toAdd.push({
+        id: item.id,
+        title: item.title,
+        price: item.price,
+        status: 'Enrolled',
+        progress: 0,
+        enrolledAt: new Date().toISOString(),
+        email: user?.email || '',
+      })
+    }
+    const payment = {
+      date: new Date().toISOString().split('T')[0],
+      ref: `INV-${Date.now().toString(36).toUpperCase()}`,
+      email: user?.email || '',
+      item: toAdd.map(c => c.title).join(' + '),
+      amount: toAdd.reduce((sum, c) => sum + (parseFloat(String(c.price).replace(/[^0-9.]/g, '')) || 0), 0),
+      status: 'Pending',
+    }
+    await usersCol.updateOne(
+      { uid },
+      {
+        $push: {
+          courses: { $each: toAdd },
+          payments: { $each: [payment], $position: 0 },
+        },
+      },
+      { upsert: true }
+    )
+    await cartsCol.deleteOne({ uid })
+    res.json({ ok: true, enrolled: toAdd.length, payment })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }

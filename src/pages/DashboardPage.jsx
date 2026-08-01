@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { signOut, updateProfile, reauthenticateWithCredential, EmailAuthProvider, updatePassword } from 'firebase/auth'
 import { auth } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
+import { useCart } from '../contexts/CartContext'
 import { api } from '../api'
 import { usePageMeta } from '../usePageMeta'
 
@@ -50,6 +51,7 @@ const I = {
 export default function DashboardPage() {
   usePageMeta('Student Dashboard â€” A Precision Driving School', 'Manage your driving courses, lesson bookings and payments with A Precision Driving School.')
   const { user, isAdmin } = useAuth()
+  const { count: cartCount } = useCart()
   const navigate = useNavigate()
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
@@ -451,10 +453,10 @@ export default function DashboardPage() {
               </div>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:'1rem' }}>
-              <button className="dash-bell" style={{ width:'42px', height:'42px', background:'linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.08))', border:'1px solid rgba(255,255,255,0.28)', borderRadius:'12px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)', boxShadow:'0 2px 10px rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.15)' }}>
-                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" /></svg>
-                {upcomingBookings.length > 0 && <div style={{ position:'absolute', top:'8px', right:'8px', width:'9px', height:'9px', borderRadius:'50%', background:'linear-gradient(135deg,#22C55E,#16A34A)', border:'2px solid #0145A8', animation:'dashPulse 2s ease-in-out infinite', boxShadow:'0 0 8px rgba(34,197,94,0.5)' }} />}
-              </button>
+              <Link to="/cart" aria-label="My cart" style={{ width:'42px', height:'42px', background:'linear-gradient(135deg,rgba(253,188,1,0.18),rgba(253,188,1,0.08))', border:'1px solid rgba(253,188,1,0.28)', borderRadius:'12px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)', boxShadow:'0 2px 10px rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.15)', textDecoration:'none', color:'#FDBC01' }}>
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" /></svg>
+                {cartCount > 0 && <div style={{ position:'absolute', top:'-6px', right:'-6px', minWidth:'18px', height:'18px', padding:'0 4px', borderRadius:'999px', background:'#DC2626', color:'#fff', fontFamily:'var(--font-mono)', fontSize:'0.65rem', fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 6px rgba(220,38,38,0.4)' }}>{cartCount}</div>}
+              </Link>
               <div className="dash-header-divider" style={{ width:'1px', height:'28px', background:'linear-gradient(180deg,transparent,rgba(253,188,1,0.2),transparent)' }} />
               <div style={{ position:'relative' }} onClick={() => setProfileMenuOpen(!profileMenuOpen)} onMouseEnter={() => setProfileMenuOpen(true)} onMouseLeave={() => setProfileMenuOpen(false)}>
                 <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'0.45rem 0.85rem 0.45rem 0.55rem', background:profileMenuOpen ? 'linear-gradient(135deg,rgba(253,188,1,0.18),rgba(253,188,1,0.08))' : 'linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.08))', border:`1px solid ${profileMenuOpen ? 'rgba(253,188,1,0.35)' : 'rgba(255,255,255,0.28)'}`, borderRadius:'14px', cursor:'pointer', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)', boxShadow:profileMenuOpen ? '0 2px 12px rgba(253,188,1,0.2)' : '0 2px 10px rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.15)' }}>

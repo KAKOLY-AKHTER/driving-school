@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
+import { useCart } from '../contexts/CartContext'
 import { useSiteSettings } from '../useSiteSettings'
 
 const NAV_LINKS = [
@@ -15,6 +16,7 @@ const NAV_LINKS = [
 
 export default function Nav() {
   const { user, isAdmin } = useAuth()
+  const { count: cartCount } = useCart()
   const settings = useSiteSettings()
   const [open, setOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -115,7 +117,12 @@ export default function Nav() {
 
             {/* Auth - Desktop */}
             {user ? (
-              <div style={{ position: 'relative' }} className="hidden lg:block">
+              <>
+                <Link to="/cart" className="hidden lg:flex" aria-label="My cart" style={{ position: 'relative', width: '42px', height: '42px', alignItems: 'center', justifyContent: 'center', background: 'rgba(253,188,1,0.12)', border: '1px solid rgba(253,188,1,0.25)', borderRadius: '12px', color: '#FDBC01', textDecoration: 'none', transition: 'all 0.3s ease', flexShrink: 0 }}>
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" /></svg>
+                  {cartCount > 0 && <span style={{ position: 'absolute', top: '-6px', right: '-6px', minWidth: '18px', height: '18px', padding: '0 4px', borderRadius: '999px', background: '#DC2626', color: '#fff', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(220,38,38,0.4)' }}>{cartCount}</span>}
+                </Link>
+                <div style={{ position: 'relative' }} className="hidden lg:block">
                 <button onClick={() => setProfileOpen(!profileOpen)} style={{
                   display: 'flex', alignItems: 'center', gap: '0.6rem',
                   padding: '0.45rem 1rem',
@@ -172,6 +179,7 @@ export default function Nav() {
                   </>
                 )}
               </div>
+              </>
             ) : (
               <div className="hidden lg:flex" style={{ gap: '0.75rem', alignItems: 'center' }}>
                 <Link to="/login" style={{
@@ -292,6 +300,10 @@ export default function Nav() {
                   </div>
                 </div>
                 <Link to="/dashboard" onClick={() => setOpen(false)} className="nav-mobile-link" style={{ color: '#FDBC01' }}>My Dashboard</Link>
+                <Link to="/cart" onClick={() => setOpen(false)} className="nav-mobile-link" style={{ color: '#FDBC01', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>My Cart</span>
+                  {cartCount > 0 && <span style={{ background: '#DC2626', color: '#fff', borderRadius: '999px', minWidth: '20px', height: '20px', padding: '0 6px', fontSize: '0.75rem', fontFamily: 'var(--font-mono)', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{cartCount}</span>}
+                </Link>
                 {isAdmin && <Link to="/admin" onClick={() => setOpen(false)} className="nav-mobile-link" style={{ color: '#C8960C', fontWeight: 700 }}>Admin Panel</Link>}
                 <button onClick={async () => { setOpen(false); await signOut(auth); }} className="nav-mobile-link" style={{ color: '#DC2626', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', width: '100%' }}>Sign Out</button>
               </>
