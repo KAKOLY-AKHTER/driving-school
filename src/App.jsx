@@ -14,6 +14,7 @@ import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import CartPage from './pages/CartPage'
 import AdminPage from './pages/AdminPage'
+import AdminLoginPage from './pages/AdminLoginPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -33,7 +34,7 @@ function AdminRoute({ children }) {
       <div style={{ width: '40px', height: '40px', border: '3px solid rgba(253,188,1,0.2)', borderTopColor: '#FDBC01', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
     </div>
   )
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) return <Navigate to="/admin/login" replace />
   if (!isAdmin) return <Navigate to="/dashboard" replace />
   return children
 }
@@ -95,7 +96,7 @@ function LayoutSetup({ children }) {
 
 function AppRoutes() {
   const location = useLocation()
-  const hideShell = location.pathname === '/dashboard' || location.pathname === '/admin'
+  const hideShell = location.pathname === '/dashboard' || location.pathname === '/admin' || location.pathname === '/admin/login'
 
   return (
     <>
@@ -119,6 +120,7 @@ function AppRoutes() {
                   <CartPage />
                 </ProtectedRoute>
               } />
+              <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/admin" element={
                 <AdminRoute>
                   <AdminPage />

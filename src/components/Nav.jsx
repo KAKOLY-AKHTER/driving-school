@@ -15,7 +15,7 @@ const NAV_LINKS = [
 ]
 
 export default function Nav() {
-  const { user, isAdmin } = useAuth()
+  const { user } = useAuth()
   const { count: cartCount } = useCart()
   const settings = useSiteSettings()
   const [open, setOpen] = useState(false)
@@ -159,15 +159,6 @@ export default function Nav() {
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0145A8" strokeWidth="1.5"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                         My Dashboard
                       </Link>
-                      {isAdmin && (
-                        <Link to="/admin" onClick={() => setProfileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.75rem 1.25rem', fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#C8960C', textDecoration: 'none', transition: 'background 0.15s', fontWeight: 600 }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = '#FFFBF0'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C8960C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
-                          Admin Panel
-                        </Link>
-                      )}
                       <button onClick={async () => { setProfileOpen(false); await signOut(auth); navigate('/'); }} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.75rem 1.25rem', width: '100%', fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#DC2626', background: 'none', border: 'none', borderTop: '1px solid #f0f2f5', cursor: 'pointer', transition: 'background 0.15s', textAlign: 'left' }}
                         onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
@@ -304,7 +295,6 @@ export default function Nav() {
                   <span>My Cart</span>
                   {cartCount > 0 && <span style={{ background: '#DC2626', color: '#fff', borderRadius: '999px', minWidth: '20px', height: '20px', padding: '0 6px', fontSize: '0.75rem', fontFamily: 'var(--font-mono)', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{cartCount}</span>}
                 </Link>
-                {isAdmin && <Link to="/admin" onClick={() => setOpen(false)} className="nav-mobile-link" style={{ color: '#C8960C', fontWeight: 700 }}>Admin Panel</Link>}
                 <button onClick={async () => { setOpen(false); await signOut(auth); }} className="nav-mobile-link" style={{ color: '#DC2626', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', width: '100%' }}>Sign Out</button>
               </>
             ) : (

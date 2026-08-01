@@ -50,7 +50,7 @@ const I = {
 
 export default function DashboardPage() {
   usePageMeta('Student Dashboard — A Precision Driving School', 'Manage your driving courses, lesson bookings and payments with A Precision Driving School.')
-  const { user, isAdmin } = useAuth()
+  const { user } = useAuth()
   const { count: cartCount } = useCart()
   const navigate = useNavigate()
   const [phone, setPhone] = useState('')
@@ -328,7 +328,6 @@ export default function DashboardPage() {
     ...(showCourse ? [{ id: 'course', label: 'Driver Ed', sublabel: 'Online modules', icon: I.book }] : []),
     { id: 'settings', label: 'Settings', sublabel: 'Account', icon: I.shield },
     { id: 'support', label: 'Support', sublabel: 'AI assistant', icon: I.profile },
-    ...(isAdmin ? [{ id: 'admin', label: 'Admin Panel', sublabel: 'Manage site', icon: I.shield, link: '/admin' }] : []),
   ]
   const switchTab = (tab) => { setActiveTab(tab); setSidebarOpen(false); setActiveModule(null); setModuleStep(0); setCourseDetail(null); setCancelConfirm(null); setRefundConfirm(null) }
 
