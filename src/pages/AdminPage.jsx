@@ -112,6 +112,8 @@ export default function AdminPage() {
   const [accEmail, setAccEmail] = useState('')
   const [accPass, setAccPass] = useState('')
   const [accNewPass, setAccNewPass] = useState('')
+  const [showAccPass, setShowAccPass] = useState(false)
+  const [showAccNewPass, setShowAccNewPass] = useState(false)
   const [accMsg, setAccMsg] = useState('')
   const [accErr, setAccErr] = useState('')
   const [accLoading, setAccLoading] = useState(false)
@@ -1175,7 +1177,16 @@ export default function AdminPage() {
                     </div>
                     <div style={{ marginBottom: '1.5rem' }}>
                       <label style={labelStyle}>Current Password</label>
-                      <input type="password" value={accPass} onChange={e => setAccPass(e.target.value)} style={inputStyle} autoComplete="current-password" />
+                      <div style={{ position: 'relative' }}>
+                        <input type={showAccPass ? 'text' : 'password'} value={accPass} onChange={e => setAccPass(e.target.value)} style={{ ...inputStyle, paddingRight: '3rem' }} autoComplete="current-password" />
+                        <button type="button" onClick={() => setShowAccPass(!showAccPass)} aria-label={showAccPass ? 'Hide password' : 'Show password'} title={showAccPass ? 'Hide password' : 'Show password'} style={{ position: 'absolute', right: '0.4rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8899aa', transition: 'color 0.2s' }}>
+                          {showAccPass ? (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+                          ) : (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                          )}
+                        </button>
+                      </div>
                     </div>
                     <button onClick={handleChangeEmail} disabled={accLoading || !accPass} style={{ padding: '0.75rem 2rem', background: 'linear-gradient(135deg,#FDBC01,#FFD54F)', color: DARK, border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(253,188,1,0.25)', opacity: accLoading || !accPass ? 0.6 : 1, marginRight: '0.75rem' }}>
                       {accLoading ? 'Saving...' : 'Save Email'}
@@ -1185,7 +1196,16 @@ export default function AdminPage() {
 
                     <div style={{ marginBottom: '1.25rem' }}>
                       <label style={labelStyle}>New Password</label>
-                      <input type="password" value={accNewPass} onChange={e => setAccNewPass(e.target.value)} style={inputStyle} autoComplete="new-password" placeholder="At least 6 characters" />
+                      <div style={{ position: 'relative' }}>
+                        <input type={showAccNewPass ? 'text' : 'password'} value={accNewPass} onChange={e => setAccNewPass(e.target.value)} style={{ ...inputStyle, paddingRight: '3rem' }} autoComplete="new-password" placeholder="At least 6 characters" />
+                        <button type="button" onClick={() => setShowAccNewPass(!showAccNewPass)} aria-label={showAccNewPass ? 'Hide password' : 'Show password'} title={showAccNewPass ? 'Hide password' : 'Show password'} style={{ position: 'absolute', right: '0.4rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8899aa', transition: 'color 0.2s' }}>
+                          {showAccNewPass ? (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+                          ) : (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                          )}
+                        </button>
+                      </div>
                     </div>
                     <button onClick={handleChangePassword} disabled={accLoading || !accPass || !accNewPass} style={{ padding: '0.75rem 2rem', background: 'linear-gradient(135deg,#FDBC01,#FFD54F)', color: DARK, border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(253,188,1,0.25)', opacity: accLoading || !accPass || !accNewPass ? 0.6 : 1 }}>
                       {accLoading ? 'Saving...' : 'Change Password'}
