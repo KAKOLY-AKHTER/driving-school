@@ -50,7 +50,7 @@ const SVG = {
 }
 
 export default function AdminPage() {
-  usePageMeta('Admin Panel â€” A Precision Driving School', 'A Precision Driving School admin panel.')
+  usePageMeta('Admin Panel — A Precision Driving School', 'A Precision Driving School admin panel.')
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -519,8 +519,8 @@ export default function AdminPage() {
                                 <span style={{ fontWeight: 600 }}>{u.displayName || 'Unnamed'}</span>
                               </div>
                             </td>
-                            <td style={tdStyle}>{u.email || 'â€”'}</td>
-                            <td style={tdStyle}>{u.phone || 'â€”'}</td>
+                            <td style={tdStyle}>{u.email || '—'}</td>
+                            <td style={tdStyle}>{u.phone || '—'}</td>
                             <td style={tdStyle}>
                               {u.courses && u.courses.length > 0 ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
@@ -533,7 +533,7 @@ export default function AdminPage() {
                                     </div>
                                   ))}
                                 </div>
-                              ) : <span style={{ color: '#64748b' }}>â€”</span>}
+                              ) : <span style={{ color: '#64748b' }}>—</span>}
                               {courseModal === u.uid ? (
                                 <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
                                   <select value={selectedCourseId} onChange={(e) => setSelectedCourseId(e.target.value)} style={{ ...inputStyle, width: 'auto', flex: 1, padding: '0.3rem 0.5rem', fontSize: '1.05rem' }}>
@@ -649,7 +649,7 @@ export default function AdminPage() {
                             <td style={tdStyle}>
                               <span style={{ padding: '0.2rem 0.5rem', background: c.status === 'new' ? 'rgba(1,69,168,0.08)' : 'rgba(34,197,94,0.1)', color: c.status === 'new' ? SKY_BLUE : '#16A34A', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>{c.status || 'new'}</span>
                             </td>
-                            <td style={tdStyle}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'â€”'}</td>
+                            <td style={tdStyle}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</td>
                             <td style={tdStyle}>
                               <div style={{ display: 'flex', gap: '0.4rem' }}>
                                 <button onClick={() => handleEditContact(c)} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
@@ -781,40 +781,40 @@ export default function AdminPage() {
                             <tr><td colSpan={25} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>No enrollments found</td></tr>
                           ) : enrollments.map(e => (
                             <tr key={e._id}>
-                              <td style={tdStyle}>{e.ID || 'â€”'}</td>
+                              <td style={tdStyle}>{e.ID || '—'}</td>
                               <td style={tdStyle}>
                                 <span style={{ padding: '0.15rem 0.4rem', background: e.Status === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(253,188,1,0.1)', color: e.Status === 'success' ? '#16A34A' : GOLD_DEEP, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 700, whiteSpace: 'nowrap' }}>{e.Status || 'pending'}</span>
                               </td>
                               <td style={tdStyle}>
                                 <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'nowrap' }}>
                                   <button title="Invoice" onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>Invoice - ${e.ID || e._id}</title><style>body{font-family:sans-serif;padding:40px}h1{font-size:20px;border-bottom:2px solid #0145A8;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:6px 10px;border-bottom:1px solid #eee;font-size:13px}.lbl{color:#64748b;width:140px}</style></head><body><h1>A Precision Driving School</h1><p style="color:#64748b">Invoice</p><table>${Object.entries({ID:e.ID,Student:e.Full_Name,Email:e.Email,Course:e.Course_Name,Price:e.Price,Total:e.Total,Status:e.Status,Date:e.Applied_date}).filter(([k,v])=>v).map(([k,v])=>`<tr><td class="lbl">${k}</td><td>${v}</td></tr>`).join('')}</table></body></html>`); w.document.close(); w.print() }} style={{ background:'none', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Invoice</button>
-                                  <button title="Form" onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>Enrollment Form - ${e.Full_Name || e.ID}</title><style>body{font-family:sans-serif;padding:40px}h1{font-size:18px;border-bottom:2px solid #FDBC01;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:5px 8px;border:1px solid #ddd;font-size:12px;vertical-align:top}.lbl{background:#f5f7fa;font-weight:600;width:160px;color:#1a2332}</style></head><body><h1>A Precision Driving School - Enrollment Form</h1><table>${Object.entries(e).filter(([k])=>k!=='_id'&&k!=='updatedAt'&&k!='__v').map(([k,v])=>`<tr><td class="lbl">${k}</td><td>${v||'â€”'}</td></tr>`).join('')}</table></body></html>`); w.document.close() }} style={{ background:'none', border:'none', color:GOLD_DEEP, cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Form</button>
+                                  <button title="Form" onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>Enrollment Form - ${e.Full_Name || e.ID}</title><style>body{font-family:sans-serif;padding:40px}h1{font-size:18px;border-bottom:2px solid #FDBC01;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:5px 8px;border:1px solid #ddd;font-size:12px;vertical-align:top}.lbl{background:#f5f7fa;font-weight:600;width:160px;color:#1a2332}</style></head><body><h1>A Precision Driving School - Enrollment Form</h1><table>${Object.entries(e).filter(([k])=>k!=='_id'&&k!=='updatedAt'&&k!='__v').map(([k,v])=>`<tr><td class="lbl">${k}</td><td>${v||'—'}</td></tr>`).join('')}</table></body></html>`); w.document.close() }} style={{ background:'none', border:'none', color:GOLD_DEEP, cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Form</button>
                                   <button onClick={() => { setEnrollForm({ ID: e.ID || '', Status: e.Status || 'pending', Full_Name: e.Full_Name || '', Email: e.Email || '', 'Student Phone': e['Student Phone'] || '', Gender: e.Gender || '', Date_of_Birth: e.Date_of_Birth || '', Address: e.Address || '', City: e.City || '', State: e.State || '', Zip: e.Zip || '', Permit: e.Permit || '', Issue_Date: e.Issue_Date || '', Expire_Date: e.Expire_Date || '', Parent_Phone: e.Parent_Phone || '', Pickup_Address: e.Pickup_Address || '', Course_Name: e.Course_Name || '', Booking_Date: e.Booking_Date || '', Meds: e.Meds || '', Notes: e.Notes || '', Calender_booking_Id: e.Calender_booking_Id || '', Price: e.Price || '', Total: e.Total || '' }); setEnrollEdit(e._id) }} style={{ background:'none', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Edit</button>
                                   <button onClick={async () => { if (!confirm('Delete this enrollment?')) return; try { await api.adminDeleteEnrollment(e._id); setEnrollments(prev => prev.filter(x => x._id !== e._id)); setEnrollTotal(prev => prev - 1) } catch {} }} style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Delete</button>
                                 </div>
                               </td>
-                              <td style={tdStyle}>{e.Applied_date ? new Date(e.Applied_date).toLocaleString() : 'â€”'}</td>
-                              <td style={tdStyle}>{e.Price || 'â€”'}</td>
-                              <td style={tdStyle}>{e.Total || 'â€”'}</td>
-                              <td style={{ ...tdStyle, fontWeight: 600 }}>{e.Full_Name || 'â€”'}</td>
-                              <td style={tdStyle}>{e.Email || 'â€”'}</td>
-                              <td style={tdStyle}>{e['Student Phone'] || 'â€”'}</td>
-                              <td style={tdStyle}>{e.Gender || 'â€”'}</td>
-                              <td style={tdStyle}>{e.Date_of_Birth || 'â€”'}</td>
-                              <td style={tdStyle}>{e.Address || 'â€”'}</td>
-                              <td style={tdStyle}>{e.City || 'â€”'}</td>
-                              <td style={tdStyle}>{e.State || 'â€”'}</td>
-                              <td style={tdStyle}>{e.Zip || 'â€”'}</td>
-                              <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>{e.Permit || 'â€”'}</td>
-                              <td style={tdStyle}>{e.Issue_Date || 'â€”'}</td>
-                              <td style={tdStyle}>{e.Expire_Date || 'â€”'}</td>
-                              <td style={tdStyle}>{e.Parent_Phone || 'â€”'}</td>
-                              <td style={tdStyle}>{e.Pickup_Address || 'â€”'}</td>
-                              <td style={{ ...tdStyle, fontWeight: 600 }}>{e.Course_Name || 'â€”'}</td>
-                              <td style={tdStyle}>{e.Booking_Date || 'â€”'}</td>
-                              <td style={tdStyle}>{e.Meds || 'â€”'}</td>
-                              <td style={{ ...tdStyle, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.Notes || 'â€”'}</td>
-                              <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>{e.Calender_booking_Id || 'â€”'}</td>
+                              <td style={tdStyle}>{e.Applied_date ? new Date(e.Applied_date).toLocaleString() : '—'}</td>
+                              <td style={tdStyle}>{e.Price || '—'}</td>
+                              <td style={tdStyle}>{e.Total || '—'}</td>
+                              <td style={{ ...tdStyle, fontWeight: 600 }}>{e.Full_Name || '—'}</td>
+                              <td style={tdStyle}>{e.Email || '—'}</td>
+                              <td style={tdStyle}>{e['Student Phone'] || '—'}</td>
+                              <td style={tdStyle}>{e.Gender || '—'}</td>
+                              <td style={tdStyle}>{e.Date_of_Birth || '—'}</td>
+                              <td style={tdStyle}>{e.Address || '—'}</td>
+                              <td style={tdStyle}>{e.City || '—'}</td>
+                              <td style={tdStyle}>{e.State || '—'}</td>
+                              <td style={tdStyle}>{e.Zip || '—'}</td>
+                              <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>{e.Permit || '—'}</td>
+                              <td style={tdStyle}>{e.Issue_Date || '—'}</td>
+                              <td style={tdStyle}>{e.Expire_Date || '—'}</td>
+                              <td style={tdStyle}>{e.Parent_Phone || '—'}</td>
+                              <td style={tdStyle}>{e.Pickup_Address || '—'}</td>
+                              <td style={{ ...tdStyle, fontWeight: 600 }}>{e.Course_Name || '—'}</td>
+                              <td style={tdStyle}>{e.Booking_Date || '—'}</td>
+                              <td style={tdStyle}>{e.Meds || '—'}</td>
+                              <td style={{ ...tdStyle, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.Notes || '—'}</td>
+                              <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>{e.Calender_booking_Id || '—'}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -887,16 +887,16 @@ export default function AdminPage() {
                             <tr><td colSpan={9} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>No refunds found. Click "+ Add Refund" to create one.</td></tr>
                           ) : refunds.map(r => (
                             <tr key={r._id}>
-                              <td style={{ ...tdStyle, fontWeight: 600 }}>{r.Full_Name || 'â€”'}</td>
-                              <td style={tdStyle}>{r.Email || 'â€”'}</td>
-                              <td style={tdStyle}>{r.Phone || 'â€”'}</td>
-                              <td style={{ ...tdStyle, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.Course_Name || 'â€”'}</td>
-                              <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '1.05rem', fontWeight: 700 }}>{r.Amount || 'â€”'}</td>
-                              <td style={{ ...tdStyle, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.Reason}>{r.Reason || 'â€”'}</td>
+                              <td style={{ ...tdStyle, fontWeight: 600 }}>{r.Full_Name || '—'}</td>
+                              <td style={tdStyle}>{r.Email || '—'}</td>
+                              <td style={tdStyle}>{r.Phone || '—'}</td>
+                              <td style={{ ...tdStyle, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.Course_Name || '—'}</td>
+                              <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '1.05rem', fontWeight: 700 }}>{r.Amount || '—'}</td>
+                              <td style={{ ...tdStyle, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.Reason}>{r.Reason || '—'}</td>
                               <td style={tdStyle}>
                                 <span style={{ padding: '0.2rem 0.5rem', background: r.Status === 'refunded' ? 'rgba(34,197,94,0.1)' : r.Status === 'denied' ? 'rgba(220,38,38,0.1)' : 'rgba(253,188,1,0.15)', color: r.Status === 'refunded' ? '#16A34A' : r.Status === 'denied' ? '#DC2626' : GOLD_DEEP, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, whiteSpace: 'nowrap' }}>{r.Status || 'pending'}</span>
                               </td>
-                              <td style={tdStyle}>{r.created_at ? r.created_at.slice(0, 10) : 'â€”'}</td>
+                              <td style={tdStyle}>{r.created_at ? r.created_at.slice(0, 10) : '—'}</td>
                               <td style={tdStyle}>
                                 <div style={{ display: 'flex', gap: '0.4rem' }}>
                                   <button onClick={() => { setRefundForm({ Full_Name: r.Full_Name || '', Email: r.Email || '', Phone: r.Phone || '', Course_Name: r.Course_Name || '', Amount: r.Amount || '', Reason: r.Reason || '', Status: r.Status || 'pending' }); setRefundEdit(r._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
@@ -1005,7 +1005,7 @@ export default function AdminPage() {
                                 {socialPlatformLabel(s.platform)}
                               </span>
                             </td>
-                            <td style={{ ...tdStyle, maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#64748b' }} title={s.url}>{s.url || 'â€”'}</td>
+                            <td style={{ ...tdStyle, maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#64748b' }} title={s.url}>{s.url || '—'}</td>
                             <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>{s.order ?? 0}</td>
                             <td style={tdStyle}>
                               <div style={{ display: 'flex', gap: '0.4rem' }}>
