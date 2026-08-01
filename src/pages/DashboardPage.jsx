@@ -232,7 +232,7 @@ export default function DashboardPage() {
       setIssueDate(sIssueDate)
       setExpiryDate(sExpiryDate)
       let pwMsg = ''
-      if (sNewPass || sConfirmPass || sCurrentPass) {
+      if (hasPasswordProvider && (sNewPass || sConfirmPass || sCurrentPass)) {
         if (!sCurrentPass || !sNewPass || !sConfirmPass) {
           pwMsg = ' Fill all password fields.'
         } else if (sNewPass.length < 8) {
@@ -319,6 +319,7 @@ export default function DashboardPage() {
   const progress = showCourse ? Math.round((completedModules.length / 3) * 100) : totalHours > 0 ? Math.min(Math.round((hoursCompleted / totalHours) * 100), 100) : 0
   const initials = user?.displayName ? user.displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : user?.email?.[0]?.toUpperCase() || '?'
   const activeMod = COURSE_MODULES.find(m => m.id === activeModule)
+  const hasPasswordProvider = (user?.providerData || []).some(p => p.providerId === 'password')
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', sublabel: 'Profile & summary', icon: I.dashboard },
@@ -906,21 +907,35 @@ export default function DashboardPage() {
                         <input type="date" value={sExpiryDate} onChange={e => setSExpiryDate(e.target.value)} className="dash-input" />
                       </div>
                     </div>
-                    <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.1rem', color:'#475569', margin:'0 0 1.5rem', fontWeight:700 }}>Change password (optional)</h3>
-                    <div className="dash-form-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'1.5rem' }}>
-                      <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Current password</label>
-                        <input type="password" placeholder="Enter current password" value={sCurrentPass} onChange={e => setSCurrentPass(e.target.value)} className="dash-input" />
+                    {hasPasswordProvider ? (
+                      <>
+                        <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.1rem', color:'#475569', margin:'0 0 1.5rem', fontWeight:700 }}>Change password (optional)</h3>
+                        <div className="dash-form-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'1.5rem' }}>
+                          <div>
+                            <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Current password</label>
+                            <input type="password" placeholder="Enter current password" value={sCurrentPass} onChange={e => setSCurrentPass(e.target.value)} className="dash-input" />
+                          </div>
+                          <div>
+                            <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>New password</label>
+                            <input type="password" placeholder="Min 8 characters" value={sNewPass} onChange={e => setSNewPass(e.target.value)} className="dash-input" />
+                          </div>
+                          <div>
+                            <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Confirm new password</label>
+                            <input type="password" placeholder="Repeat new password" value={sConfirmPass} onChange={e => setSConfirmPass(e.target.value)} className="dash-input" />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ display:'flex', alignItems:'flex-start', gap:'0.9rem', padding:'1.1rem 1.25rem', background:'linear-gradient(135deg,rgba(1,69,168,0.05),rgba(1,69,168,0.02))', border:'1px solid rgba(1,69,168,0.12)', borderRadius:'14px', marginBottom:'1.5rem' }}>
+                        <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:'linear-gradient(135deg,rgba(1,69,168,0.1),rgba(1,69,168,0.04))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" /></svg>
+                        </div>
+                        <div>
+                          <p style={{ fontFamily:'var(--font-display)', fontSize:'0.95rem', color:DARK, fontWeight:700, margin:0 }}>Password managed by Google</p>
+                          <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', margin:'0.3rem 0 0', lineHeight:1.6 }}>You signed in with Google, so there is no site password to change. Your account security is handled by your Google account.</p>
+                        </div>
                       </div>
-                      <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>New password</label>
-                        <input type="password" placeholder="Min 8 characters" value={sNewPass} onChange={e => setSNewPass(e.target.value)} className="dash-input" />
-                      </div>
-                      <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Confirm new password</label>
-                        <input type="password" placeholder="Repeat new password" value={sConfirmPass} onChange={e => setSConfirmPass(e.target.value)} className="dash-input" />
-                      </div>
-                    </div>
+                    )}
                     <button onClick={handleSaveSettings} disabled={sSaving} className="dash-btn-primary" style={{ boxShadow:sSaving ? 'none' : undefined }}>{sSaving ? 'Saving...' : 'Save changes'}</button>
                   </div>
                 </div>
