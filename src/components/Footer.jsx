@@ -248,13 +248,16 @@ export default function Footer() {
             alignItems: 'center',
             textAlign: 'center',
           }}>
-            <p style={{
-              fontFamily: 'var(--font-body)',
-              color: 'rgba(255,255,255,0.6)',
-              fontSize: '0.78rem',
-            }}>
-              &copy; {currentYear} A Precision Driving School. All rights reserved.
-            </p>
+              <p style={{
+                fontFamily: 'var(--font-body)',
+                color: 'rgba(255,255,255,0.6)',
+                fontSize: '0.78rem',
+              }}>
+                &copy; {currentYear} A Precision Driving School. All rights reserved.
+              </p>
+              <p style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.45)', fontSize: '0.75rem', margin: 0 }}>
+                Design and Developed by <a href="https://nexviya.com" target="_blank" rel="noopener noreferrer" style={{ color: GOLD, textDecoration: 'none', fontWeight: 600 }}>Nexviya.com</a>
+              </p>
             <div style={{ display: 'flex', gap: '1.5rem' }}>
               <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', cursor: 'default' }}>Privacy Policy</span>
               <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', cursor: 'default' }}>Terms of Service</span>
