@@ -12,9 +12,11 @@ export default function Hero() {
         box-shadow: 0 6px 20px rgba(0,0,0,0.45), 0 0 0 4px rgba(255,255,255,0.14);
       }
       .hero-cta .btn-ghost {
-        background: rgba(10,22,40,0.55);
-        border: 2px solid rgba(255,255,255,0.85);
+        background: rgba(10,22,40,0.6);
+        border: 2px solid var(--color-gold);
+        color: #fff;
         backdrop-filter: blur(2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.45), 0 0 0 4px rgba(253,188,1,0.18);
       }
       .hero-cta .btn-ghost:hover {
         background: rgba(253,188,1,0.18);
