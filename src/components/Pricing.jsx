@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
 const GOLD_BRIGHT = '#FFD54F'
@@ -449,7 +451,41 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                         <path d="M5 12h14M12 5l7 7-7 7" />
                       </svg>
                     </button>
-                  ) : null}
+                  ) : (
+                    <Link
+                      to="/pricing"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        width: '100%',
+                        padding: '0.85rem 1.5rem',
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '0.65rem',
+                        letterSpacing: '0.15em',
+                        textTransform: 'uppercase',
+                        fontWeight: 700,
+                        textDecoration: 'none',
+                        transition: 'all 0.3s ease',
+                        color: DARK,
+                        background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)'
+                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(253,188,1,0.35)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)'
+                        e.currentTarget.style.boxShadow = 'none'
+                      }}
+                    >
+                      {tier.planName === 'TEEN ONLINE DRIVERS ED' ? 'BUY Plan' : 'Select Plan'}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                      </svg>
+                    </Link>
+                  )}
                 </div>
               ))}
             </div>
