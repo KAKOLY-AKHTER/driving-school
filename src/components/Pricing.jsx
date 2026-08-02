@@ -305,7 +305,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                 <div key={tier.id} className={`price-card${light ? ' price-card-light' : ''}${tier.planName === 'IDEAL FOR STUDENTS' ? ' price-card-highlight' : ''}`}
                   style={{ '--tone': theme.main, '--tone-bright': theme.deep, '--tone-glow': theme.glow }}>
                   {/* Plan Name */}
-                  <div style={{ marginLeft: 'auto', width: '100%', marginBottom: '1rem' }}>
+                  <div style={{ marginLeft: 0, width: 'auto', marginRight: '-1.5rem', marginBottom: '1.4rem' }}>
                     <h3 style={{
                       fontFamily: 'var(--font-mono)',
                       fontSize: '0.72rem',
@@ -314,7 +314,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                       color: '#fff',
                       fontWeight: 700,
                       margin: 0,
-                      padding: '0.65rem 1.2rem',
+                      padding: '0.7rem 1.2rem',
                       background: 'linear-gradient(135deg, var(--tone), var(--tone-bright))',
                       borderRadius: 'var(--radius-sm)',
                       boxShadow: '0 4px 14px var(--tone-glow)',
