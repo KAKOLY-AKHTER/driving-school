@@ -259,8 +259,14 @@ export default function Footer() {
                 Design and Developed by <a href="https://nexviya.com" target="_blank" rel="noopener noreferrer" style={{ color: GOLD, textDecoration: 'none', fontWeight: 600 }}>Nexviya.com</a>
               </p>
             <div style={{ display: 'flex', gap: '1.5rem' }}>
-              <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', cursor: 'default' }}>Privacy Policy</span>
-              <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', cursor: 'default' }}>Terms of Service</span>
+              <Link to="/privacy-policy" style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', textDecoration: 'none', transition: 'color 0.3s ease', cursor: 'pointer' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = GOLD }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)' }}
+              >Privacy Policy</Link>
+              <Link to="/terms" style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', textDecoration: 'none', transition: 'color 0.3s ease', cursor: 'pointer' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = GOLD }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)' }}
+              >Terms of Service</Link>
             </div>
           </div>
 

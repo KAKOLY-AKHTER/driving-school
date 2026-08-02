@@ -16,6 +16,8 @@ import CartPage from './pages/CartPage'
 import AdminPage from './pages/AdminPage'
 import AdminLoginPage from './pages/AdminLoginPage'
 import AdminSetupPage from './pages/AdminSetupPage'
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
+import TermsPage from './pages/TermsPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -108,6 +110,8 @@ function AppRoutes() {
               <Route path="/about" element={<AboutPage />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/contact" element={<ContactPage />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/schedule" element={<SchedulePage />} />
               <Route path="/login" element={<LoginPage />} />
