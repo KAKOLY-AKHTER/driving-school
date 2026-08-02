@@ -208,13 +208,14 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             width: 100%;
-            gap: 0;
+            gap: 1.5rem;
           }
           .price-card {
-            border-radius: 0;
-            border-right: 1px solid rgba(255,255,255,0.04);
+            border-radius: var(--radius-lg);
+            border: 1.5px solid #E2EBF5;
+            border-right: 1.5px solid #E2EBF5;
           }
-          .price-card:last-child { border-right: none; }
+          .price-card:last-child { border-right: 1.5px solid #E2EBF5; }
         }
         @media (max-width: 767px) {
           .price-scroll {
