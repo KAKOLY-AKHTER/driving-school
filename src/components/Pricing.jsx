@@ -479,11 +479,11 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                         border: 'none',
                         cursor: 'pointer',
                         color: '#fff',
-                        background: 'linear-gradient(135deg, var(--tone), var(--tone-bright))',
+                        background: `linear-gradient(135deg, ${GOLD}, ${GOLD_DEEP})`,
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.transform = 'translateY(-2px)'
-                        e.currentTarget.style.boxShadow = '0 8px 25px var(--tone-glow)'
+                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(253,188,1,0.45)'
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.transform = 'translateY(0)'
@@ -513,11 +513,11 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                         textDecoration: 'none',
                         transition: 'all 0.3s ease',
                         color: '#fff',
-                        background: 'linear-gradient(135deg, var(--tone), var(--tone-bright))',
+                        background: `linear-gradient(135deg, ${GOLD}, ${GOLD_DEEP})`,
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.transform = 'translateY(-2px)'
-                        e.currentTarget.style.boxShadow = '0 8px 25px var(--tone-glow)'
+                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(253,188,1,0.45)'
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.transform = 'translateY(0)'
