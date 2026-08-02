@@ -83,7 +83,7 @@ export default function PrivacyPolicyPage() {
           position: 'relative',
           overflow: 'hidden',
           background: `linear-gradient(135deg, ${DARK} 0%, ${DARK_MID} 50%, ${DARK} 100%)`,
-          paddingTop: '12rem',
+          paddingTop: '15rem',
           paddingBottom: '6rem',
           textAlign: 'center',
         }}
