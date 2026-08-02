@@ -315,11 +315,12 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                       color: '#fff',
                       fontWeight: 700,
                       margin: 0,
-                      padding: '0.6rem 1.2rem',
+                      padding: '0.65rem 1.2rem',
                       background: 'linear-gradient(135deg, var(--tone), var(--tone-bright))',
-                      borderRadius: '999px',
+                      borderRadius: 'var(--radius-sm)',
                       boxShadow: '0 4px 14px var(--tone-glow)',
                       display: 'block',
+                      boxSizing: 'border-box',
                       textAlign: 'left',
                     }}>
                       {tier.planName}
