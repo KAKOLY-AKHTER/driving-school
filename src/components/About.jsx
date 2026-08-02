@@ -340,21 +340,23 @@ export default function About() {
                     fontSize: '0.7rem',
                     letterSpacing: '0.15em',
                     textTransform: 'uppercase',
-                    color: '#ffffff',
-                    background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.2)',
+                    color: GOLD,
+                    background: 'rgba(253,188,1,0.06)',
+                    border: '2px solid ' + GOLD,
                     padding: '0.85rem 1.8rem',
                     fontWeight: 700,
                     textDecoration: 'none',
                     transition: 'all 0.3s ease',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = GOLD
-                    e.currentTarget.style.color = GOLD
+                    e.currentTarget.style.borderColor = GOLD_BRIGHT
+                    e.currentTarget.style.color = GOLD_BRIGHT
+                    e.currentTarget.style.background = 'rgba(253,188,1,0.14)'
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'
-                    e.currentTarget.style.color = '#ffffff'
+                    e.currentTarget.style.borderColor = GOLD
+                    e.currentTarget.style.color = GOLD
+                    e.currentTarget.style.background = 'rgba(253,188,1,0.06)'
                   }}
                 >
                   Online Drivers Ed
