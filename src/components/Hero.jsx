@@ -14,7 +14,7 @@ export default function Hero() {
       .hero-cta .btn-ghost {
         background: rgba(10,22,40,0.6);
         border: 2px solid var(--color-gold);
-        color: #fff;
+        color: var(--color-gold);
         backdrop-filter: blur(2px);
         box-shadow: 0 6px 20px rgba(0,0,0,0.45), 0 0 0 4px rgba(253,188,1,0.18);
       }
