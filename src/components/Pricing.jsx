@@ -107,11 +107,10 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
           background: #ffffff;
           border: 1.5px solid #E2EBF5;
           border-radius: var(--radius-lg);
-          padding: 2.5rem 1.5rem;
+          padding: 3.5rem 1.5rem 2.5rem;
           display: flex;
           flex-direction: column;
           position: relative;
-          overflow: hidden;
           transition: all 0.4s cubic-bezier(0.22,1,0.36,1);
           animation: priceCardIn 0.6s cubic-bezier(0.22,1,0.36,1) both;
           box-shadow: 0 4px 20px rgba(0,0,0,0.04);
@@ -306,24 +305,46 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                 <div key={tier.id} className={`price-card${light ? ' price-card-light' : ''}${tier.planName === 'IDEAL FOR STUDENTS' ? ' price-card-highlight' : ''}`}
                   style={{ '--tone': theme.main, '--tone-bright': theme.deep, '--tone-glow': theme.glow }}>
                   {/* Plan Name */}
-                  <div style={{ marginLeft: 'auto', width: '100%', marginBottom: '1rem' }}>
+                  <div style={{
+                    position: 'absolute',
+                    top: '-0.75rem',
+                    left: 0,
+                    right: 0,
+                    padding: '0 1.5rem',
+                    zIndex: 3,
+                    pointerEvents: 'none',
+                  }}>
                     <h3 style={{
+                      position: 'relative',
                       fontFamily: 'var(--font-mono)',
-                      fontSize: '0.72rem',
-                      letterSpacing: '0.14em',
+                      fontSize: '0.78rem',
+                      letterSpacing: '0.16em',
                       textTransform: 'uppercase',
-                      color: '#fff',
+                      color: '#ffffff',
                       fontWeight: 700,
                       margin: 0,
-                      padding: '0.65rem 1.2rem',
+                      padding: '0.9rem 2.5rem',
                       background: 'linear-gradient(135deg, var(--tone), var(--tone-bright))',
-                      borderRadius: 'var(--radius-sm)',
-                      boxShadow: '0 4px 14px var(--tone-glow)',
+                      borderRadius: '999px',
+                      boxShadow: '0 6px 18px var(--tone-glow), 0 2px 6px rgba(0,0,0,0.08)',
                       display: 'block',
                       boxSizing: 'border-box',
-                      textAlign: 'left',
+                      textAlign: 'center',
+                      lineHeight: 1.2,
                     }}>
                       {tier.planName}
+                      <span style={{
+                        position: 'absolute',
+                        right: '-0.6rem',
+                        top: '50%',
+                        transform: 'translateY(-50%) rotate(45deg)',
+                        width: '18px',
+                        height: '18px',
+                        background: 'linear-gradient(135deg, var(--tone-bright), var(--tone))',
+                        borderRadius: '5px',
+                        boxShadow: '0 4px 10px var(--tone-glow)',
+                        pointerEvents: 'none',
+                      }} />
                     </h3>
                   </div>
 
