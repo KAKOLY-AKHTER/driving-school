@@ -164,8 +164,8 @@ export default function Footer() {
             <div>
               <div className="ft-col-title">Services</div>
               <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', listStyle: 'none', padding: 0, margin: 0 }}>
-                <li><Link to="/#programs" className="ft-link">Teenager Lessons</Link></li>
-                <li><Link to="/#programs" className="ft-link">Adult Lessons</Link></li>
+                <li><Link to="/#program-teens" className="ft-link">Teenager Lessons</Link></li>
+                <li><Link to="/#program-adults" className="ft-link">Adult Lessons</Link></li>
                 <li><Link to="/#pricing" className="ft-link">Behind-the-Wheel</Link></li>
                 <li><Link to="/register" className="ft-link">Online Drivers Ed</Link></li>
                 <li><Link to="/#contact" className="ft-link">Free Pickup & Drop</Link></li>

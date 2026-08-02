@@ -144,10 +144,11 @@ export default function Programs() {
 
         <div className="programs-grid" style={{ display: 'grid' }}>
           {PROGRAMS.map((prog, idx) => (
-            <div key={prog.id} className={`prog-card reveal reveal-delay-${idx + 1}`} style={{
+            <div key={prog.id} id={`program-${prog.id}`} className={`prog-card reveal reveal-delay-${idx + 1}`} style={{
               backgroundColor: '#F8FAFD',
               borderBottom: idx === 0 ? '1px solid #E2EBF5' : 'none',
               borderRight: 'none',
+              scrollMarginTop: '9rem',
             }}>
 
               {/* IMAGE */}
