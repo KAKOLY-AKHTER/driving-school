@@ -307,22 +307,44 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                   {/* Plan Name */}
                   <div style={{ marginLeft: 0, width: 'auto', marginRight: '-1.5rem', marginBottom: '1.4rem' }}>
                     <h3 style={{
+                      position: 'relative',
                       fontFamily: 'var(--font-mono)',
-                      fontSize: '0.72rem',
-                      letterSpacing: '0.14em',
+                      fontSize: '0.74rem',
+                      letterSpacing: '0.16em',
                       textTransform: 'uppercase',
                       color: '#fff',
                       fontWeight: 700,
                       margin: 0,
-                      padding: '0.7rem 1.2rem',
+                      padding: '0.8rem 1.4rem',
                       background: 'linear-gradient(135deg, var(--tone), var(--tone-bright))',
                       borderRadius: 'var(--radius-sm)',
-                      boxShadow: '0 4px 14px var(--tone-glow)',
-                      display: 'block',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.08), 0 4px 14px var(--tone-glow)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.6rem',
                       boxSizing: 'border-box',
-                      textAlign: 'left',
+                      overflow: 'hidden',
                     }}>
-                      {tier.planName}
+                      <span style={{
+                        width: '8px',
+                        height: '8px',
+                        minWidth: '8px',
+                        borderRadius: '2px',
+                        transform: 'rotate(45deg)',
+                        background: 'rgba(255,255,255,0.9)',
+                        boxShadow: '0 0 8px rgba(255,255,255,0.8)',
+                      }} />
+                      <span style={{ flex: 1, textAlign: 'left', lineHeight: 1.25, textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>
+                        {tier.planName}
+                      </span>
+                      <span style={{
+                        position: 'absolute',
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: '3px',
+                        background: 'rgba(255,255,255,0.35)',
+                      }} />
                     </h3>
                   </div>
 
