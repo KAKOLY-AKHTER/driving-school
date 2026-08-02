@@ -71,6 +71,17 @@ const priceNumber = (value) => {
   return Number.isFinite(n) ? n : 0
 }
 
+const CARD_THEMES = [
+  { main: '#FDBC01', deep: '#C8960C', glow: 'rgba(253,188,1,0.12)' },
+  { main: '#0145A8', deep: '#0a2a5e', glow: 'rgba(1,69,168,0.12)' },
+  { main: '#7C3AED', deep: '#5B21B6', glow: 'rgba(124,58,237,0.14)' },
+  { main: '#16A34A', deep: '#15803D', glow: 'rgba(22,163,74,0.14)' },
+  { main: '#EA580C', deep: '#C2410C', glow: 'rgba(234,88,12,0.14)' },
+  { main: '#0D9488', deep: '#0F766E', glow: 'rgba(13,148,136,0.14)' },
+  { main: '#E11D48', deep: '#BE123C', glow: 'rgba(225,29,72,0.14)' },
+  { main: '#4F46E5', deep: '#4338CA', glow: 'rgba(79,70,229,0.14)' },
+]
+
 export default function Pricing({ light = false, onEnroll = null, tiers: propTiers = null }) {
   const TIERS = propTiers && propTiers.length ? propTiers : DEFAULT_TIERS
   return (
@@ -81,16 +92,16 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
           to { opacity: 1; transform: translateY(0); }
         }
         @keyframes priceGlow {
-          0%, 100% { box-shadow: 0 0 30px rgba(253,188,1,0.08), 0 10px 40px rgba(0,0,0,0.2); }
-          50% { box-shadow: 0 0 50px rgba(253,188,1,0.15), 0 10px 40px rgba(0,0,0,0.2); }
+          0%, 100% { box-shadow: 0 0 30px var(--tone-glow), 0 10px 40px rgba(0,0,0,0.2); }
+          50% { box-shadow: 0 0 50px var(--tone-glow), 0 10px 40px rgba(0,0,0,0.2); }
         }
         @keyframes priceGlowLight {
-          0%, 100% { box-shadow: 0 0 20px rgba(253,188,1,0.06), 0 4px 20px rgba(0,0,0,0.06); }
-          50% { box-shadow: 0 0 40px rgba(253,188,1,0.12), 0 4px 20px rgba(0,0,0,0.06); }
+          0%, 100% { box-shadow: 0 0 20px var(--tone-glow), 0 4px 20px rgba(0,0,0,0.06); }
+          50% { box-shadow: 0 0 40px var(--tone-glow), 0 4px 20px rgba(0,0,0,0.06); }
         }
         @keyframes priceBadgePulse {
-          0%, 100% { box-shadow: 0 2px 10px rgba(253,188,1,0.3); }
-          50% { box-shadow: 0 4px 20px rgba(253,188,1,0.5); }
+          0%, 100% { box-shadow: 0 2px 10px var(--tone-glow); }
+          50% { box-shadow: 0 4px 20px var(--tone-glow); }
         }
         .price-card {
           background: #ffffff;
@@ -108,8 +119,8 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
         .price-card:hover {
           transform: translateY(-10px);
           background: #ffffff;
-          border-color: ${GOLD};
-          box-shadow: 0 20px 50px rgba(0,0,0,0.08);
+          border-color: var(--tone);
+          box-shadow: 0 20px 50px var(--tone-glow);
         }
         .price-card:nth-child(1) { animation-delay: 0.05s; }
         .price-card:nth-child(2) { animation-delay: 0.1s; }
@@ -121,15 +132,15 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
         .price-card:nth-child(8) { animation-delay: 0.4s; }
         .price-card-highlight {
           background: #ffffff !important;
-          border: 2px solid ${GOLD} !important;
+          border: 2px solid var(--tone) !important;
           border-radius: var(--radius-lg);
           animation: priceCardIn 0.6s cubic-bezier(0.22,1,0.36,1) 0.2s both, priceGlow 3s ease-in-out infinite !important;
           z-index: 2;
-          box-shadow: 0 8px 32px rgba(253,188,1,0.12);
+          box-shadow: 0 8px 32px var(--tone-glow);
         }
         .price-card-highlight:hover {
-          border-color: ${GOLD} !important;
-          box-shadow: 0 24px 60px rgba(253,188,1,0.15), 0 8px 24px rgba(0,0,0,0.06) !important;
+          border-color: var(--tone) !important;
+          box-shadow: 0 24px 60px var(--tone-glow), 0 8px 24px rgba(0,0,0,0.06) !important;
         }
         .price-card::before {
           content: '';
@@ -138,14 +149,14 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
           left: 0;
           right: 0;
           height: 3px;
-          background: linear-gradient(90deg, transparent, ${SKY_BLUE}, ${GOLD}, transparent);
+          background: linear-gradient(90deg, transparent, var(--tone), var(--tone), transparent);
           transition: background 0.3s ease;
         }
         .price-card:hover::before {
-          background: linear-gradient(90deg, ${GOLD}, ${GOLD_BRIGHT});
+          background: linear-gradient(90deg, var(--tone), var(--tone-bright), transparent);
         }
         .price-card-highlight::before {
-          background: linear-gradient(90deg, ${GOLD}, ${GOLD_BRIGHT}) !important;
+          background: linear-gradient(90deg, var(--tone), var(--tone-bright)) !important;
           height: 4px;
         }
         .price-card-light {
@@ -155,26 +166,26 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
         }
         .price-card-light:hover {
           background: #ffffff;
-          border-color: rgba(253,188,1,0.3);
+          border-color: var(--tone);
           box-shadow: 0 16px 48px rgba(0,0,0,0.1);
           transform: translateY(-10px);
         }
         .price-card-light .price-card-highlight {
           background: linear-gradient(135deg, rgba(253,188,1,0.05) 0%, rgba(1,69,168,0.04) 100%) !important;
-          border: 1px solid rgba(253,188,1,0.25) !important;
+          border: 1px solid var(--tone) !important;
           animation: priceCardIn 0.6s cubic-bezier(0.22,1,0.36,1) 0.2s both, priceGlowLight 3s ease-in-out infinite !important;
         }
         .price-badge {
           position: absolute;
           top: 1rem;
           right: 1rem;
-          background: linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT});
+          background: linear-gradient(135deg, var(--tone), var(--tone-bright));
           padding: 0.3rem 0.8rem;
           font-family: var(--font-mono);
           font-size: 0.55rem;
           letter-spacing: 0.12em;
           text-transform: uppercase;
-          color: ${DARK};
+          color: #fff;
           font-weight: 700;
           animation: priceBadgePulse 2s ease-in-out infinite;
         }
@@ -289,8 +300,11 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
           {/* Cards */}
           <div style={{ overflow: 'auto', marginInline: '-1rem', paddingInline: '1rem' }}>
             <div className="price-scroll">
-              {TIERS.map((tier) => (
-                <div key={tier.id} className={`price-card${light ? ' price-card-light' : ''}${tier.planName === 'IDEAL FOR STUDENTS' ? ' price-card-highlight' : ''}`}>
+              {TIERS.map((tier, idx) => {
+                const theme = CARD_THEMES[idx % CARD_THEMES.length]
+                return (
+                <div key={tier.id} className={`price-card${light ? ' price-card-light' : ''}${tier.planName === 'IDEAL FOR STUDENTS' ? ' price-card-highlight' : ''}`}
+                  style={{ '--tone': theme.main, '--tone-bright': theme.deep, '--tone-glow': theme.glow }}>
                   {/* Plan Name */}
                   <h3 style={{
                     fontFamily: 'var(--font-display)',
@@ -323,7 +337,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                       <span style={{
                         fontFamily: 'var(--font-display)',
                         fontSize: '2rem',
-                        color: GOLD,
+                        color: 'var(--tone)',
                         fontWeight: 800,
                         lineHeight: 1,
                       }}>
@@ -386,7 +400,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                     {tier.options.map((opt, i) => (
                       <li key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
                         {opt.permission === 'Included' ? (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '3px' }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tone)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '3px' }}>
                             <polyline points="20 6 9 17 4 12" />
                           </svg>
                         ) : opt.permission === 'Not Included' ? (
@@ -435,12 +449,12 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                         transition: 'all 0.3s ease',
                         border: 'none',
                         cursor: 'pointer',
-                        color: DARK,
-                        background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`,
+                        color: '#fff',
+                        background: 'linear-gradient(135deg, var(--tone), var(--tone-bright))',
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.transform = 'translateY(-2px)'
-                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(253,188,1,0.35)'
+                        e.currentTarget.style.boxShadow = '0 8px 25px var(--tone-glow)'
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.transform = 'translateY(0)'
@@ -469,12 +483,12 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                         fontWeight: 700,
                         textDecoration: 'none',
                         transition: 'all 0.3s ease',
-                        color: DARK,
-                        background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`,
+                        color: '#fff',
+                        background: 'linear-gradient(135deg, var(--tone), var(--tone-bright))',
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.transform = 'translateY(-2px)'
-                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(253,188,1,0.35)'
+                        e.currentTarget.style.boxShadow = '0 8px 25px var(--tone-glow)'
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.transform = 'translateY(0)'
@@ -488,7 +502,8 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                     </Link>
                   )}
                 </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 
