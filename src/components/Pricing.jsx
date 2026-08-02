@@ -306,18 +306,25 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                 <div key={tier.id} className={`price-card${light ? ' price-card-light' : ''}${tier.planName === 'IDEAL FOR STUDENTS' ? ' price-card-highlight' : ''}`}
                   style={{ '--tone': theme.main, '--tone-bright': theme.deep, '--tone-glow': theme.glow }}>
                   {/* Plan Name */}
-                  <h3 style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '1.15rem',
-                    color: '#0a1628',
-                    marginBottom: '1rem',
-                    fontWeight: 700,
-                    minHeight: '2.8rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}>
-                    {tier.planName}
-                  </h3>
+                  <div style={{ marginLeft: 'auto', width: '100%', marginBottom: '1rem' }}>
+                    <h3 style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '0.72rem',
+                      letterSpacing: '0.14em',
+                      textTransform: 'uppercase',
+                      color: '#fff',
+                      fontWeight: 700,
+                      margin: 0,
+                      padding: '0.6rem 1.2rem',
+                      background: 'linear-gradient(135deg, var(--tone), var(--tone-bright))',
+                      borderRadius: '999px',
+                      boxShadow: '0 4px 14px var(--tone-glow)',
+                      display: 'block',
+                      textAlign: 'left',
+                    }}>
+                      {tier.planName}
+                    </h3>
+                  </div>
 
                   {/* Prices */}
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', marginBottom: '1.5rem' }}>
