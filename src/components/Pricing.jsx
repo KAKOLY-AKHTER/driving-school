@@ -103,6 +103,32 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
           0%, 100% { box-shadow: 0 2px 10px var(--tone-glow); }
           50% { box-shadow: 0 4px 20px var(--tone-glow); }
         }
+        .price-cta {
+          position: relative;
+          overflow: hidden;
+          background: linear-gradient(135deg, #FDBC01, #C8960C) !important;
+          box-shadow: 0 4px 18px rgba(253,188,1,0.45), 0 1px 0 rgba(255,255,255,0.4) inset, 0 -2px 6px rgba(0,0,0,0.15) inset;
+          animation: priceCtaGlow 2.2s ease-in-out infinite;
+        }
+        .price-cta::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -80%;
+          width: 50%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent);
+          transform: skewX(-20deg);
+          animation: priceCtaShine 3s ease-in-out infinite;
+        }
+        @keyframes priceCtaGlow {
+          0%, 100% { box-shadow: 0 4px 18px rgba(253,188,1,0.45), 0 1px 0 rgba(255,255,255,0.4) inset, 0 -2px 6px rgba(0,0,0,0.15) inset; }
+          50% { box-shadow: 0 6px 30px rgba(253,188,1,0.7), 0 1px 0 rgba(255,255,255,0.4) inset, 0 -2px 6px rgba(0,0,0,0.15) inset; }
+        }
+        @keyframes priceCtaShine {
+          0%, 55% { left: -80%; }
+          75%, 100% { left: 130%; }
+        }
         .price-card {
           background: #ffffff;
           border: 1.5px solid #E2EBF5;
@@ -462,36 +488,37 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                   {onEnroll ? (
                     <button
                       onClick={() => onEnroll(tier)}
+                      className="price-cta"
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: '0.5rem',
+                        gap: '0.6rem',
                         width: '100%',
-                        padding: '0.85rem 1.5rem',
+                        padding: '1rem 1.5rem',
                         fontFamily: 'var(--font-mono)',
-                        fontSize: '0.65rem',
-                        letterSpacing: '0.15em',
+                        fontSize: '0.72rem',
+                        letterSpacing: '0.18em',
                         textTransform: 'uppercase',
                         fontWeight: 700,
                         textDecoration: 'none',
                         transition: 'all 0.3s ease',
                         border: 'none',
+                        borderRadius: 'var(--radius-sm)',
                         cursor: 'pointer',
                         color: '#fff',
+                        textShadow: '0 1px 2px rgba(0,0,0,0.25)',
                         background: `linear-gradient(135deg, ${GOLD}, ${GOLD_DEEP})`,
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-2px)'
-                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(253,188,1,0.45)'
+                        e.currentTarget.style.transform = 'translateY(-3px) scale(1.02)'
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)'
-                        e.currentTarget.style.boxShadow = 'none'
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)'
                       }}
                     >
                       Enroll Now
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <path d="M5 12h14M12 5l7 7-7 7" />
                       </svg>
                     </button>
