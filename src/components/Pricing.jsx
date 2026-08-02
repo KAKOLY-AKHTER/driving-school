@@ -137,15 +137,58 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
           display: flex;
           flex-direction: column;
           position: relative;
-          transition: all 0.4s cubic-bezier(0.22,1,0.36,1);
+          overflow: hidden;
+          transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s cubic-bezier(0.22,1,0.36,1), border-color 0.4s ease;
           animation: priceCardIn 0.6s cubic-bezier(0.22,1,0.36,1) both;
           box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+        }
+        .price-card::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -80%;
+          width: 45%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
+          transform: skewX(-20deg);
+          opacity: 0;
+          transition: opacity 0.3s ease;
+          pointer-events: none;
+        }
+        .price-card:hover::after {
+          opacity: 1;
+          animation: priceCardShine 0.9s ease-in-out forwards;
+        }
+        @keyframes priceCardShine {
+          0% { left: -80%; }
+          100% { left: 140%; }
         }
         .price-card:hover {
           transform: translateY(-10px);
           background: #ffffff;
           border-color: var(--tone);
           box-shadow: 0 20px 50px var(--tone-glow);
+        }
+        .price-card:hover .price-planbar {
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(0,0,0,0.08), 0 6px 22px var(--tone-glow);
+        }
+        .price-card:hover .price-value {
+          transform: scale(1.06);
+          filter: drop-shadow(0 4px 12px var(--tone-glow));
+        }
+        .price-planbar {
+          transition: box-shadow 0.4s ease;
+        }
+        .price-value {
+          display: inline-block;
+          transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), filter 0.4s ease;
+        }
+        .price-card-highlight .price-planbar {
+          animation: priceBarGlow 3s ease-in-out infinite;
+        }
+        @keyframes priceBarGlow {
+          0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.08), 0 4px 14px var(--tone-glow); }
+          50% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(0,0,0,0.08), 0 6px 26px var(--tone-glow); }
         }
         .price-card:nth-child(1) { animation-delay: 0.05s; }
         .price-card:nth-child(2) { animation-delay: 0.1s; }
@@ -332,7 +375,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                   style={{ '--tone': theme.main, '--tone-bright': theme.deep, '--tone-glow': theme.glow }}>
                   {/* Plan Name */}
                   <div style={{ marginLeft: 0, width: 'auto', marginRight: '-1.5rem', marginBottom: '1.4rem' }}>
-                    <h3 style={{
+                    <h3 className="price-planbar" style={{
                       position: 'relative',
                       fontFamily: 'var(--font-mono)',
                       fontSize: '0.74rem',
@@ -389,7 +432,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                       }}>
                         Today's Price
                       </span>
-                      <span style={{
+                      <span className="price-value" style={{
                         fontFamily: 'var(--font-display)',
                         fontSize: '2rem',
                         color: 'var(--tone)',
