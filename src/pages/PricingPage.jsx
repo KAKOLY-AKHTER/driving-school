@@ -12,6 +12,15 @@ const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
 
+const CITIES = [
+  'Fremont', 'Newark', 'Hayward', 'Union City', 'San Lorenzo', 'San Leandro',
+  'Castro Valley', 'Ashland', 'Oakland', 'San Jose', 'Santa Clara', 'Sunnyvale',
+  'Palo Alto', 'San Mateo', 'Mountain View', 'Cupertino', 'Menlo Park',
+  'Redwood City', 'San Francisco', 'Millbrae', 'San Bruno', 'Burlingame',
+  'Hillsborough', 'South San Francisco', 'Foster City', 'Brisbane', 'Belmont',
+  'Alameda', 'Pleasanton', 'San Ramon', 'Milpitas',
+]
+
 const priceNumber = (value) => {
   const n = parseFloat(String(value || '').replace(/[^0-9.]/g, ''))
   return Number.isFinite(n) ? n : 0
@@ -27,6 +36,9 @@ export default function PricingPage() {
   const navigate = useNavigate()
   const [step, setStep] = useState(null)
   const [selectedTier, setSelectedTier] = useState(null)
+  const [selectedCity, setSelectedCity] = useState('')
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1))
+  const [selectedDate, setSelectedDate] = useState('')
   const [error, setError] = useState('')
   const [tiers, setTiers] = useState(null)
 
@@ -35,45 +47,88 @@ export default function PricingPage() {
   }, [])
 
   const handleChoose = (tier) => {
+    setSelectedTier(tier)
+    setSelectedCity('')
+    setSelectedDate('')
+    setCalendarMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
+    setStep('city')
+    setError('')
+  }
+
+  const handleCityNext = () => {
+    if (!selectedCity) {
+      setError('Please select your city.')
+      return
+    }
+    setError('')
+    setStep('calendar')
+  }
+
+  const handleBooking = () => {
+    if (!selectedDate) {
+      setError('Please select a preferred date.')
+      return
+    }
     if (!user) {
       navigate('/login')
       return
     }
-    setSelectedTier(tier)
-    setStep('confirm')
-    setError('')
+    handleConfirm(true)
   }
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (goToCart = false) => {
     setStep('loading')
     try {
       const course = {
         id: selectedTier.id,
         title: selectedTier.planName,
         price: selectedTier.planPrice,
+        city: selectedCity,
+        preferredDate: selectedDate,
       }
       const result = await addToCart(course)
       if (result.ok) {
         if (result.duplicate) {
+          if (goToCart) {
+            navigate('/cart')
+            return
+          }
           setError('This course is already in your cart.')
           setStep('confirm')
           return
         }
-        setStep('success')
+        if (goToCart) navigate('/cart')
+        else setStep('success')
       } else {
         setError(result.error || 'Failed to add to cart. Please try again.')
-        setStep('confirm')
+        setStep(goToCart ? 'calendar' : 'confirm')
       }
     } catch {
       setError('Failed to add to cart. Please try again.')
-      setStep('confirm')
+      setStep(goToCart ? 'calendar' : 'confirm')
     }
   }
 
   const handleClose = () => {
     setStep(null)
     setSelectedTier(null)
+    setSelectedCity('')
+    setSelectedDate('')
     setError('')
+  }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const calendarYear = calendarMonth.getFullYear()
+  const calendarMonthIndex = calendarMonth.getMonth()
+  const firstWeekday = new Date(calendarYear, calendarMonthIndex, 1).getDay()
+  const daysInMonth = new Date(calendarYear, calendarMonthIndex + 1, 0).getDate()
+  const calendarDays = [...Array(firstWeekday).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
+  const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+
+  const dateKey = (day) => {
+    const month = String(calendarMonthIndex + 1).padStart(2, '0')
+    return `${calendarYear}-${month}-${String(day).padStart(2, '0')}`
   }
 
   const backdropStyle = {
@@ -115,6 +170,105 @@ export default function PricingPage() {
       `}</style>
 
       <Pricing light onEnroll={handleChoose} tiers={tiers} />
+
+      {step === 'city' && selectedTier && (
+        <div style={{ ...backdropStyle, alignItems: 'flex-start', paddingTop: '1.25rem' }} onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}>
+          <div style={{ ...modalStyle, maxWidth: '800px', borderRadius: '8px', padding: '1.35rem 1.8rem 1.8rem' }}>
+            <button onClick={handleClose} aria-label="Close" style={{ position: 'absolute', top: '1rem', right: '1.25rem', border: 0, background: 'transparent', color: '#777', fontSize: '2rem', lineHeight: 1, cursor: 'pointer', padding: 0 }}>&times;</button>
+
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '0 2.5rem 1.5rem 0', fontFamily: 'var(--font-body)', fontSize: '1.25rem', color: DARK, fontWeight: 800 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0866ff" strokeWidth="2.5" strokeLinecap="round">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-4-4" />
+              </svg>
+              Find Driving Lessons Near You
+            </h2>
+
+            <div style={{ fontFamily: 'var(--font-body)', color: DARK, fontSize: '1rem', lineHeight: 1.6, marginBottom: '0.25rem' }}>
+              <div>Plan Name: <strong>{selectedTier.planName}</strong></div>
+              <div>Price: <strong>{selectedTier.planPrice}</strong></div>
+            </div>
+            <p style={{ fontFamily: 'var(--font-body)', color: '#7a8494', fontSize: '0.95rem', margin: '0 0 0.9rem' }}>Please select your city</p>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <select
+                name="city"
+                required
+                value={selectedCity}
+                onChange={(e) => { setSelectedCity(e.target.value); setError('') }}
+                style={{ width: 'min(100%, 372px)', minHeight: '46px', padding: '0 2.5rem 0 0.75rem', border: `1px solid ${error ? '#ef4444' : '#dce6f2'}`, borderRadius: '10px', background: '#fff', boxShadow: '0 4px 14px rgba(15,23,42,0.04)', color: selectedCity ? DARK : '#4b5563', fontFamily: 'var(--font-body)', fontSize: '1rem', cursor: 'pointer' }}
+              >
+                <option value="">Select city</option>
+                {CITIES.map(city => <option key={city} value={city}>{city}</option>)}
+              </select>
+              <button onClick={handleCityNext} style={{ minHeight: '46px', display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0 1.15rem', border: 0, borderRadius: '10px', background: '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '1rem', fontWeight: 800, cursor: 'pointer', boxShadow: '0 7px 18px rgba(7,85,174,0.18)' }}>
+                Next
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+              </button>
+            </div>
+            {error && <p style={{ margin: '0.55rem 0 0', color: '#dc2626', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>{error}</p>}
+          </div>
+        </div>
+      )}
+
+      {step === 'calendar' && selectedTier && (
+        <div style={backdropStyle} onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}>
+          <div style={{ ...modalStyle, maxWidth: '640px', borderRadius: '12px', padding: '1.2rem', background: '#f8fafc' }}>
+            <button onClick={handleClose} aria-label="Close" style={{ position: 'absolute', top: '0.75rem', right: '1rem', zIndex: 2, border: 0, background: 'transparent', color: '#64748b', fontSize: '1.8rem', cursor: 'pointer' }}>&times;</button>
+            <div style={{ textAlign: 'center', marginBottom: '1.2rem' }}>
+              <h2 style={{ margin: 0, color: '#08284a', fontFamily: 'var(--font-body)', fontSize: '1.7rem', fontWeight: 800 }}>Your Selected Course</h2>
+              <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>You've chosen the perfect driving course for your needs!</p>
+            </div>
+
+            <div style={{ padding: '1rem 0.75rem 0.75rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '9px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <div>
+                  <div style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.75rem' }}>Select Your Preferred Dates</div>
+                  <strong style={{ color: '#0755ae', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>{calendarMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' })}</strong>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button disabled={calendarMonth <= currentMonthStart} onClick={() => setCalendarMonth(new Date(calendarYear, calendarMonthIndex - 1, 1))} style={{ width: '32px', height: '30px', border: 0, borderRadius: '8px', background: '#f1f5f9', color: '#08284a', fontSize: '1.35rem', cursor: calendarMonth <= currentMonthStart ? 'not-allowed' : 'pointer', opacity: calendarMonth <= currentMonthStart ? 0.4 : 1 }}>&lsaquo;</button>
+                  <button onClick={() => setCalendarMonth(new Date(calendarYear, calendarMonthIndex + 1, 1))} style={{ width: '32px', height: '30px', border: 0, borderRadius: '8px', background: '#f1f5f9', color: '#08284a', fontSize: '1.35rem', cursor: 'pointer' }}>&rsaquo;</button>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '6px' }}>
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => <div key={day} style={{ textAlign: 'center', padding: '0.25rem 0', color: '#475569', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>{day}</div>)}
+                {calendarDays.map((day, index) => {
+                  if (!day) return <div key={`blank-${index}`} />
+                  const dayDate = new Date(calendarYear, calendarMonthIndex, day)
+                  const disabled = dayDate < today
+                  const key = dateKey(day)
+                  const selected = selectedDate === key
+                  return (
+                    <button key={key} disabled={disabled} onClick={() => { setSelectedDate(key); setError('') }} style={{ minHeight: '42px', border: selected ? '2px solid #0755ae' : `1px solid ${disabled ? '#fee2e2' : '#cde7d2'}`, borderRadius: '3px', background: selected ? '#dbeafe' : disabled ? '#fff1f2' : '#edf7ef', color: selected ? '#0755ae' : disabled ? '#ff3b45' : '#19963b', fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: selected ? 800 : 500, cursor: disabled ? 'not-allowed' : 'pointer' }}>{day}</button>
+                  )
+                })}
+              </div>
+
+              <div style={{ marginTop: '0.9rem', fontFamily: 'var(--font-body)', fontSize: '0.75rem', fontWeight: 700, color: DARK }}>Selected Dates:</div>
+              <div style={{ marginTop: '0.35rem', padding: '0.65rem', border: '1.5px solid #0755ae', background: '#eaf2ff' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
+                  <div>
+                    <strong style={{ color: '#586576', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>{selectedTier.planName}</strong>
+                    <span style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> (Select 1 slot date)</span>
+                    <div style={{ marginTop: '0.2rem', color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>{selectedCity}</div>
+                  </div>
+                  <span style={{ alignSelf: 'flex-start', padding: '0.25rem 0.55rem', borderRadius: '999px', background: '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 800 }}>{selectedTier.planPrice}</span>
+                </div>
+                <div style={{ borderTop: '1px solid #cbd5e1', marginTop: '0.65rem', paddingTop: '0.55rem', color: selectedDate ? '#0755ae' : '#ef3340', fontFamily: 'var(--font-body)', fontSize: '0.75rem' }}>
+                  {selectedDate ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'No slot selected'}
+                </div>
+              </div>
+
+              {error && <p style={{ color: '#dc2626', margin: '0.45rem 0 0', fontFamily: 'var(--font-body)', fontSize: '0.75rem' }}>{error}</p>}
+              <button onClick={() => setStep('city')} style={{ width: '100%', marginTop: '0.6rem', minHeight: '34px', border: 0, borderRadius: '6px', background: '#747f88', color: '#fff', fontFamily: 'var(--font-body)', fontWeight: 700, cursor: 'pointer' }}>+ Add More Plans</button>
+              <div style={{ margin: '0.45rem 0', color: '#08284a', fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: 800 }}>Total: {selectedTier.planPrice}</div>
+              <button onClick={handleBooking} style={{ width: '100%', minHeight: '38px', border: 0, borderRadius: '8px', background: '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontWeight: 800, cursor: 'pointer' }}>Proceed to Booking</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {step === 'confirm' && selectedTier && (
         <div style={backdropStyle} onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}>
@@ -194,7 +348,7 @@ export default function PricingPage() {
                 <button onClick={handleClose} style={{
                   flex: 1, padding: '0.85rem 1.5rem', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, color: '#8899aa', background: 'transparent', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'all 0.2s',
                 }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#CBD5E0'; e.currentTarget.style.color = DARK }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E2EBF5'; e.currentTarget.style.color = '#8899aa' }}>Cancel</button>
-                <button onClick={handleConfirm} style={{
+                <button onClick={() => handleConfirm()} style={{
                   flex: 2, padding: '0.85rem 1.5rem', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, color: DARK, background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'all 0.3s', boxShadow: '0 4px 16px rgba(253,188,1,0.25)',
                 }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(253,188,1,0.4)' }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(253,188,1,0.25)' }}>
                   Add to Cart

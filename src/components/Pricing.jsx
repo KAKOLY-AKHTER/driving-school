@@ -105,7 +105,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
         }
         .price-cta {
           position: relative;
-          overflow: hidden;
+          overflow: visible;
           background: linear-gradient(135deg, #FDBC01, #C8960C) !important;
           box-shadow: 0 4px 18px rgba(253,188,1,0.45), 0 1px 0 rgba(255,255,255,0.4) inset, 0 -2px 6px rgba(0,0,0,0.15) inset;
           animation: priceCtaGlow 2.2s ease-in-out infinite;
@@ -170,14 +170,24 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
           box-shadow: 0 20px 50px var(--tone-glow);
         }
         .price-card:hover .price-planbar {
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(0,0,0,0.08), 0 6px 22px var(--tone-glow);
+          box-shadow: 0 7px 14px rgba(0,0,0,0.22);
         }
         .price-card:hover .price-value {
           transform: scale(1.06);
           filter: drop-shadow(0 4px 12px var(--tone-glow));
         }
         .price-planbar {
-          transition: box-shadow 0.4s ease;
+          transition: box-shadow 0.3s ease;
+        }
+        .price-planbar::after {
+          content: '';
+          position: absolute;
+          right: 2px;
+          bottom: -8px;
+          width: 10px;
+          height: 8px;
+          background: var(--tone-bright);
+          border-radius: 0 0 3px 0;
         }
         .price-value {
           display: inline-block;
@@ -187,8 +197,8 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
           animation: priceBarGlow 3s ease-in-out infinite;
         }
         @keyframes priceBarGlow {
-          0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.08), 0 4px 14px var(--tone-glow); }
-          50% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(0,0,0,0.08), 0 6px 26px var(--tone-glow); }
+          0%, 100% { box-shadow: 0 5px 10px rgba(0,0,0,0.18); }
+          50% { box-shadow: 0 7px 14px rgba(0,0,0,0.24); }
         }
         .price-card:nth-child(1) { animation-delay: 0.05s; }
         .price-card:nth-child(2) { animation-delay: 0.1s; }
@@ -374,46 +384,30 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                 <div key={tier.id} className={`price-card${light ? ' price-card-light' : ''}${tier.planName === 'IDEAL FOR STUDENTS' ? ' price-card-highlight' : ''}`}
                   style={{ '--tone': theme.main, '--tone-bright': theme.deep, '--tone-glow': theme.glow }}>
                   {/* Plan Name */}
-                  <div style={{ marginLeft: 0, width: 'auto', marginRight: '-1.5rem', marginBottom: '1.4rem' }}>
+                  <div style={{ marginLeft: '1rem', width: 'auto', marginRight: '-2rem', marginBottom: '1.4rem' }}>
                     <h3 className="price-planbar" style={{
                       position: 'relative',
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: '0.74rem',
-                      letterSpacing: '0.16em',
+                      fontFamily: 'var(--font-body)',
+                      fontSize: '0.78rem',
+                      letterSpacing: '0.025em',
                       textTransform: 'uppercase',
                       color: '#fff',
                       fontWeight: 700,
                       margin: 0,
-                      padding: '0.8rem 1.4rem',
-                      background: 'linear-gradient(135deg, var(--tone), var(--tone-bright))',
-                      borderRadius: 'var(--radius-sm)',
-                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.08), 0 4px 14px var(--tone-glow)',
+                      minHeight: '39px',
+                      padding: '0.65rem 1.4rem',
+                      background: 'var(--tone)',
+                      borderRadius: '8px 8px 8px 0',
+                      boxShadow: '0 5px 10px rgba(0,0,0,0.2)',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '0.6rem',
+                      justifyContent: 'center',
                       boxSizing: 'border-box',
-                      overflow: 'hidden',
+                      overflow: 'visible',
                     }}>
-                      <span style={{
-                        width: '8px',
-                        height: '8px',
-                        minWidth: '8px',
-                        borderRadius: '2px',
-                        transform: 'rotate(45deg)',
-                        background: 'rgba(255,255,255,0.9)',
-                        boxShadow: '0 0 8px rgba(255,255,255,0.8)',
-                      }} />
-                      <span style={{ flex: 1, textAlign: 'left', lineHeight: 1.25, textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>
+                      <span style={{ textAlign: 'center', lineHeight: 1.25 }}>
                         {tier.planName}
                       </span>
-                      <span style={{
-                        position: 'absolute',
-                        right: 0,
-                        top: 0,
-                        bottom: 0,
-                        width: '3px',
-                        background: 'rgba(255,255,255,0.35)',
-                      }} />
                     </h3>
                   </div>
 
@@ -560,7 +554,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                         e.currentTarget.style.transform = 'translateY(0) scale(1)'
                       }}
                     >
-                      Enroll Now
+                      Select
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <path d="M5 12h14M12 5l7 7-7 7" />
                       </svg>
