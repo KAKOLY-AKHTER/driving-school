@@ -141,6 +141,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
           transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s cubic-bezier(0.22,1,0.36,1), border-color 0.4s ease;
           animation: priceCardIn 0.6s cubic-bezier(0.22,1,0.36,1) both;
           box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+          margin-right: 0.5rem;
         }
         .price-card::after {
           content: '';
@@ -297,7 +298,8 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             width: 100%;
-            gap: 1.5rem;
+            column-gap: 2rem;
+            row-gap: 1.5rem;
           }
           .price-card {
             border-radius: var(--radius-lg);
@@ -384,7 +386,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                 <div key={tier.id} className={`price-card${light ? ' price-card-light' : ''}${tier.planName === 'IDEAL FOR STUDENTS' ? ' price-card-highlight' : ''}`}
                   style={{ '--tone': theme.main, '--tone-bright': theme.deep, '--tone-glow': theme.glow }}>
                   {/* Plan Name */}
-                  <div style={{ marginLeft: '1rem', width: 'auto', marginRight: '-2rem', marginBottom: '1.4rem' }}>
+                  <div style={{ marginLeft: '1rem', width: 'auto', marginRight: '-2.5rem', marginBottom: '1.4rem' }}>
                     <h3 className="price-planbar" style={{
                       position: 'relative',
                       fontFamily: 'var(--font-body)',

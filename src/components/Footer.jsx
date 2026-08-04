@@ -10,6 +10,26 @@ const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
 
+function RoadCar({ color, delay = '0s' }) {
+  return (
+    <svg className="ft-road-car" style={{ animationDelay: delay }} width="104" height="44" viewBox="0 0 104 44" aria-hidden="true">
+      <defs>
+        <linearGradient id={`car-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={color} />
+          <stop offset="1" stopColor="#071426" />
+        </linearGradient>
+      </defs>
+      <ellipse cx="52" cy="38" rx="44" ry="3" fill="rgba(0,0,0,.45)" />
+      <path d="M9 29l5-10c1-2 3-3 5-3h15l9-10h27c4 0 7 2 10 5l7 7 8 3c3 1 5 4 5 7v6H7v-2c0-2 1-3 2-3z" fill={`url(#car-${color.replace('#', '')})`} stroke="rgba(255,255,255,.45)" strokeWidth="1" />
+      <path d="M39 16l7-8h12v8H39zm22 0V8h8c3 0 5 1 7 4l4 4H61z" fill="#bfe2f6" opacity=".9" />
+      <path d="M13 22h78" stroke="rgba(255,255,255,.2)" />
+      <circle cx="28" cy="34" r="7" fill="#101820" stroke="#8e99a6" strokeWidth="2" /><circle cx="28" cy="34" r="2.5" fill="#dce4ea" />
+      <circle cx="79" cy="34" r="7" fill="#101820" stroke="#8e99a6" strokeWidth="2" /><circle cx="79" cy="34" r="2.5" fill="#dce4ea" />
+      <path d="M94 25h5v4h-5z" fill="#ffd75a" /><path d="M8 25h5v4H8z" fill="#ff4d4d" />
+    </svg>
+  )
+}
+
 export default function Footer() {
   const currentYear = new Date().getFullYear()
   const settings = useSiteSettings()
@@ -88,9 +108,37 @@ export default function Footer() {
           border-top: 1px solid rgba(255,255,255,0.04);
           padding-top: 2rem;
         }
+        .ft-road {
+          height: 96px;
+          position: relative;
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          align-items: end;
+          padding: 0 8vw 9px;
+          background: linear-gradient(180deg, ${DARK} 0%, #060e1a 100%);
+          border-bottom: 1px dashed rgba(255,255,255,0.35);
+          box-sizing: border-box;
+          overflow: hidden;
+        }
+        .ft-road-car {
+          position: absolute;
+          left: -120px;
+          bottom: -2px;
+          filter: drop-shadow(0 5px 5px rgba(0,0,0,0.45));
+          animation: ftCarDrive 15s linear infinite;
+        }
+        @keyframes ftCarDrive {
+          0% { transform: translateX(0) translateY(0); }
+          50% { transform: translateX(calc(50vw + 120px)) translateY(-2px); }
+          100% { transform: translateX(calc(100vw + 240px)) translateY(0); }
+        }
         @media (min-width: 768px) {
           .ft-grid { grid-template-columns: 1.5fr 1fr 1fr 1.2fr !important; }
           .ft-bottom { flex-direction: row !important; justify-content: space-between !important; text-align: left !important; }
+        }
+        @media (max-width: 600px) {
+          .ft-road { height: 78px; padding-inline: 0.5rem; }
+          .ft-road-car { width: 76px; height: auto; }
         }
       `}</style>
 
@@ -100,6 +148,11 @@ export default function Footer() {
         position: 'relative',
         overflow: 'hidden',
       }}>
+        <div className="ft-road" aria-hidden="true">
+          <RoadCar color="#0878d1" delay="0s" />
+          <RoadCar color="#d8dde2" delay="5s" />
+          <RoadCar color="#e54820" delay="10s" />
+        </div>
         <div aria-hidden="true" style={{
           position: 'absolute', inset: 0,
           background: 'radial-gradient(ellipse at 20% 20%, rgba(1,69,168,0.04) 0%, transparent 50%)',

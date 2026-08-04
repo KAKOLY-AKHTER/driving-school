@@ -102,6 +102,16 @@ app.put('/api/users/:uid', async (req, res) => {
   }
 })
 
+app.get('/api/bookings/availability', async (req, res) => {
+  try {
+    if (!req.query.date) return res.status(400).json({ error: 'Date required' })
+    const bookings = await bookingsCol.find({ date: req.query.date, status: { $ne: 'cancelled' } }).toArray()
+    res.json({ bookedTimes: [...new Set(bookings.map(b => b.timeSlot).filter(Boolean))] })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
 app.get('/api/bookings/:uid', async (req, res) => {
   try {
     const bookings = await bookingsCol

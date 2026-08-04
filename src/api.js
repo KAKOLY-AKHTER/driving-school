@@ -12,6 +12,7 @@ export const api = {
   getUser: (uid) => request(`/api/users/${uid}`),
   saveUser: (uid, data) => request(`/api/users/${uid}`, { method: 'PUT', body: JSON.stringify(data) }),
   getBookings: (uid) => request(`/api/bookings/${uid}`),
+  getBookingAvailability: (date) => request(`/api/bookings/availability?date=${encodeURIComponent(date)}`),
   createBooking: (data) => request('/api/bookings', { method: 'POST', body: JSON.stringify(data) }),
   deleteBooking: (id) => request(`/api/bookings/${id}`, { method: 'DELETE' }),
   adminStats: () => request('/api/admin/stats'),

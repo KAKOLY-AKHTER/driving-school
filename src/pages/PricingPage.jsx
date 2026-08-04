@@ -21,6 +21,14 @@ const CITIES = [
   'Alameda', 'Pleasanton', 'San Ramon', 'Milpitas',
 ]
 
+const PICKUP_TIMES = [
+  '07:00 AM - 09:00 AM',
+  '09:00 AM - 11:00 AM',
+  '12:00 PM - 02:00 PM',
+  '02:00 PM - 04:00 PM',
+  '04:00 PM - 06:00 PM',
+]
+
 const priceNumber = (value) => {
   const n = parseFloat(String(value || '').replace(/[^0-9.]/g, ''))
   return Number.isFinite(n) ? n : 0
@@ -36,9 +44,14 @@ export default function PricingPage() {
   const navigate = useNavigate()
   const [step, setStep] = useState(null)
   const [selectedTier, setSelectedTier] = useState(null)
+  const [selectedPlans, setSelectedPlans] = useState([])
   const [selectedCity, setSelectedCity] = useState('')
   const [calendarMonth, setCalendarMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1))
   const [selectedDate, setSelectedDate] = useState('')
+  const [selectedTime, setSelectedTime] = useState('')
+  const [selectedSlots, setSelectedSlots] = useState([])
+  const [pendingDate, setPendingDate] = useState('')
+  const [bookedTimes, setBookedTimes] = useState([])
   const [error, setError] = useState('')
   const [tiers, setTiers] = useState(null)
 
@@ -46,10 +59,22 @@ export default function PricingPage() {
     api.getPricing().then(d => { if (Array.isArray(d) && d.length) setTiers(d) }).catch(() => {})
   }, [])
 
+  useEffect(() => {
+    if (!pendingDate) return
+    setBookedTimes([])
+    api.getBookingAvailability(pendingDate)
+      .then(data => setBookedTimes(Array.isArray(data?.bookedTimes) ? data.bookedTimes : []))
+      .catch(() => setBookedTimes([]))
+  }, [pendingDate])
+
   const handleChoose = (tier) => {
+    const existing = selectedPlans.find(plan => plan.tier.id === tier.id)
     setSelectedTier(tier)
-    setSelectedCity('')
-    setSelectedDate('')
+    setSelectedCity(existing?.city || '')
+    setSelectedDate(existing?.slots[0]?.date || '')
+    setSelectedTime(existing?.slots[0]?.time || '')
+    setSelectedSlots(existing?.slots || [])
+    setPendingDate('')
     setCalendarMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
     setStep('city')
     setError('')
@@ -61,19 +86,42 @@ export default function PricingPage() {
       return
     }
     setError('')
+    setSelectedPlans(prev => {
+      const plan = { tier: selectedTier, city: selectedCity, slots: selectedSlots }
+      const exists = prev.some(item => item.tier.id === selectedTier.id)
+      return exists ? prev.map(item => item.tier.id === selectedTier.id ? plan : item) : [...prev, plan]
+    })
     setStep('calendar')
   }
 
-  const handleBooking = () => {
-    if (!selectedDate) {
-      setError('Please select a preferred date.')
+  const handleBooking = async () => {
+    if (!selectedPlans.length || selectedPlans.some(plan => !plan.slots.length)) {
+      setError('Please select at least one date and pickup time for every plan.')
       return
     }
     if (!user) {
       navigate('/login')
       return
     }
-    handleConfirm(true)
+    setStep('loading')
+    try {
+      for (const plan of selectedPlans) {
+        await addToCart({
+          id: plan.tier.id,
+          title: plan.tier.planName,
+          price: plan.tier.planPrice,
+          city: plan.city,
+          preferredDate: plan.slots[0]?.date || '',
+          pickupTime: plan.slots[0]?.time || '',
+          pickupSlots: plan.slots,
+        })
+        await Promise.all(plan.slots.map(slot => api.createBooking({ userId: user.uid, date: slot.date, timeSlot: slot.time, status: 'scheduled' })))
+      }
+      navigate('/cart')
+    } catch {
+      setError('Failed to add booking to cart. Please try again.')
+      setStep('calendar')
+    }
   }
 
   const handleConfirm = async (goToCart = false) => {
@@ -85,11 +133,14 @@ export default function PricingPage() {
         price: selectedTier.planPrice,
         city: selectedCity,
         preferredDate: selectedDate,
+        pickupTime: selectedTime,
+        pickupSlots: selectedSlots,
       }
       const result = await addToCart(course)
       if (result.ok) {
         if (result.duplicate) {
           if (goToCart) {
+            await Promise.all(selectedSlots.map(slot => api.createBooking({ userId: user.uid, date: slot.date, timeSlot: slot.time, status: 'scheduled' })))
             navigate('/cart')
             return
           }
@@ -97,8 +148,10 @@ export default function PricingPage() {
           setStep('confirm')
           return
         }
-        if (goToCart) navigate('/cart')
-        else setStep('success')
+        if (goToCart) {
+          await Promise.all(selectedSlots.map(slot => api.createBooking({ userId: user.uid, date: slot.date, timeSlot: slot.time, status: 'scheduled' })))
+          navigate('/cart')
+        } else setStep('success')
       } else {
         setError(result.error || 'Failed to add to cart. Please try again.')
         setStep(goToCart ? 'calendar' : 'confirm')
@@ -112,10 +165,40 @@ export default function PricingPage() {
   const handleClose = () => {
     setStep(null)
     setSelectedTier(null)
+    setSelectedPlans([])
     setSelectedCity('')
     setSelectedDate('')
+    setSelectedTime('')
+    setSelectedSlots([])
+    setPendingDate('')
     setError('')
   }
+
+  const removePlan = (planId) => {
+    const remaining = selectedPlans.filter(plan => plan.tier.id !== planId)
+    setSelectedPlans(remaining)
+    if (!remaining.length) {
+      handleClose()
+      return
+    }
+    const next = remaining[0]
+    setSelectedTier(next.tier)
+    setSelectedCity(next.city)
+    setSelectedSlots(next.slots)
+    setSelectedDate(next.slots[0]?.date || '')
+    setSelectedTime(next.slots[0]?.time || '')
+  }
+
+  const activatePlan = (plan) => {
+    setSelectedTier(plan.tier)
+    setSelectedCity(plan.city)
+    setSelectedSlots(plan.slots)
+    setSelectedDate(plan.slots[0]?.date || '')
+    setSelectedTime(plan.slots[0]?.time || '')
+    setError('')
+  }
+
+  const plansTotal = selectedPlans.reduce((sum, plan) => sum + priceNumber(plan.tier.planPrice), 0)
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -239,33 +322,104 @@ export default function PricingPage() {
                   const dayDate = new Date(calendarYear, calendarMonthIndex, day)
                   const disabled = dayDate < today
                   const key = dateKey(day)
-                  const selected = selectedDate === key
+                  const selected = selectedSlots.some(slot => slot.date === key)
                   return (
-                    <button key={key} disabled={disabled} onClick={() => { setSelectedDate(key); setError('') }} style={{ minHeight: '42px', border: selected ? '2px solid #0755ae' : `1px solid ${disabled ? '#fee2e2' : '#cde7d2'}`, borderRadius: '3px', background: selected ? '#dbeafe' : disabled ? '#fff1f2' : '#edf7ef', color: selected ? '#0755ae' : disabled ? '#ff3b45' : '#19963b', fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: selected ? 800 : 500, cursor: disabled ? 'not-allowed' : 'pointer' }}>{day}</button>
+                    <button key={key} disabled={disabled} onClick={() => { setPendingDate(key); setError('') }} style={{ minHeight: '42px', border: selected ? '2px solid #0755ae' : `1px solid ${disabled ? '#fee2e2' : '#cde7d2'}`, borderRadius: '3px', background: selected ? '#dbeafe' : disabled ? '#fff1f2' : '#edf7ef', color: selected ? '#0755ae' : disabled ? '#ff3b45' : '#19963b', fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: selected ? 800 : 500, cursor: disabled ? 'not-allowed' : 'pointer' }}>{day}</button>
                   )
                 })}
               </div>
 
               <div style={{ marginTop: '0.9rem', fontFamily: 'var(--font-body)', fontSize: '0.75rem', fontWeight: 700, color: DARK }}>Selected Dates:</div>
+              {selectedPlans.filter(plan => plan.tier.id !== selectedTier.id).map(plan => (
+                <div key={plan.tier.id} onClick={() => activatePlan(plan)} style={{ marginTop: '0.35rem', padding: '0.65rem', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
+                    <div>
+                      <strong style={{ color: '#586576', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>{plan.tier.planName}</strong>
+                      <span style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> ({plan.slots.length}/4 slots)</span>
+                      <div style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>{plan.city}</div>
+                      <button onClick={(e) => { e.stopPropagation(); removePlan(plan.tier.id) }} style={{ marginTop: '0.4rem', padding: '0.32rem 0.5rem', border: 0, borderRadius: '4px', background: '#e93647', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.65rem', cursor: 'pointer' }}>Remove plan</button>
+                    </div>
+                    <span style={{ alignSelf: 'flex-start', padding: '0.25rem 0.55rem', borderRadius: '999px', background: '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 800 }}>{plan.tier.planPrice}</span>
+                  </div>
+                  <div style={{ borderTop: '1px solid #e2e8f0', marginTop: '0.55rem', paddingTop: '0.45rem' }}>
+                    {plan.slots.length ? plan.slots.map(slot => (
+                      <div key={`${slot.date}-${slot.time}`} style={{ padding: '0.45rem', marginBottom: '0.3rem', background: '#f8fafc', color: '#53657a', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>
+                        <div>{new Date(`${slot.date}T00:00:00`).toLocaleDateString('en-US')} &nbsp; {slot.time}</div>
+                      </div>
+                    )) : <span style={{ color: '#ef3340', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>No slot selected</span>}
+                  </div>
+                </div>
+              ))}
               <div style={{ marginTop: '0.35rem', padding: '0.65rem', border: '1.5px solid #0755ae', background: '#eaf2ff' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
                   <div>
                     <strong style={{ color: '#586576', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>{selectedTier.planName}</strong>
-                    <span style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> (Select 1 slot date)</span>
+                    <span style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> (Select up to 4 slots)</span>
                     <div style={{ marginTop: '0.2rem', color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>{selectedCity}</div>
+                    <button onClick={() => removePlan(selectedTier.id)} style={{ marginTop: '0.45rem', padding: '0.35rem 0.55rem', border: 0, borderRadius: '4px', background: '#e93647', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer' }}>Remove plan</button>
                   </div>
                   <span style={{ alignSelf: 'flex-start', padding: '0.25rem 0.55rem', borderRadius: '999px', background: '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 800 }}>{selectedTier.planPrice}</span>
                 </div>
-                <div style={{ borderTop: '1px solid #cbd5e1', marginTop: '0.65rem', paddingTop: '0.55rem', color: selectedDate ? '#0755ae' : '#ef3340', fontFamily: 'var(--font-body)', fontSize: '0.75rem' }}>
-                  {selectedDate ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'No slot selected'}
+                <div style={{ borderTop: '1px solid #cbd5e1', marginTop: '0.65rem', paddingTop: '0.55rem', fontFamily: 'var(--font-body)', fontSize: '0.75rem' }}>
+                  {selectedSlots.length ? selectedSlots.map(slot => (
+                    <div key={`${slot.date}-${slot.time}`} style={{ padding: '0.55rem', marginBottom: '0.35rem', background: 'rgba(255,255,255,0.62)', borderRadius: '3px', color: '#53657a' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.3rem' }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+                        {new Date(`${slot.date}T00:00:00`).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                        <span>{slot.time}</span>
+                        <button onClick={() => { const remaining = selectedSlots.filter(item => item.date !== slot.date || item.time !== slot.time); setSelectedSlots(remaining); setSelectedPlans(prev => prev.map(plan => plan.tier.id === selectedTier.id ? { ...plan, slots: remaining } : plan)); setSelectedDate(remaining[0]?.date || ''); setSelectedTime(remaining[0]?.time || ''); setError('') }} aria-label="Remove selected slot" style={{ width: '24px', height: '24px', marginLeft: '0.2rem', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 0, borderRadius: '4px', background: '#e93647', color: '#fff', cursor: 'pointer' }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  )) : <span style={{ color: '#ef3340' }}>No slot selected</span>}
                 </div>
               </div>
 
               {error && <p style={{ color: '#dc2626', margin: '0.45rem 0 0', fontFamily: 'var(--font-body)', fontSize: '0.75rem' }}>{error}</p>}
-              <button onClick={() => setStep('city')} style={{ width: '100%', marginTop: '0.6rem', minHeight: '34px', border: 0, borderRadius: '6px', background: '#747f88', color: '#fff', fontFamily: 'var(--font-body)', fontWeight: 700, cursor: 'pointer' }}>+ Add More Plans</button>
-              <div style={{ margin: '0.45rem 0', color: '#08284a', fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: 800 }}>Total: {selectedTier.planPrice}</div>
+              <button onClick={() => { setStep(null); setSelectedTier(null); setPendingDate('') }} style={{ width: '100%', marginTop: '0.6rem', minHeight: '34px', border: 0, borderRadius: '6px', background: '#747f88', color: '#fff', fontFamily: 'var(--font-body)', fontWeight: 700, cursor: 'pointer' }}>+ Add More Plans</button>
+              <div style={{ margin: '0.45rem 0', color: '#08284a', fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: 800 }}>Total: ${plansTotal.toFixed(2)}</div>
               <button onClick={handleBooking} style={{ width: '100%', minHeight: '38px', border: 0, borderRadius: '8px', background: '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontWeight: 800, cursor: 'pointer' }}>Proceed to Booking</button>
             </div>
+
+            {pendingDate && (
+              <div style={{ position: 'fixed', inset: 0, zIndex: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(15,23,42,0.48)' }}>
+                <div style={{ position: 'relative', width: '100%', maxWidth: '525px', maxHeight: '92vh', overflowY: 'auto', padding: '3rem clamp(1.2rem, 6vw, 3.5rem) 1.4rem', borderRadius: '16px', background: '#fff', boxShadow: '0 24px 70px rgba(15,23,42,0.3)' }}>
+                  <button onClick={() => setPendingDate('')} aria-label="Close pickup time" style={{ position: 'absolute', top: '0.8rem', right: '1.1rem', border: 0, background: 'transparent', color: '#64748b', fontSize: '2rem', cursor: 'pointer' }}>&times;</button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem', marginBottom: '2.5rem' }}>
+                    <div style={{ width: '55px', height: '55px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e0efff', color: '#0755ae' }}>
+                      <svg width="25" height="25" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>
+                    </div>
+                    <h3 style={{ margin: 0, color: '#102a46', fontFamily: 'var(--font-body)', fontSize: '1.5rem', fontWeight: 800 }}>Select Pickup Time</h3>
+                  </div>
+                  <p style={{ margin: '0 0 0.6rem', color: DARK, fontFamily: 'var(--font-body)', fontSize: '1.05rem', fontWeight: 800 }}>
+                    Selected Date: {new Date(`${pendingDate}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                  </p>
+                  <p style={{ margin: '0 0 1.2rem', color: '#102a46', fontFamily: 'var(--font-body)', fontSize: '1rem' }}>Choose your preferred pickup time:</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+                    {PICKUP_TIMES.map(time => {
+                      const booked = bookedTimes.includes(time) || selectedSlots.some(slot => slot.date === pendingDate && slot.time === time)
+                      const limitReached = selectedSlots.length >= 4
+                      return (
+                      <div key={time} style={{ minHeight: '56px', padding: '0.7rem 0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', borderRadius: '11px', background: booked ? '#ffe5e5' : '#fff', boxShadow: booked ? 'none' : '0 8px 24px rgba(15,23,42,0.09)' }}>
+                        <strong style={{ color: '#08284a', fontFamily: 'var(--font-body)', fontSize: '1rem' }}>{time}</strong>
+                        {booked ? (
+                          <button disabled style={{ padding: '0.55rem 0.75rem', border: 0, borderRadius: '5px', background: '#e93647', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.9rem', fontWeight: 800, cursor: 'not-allowed' }}>Booked</button>
+                        ) : (
+                          <button disabled={limitReached} onClick={() => { const nextSlots = [...selectedSlots, { date: pendingDate, time }]; setSelectedSlots(nextSlots); setSelectedPlans(prev => prev.map(plan => plan.tier.id === selectedTier.id ? { ...plan, slots: nextSlots } : plan)); setSelectedDate(pendingDate); setSelectedTime(time); setPendingDate(''); setError('') }} style={{ padding: '0.55rem 0.75rem', border: 0, borderRadius: '5px', background: limitReached ? '#94a3b8' : '#0866ff', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.9rem', cursor: limitReached ? 'not-allowed' : 'pointer' }}>{limitReached ? 'Max 4 Slots' : 'Book Now'}</button>
+                        )}
+                      </div>
+                    )})}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '3rem' }}>
+                    <button onClick={() => setPendingDate('')} style={{ padding: '0.7rem 1rem', border: '1px solid #d7dee8', borderRadius: '8px', background: '#fff', color: '#1f2937', fontFamily: 'var(--font-body)', fontSize: '0.95rem', cursor: 'pointer' }}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
