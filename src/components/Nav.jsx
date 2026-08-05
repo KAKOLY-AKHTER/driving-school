@@ -197,7 +197,7 @@ export default function Nav() {
                   textTransform: 'uppercase',
                   fontWeight: 700,
                   borderRadius: 'var(--radius-sm)',
-                  border: '1px solid rgba(253,188,1,0.3)',
+                  border: '2px solid rgba(253,188,1,0.82)',
                   textDecoration: 'none',
                   transition: 'all 0.3s ease',
                   whiteSpace: 'nowrap',

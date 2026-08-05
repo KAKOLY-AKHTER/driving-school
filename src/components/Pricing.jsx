@@ -130,7 +130,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
         }
         .price-card {
           background: #ffffff;
-          border: 1.5px solid #E2EBF5;
+          border: 2px solid #cbd8e7;
           border-radius: var(--radius-lg);
           padding: 2.5rem 1.5rem;
           display: flex;
@@ -139,8 +139,12 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
           overflow: hidden;
           transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s cubic-bezier(0.22,1,0.36,1), border-color 0.4s ease;
           animation: priceCardIn 0.6s cubic-bezier(0.22,1,0.36,1) both;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+          box-shadow:
+            0 18px 42px rgba(8,36,72,0.12),
+            0 4px 12px rgba(8,36,72,0.08),
+            inset 0 1px 0 rgba(255,255,255,0.95);
           margin-right: 0.5rem;
+          isolation: isolate;
         }
         .price-card::after {
           content: '';
@@ -167,7 +171,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
           transform: translateY(-10px);
           background: #ffffff;
           border-color: var(--tone);
-          box-shadow: 0 20px 50px var(--tone-glow);
+          box-shadow: 0 24px 56px var(--tone-glow), 0 14px 30px rgba(8,36,72,0.16);
         }
         .price-card:hover .price-planbar {
           box-shadow: 0 7px 14px rgba(0,0,0,0.22);
@@ -214,7 +218,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
           border-radius: var(--radius-lg);
           animation: priceCardIn 0.6s cubic-bezier(0.22,1,0.36,1) 0.2s both, priceGlow 3s ease-in-out infinite !important;
           z-index: 2;
-          box-shadow: 0 8px 32px var(--tone-glow);
+          box-shadow: 0 20px 48px var(--tone-glow), 0 7px 18px rgba(8,36,72,0.12);
         }
         .price-card-highlight:hover {
           border-color: var(--tone) !important;
@@ -239,13 +243,16 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
         }
         .price-card-light {
           background: #ffffff;
-          border: 1px solid #E2EBF5;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+          border: 2px solid #cbd8e7;
+          box-shadow:
+            0 18px 42px rgba(8,36,72,0.12),
+            0 4px 12px rgba(8,36,72,0.08),
+            inset 0 1px 0 rgba(255,255,255,0.95);
         }
         .price-card-light:hover {
           background: #ffffff;
           border-color: var(--tone);
-          box-shadow: 0 16px 48px rgba(0,0,0,0.1);
+          box-shadow: 0 24px 56px var(--tone-glow), 0 14px 30px rgba(8,36,72,0.16);
           transform: translateY(-10px);
         }
         .price-card-light .price-card-highlight {
@@ -302,10 +309,10 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
           }
           .price-card {
             border-radius: var(--radius-lg);
-            border: 1.5px solid #E2EBF5;
-            border-right: 1.5px solid #E2EBF5;
+            border: 2px solid #cbd8e7;
+            border-right: 2px solid #cbd8e7;
           }
-          .price-card:last-child { border-right: 1.5px solid #E2EBF5; }
+          .price-card:last-child { border-right: 2px solid #cbd8e7; }
         }
         @media (max-width: 767px) {
           .price-scroll {
@@ -417,11 +424,11 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                     <div>
                       <span style={{
                         fontFamily: 'var(--font-body)',
-                        fontSize: '0.55rem',
+                        fontSize: '0.62rem',
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
-                        color: '#64748B',
-                        fontWeight: 600,
+                        color: '#455a74',
+                        fontWeight: 700,
                         display: 'block',
                         marginBottom: '0.15rem',
                       }}>
@@ -429,7 +436,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                       </span>
                       <span className="price-value" style={{
                         fontFamily: 'var(--font-display)',
-                        fontSize: '2rem',
+                        fontSize: '2.2rem',
                         color: 'var(--tone)',
                         fontWeight: 800,
                         lineHeight: 1,
@@ -475,7 +482,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                   <div style={{
                     width: '100%',
                     height: '1px',
-                    background: 'rgba(10,22,40,0.08)',
+                    background: '#dbe5ef',
                     marginBottom: '1.25rem',
                   }} />
 
@@ -508,8 +515,9 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                         )}
                         <span style={{
                           fontFamily: 'var(--font-body)',
-                          color: opt.permission === 'Included' ? 'rgba(10,22,40,0.75)' : opt.permission === 'Not Included' ? 'rgba(10,22,40,0.45)' : 'rgba(10,22,40,0.4)',
-                          fontSize: '0.85rem',
+                          color: opt.permission === 'Included' ? '#34455f' : opt.permission === 'Not Included' ? '#7b8798' : '#64748b',
+                          fontSize: '0.9rem',
+                          fontWeight: opt.permission === 'Included' ? 500 : 400,
                           lineHeight: 1.5,
                           textDecoration: opt.permission === 'Not Included' ? 'line-through' : 'none',
                         }}>

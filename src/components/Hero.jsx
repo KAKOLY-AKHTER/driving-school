@@ -2,6 +2,20 @@ import { Link } from 'react-router-dom'
 import './HeroSlider.css'
 
 export default function Hero() {
+  const scrollToPricing = () => {
+    const pricingSection = document.getElementById('pricing')
+    if (!pricingSection) return
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const compactNavbarOffset = 84
+    const targetTop = pricingSection.getBoundingClientRect().top + window.scrollY - compactNavbarOffset
+
+    window.scrollTo({
+      top: Math.max(0, targetTop),
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+    })
+  }
+
   return (
     <>
     <style>{`
@@ -22,6 +36,98 @@ export default function Hero() {
         background: rgba(253,188,1,0.18);
         border-color: var(--color-gold);
       }
+      .hero-scroll-wrap {
+        position: absolute;
+        z-index: 2;
+        bottom: 1.35rem;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        pointer-events: none;
+      }
+      .hero-scroll-cue {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.42rem;
+        opacity: 0.98;
+        padding: 0;
+        color: inherit;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+        filter: drop-shadow(0 4px 10px rgba(0,0,0,0.72));
+        transition: transform 0.22s ease, filter 0.22s ease;
+        pointer-events: auto;
+      }
+      .hero-scroll-cue:hover {
+        transform: translateY(3px);
+        filter: drop-shadow(0 5px 13px rgba(0,0,0,0.78)) drop-shadow(0 0 8px rgba(253,188,1,0.28));
+      }
+      .hero-scroll-cue:focus-visible {
+        outline: 2px solid #ffd84a;
+        outline-offset: 7px;
+        border-radius: 999px;
+      }
+      .hero-scroll-label {
+        padding-left: 0.32em;
+        color: #fff3b0;
+        font-family: var(--font-mono);
+        font-size: 0.68rem;
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        text-shadow: 0 2px 5px rgba(0,0,0,0.9), 0 0 10px rgba(253,188,1,0.35);
+      }
+      .hero-scroll-mouse {
+        position: relative;
+        display: block;
+        width: 25px;
+        height: 37px;
+        border: 1.5px solid rgba(255,216,74,0.95);
+        border-radius: 999px;
+        background: rgba(3,20,43,0.2);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 0 12px rgba(253,188,1,0.22);
+      }
+      .hero-scroll-wheel {
+        position: absolute;
+        top: 7px;
+        left: 50%;
+        width: 3px;
+        height: 7px;
+        border-radius: 999px;
+        background: #ffd84a;
+        box-shadow: 0 0 8px rgba(255,216,74,0.9);
+        transform: translateX(-50%);
+        animation: heroScrollWheel 1.8s ease-in-out infinite;
+      }
+      .hero-scroll-line {
+        display: block;
+        width: 2px;
+        height: 30px;
+        background: linear-gradient(to bottom, #ffd84a 0%, rgba(253,188,1,0.72) 48%, transparent 100%);
+        box-shadow: 0 0 8px rgba(253,188,1,0.6);
+        transform-origin: top;
+        animation: heroScrollLine 1.8s ease-in-out infinite;
+      }
+      @keyframes heroScrollWheel {
+        0% { opacity: 0; transform: translate(-50%, -1px); }
+        28% { opacity: 1; }
+        72% { opacity: 1; }
+        100% { opacity: 0; transform: translate(-50%, 11px); }
+      }
+      @keyframes heroScrollLine {
+        0%, 100% { opacity: 0.48; transform: scaleY(0.78); }
+        50% { opacity: 1; transform: scaleY(1); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .hero-scroll-wheel,
+        .hero-scroll-line {
+          animation: none;
+        }
+      }
       @media (max-width: 600px) {
         .hero-content {
           display: flex !important;
@@ -39,6 +145,10 @@ export default function Hero() {
           min-height: auto !important;
           align-items: flex-start !important;
         }
+        .hero-scroll-wrap { bottom: 0.75rem; }
+        .hero-scroll-label { font-size: 0.58rem; }
+        .hero-scroll-mouse { width: 22px; height: 32px; }
+        .hero-scroll-line { height: 22px; }
       }
     `}</style>
     <section
@@ -116,18 +226,14 @@ export default function Hero() {
       </div>
 
       {/* Scroll indicator */}
-      <div style={{
-        position: 'absolute', bottom: '2rem', left: 0, right: 0,
-        display: 'flex', justifyContent: 'center',
-      }} aria-hidden="true">
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
-          animation: 'floatY 3s ease-in-out infinite',
-          opacity: 0.5,
-        }}>
-        <span className="eyebrow" style={{ fontSize: '0.7rem' }}>Scroll</span>
-        <div style={{ width: '1px', height: '40px', background: 'linear-gradient(to bottom, var(--color-gold), transparent)' }} />
-        </div>
+      <div className="hero-scroll-wrap">
+        <button type="button" className="hero-scroll-cue" onClick={scrollToPricing} aria-label="Scroll to pricing plans">
+          <span className="hero-scroll-label">Scroll</span>
+          <span className="hero-scroll-mouse">
+            <span className="hero-scroll-wheel" />
+          </span>
+          <span className="hero-scroll-line" />
+        </button>
       </div>
 
     </section>
