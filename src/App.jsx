@@ -18,6 +18,11 @@ import AdminLoginPage from './pages/AdminLoginPage'
 import AdminSetupPage from './pages/AdminSetupPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import TermsPage from './pages/TermsPage'
+import OnlineCoursePage from './pages/OnlineCoursePage'
+import OnlineCourseDetailsPage from './pages/OnlineCourseDetailsPage'
+import OnlineCoursePricingPage from './pages/OnlineCoursePricingPage'
+import OnlineCoursePermitPage from './pages/OnlineCoursePermitPage'
+import OnlineCourseDriverLicensePage from './pages/OnlineCourseDriverLicensePage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -109,6 +114,11 @@ function AppRoutes() {
               <Route path="/" element={<Home />} />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/online-drivers-ed" element={<OnlineCoursePage />} />
+              <Route path="/online-drivers-ed/details" element={<OnlineCourseDetailsPage />} />
+              <Route path="/online-drivers-ed/pricing" element={<OnlineCoursePricingPage />} />
+              <Route path="/online-drivers-ed/permit" element={<OnlineCoursePermitPage />} />
+              <Route path="/online-drivers-ed/driver-license" element={<OnlineCourseDriverLicensePage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
               <Route path="/terms" element={<TermsPage />} />

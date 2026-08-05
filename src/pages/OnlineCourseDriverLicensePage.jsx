@@ -1,0 +1,26 @@
+import { Link } from 'react-router-dom'
+import { usePageMeta } from '../usePageMeta'
+
+const requirements = [
+  'Have your California provisional permit for at least 6 months.',
+  'Complete an approved California driver education course.',
+  'Complete 6 hours of professional driver training.',
+  'Complete 50 hours of driving practice with an adult age 25 or older who has a valid California driver license. At least 10 hours must be at night.',
+  'Have your picture taken.',
+  'Provide proof of financial responsibility.',
+]
+
+export default function OnlineCourseDriverLicensePage(){
+  usePageMeta('California Provisional Driver License Checklist','Review the requirements for taking your California driving test and applying for a provisional driver license.')
+  return <div className="dl-page"><style>{`
+    .dl-page{padding-top:10rem;background:#f3f7fd;color:#071b34;font-family:var(--font-body);min-height:100vh}.dl-wrap{width:min(1040px,calc(100% - 2rem));margin:auto}.dl-nav{position:sticky;top:4.5rem;z-index:30;margin-top:1rem;background:#06285f}.dl-nav-in{min-height:58px;display:flex;align-items:center;justify-content:center;gap:.4rem 1rem;overflow-x:auto;scrollbar-width:none}.dl-nav a{flex:0 0 auto;padding:.72rem 1rem;border-radius:7px;color:#fff;font-size:.76rem;font-weight:800;text-decoration:none;text-transform:uppercase;white-space:nowrap}.dl-nav a:hover{background:#FDBC01;color:#0145A8}.dl-nav a.active{color:#FDBC01;text-shadow:0 0 12px rgba(253,188,1,.6)}
+    .dl-head{padding:3.7rem 1rem;text-align:center;background:#eaf1fc;border-bottom:1px solid #d7e1ef}.dl-head h1{margin:0 0 .8rem;font-family:var(--font-display);font-size:clamp(2rem,5vw,3rem)}.dl-head p{max-width:680px;margin:0 auto 1.5rem;color:#526277;font-size:1.05rem;line-height:1.7}.dl-facts{display:flex;justify-content:center;gap:.7rem;flex-wrap:wrap}.dl-fact{padding:.65rem 1rem;border-radius:8px;background:#fff;box-shadow:0 5px 15px rgba(15,40,75,.08);font-size:.73rem;text-transform:uppercase;color:#64748b}.dl-fact strong{color:#063b82;margin-left:.35rem}
+    .dl-content{padding:3.5rem 0}.dl-card{max-width:780px;margin:auto;padding:1.5rem 1.8rem;background:#fff;border-radius:15px;border-top:4px solid #d92332;box-shadow:0 13px 35px rgba(15,40,75,.1)}.dl-list{padding:0;list-style:none;margin:0}.dl-list li{display:flex;gap:1rem;padding:1rem 0;border-bottom:1px dotted #cbd5e1;color:#526277;line-height:1.6}.dl-list li:last-child{border:0}.dl-check{flex:0 0 21px;width:21px;height:21px;display:grid;place-items:center;border:2px solid #d92332;border-radius:50%;color:#d92332;font-size:.7rem;font-weight:900}.dl-appointment{margin-top:.5rem;padding:1.2rem;background:#f8fafc;border-radius:10px;color:#526277;line-height:1.7}.dl-appointment strong{color:#071b34}.dl-appointment a{color:#d92332;font-weight:800}
+    .dl-cta{margin:5rem auto 2rem;display:grid;grid-template-columns:.8fr 1.2fr;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 15px 40px rgba(15,40,75,.12)}.dl-price{display:grid;place-items:center;padding:2rem;background:linear-gradient(135deg,#061c45,#063b82);color:#fff;text-align:center}.dl-price strong{font-family:var(--font-display);font-size:3rem}.dl-buy{padding:2rem;display:flex;flex-direction:column;justify-content:center}.dl-btn{width:max-content;padding:.8rem 1.3rem;border-radius:6px;background:#d92332;color:#fff;font-weight:800;text-decoration:none}
+    @media(max-width:760px){.dl-page{padding-top:9.5rem}.dl-nav{margin-top:.5rem}.dl-nav-in{justify-content:flex-start;padding-inline:.6rem}.dl-card{padding:1.2rem}.dl-cta{grid-template-columns:1fr}}
+  `}</style>
+  <nav className="dl-nav"><div className="dl-wrap dl-nav-in"><Link to="/online-drivers-ed">Home</Link><Link to="/online-drivers-ed/details">Course Details</Link><Link to="/online-drivers-ed/pricing">Pricing</Link><Link to="/online-drivers-ed/permit">Permit</Link><Link className="active" to="/online-drivers-ed/driver-license">Driver License</Link><Link to="/">Behind the Wheel</Link></div></nav>
+  <header className="dl-head"><h1>Driver License</h1><p>At 16 years old you can take your driving test to apply for your California provisional driver's license. Use this checklist to prepare.</p><div className="dl-facts"><span className="dl-fact">Road Test <strong>Age 16+</strong></span><span className="dl-fact">Permit <strong>6 months min</strong></span><span className="dl-fact">Practice <strong>50 hours</strong></span><span className="dl-fact">Night Driving <strong>10+ hours</strong></span></div></header>
+  <main className="dl-content"><div className="dl-wrap"><section className="dl-card"><ul className="dl-list">{requirements.map(item=><li key={item}><span className="dl-check">✓</span><span>{item}</span></li>)}</ul><div className="dl-appointment"><strong>Make a driving test appointment:</strong><br/>Visit the <Link to="/schedule">California DMV appointments page</Link> to schedule your road test.</div></section><section className="dl-cta"><div className="dl-price"><div><small>ONLINE COURSE</small><br/><strong>$39.99</strong></div></div><div className="dl-buy"><h2>California DMV-Approved Teen Driver Education</h2><p style={{color:'#64748b'}}>100% online, self-paced lessons with your official completion certificate included.</p><Link className="dl-btn" to="/register">Sign Up Now</Link></div></section></div></main>
+  </div>
+}

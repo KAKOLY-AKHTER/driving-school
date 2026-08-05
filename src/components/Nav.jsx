@@ -24,6 +24,7 @@ export default function Nav() {
   const location = useLocation()
   const navigate = useNavigate()
   const isHome = location.pathname === '/'
+  const isOnlineCourse = location.pathname.startsWith('/online-drivers-ed')
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40)
     window.addEventListener('scroll', handleScroll, { passive: true })
@@ -45,9 +46,9 @@ export default function Nav() {
         top: 0, left: 0, right: 0,
         zIndex: 50,
         backgroundColor: 'transparent',
-        background: solidBg ? '#0145A8' : 'transparent',
-        borderBottom: solidBg ? '1px solid rgba(253, 188, 1, 0.2)' : 'none',
-        boxShadow: solidBg
+        background: isOnlineCourse ? '#ffffff' : solidBg ? '#0145A8' : 'transparent',
+        borderBottom: isOnlineCourse ? '1px solid #e2e8f0' : solidBg ? '1px solid rgba(253, 188, 1, 0.2)' : 'none',
+        boxShadow: isOnlineCourse ? '0 4px 18px rgba(15,40,75,0.08)' : solidBg
           ? '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(253,188,1,0.08)'
           : 'none',
         transition: 'all 0.4s ease',
@@ -59,7 +60,7 @@ export default function Nav() {
         padding: '0.4rem 0',
         color: '#0a1628',
         borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
-        display: scrolled ? 'none' : 'block'
+        display: isOnlineCourse || scrolled ? 'none' : 'block'
       }}>
         <div className="container" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.75rem 2rem', fontSize: '0.9rem', fontWeight: '600' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
@@ -76,7 +77,7 @@ export default function Nav() {
         <nav
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            height: scrolled ? '4.5rem' : '9rem',
+            height: isOnlineCourse ? '7rem' : scrolled ? '4.5rem' : '9rem',
             transition: 'height 0.3s ease',
           }}
           aria-label="Main navigation"
@@ -87,11 +88,11 @@ export default function Nav() {
               src="/driving-logo.png"
               alt="A Precision Driving School Logo"
               style={{
-                height: scrolled ? '60px' : '140px',
+                height: isOnlineCourse ? '96px' : scrolled ? '60px' : '140px',
                 width: 'auto',
                 objectFit: 'contain',
                 transition: 'height 0.3s ease',
-                filter: 'drop-shadow(0 0 18px rgba(255,255,255,0.95)) drop-shadow(0 0 6px rgba(255,255,255,0.8))'
+                filter: isOnlineCourse ? 'none' : 'drop-shadow(0 0 18px rgba(255,255,255,0.95)) drop-shadow(0 0 6px rgba(255,255,255,0.8))'
               }}
             />
           </Link>
@@ -99,7 +100,7 @@ export default function Nav() {
           {/* Right Actions & Links */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             {/* Desktop Links */}
-            <ul role="list" className="hidden lg:flex" style={{ gap: '0.5rem', alignItems: 'center', listStyle: 'none', margin: 0, padding: 0 }}>
+            {!isOnlineCourse && <ul role="list" className="hidden lg:flex" style={{ gap: '0.5rem', alignItems: 'center', listStyle: 'none', margin: 0, padding: 0 }}>
               {NAV_LINKS.map(l => (
                 <li key={l.label}>
                   {l.external ? (
@@ -113,7 +114,7 @@ export default function Nav() {
                   )}
                 </li>
               ))}
-            </ul>
+            </ul>}
 
             {/* Auth - Desktop */}
             {user ? (
@@ -218,7 +219,7 @@ export default function Nav() {
               aria-expanded={open}
               style={{
                 width: '44px', height: '44px',
-                display: 'flex', flexDirection: 'column',
+                display: isOnlineCourse ? 'none' : 'flex', flexDirection: 'column',
                 justifyContent: 'center', alignItems: 'center',
                 gap: '6px',
                 color: '#ffffff',
@@ -308,6 +309,19 @@ export default function Nav() {
       </div>
 
       <style>{`
+        .oc-page, .cd-page, .cp-page, .pp-page, .dl-page {
+          padding-top: 7rem !important;
+        }
+        .oc-subnav, .cd-nav, .cp-nav, .pp-nav, .dl-nav {
+          margin-top: 0 !important;
+        }
+        body:has(.oc-page, .cd-page, .cp-page, .pp-page, .dl-page) .oc-subnav,
+        body:has(.oc-page, .cd-page, .cp-page, .pp-page, .dl-page) .cd-nav,
+        body:has(.oc-page, .cd-page, .cp-page, .pp-page, .dl-page) .cp-nav,
+        body:has(.oc-page, .cd-page, .cp-page, .pp-page, .dl-page) .pp-nav,
+        body:has(.oc-page, .cd-page, .cp-page, .pp-page, .dl-page) .dl-nav {
+          top: 7rem !important;
+        }
         .nav-link-desktop {
           font-family: var(--font-body);
           font-size: 0.9rem;

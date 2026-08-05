@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -83,6 +83,7 @@ const CARD_THEMES = [
 ]
 
 export default function Pricing({ light = false, onEnroll = null, tiers: propTiers = null }) {
+  const navigate = useNavigate()
   const TIERS = propTiers && propTiers.length ? propTiers : DEFAULT_TIERS
   return (
     <>
@@ -106,8 +107,8 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
         .price-cta {
           position: relative;
           overflow: visible;
-          background: linear-gradient(135deg, #FDBC01, #C8960C) !important;
-          box-shadow: 0 4px 18px rgba(253,188,1,0.45), 0 1px 0 rgba(255,255,255,0.4) inset, 0 -2px 6px rgba(0,0,0,0.15) inset;
+          background: linear-gradient(135deg, var(--tone), var(--tone-bright)) !important;
+          box-shadow: 0 4px 18px var(--tone-glow), 0 1px 0 rgba(255,255,255,0.4) inset, 0 -2px 6px rgba(0,0,0,0.15) inset;
           animation: priceCtaGlow 2.2s ease-in-out infinite;
         }
         .price-cta::after {
@@ -122,8 +123,8 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
           animation: priceCtaShine 3s ease-in-out infinite;
         }
         @keyframes priceCtaGlow {
-          0%, 100% { box-shadow: 0 4px 18px rgba(253,188,1,0.45), 0 1px 0 rgba(255,255,255,0.4) inset, 0 -2px 6px rgba(0,0,0,0.15) inset; }
-          50% { box-shadow: 0 6px 30px rgba(253,188,1,0.7), 0 1px 0 rgba(255,255,255,0.4) inset, 0 -2px 6px rgba(0,0,0,0.15) inset; }
+          0%, 100% { box-shadow: 0 4px 18px var(--tone-glow), 0 1px 0 rgba(255,255,255,0.4) inset, 0 -2px 6px rgba(0,0,0,0.15) inset; }
+          50% { box-shadow: 0 7px 28px var(--tone-glow), 0 1px 0 rgba(255,255,255,0.45) inset, 0 -2px 6px rgba(0,0,0,0.15) inset; }
         }
         @keyframes priceCtaShine {
           0%, 55% { left: -80%; }
@@ -526,7 +527,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                   {/* CTA */}
                   {onEnroll ? (
                     <button
-                      onClick={() => onEnroll(tier)}
+                      onClick={() => tier.id === '1' ? navigate('/online-drivers-ed') : onEnroll(tier)}
                       className="price-cta"
                       style={{
                         display: 'flex',
@@ -556,41 +557,43 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                         e.currentTarget.style.transform = 'translateY(0) scale(1)'
                       }}
                     >
-                      Select
+                      {tier.id === '1' ? 'Buy Plan' : 'Select'}
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <path d="M5 12h14M12 5l7 7-7 7" />
                       </svg>
                     </button>
                   ) : (
                     <Link
-                      to="/pricing"
+                      to={tier.id === '1' ? '/online-drivers-ed' : `/pricing?plan=${encodeURIComponent(tier.id)}`}
+                      className="price-cta"
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: '0.5rem',
                         width: '100%',
-                        padding: '0.85rem 1.5rem',
+                        padding: '1rem 1.5rem',
                         fontFamily: 'var(--font-mono)',
-                        fontSize: '0.65rem',
-                        letterSpacing: '0.15em',
+                        fontSize: '0.72rem',
+                        letterSpacing: '0.18em',
                         textTransform: 'uppercase',
                         fontWeight: 700,
                         textDecoration: 'none',
                         transition: 'all 0.3s ease',
                         color: '#fff',
-                        background: `linear-gradient(135deg, ${GOLD}, ${GOLD_DEEP})`,
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'linear-gradient(135deg, var(--tone), var(--tone-bright))',
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.transform = 'translateY(-2px)'
-                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(253,188,1,0.45)'
+                        e.currentTarget.style.boxShadow = '0 8px 25px var(--tone-glow)'
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.transform = 'translateY(0)'
-                        e.currentTarget.style.boxShadow = 'none'
+                        e.currentTarget.style.boxShadow = '0 4px 18px var(--tone-glow)'
                       }}
                     >
-                      {tier.planName === 'TEEN ONLINE DRIVERS ED' ? 'BUY Plan' : 'Select Plan'}
+                      {tier.id === '1' ? 'Buy Plan' : 'Select'}
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <path d="M5 12h14M12 5l7 7-7 7" />
                       </svg>

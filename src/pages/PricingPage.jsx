@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useCart } from '../contexts/CartContext'
 import { api } from '../api'
@@ -34,6 +34,24 @@ const priceNumber = (value) => {
   return Number.isFinite(n) ? n : 0
 }
 
+const slotLimitForPlan = (tier) => {
+  const name = String(tier?.planName || '').toUpperCase()
+  if (String(tier?.id) === '2') return 1
+  if (name.includes('PREMIER')) return 5
+  if (name.includes('ESSENTIAL')) return 3
+  if (name.includes('IDEAL FOR STUDENTS')) return 3
+  if (name.includes('BASIC PLAN')) return 1
+  if (name.includes('DMV DRIVE TEST CAR RENTAL')) return 1
+  if (name.includes('FREEWAY FOCUSED COURSE')) return 1
+  return 3
+}
+
+const slotInstruction = (tier) => {
+  const limit = slotLimitForPlan(tier)
+  const dateAndTime = String(tier?.planName || '').toUpperCase().includes('DMV DRIVE TEST CAR RENTAL')
+  return `Select ${limit} slot ${dateAndTime ? 'date & time' : 'date'}`
+}
+
 export default function PricingPage() {
   usePageMeta(
     'Packages & Pricing — A Precision Driving School San Ramon CA',
@@ -42,6 +60,7 @@ export default function PricingPage() {
   const { user } = useAuth()
   const { addToCart } = useCart()
   const navigate = useNavigate()
+  const location = useLocation()
   const [step, setStep] = useState(null)
   const [selectedTier, setSelectedTier] = useState(null)
   const [selectedPlans, setSelectedPlans] = useState([])
@@ -58,6 +77,22 @@ export default function PricingPage() {
   useEffect(() => {
     api.getPricing().then(d => { if (Array.isArray(d) && d.length) setTiers(d) }).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!tiers?.length) return
+    const planId = new URLSearchParams(location.search).get('plan')
+    if (!planId) return
+    const tier = tiers.find(item => String(item.id) === planId)
+    if (!tier) return
+    setSelectedTier(tier)
+    setSelectedCity('')
+    setSelectedDate('')
+    setSelectedTime('')
+    setSelectedSlots([])
+    setCalendarMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
+    setError('')
+    setStep('city')
+  }, [tiers, location.search])
 
   useEffect(() => {
     if (!pendingDate) return
@@ -95,8 +130,8 @@ export default function PricingPage() {
   }
 
   const handleBooking = async () => {
-    if (!selectedPlans.length || selectedPlans.some(plan => !plan.slots.length)) {
-      setError('Please select at least one date and pickup time for every plan.')
+    if (!selectedPlans.length || selectedPlans.some(plan => plan.slots.length !== slotLimitForPlan(plan.tier))) {
+      setError('Please select the required number of date and time slots for every plan.')
       return
     }
     if (!user) {
@@ -335,7 +370,7 @@ export default function PricingPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
                     <div>
                       <strong style={{ color: '#586576', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>{plan.tier.planName}</strong>
-                      <span style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> ({plan.slots.length}/4 slots)</span>
+                      <span style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> ({slotInstruction(plan.tier)} · {plan.slots.length}/{slotLimitForPlan(plan.tier)})</span>
                       <div style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>{plan.city}</div>
                       <button onClick={(e) => { e.stopPropagation(); removePlan(plan.tier.id) }} style={{ marginTop: '0.4rem', padding: '0.32rem 0.5rem', border: 0, borderRadius: '4px', background: '#e93647', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.65rem', cursor: 'pointer' }}>Remove plan</button>
                     </div>
@@ -354,7 +389,7 @@ export default function PricingPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
                   <div>
                     <strong style={{ color: '#586576', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>{selectedTier.planName}</strong>
-                    <span style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> (Select up to 4 slots)</span>
+                    <span style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> ({slotInstruction(selectedTier)})</span>
                     <div style={{ marginTop: '0.2rem', color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>{selectedCity}</div>
                     <button onClick={() => removePlan(selectedTier.id)} style={{ marginTop: '0.45rem', padding: '0.35rem 0.55rem', border: 0, borderRadius: '4px', background: '#e93647', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer' }}>Remove plan</button>
                   </div>
@@ -402,14 +437,15 @@ export default function PricingPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
                     {PICKUP_TIMES.map(time => {
                       const booked = bookedTimes.includes(time) || selectedSlots.some(slot => slot.date === pendingDate && slot.time === time)
-                      const limitReached = selectedSlots.length >= 4
+                      const slotLimit = slotLimitForPlan(selectedTier)
+                      const limitReached = selectedSlots.length >= slotLimit
                       return (
                       <div key={time} style={{ minHeight: '56px', padding: '0.7rem 0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', borderRadius: '11px', background: booked ? '#ffe5e5' : '#fff', boxShadow: booked ? 'none' : '0 8px 24px rgba(15,23,42,0.09)' }}>
                         <strong style={{ color: '#08284a', fontFamily: 'var(--font-body)', fontSize: '1rem' }}>{time}</strong>
                         {booked ? (
                           <button disabled style={{ padding: '0.55rem 0.75rem', border: 0, borderRadius: '5px', background: '#e93647', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.9rem', fontWeight: 800, cursor: 'not-allowed' }}>Booked</button>
                         ) : (
-                          <button disabled={limitReached} onClick={() => { const nextSlots = [...selectedSlots, { date: pendingDate, time }]; setSelectedSlots(nextSlots); setSelectedPlans(prev => prev.map(plan => plan.tier.id === selectedTier.id ? { ...plan, slots: nextSlots } : plan)); setSelectedDate(pendingDate); setSelectedTime(time); setPendingDate(''); setError('') }} style={{ padding: '0.55rem 0.75rem', border: 0, borderRadius: '5px', background: limitReached ? '#94a3b8' : '#0866ff', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.9rem', cursor: limitReached ? 'not-allowed' : 'pointer' }}>{limitReached ? 'Max 4 Slots' : 'Book Now'}</button>
+                          <button disabled={limitReached} onClick={() => { const nextSlots = [...selectedSlots, { date: pendingDate, time }]; setSelectedSlots(nextSlots); setSelectedPlans(prev => prev.map(plan => plan.tier.id === selectedTier.id ? { ...plan, slots: nextSlots } : plan)); setSelectedDate(pendingDate); setSelectedTime(time); setPendingDate(''); setError('') }} style={{ padding: '0.55rem 0.75rem', border: 0, borderRadius: '5px', background: limitReached ? '#94a3b8' : '#0866ff', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.9rem', cursor: limitReached ? 'not-allowed' : 'pointer' }}>{limitReached ? `Max ${slotLimit} Slot${slotLimit > 1 ? 's' : ''}` : 'Book Now'}</button>
                         )}
                       </div>
                     )})}
