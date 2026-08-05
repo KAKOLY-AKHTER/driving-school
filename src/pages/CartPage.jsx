@@ -30,7 +30,12 @@ export default function CartPage() {
 
   const handleRemove = async (id) => {
     setRemoving(id)
-    await removeFromCart(id)
+    setError('')
+    try {
+      await removeFromCart(id)
+    } catch (removeError) {
+      setError(removeError.message || 'Unable to remove this package. Please try again.')
+    }
     setRemoving(null)
   }
 

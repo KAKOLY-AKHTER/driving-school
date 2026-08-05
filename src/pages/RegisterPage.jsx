@@ -721,7 +721,7 @@ export default function RegisterPage() {
                   </SummaryCard>
                   <SummaryCard title="Address">
                     <SumLine label="Street" value={form.address1 || '—'} />
-                    <SumLine label="City" value={`${form.city}, ${form.state} ${form.zipCode}` || '—'} />
+                    <SumLine label="City" value={form.city || form.state || form.zipCode ? `${form.city}, ${form.state} ${form.zipCode}` : '—'} />
                   </SummaryCard>
                   <SummaryCard title="Payment">
                     <SumLine label="Card" value={form.ccType ? `${form.ccType} ****${form.ccNumber.slice(-4)}` : '—'} />

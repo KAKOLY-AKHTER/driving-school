@@ -2,16 +2,15 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 
 const AWARDS = [
-  '/award1.png',
-  '/award2.png',
-  '/award3.png',
-  '/award4.png',
+  '/award1-hq.png',
+  '/award2-hq.png',
+  '/award3-hq.png',
+  '/award4-hq.png',
 ]
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
 const GOLD_BRIGHT = '#FFD54F'
-const SKY_BLUE = '#0145A8'
 
 export default function Awards() {
   const [current, setCurrent] = useState(0)
@@ -77,9 +76,12 @@ export default function Awards() {
           pointer-events: none;
         }
         .award-side-img {
-          opacity: 0.35;
-          filter: grayscale(0.5) blur(0.5px);
-          transform: scale(0.75);
+          opacity: 0.82;
+          filter: none;
+          transform: scale(0.9);
+          background: #ffffff;
+          padding: 0.45rem;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.18);
           transition: all 0.6s cubic-bezier(0.22,1,0.36,1);
         }
         .award-center-img {
@@ -164,10 +166,12 @@ export default function Awards() {
                   <img
                     src={AWARDS[prev]}
                     alt="Award"
+                    loading="lazy"
+                    decoding="async"
                     className="award-side-img"
                     style={{
                       width: '100%',
-                      maxWidth: '130px',
+                      maxWidth: '150px',
                       height: 'auto',
                       borderRadius: 'var(--radius-sm)',
                     }}
@@ -197,9 +201,11 @@ export default function Awards() {
                     <img
                       src={AWARDS[current]}
                       alt="Best of San Ramon Award"
+                      loading="lazy"
+                      decoding="async"
                       style={{
                         width: '100%',
-                        maxWidth: '200px',
+                      maxWidth: '240px',
                         height: 'auto',
                         display: 'block',
                         margin: '0 auto',
@@ -227,10 +233,12 @@ export default function Awards() {
                   <img
                     src={AWARDS[next]}
                     alt="Award"
+                    loading="lazy"
+                    decoding="async"
                     className="award-side-img"
                     style={{
                       width: '100%',
-                      maxWidth: '130px',
+                      maxWidth: '150px',
                       height: 'auto',
                       borderRadius: 'var(--radius-sm)',
                     }}

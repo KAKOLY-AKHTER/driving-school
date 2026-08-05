@@ -11,8 +11,38 @@ dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1'])
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
 const app = express()
-app.use(cors())
-app.use(express.json())
+const allowedOrigins = String(process.env.CLIENT_URL || '').split(',').map(value => value.trim()).filter(Boolean)
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) return callback(null, true)
+    return callback(new Error('Origin not allowed by CORS'))
+  },
+}))
+app.use(express.json({ limit: '100kb' }))
+
+const rateBuckets = new Map()
+function rateLimit({ windowMs = 60_000, max = 20 } = {}) {
+  return (req, res, next) => {
+    const key = `${req.ip}:${req.path}`
+    const now = Date.now()
+    const bucket = rateBuckets.get(key)
+    if (!bucket || now - bucket.startedAt >= windowMs) {
+      rateBuckets.set(key, { startedAt: now, count: 1 })
+      return next()
+    }
+    bucket.count += 1
+    if (bucket.count > max) return res.status(429).json({ error: 'Too many requests. Please try again shortly.' })
+    return next()
+  }
+}
+
+const cleanText = (value, maxLength = 500) => String(value || '').trim().slice(0, maxLength)
+const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+const isDateKey = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value)
+const BOOKING_TIMES = new Set([
+  '07:00 AM - 09:00 AM', '09:00 AM - 11:00 AM', '12:00 PM - 02:00 PM', '02:00 PM - 04:00 PM', '04:00 PM - 06:00 PM',
+  '9:00 AM - 11:00 AM', '11:00 AM - 1:00 PM', '2:00 PM - 4:00 PM', '4:00 PM - 6:00 PM',
+])
 
 const PORT = process.env.PORT || 3001
 const MONGO_URI = process.env.MONGO_URI
@@ -63,13 +93,18 @@ app.use(async (req, res, next) => {
 
 app.get('/api/health', (req, res) => res.json({ ok: true }))
 
-app.post('/api/contact', async (req, res) => {
+app.post('/api/contact', rateLimit({ windowMs: 10 * 60_000, max: 5 }), async (req, res) => {
   try {
-    const { firstName, lastName, phone, email, comments } = req.body
+    const firstName = cleanText(req.body.firstName, 80)
+    const lastName = cleanText(req.body.lastName, 80)
+    const phone = cleanText(req.body.phone, 30)
+    const email = cleanText(req.body.email, 160).toLowerCase()
+    const comments = cleanText(req.body.comments, 2000)
     if (!firstName || !lastName || !phone || !email || !comments) {
-      return res.status(400).json({ error: 'All fields required' })
+      return res.status(400).json({ error: 'All fields are required.' })
     }
-    await contactCol.insertOne({ ...req.body, createdAt: new Date().toISOString() })
+    if (!isEmail(email)) return res.status(400).json({ error: 'Please enter a valid email address.' })
+    await contactCol.insertOne({ firstName, lastName, phone, email, comments, createdAt: new Date().toISOString() })
     res.json({ ok: true })
   } catch (e) {
     res.status(500).json({ error: e.message })
@@ -124,12 +159,27 @@ app.get('/api/bookings/:uid', async (req, res) => {
   }
 })
 
-app.post('/api/bookings', async (req, res) => {
+app.post('/api/bookings', rateLimit({ windowMs: 60_000, max: 30 }), async (req, res) => {
   try {
+    const { userId, date, timeSlot } = req.body
+    if (!userId || !date || !timeSlot) {
+      return res.status(400).json({ error: 'User, date, and time slot are required.' })
+    }
+    if (!isDateKey(date) || !BOOKING_TIMES.has(timeSlot)) {
+      return res.status(400).json({ error: 'Please choose a valid booking date and time.' })
+    }
+    if (new Date(`${date}T23:59:59`) < new Date()) {
+      return res.status(400).json({ error: 'Past dates cannot be booked.' })
+    }
+    const existing = await bookingsCol.findOne({ date, timeSlot, status: { $ne: 'cancelled' } })
+    if (existing) {
+      return res.status(409).json({ error: 'This time slot has already been booked. Please choose another slot.' })
+    }
     const booking = {
-      userId: req.body.userId,
-      date: req.body.date,
-      timeSlot: req.body.timeSlot,
+      userId,
+      date,
+      timeSlot,
+      courseId: String(req.body.courseId || ''),
       hours: 2,
       status: req.body.status || 'scheduled',
       createdAt: new Date().toISOString(),
@@ -236,6 +286,7 @@ app.delete('/api/users/:uid/cart/:courseId', async (req, res) => {
     const cart = await cartsCol.findOne({ uid })
     const items = (cart?.items || []).filter(c => c.id !== courseId)
     await cartsCol.updateOne({ uid }, { $set: { items, updatedAt: new Date().toISOString() } }, { upsert: true })
+    await bookingsCol.deleteMany({ userId: uid, courseId: String(courseId), status: 'scheduled' })
     res.json({ ok: true, items })
   } catch (e) {
     res.status(500).json({ error: e.message })
@@ -280,6 +331,11 @@ app.post('/api/users/:uid/cart/checkout', async (req, res) => {
         },
       },
       { upsert: true }
+    )
+    const checkedOutCourseIds = items.map(item => String(item.id))
+    await bookingsCol.updateMany(
+      { userId: uid, courseId: { $in: checkedOutCourseIds }, status: 'scheduled' },
+      { $set: { status: 'confirmed', confirmedAt: new Date().toISOString() } }
     )
     await cartsCol.deleteOne({ uid })
     res.json({ ok: true, enrolled: toAdd.length, payment })
@@ -390,7 +446,7 @@ POLICIES:
 - Refunds from dashboard
 - 2-hour time slots: 9-11AM, 11AM-1PM, 2-4PM, 4-6PM`
 
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', rateLimit({ windowMs: 60_000, max: 12 }), async (req, res) => {
   try {
     const { messages } = req.body
     if (!messages || !Array.isArray(messages)) {
@@ -420,7 +476,7 @@ app.post('/api/chat', async (req, res) => {
 app.get('/api/users/:uid/conversations', async (req, res) => {
   try {
     const user = await usersCol.findOne({ uid: req.params.uid })
-    const convs = (user?.conversations || []).map(({ messages, ...rest }) => rest)
+    const convs = (user?.conversations || []).map(({ messages: _messages, ...rest }) => rest)
     res.json(convs)
   } catch (e) {
     res.status(500).json({ error: e.message })
@@ -728,8 +784,6 @@ app.put('/api/admin/settings', async (req, res) => {
     res.status(500).json({ error: e.message })
   }
 })
-
-const PERMISSION_OPTIONS = ['Select', 'Included', 'Optional', 'Not Included']
 
 const AREA_ICON = 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5'
 

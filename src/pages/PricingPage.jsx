@@ -52,13 +52,34 @@ const slotInstruction = (tier) => {
   return `Select ${limit} slot ${dateAndTime ? 'date & time' : 'date'}`
 }
 
+function BookingSteps({ current }) {
+  const items = ['Plan', 'City', 'Schedule', 'Cart']
+  return (
+    <div aria-label="Booking progress" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '0.45rem', margin: '0 0 1.25rem' }}>
+      {items.map((label, index) => {
+        const stepNumber = index + 1
+        const complete = stepNumber < current
+        const active = stepNumber === current
+        return (
+          <div key={label} aria-current={active ? 'step' : undefined} style={{ position: 'relative', textAlign: 'center', color: active || complete ? '#0755ae' : '#94a3b8' }}>
+            <div style={{ width: '28px', height: '28px', margin: '0 auto 0.35rem', borderRadius: '50%', display: 'grid', placeItems: 'center', background: complete ? '#0755ae' : active ? '#eaf2ff' : '#f1f5f9', border: active ? '2px solid #0755ae' : '1px solid #e2e8f0', color: complete ? '#fff' : 'inherit', fontSize: '0.72rem', fontWeight: 800 }}>
+              {complete ? '✓' : stepNumber}
+            </div>
+            <span style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: '0.68rem', fontWeight: active ? 800 : 700 }}>{label}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function PricingPage() {
   usePageMeta(
     'Packages & Pricing — A Precision Driving School San Ramon CA',
     'Compare driving school packages: online drivers ed, 2, 6 and 10-hour behind-the-wheel training, DMV drive test car rental and freeway focused courses. 99% pass rate, free pickup & drop.'
   )
   const { user } = useAuth()
-  const { addToCart } = useCart()
+  const { addToCart, removeFromCart } = useCart()
   const navigate = useNavigate()
   const location = useLocation()
   const [step, setStep] = useState(null)
@@ -150,11 +171,12 @@ export default function PricingPage() {
           pickupTime: plan.slots[0]?.time || '',
           pickupSlots: plan.slots,
         })
-        await Promise.all(plan.slots.map(slot => api.createBooking({ userId: user.uid, date: slot.date, timeSlot: slot.time, status: 'scheduled' })))
+        await Promise.all(plan.slots.map(slot => api.createBooking({ userId: user.uid, courseId: plan.tier.id, date: slot.date, timeSlot: slot.time, status: 'scheduled' })))
       }
       navigate('/cart')
-    } catch {
-      setError('Failed to add booking to cart. Please try again.')
+    } catch (bookingError) {
+      await Promise.allSettled(selectedPlans.map(plan => removeFromCart(plan.tier.id)))
+      setError(bookingError.message || 'Failed to add booking to cart. Please try again.')
       setStep('calendar')
     }
   }
@@ -175,7 +197,6 @@ export default function PricingPage() {
       if (result.ok) {
         if (result.duplicate) {
           if (goToCart) {
-            await Promise.all(selectedSlots.map(slot => api.createBooking({ userId: user.uid, date: slot.date, timeSlot: slot.time, status: 'scheduled' })))
             navigate('/cart')
             return
           }
@@ -184,15 +205,16 @@ export default function PricingPage() {
           return
         }
         if (goToCart) {
-          await Promise.all(selectedSlots.map(slot => api.createBooking({ userId: user.uid, date: slot.date, timeSlot: slot.time, status: 'scheduled' })))
+          await Promise.all(selectedSlots.map(slot => api.createBooking({ userId: user.uid, courseId: selectedTier.id, date: slot.date, timeSlot: slot.time, status: 'scheduled' })))
           navigate('/cart')
         } else setStep('success')
       } else {
         setError(result.error || 'Failed to add to cart. Please try again.')
         setStep(goToCart ? 'calendar' : 'confirm')
       }
-    } catch {
-      setError('Failed to add to cart. Please try again.')
+    } catch (bookingError) {
+      await removeFromCart(selectedTier.id).catch(() => {})
+      setError(bookingError.message || 'Failed to add to cart. Please try again.')
       setStep(goToCart ? 'calendar' : 'confirm')
     }
   }
@@ -276,7 +298,7 @@ export default function PricingPage() {
   }
 
   return (
-    <div style={{ paddingTop: '12rem', paddingBottom: '4rem' }}>
+    <div className="pricing-page" style={{ paddingTop: '12rem', paddingBottom: '4rem' }}>
       <style>{`
         @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes modalSlideUp { from { opacity: 0; transform: translateY(40px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -291,16 +313,18 @@ export default function PricingPage() {
 
       {step === 'city' && selectedTier && (
         <div style={{ ...backdropStyle, alignItems: 'flex-start', paddingTop: '1.25rem' }} onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}>
-          <div style={{ ...modalStyle, maxWidth: '800px', borderRadius: '8px', padding: '1.35rem 1.8rem 1.8rem' }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="city-modal-title" style={{ ...modalStyle, maxWidth: '800px', borderRadius: '14px', padding: '1.35rem 1.8rem 1.8rem' }}>
             <button onClick={handleClose} aria-label="Close" style={{ position: 'absolute', top: '1rem', right: '1.25rem', border: 0, background: 'transparent', color: '#777', fontSize: '2rem', lineHeight: 1, cursor: 'pointer', padding: 0 }}>&times;</button>
 
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '0 2.5rem 1.5rem 0', fontFamily: 'var(--font-body)', fontSize: '1.25rem', color: DARK, fontWeight: 800 }}>
+            <h2 id="city-modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '0 2.5rem 1.5rem 0', fontFamily: 'var(--font-body)', fontSize: '1.25rem', color: DARK, fontWeight: 800 }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0866ff" strokeWidth="2.5" strokeLinecap="round">
                 <circle cx="11" cy="11" r="7" />
                 <path d="m20 20-4-4" />
               </svg>
               Find Driving Lessons Near You
             </h2>
+
+            <BookingSteps current={2} />
 
             <div style={{ fontFamily: 'var(--font-body)', color: DARK, fontSize: '1rem', lineHeight: 1.6, marginBottom: '0.25rem' }}>
               <div>Plan Name: <strong>{selectedTier.planName}</strong></div>
@@ -331,12 +355,14 @@ export default function PricingPage() {
 
       {step === 'calendar' && selectedTier && (
         <div style={backdropStyle} onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}>
-          <div style={{ ...modalStyle, maxWidth: '640px', borderRadius: '12px', padding: '1.2rem', background: '#f8fafc' }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="calendar-modal-title" style={{ ...modalStyle, maxWidth: '640px', borderRadius: '16px', padding: '1.2rem', background: '#f8fafc' }}>
             <button onClick={handleClose} aria-label="Close" style={{ position: 'absolute', top: '0.75rem', right: '1rem', zIndex: 2, border: 0, background: 'transparent', color: '#64748b', fontSize: '1.8rem', cursor: 'pointer' }}>&times;</button>
             <div style={{ textAlign: 'center', marginBottom: '1.2rem' }}>
-              <h2 style={{ margin: 0, color: '#08284a', fontFamily: 'var(--font-body)', fontSize: '1.7rem', fontWeight: 800 }}>Your Selected Course</h2>
+              <h2 id="calendar-modal-title" style={{ margin: 0, color: '#08284a', fontFamily: 'var(--font-body)', fontSize: '1.7rem', fontWeight: 800 }}>Your Selected Course</h2>
               <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>You've chosen the perfect driving course for your needs!</p>
             </div>
+
+            <BookingSteps current={3} />
 
             <div style={{ padding: '1rem 0.75rem 0.75rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '9px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
@@ -348,6 +374,12 @@ export default function PricingPage() {
                   <button disabled={calendarMonth <= currentMonthStart} onClick={() => setCalendarMonth(new Date(calendarYear, calendarMonthIndex - 1, 1))} style={{ width: '32px', height: '30px', border: 0, borderRadius: '8px', background: '#f1f5f9', color: '#08284a', fontSize: '1.35rem', cursor: calendarMonth <= currentMonthStart ? 'not-allowed' : 'pointer', opacity: calendarMonth <= currentMonthStart ? 0.4 : 1 }}>&lsaquo;</button>
                   <button onClick={() => setCalendarMonth(new Date(calendarYear, calendarMonthIndex + 1, 1))} style={{ width: '32px', height: '30px', border: 0, borderRadius: '8px', background: '#f1f5f9', color: '#08284a', fontSize: '1.35rem', cursor: 'pointer' }}>&rsaquo;</button>
                 </div>
+              </div>
+
+              <div aria-label="Calendar status legend" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', margin: '0 0 0.65rem', color: '#64748b', fontSize: '0.68rem', fontWeight: 700 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><i aria-hidden="true" style={{ width: '11px', height: '11px', borderRadius: '3px', background: '#edf7ef', border: '1px solid #cde7d2' }} />Available</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><i aria-hidden="true" style={{ width: '11px', height: '11px', borderRadius: '3px', background: '#dbeafe', border: '1px solid #0755ae' }} />Selected</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><i aria-hidden="true" style={{ width: '11px', height: '11px', borderRadius: '3px', background: '#fff1f2', border: '1px solid #fee2e2' }} />Unavailable</span>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '6px' }}>
@@ -422,13 +454,13 @@ export default function PricingPage() {
 
             {pendingDate && (
               <div style={{ position: 'fixed', inset: 0, zIndex: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(15,23,42,0.48)' }}>
-                <div style={{ position: 'relative', width: '100%', maxWidth: '525px', maxHeight: '92vh', overflowY: 'auto', padding: '3rem clamp(1.2rem, 6vw, 3.5rem) 1.4rem', borderRadius: '16px', background: '#fff', boxShadow: '0 24px 70px rgba(15,23,42,0.3)' }}>
+                <div role="dialog" aria-modal="true" aria-labelledby="pickup-time-title" style={{ position: 'relative', width: '100%', maxWidth: '525px', maxHeight: '92vh', overflowY: 'auto', padding: '3rem clamp(1.2rem, 6vw, 3.5rem) 1.4rem', borderRadius: '18px', background: '#fff', boxShadow: '0 24px 70px rgba(15,23,42,0.3)' }}>
                   <button onClick={() => setPendingDate('')} aria-label="Close pickup time" style={{ position: 'absolute', top: '0.8rem', right: '1.1rem', border: 0, background: 'transparent', color: '#64748b', fontSize: '2rem', cursor: 'pointer' }}>&times;</button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem', marginBottom: '2.5rem' }}>
                     <div style={{ width: '55px', height: '55px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e0efff', color: '#0755ae' }}>
                       <svg width="25" height="25" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>
                     </div>
-                    <h3 style={{ margin: 0, color: '#102a46', fontFamily: 'var(--font-body)', fontSize: '1.5rem', fontWeight: 800 }}>Select Pickup Time</h3>
+                    <h3 id="pickup-time-title" style={{ margin: 0, color: '#102a46', fontFamily: 'var(--font-body)', fontSize: '1.5rem', fontWeight: 800 }}>Select Pickup Time</h3>
                   </div>
                   <p style={{ margin: '0 0 0.6rem', color: DARK, fontFamily: 'var(--font-body)', fontSize: '1.05rem', fontWeight: 800 }}>
                     Selected Date: {new Date(`${pendingDate}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}

@@ -118,7 +118,7 @@ export default function OnlineCoursePage() {
         <div className="oc-container oc-about-inner">
           <div className="oc-about-visual">
             <img className="oc-about-main" src="/buy-plan1.png" alt="Student completing online driver education" />
-            <img className="oc-about-small" src="/buy-plan2.png" alt="Driving lesson practice" />
+            <img className="oc-about-small" src="/driving-lesson-premium.jpg" alt="Teen driver receiving behind-the-wheel guidance" loading="lazy" decoding="async" />
           </div>
           <div className="oc-about-copy">
             <h2>100% Online California Driver Education</h2>

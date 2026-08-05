@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import ServiceAreas from '../components/ServiceAreas'
 import { makeEmbedCode } from '../api'
 import { usePageMeta } from '../usePageMeta'
 

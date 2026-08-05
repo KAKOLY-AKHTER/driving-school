@@ -13,17 +13,6 @@ const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
 
-const COURSE_MAP = {
-  '1': 'TEEN ONLINE DRIVERS ED',
-  '2': 'BASIC PLAN',
-  '3': 'ESSENTIAL PLAN',
-  '4': 'IDEAL FOR STUDENTS',
-  '5': 'PREMIER PLAN',
-  '6': 'DMV Drive Test Car Rental',
-  '7': 'DMV Drive Test Car Rental.',
-  '8': 'Freeway Focused Course',
-}
-const COURSE_HOURS = { '1': 0, '2': 2, '3': 6, '4': 6, '5': 10, '6': 0.5, '7': 1, '8': 2 }
 const TIME_SLOTS = [
   { id: 'slot1', label: 'Morning 1', time: '9:00 AM - 11:00 AM', hours: 2 },
   { id: 'slot2', label: 'Morning 2', time: '11:00 AM - 1:00 PM', hours: 2 },
@@ -144,6 +133,7 @@ export default function DashboardPage() {
   const [courseDetail, setCourseDetail] = useState(null)
   const [refundConfirm, setRefundConfirm] = useState(null)
   const [cancelConfirm, setCancelConfirm] = useState(null)
+  const [bookingCancelConfirm, setBookingCancelConfirm] = useState(null)
   const [chatMessages, setChatMessages] = useState([])
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
@@ -159,13 +149,25 @@ export default function DashboardPage() {
     setBookingLoading(true)
     try {
       const today = new Date().toISOString().split('T')[0]
-      const newBooking = await api.createBooking({ userId: user.uid, email: user.email, date: bookingDate, timeSlot: bookingSlot, status: bookingDate < today ? 'completed' : 'scheduled' })
+      const selectedSlot = TIME_SLOTS.find(slot => slot.id === bookingSlot)
+      const newBooking = await api.createBooking({ userId: user.uid, email: user.email, date: bookingDate, timeSlot: selectedSlot?.time || bookingSlot, status: bookingDate < today ? 'completed' : 'scheduled' })
       setBookings(prev => [newBooking, ...prev]); setBookingDate(''); setBookingSlot(''); setMsg('Lesson booked successfully!'); setTimeout(() => setMsg(''), 2000)
     } catch { setMsg('Failed to book lesson.') }
     setBookingLoading(false)
   }
-  const handleCancelBooking = async (id) => {
-    try { await api.deleteBooking(id); setBookings(prev => prev.filter(b => b._id !== id)); setMsg('Booking cancelled.'); setTimeout(() => setMsg(''), 2000) } catch { setMsg('Failed to cancel booking.') }
+  const handleCancelBooking = (id) => setBookingCancelConfirm(id)
+  const confirmCancelBooking = async () => {
+    if (!bookingCancelConfirm) return
+    try {
+      await api.deleteBooking(bookingCancelConfirm)
+      setBookings(prev => prev.filter(b => b._id !== bookingCancelConfirm))
+      setBookingCancelConfirm(null)
+      setMsg('Booking cancelled successfully.')
+      setTimeout(() => setMsg(''), 2200)
+    } catch {
+      setMsg('Failed to cancel booking.')
+      setTimeout(() => setMsg(''), 2200)
+    }
   }
   const handleCompleteQuiz = async (moduleId, correctCount) => {
     setQuizScore(correctCount); setQuizSubmitted(true)
@@ -206,6 +208,32 @@ export default function DashboardPage() {
   }
 
   const handleSaveSettings = async () => {
+    if (!sUsername.trim()) {
+      setMsg('Please enter your name before saving.')
+      setTimeout(() => setMsg(''), 2500)
+      return
+    }
+    if (sPhone && !/^[+()\d\s.-]{7,30}$/.test(sPhone)) {
+      setMsg('Please enter a valid phone number.')
+      setTimeout(() => setMsg(''), 2500)
+      return
+    }
+    const changingPassword = hasPasswordProvider && (sNewPass || sConfirmPass || sCurrentPass)
+    if (changingPassword && (!sCurrentPass || !sNewPass || !sConfirmPass)) {
+      setMsg('Please complete all password fields.')
+      setTimeout(() => setMsg(''), 2500)
+      return
+    }
+    if (changingPassword && sNewPass.length < 8) {
+      setMsg('New password must contain at least 8 characters.')
+      setTimeout(() => setMsg(''), 2500)
+      return
+    }
+    if (changingPassword && sNewPass !== sConfirmPass) {
+      setMsg('New passwords do not match.')
+      setTimeout(() => setMsg(''), 2500)
+      return
+    }
     setSSaving(true)
     try {
       const data = {
@@ -232,20 +260,12 @@ export default function DashboardPage() {
       setIssueDate(sIssueDate)
       setExpiryDate(sExpiryDate)
       let pwMsg = ''
-      if (hasPasswordProvider && (sNewPass || sConfirmPass || sCurrentPass)) {
-        if (!sCurrentPass || !sNewPass || !sConfirmPass) {
-          pwMsg = ' Fill all password fields.'
-        } else if (sNewPass.length < 8) {
-          pwMsg = ' New password must be 8+ chars.'
-        } else if (sNewPass !== sConfirmPass) {
-          pwMsg = ' Passwords do not match.'
-        } else {
+      if (changingPassword) {
           const cred = EmailAuthProvider.credential(user.email, sCurrentPass)
           await reauthenticateWithCredential(user, cred)
           await updatePassword(user, sNewPass)
           pwMsg = ' Password updated.'
           setSCurrentPass(''); setSNewPass(''); setSConfirmPass('')
-        }
       }
       setMsg('Settings saved successfully!' + pwMsg)
       setTimeout(() => setMsg(''), 2500)
@@ -312,11 +332,8 @@ export default function DashboardPage() {
   }
 
   const todayStr = new Date().toISOString().split('T')[0]
-  const upcomingBookings = bookings.filter(b => b.date >= todayStr && b.status === 'scheduled')
-  const pastBookings = bookings.filter(b => b.date < todayStr || b.status === 'completed')
-  const hoursCompleted = pastBookings.length * 2
-  const totalHours = COURSE_HOURS[courseType] || 0
-  const progress = showCourse ? Math.round((completedModules.length / 3) * 100) : totalHours > 0 ? Math.min(Math.round((hoursCompleted / totalHours) * 100), 100) : 0
+  const upcomingBookings = bookings.filter(b => b.date >= todayStr && ['scheduled', 'confirmed'].includes(b.status))
+  const pastBookings = bookings.filter(b => b.date < todayStr || ['completed', 'cancelled'].includes(b.status))
   const initials = user?.displayName ? user.displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : user?.email?.[0]?.toUpperCase() || '?'
   const activeMod = COURSE_MODULES.find(m => m.id === activeModule)
   const hasPasswordProvider = (user?.providerData || []).some(p => p.providerId === 'password')
@@ -329,7 +346,7 @@ export default function DashboardPage() {
     { id: 'settings', label: 'Settings', sublabel: 'Account', icon: I.shield },
     { id: 'support', label: 'Support', sublabel: 'AI assistant', icon: I.profile },
   ]
-  const switchTab = (tab) => { setActiveTab(tab); setSidebarOpen(false); setActiveModule(null); setModuleStep(0); setCourseDetail(null); setCancelConfirm(null); setRefundConfirm(null) }
+  const switchTab = (tab) => { setActiveTab(tab); setSidebarOpen(false); setActiveModule(null); setModuleStep(0); setCourseDetail(null); setCancelConfirm(null); setRefundConfirm(null); setBookingCancelConfirm(null) }
 
   return (
     <>
@@ -344,6 +361,8 @@ export default function DashboardPage() {
         @keyframes dashGradientMove { 0% { background-position:0% 50%; } 50% { background-position:100% 50%; } 100% { background-position:0% 50%; } }
         @keyframes dashIconSpin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
         @keyframes dashTextReveal { from { opacity:0; transform:translateY(8px); letter-spacing:0.2em; } to { opacity:1; transform:translateY(0); letter-spacing:0.14em; } }
+        @keyframes dashToastIn { from { opacity:0; transform:translate3d(24px,-8px,0) scale(.96); } to { opacity:1; transform:translate3d(0,0,0) scale(1); } }
+        @keyframes dashSkeleton { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
         @keyframes dashBorderGlow { 0%,100% { border-color:rgba(253,188,1,0.12); } 50% { border-color:rgba(253,188,1,0.35); } }
         @keyframes dashCardHover { 0% { box-shadow:0 4px 16px rgba(0,0,0,0.04); } 100% { box-shadow:0 12px 48px rgba(1,69,168,0.12),0 0 0 1px rgba(1,69,168,0.06); } }
         .dash-anim { animation: dashFadeIn 0.6s cubic-bezier(0.22,1,0.36,1) both; }
@@ -391,6 +410,15 @@ export default function DashboardPage() {
         .dash-btn-gold { background:linear-gradient(135deg,${GOLD},${GOLD_BRIGHT}); color:${DARK}; padding:0.9rem 2rem; border-radius:14px; border:none; font-family:var(--font-mono); font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; cursor:pointer; transition:all 0.4s cubic-bezier(0.22,1,0.36,1); box-shadow:0 4px 20px rgba(253,188,1,0.25),inset 0 1px 0 rgba(255,255,255,0.65); position:relative; overflow:hidden; }
         .dash-btn-gold::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.3),transparent 50%); pointer-events:none; }
         .dash-btn-gold:hover { transform:translateY(-2px); box-shadow:0 8px 32px rgba(253,188,1,0.35),inset 0 1px 0 rgba(255,255,255,0.75); }
+        .dash-main { background:radial-gradient(circle at 85% 2%,rgba(1,69,168,.055),transparent 28%),linear-gradient(180deg,#F8FAFD 0%,#F4F7FB 100%); }
+        .dash-toast { position:fixed; top:92px; right:clamp(1rem,3vw,2rem); z-index:1200; width:min(390px,calc(100vw - 2rem)); animation:dashToastIn .35s cubic-bezier(.22,1,.36,1) both; }
+        .dash-skeleton-wrap { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; margin-bottom:1.25rem; }
+        .dash-skeleton { height:96px; border-radius:18px; background:linear-gradient(100deg,#e9eef5 25%,#f8fafc 40%,#e9eef5 55%); background-size:200% 100%; animation:dashSkeleton 1.25s linear infinite; border:1px solid #e2e8f0; }
+        .dash-modal-backdrop { animation:dashFadeIn .2s ease both; }
+        .dash-confirm-card { animation:dashSlideUp .3s cubic-bezier(.22,1,.36,1) both; }
+        .dash-table-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:thin; }
+        .dash-table-scroll thead th { position:sticky; top:0; z-index:2; }
+        .dash-main button:focus-visible,.dash-main a:focus-visible,.dash-sidebar button:focus-visible,.dash-sidebar a:focus-visible { outline:3px solid rgba(253,188,1,.55); outline-offset:3px; }
         @media (max-width:900px) {
           .dash-hamburger { display:flex; }
           .dash-sidebar { position:fixed !important; left:-280px !important; z-index:999; transition:left 0.4s cubic-bezier(0.22,1,0.36,1) !important; box-shadow:8px 0 40px rgba(0,0,0,0.2) !important; }
@@ -409,6 +437,7 @@ export default function DashboardPage() {
           .dash-chat-list { width:100% !important; max-height:240px !important; }
           .dash-chat-box { min-height:440px !important; }
           .dash-hero-grid > * { grid-row:auto !important; }
+          .dash-skeleton-wrap { grid-template-columns:1fr; }
         }
         @media (max-width:600px) {
           .dash-bell, .dash-header-divider { display:none !important; }
@@ -562,11 +591,13 @@ export default function DashboardPage() {
             )}
             <div style={{ padding:'clamp(1rem,3vw,2.5rem)' }}>
               {msg && (
-                <div className="dash-anim" style={{ padding:'0.85rem 1.25rem', background:msg.includes('Failed') ? 'linear-gradient(135deg,#FEF2F2,#FFF5F5)' : 'linear-gradient(135deg,#F0FDF4,#F5FFF8)', border:`1px solid ${msg.includes('Failed') ? 'rgba(220,38,38,0.15)' : 'rgba(34,197,94,0.15)'}`, borderRadius:'14px', marginBottom:'1.5rem', fontFamily:'var(--font-body)', fontSize:'1.05rem', color:msg.includes('Failed') ? '#DC2626' : '#16A34A', boxShadow:msg.includes('Failed') ? '0 4px 16px rgba(220,38,38,0.08)' : '0 4px 16px rgba(34,197,94,0.08)', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                <div className="dash-toast" role="status" aria-live="polite" style={{ padding:'0.95rem 1.2rem', background:msg.includes('Failed') || msg.includes('incorrect') ? '#FFF7F7' : '#F3FFF7', border:`1px solid ${msg.includes('Failed') || msg.includes('incorrect') ? 'rgba(220,38,38,0.22)' : 'rgba(34,197,94,0.22)'}`, borderRadius:'14px', fontFamily:'var(--font-body)', fontSize:'1rem', color:msg.includes('Failed') || msg.includes('incorrect') ? '#B91C1C' : '#15803D', boxShadow:'0 18px 50px rgba(15,23,42,.18)', display:'flex', alignItems:'center', gap:'0.65rem' }}>
                   {msg.includes('Failed') ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>}
                   {msg}
                 </div>
               )}
+
+              {loading && <div className="dash-skeleton-wrap" role="status" aria-label="Loading dashboard"><div className="dash-skeleton" /><div className="dash-skeleton" /><div className="dash-skeleton" /></div>}
 
               {activeTab === 'dashboard' && (
                 <div>
@@ -820,7 +851,7 @@ export default function DashboardPage() {
                         <p style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', color:SKY_BLUE, margin:0, fontWeight:800 }}>{payments.length}</p>
                       </div>
                     </div>
-                    <div style={{ overflowX:'auto' }}>
+                    <div className="dash-table-scroll">
                     <table style={{ width:'100%', borderCollapse:'separate', borderSpacing:'0', minWidth:'700px' }}>
                       <thead>
                         <tr>
@@ -908,19 +939,20 @@ export default function DashboardPage() {
                     </div>
                     {hasPasswordProvider ? (
                       <>
-                        <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.1rem', color:'#475569', margin:'0 0 1.5rem', fontWeight:700 }}>Change password (optional)</h3>
+                        <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.1rem', color:'#475569', margin:'0 0 0.35rem', fontWeight:700 }}>Change password (optional)</h3>
+                        <p id="password-help" style={{ fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#64748B', margin:'0 0 1.5rem' }}>Use at least 8 characters. Complete all three fields only when changing your password.</p>
                         <div className="dash-form-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'1.5rem' }}>
                           <div>
                             <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Current password</label>
-                            <input type="password" placeholder="Enter current password" value={sCurrentPass} onChange={e => setSCurrentPass(e.target.value)} className="dash-input" />
+                            <input type="password" autoComplete="current-password" aria-describedby="password-help" placeholder="Enter current password" value={sCurrentPass} onChange={e => setSCurrentPass(e.target.value)} className="dash-input" />
                           </div>
                           <div>
                             <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>New password</label>
-                            <input type="password" placeholder="Min 8 characters" value={sNewPass} onChange={e => setSNewPass(e.target.value)} className="dash-input" />
+                            <input type="password" autoComplete="new-password" minLength="8" aria-describedby="password-help" placeholder="Min 8 characters" value={sNewPass} onChange={e => setSNewPass(e.target.value)} className="dash-input" />
                           </div>
                           <div>
                             <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Confirm new password</label>
-                            <input type="password" placeholder="Repeat new password" value={sConfirmPass} onChange={e => setSConfirmPass(e.target.value)} className="dash-input" />
+                            <input type="password" autoComplete="new-password" minLength="8" aria-describedby="password-help" placeholder="Repeat new password" value={sConfirmPass} onChange={e => setSConfirmPass(e.target.value)} className="dash-input" />
                           </div>
                         </div>
                       </>
@@ -1075,8 +1107,8 @@ export default function DashboardPage() {
                                   <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', margin:'0.15rem 0 0' }}>{slot?.time || b.timeSlot}</p>
                                 </div>
                                 <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                                  <span style={{ padding:'0.25rem 0.7rem', background:'linear-gradient(135deg,rgba(34,197,94,0.12),rgba(34,197,94,0.06))', color:'#16A34A', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700 }}>Scheduled</span>
-                                  <button onClick={() => handleCancelBooking(b._id)} style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', padding:'0.25rem', borderRadius:'6px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
+                                  <span style={{ padding:'0.25rem 0.7rem', background:b.status === 'confirmed' ? 'rgba(1,69,168,.10)' : 'rgba(34,197,94,.10)', color:b.status === 'confirmed' ? SKY_BLUE : '#15803D', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700 }}>{b.status === 'confirmed' ? 'Confirmed' : 'Scheduled'}</span>
+                                  {b.status !== 'confirmed' && <button aria-label="Cancel booking" title="Cancel booking" onClick={() => handleCancelBooking(b._id)} style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', padding:'0.35rem', borderRadius:'6px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>}
                                 </div>
                               </div>
                             )
@@ -1092,7 +1124,7 @@ export default function DashboardPage() {
                                   <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#666', fontWeight:500, margin:0 }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })}</p>
                                   <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#999', margin:'0.15rem 0 0' }}>{slot?.time || b.timeSlot}</p>
                                 </div>
-                                <span style={{ padding:'0.25rem 0.7rem', background:'rgba(136,153,170,0.08)', color:'#475569', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:600 }}>Completed</span>
+                                <span style={{ padding:'0.25rem 0.7rem', background:b.status === 'cancelled' ? 'rgba(220,38,38,.08)' : 'rgba(136,153,170,0.08)', color:b.status === 'cancelled' ? '#B91C1C' : '#475569', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:600 }}>{b.status === 'cancelled' ? 'Cancelled' : 'Completed'}</span>
                               </div>
                             )
                           })}
@@ -1190,6 +1222,20 @@ export default function DashboardPage() {
               )}
 
             </div>
+
+            {bookingCancelConfirm && (
+              <div className="dash-modal-backdrop" role="presentation" style={{ position:'fixed', inset:0, background:'rgba(10,22,40,.68)', backdropFilter:'blur(10px)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setBookingCancelConfirm(null) }}>
+                <div className="dash-confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="cancel-booking-title" aria-describedby="cancel-booking-copy" style={{ width:'100%', maxWidth:'420px', background:'#fff', borderRadius:'22px', boxShadow:'0 28px 90px rgba(2,12,27,.35)', padding:'2rem' }}>
+                  <div style={{ width:'58px', height:'58px', borderRadius:'18px', background:'rgba(220,38,38,.08)', color:'#DC2626', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'1.2rem' }}><svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M9 15l6 0"/></svg></div>
+                  <h2 id="cancel-booking-title" style={{ fontFamily:'var(--font-display)', fontSize:'1.35rem', color:DARK, margin:'0 0 .55rem' }}>Cancel this booking?</h2>
+                  <p id="cancel-booking-copy" style={{ fontFamily:'var(--font-body)', fontSize:'1rem', lineHeight:1.65, color:'#475569', margin:'0 0 1.5rem' }}>The selected lesson will be removed from your upcoming bookings. This action cannot be undone.</p>
+                  <div style={{ display:'flex', gap:'.75rem', justifyContent:'flex-end', flexWrap:'wrap' }}>
+                    <button autoFocus onClick={() => setBookingCancelConfirm(null)} style={{ padding:'.8rem 1.15rem', border:'1px solid #CBD5E1', borderRadius:'11px', background:'#fff', color:'#334155', fontWeight:700, cursor:'pointer' }}>Keep Booking</button>
+                    <button onClick={confirmCancelBooking} style={{ padding:'.8rem 1.15rem', border:0, borderRadius:'11px', background:'linear-gradient(135deg,#DC2626,#B91C1C)', color:'#fff', fontWeight:700, cursor:'pointer', boxShadow:'0 7px 18px rgba(220,38,38,.22)' }}>Yes, Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </main>
         </div>
       </div>

@@ -54,8 +54,6 @@ function getIndices(active, total) {
 
 function CoverCard({ review, position, isPaused }) {
   const isCenter = position === 'center'
-  const isLeft = position === 'left'
-  const isRight = position === 'right'
 
   const baseStyle = {
     background: '#ffffff',

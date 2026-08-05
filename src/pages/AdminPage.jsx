@@ -97,7 +97,6 @@ export default function AdminPage() {
     Booking_Date: '', Meds: '', Notes: '', Calender_booking_Id: '', Price: '', Total: '',
   })
   const [enrollLoading, setEnrollLoading] = useState(false)
-  const [enrollSearchTimer, setEnrollSearchTimer] = useState(null)
   const [refunds, setRefunds] = useState([])
   const [refundTotal, setRefundTotal] = useState(0)
   const [refundPage, setRefundPage] = useState(1)
@@ -117,6 +116,24 @@ export default function AdminPage() {
   const [accMsg, setAccMsg] = useState('')
   const [accErr, setAccErr] = useState('')
   const [accLoading, setAccLoading] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState(null)
+
+  const requestConfirmation = (title, message, action) => {
+    setConfirmDialog({ title, message, action, busy: false })
+  }
+
+  const runConfirmedAction = async () => {
+    if (!confirmDialog?.action || confirmDialog.busy) return
+    setConfirmDialog(prev => ({ ...prev, busy: true }))
+    try {
+      await confirmDialog.action()
+      setConfirmDialog(null)
+    } catch {
+      setConfirmDialog(null)
+      setMsg('The action could not be completed. Please try again.')
+      setTimeout(() => setMsg(''), 2500)
+    }
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -220,7 +237,7 @@ export default function AdminPage() {
     }
   }
 
-  const handleDeleteBooking = async (id) => {
+  const deleteBooking = async (id) => {
     try {
       await api.adminDeleteBooking(id)
       setBookings(prev => prev.filter(b => b._id !== id))
@@ -232,6 +249,12 @@ export default function AdminPage() {
       setTimeout(() => setMsg(''), 2000)
     }
   }
+
+  const handleDeleteBooking = (id) => requestConfirmation(
+    'Delete booking?',
+    'This booking will be permanently removed. This action cannot be undone.',
+    () => deleteBooking(id),
+  )
 
   const handleAddCourse = async (uid) => {
     if (!selectedCourseId) return
@@ -251,7 +274,7 @@ export default function AdminPage() {
     }
   }
 
-  const handleRemoveCourse = async (uid, courseId) => {
+  const removeCourse = async (uid, courseId) => {
     try {
       const result = await api.removeCourse(uid, courseId)
       setUsers(prev => prev.map(u => u.uid === uid ? { ...u, courses: result.courses || [] } : u))
@@ -262,6 +285,13 @@ export default function AdminPage() {
       setTimeout(() => setMsg(''), 2500)
     }
   }
+
+
+  const handleRemoveCourse = (uid, courseId) => requestConfirmation(
+    'Remove course?',
+    'The course will be removed from this student account.',
+    () => removeCourse(uid, courseId),
+  )
 
   const handleEditContact = (contact) => {
     setContactForm({ firstName: contact.firstName || '', lastName: contact.lastName || '', phone: contact.phone || '', email: contact.email || '', comments: contact.comments || '', status: contact.status || 'new' })
@@ -281,7 +311,7 @@ export default function AdminPage() {
     }
   }
 
-  const handleDeleteContact = async (id) => {
+  const deleteContact = async (id) => {
     try {
       await api.adminDeleteContact(id)
       setContacts(prev => prev.filter(c => c._id !== id))
@@ -292,6 +322,13 @@ export default function AdminPage() {
       setTimeout(() => setMsg(''), 2000)
     }
   }
+
+
+  const handleDeleteContact = (id) => requestConfirmation(
+    'Delete contact message?',
+    'This contact message will be permanently removed.',
+    () => deleteContact(id),
+  )
 
   const todayStr = new Date().toISOString().split('T')[0]
   const initials = user?.displayName ? user.displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : user?.email?.[0]?.toUpperCase() || '?'
@@ -352,7 +389,6 @@ export default function AdminPage() {
     return name.includes(q) || email.includes(q) || b.date.includes(q) || (TIME_SLOT_MAP[b.timeSlot] || '').toLowerCase().includes(q)
   })
 
-  const upcomingCount = bookings.filter(b => b.date >= todayStr && b.status === 'scheduled').length
 
   const cardStyle = { background: '#ffffff', borderRadius: 'var(--radius-lg)', border: '1px solid #E2EBF5', padding: '1.75rem', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }
   const labelStyle = { fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#64748b', fontWeight: 600, display: 'block', marginBottom: '0.3rem' }
@@ -395,6 +431,30 @@ export default function AdminPage() {
         .admin-gold-line { height:1px; background:linear-gradient(90deg,transparent,rgba(253,188,1,0.4),rgba(253,188,1,0.15),rgba(253,188,1,0.4),transparent); margin:0.5rem 0.75rem; }
         .admin-sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(10,22,40,0.7); backdrop-filter: blur(12px) saturate(120%); z-index: 998; }
         .admin-hamburger { display: none !important; }
+        .admin-main { background:radial-gradient(circle at 90% 0%,rgba(1,69,168,0.045),transparent 28rem),#F8FAFD; }
+        .admin-table-wrap { overflow:auto; border:1px solid #E2EBF5; border-radius:16px; background:#fff; box-shadow:0 10px 32px rgba(15,23,42,0.055); scrollbar-width:thin; scrollbar-color:#B8C8DC #F1F5F9; }
+        .admin-table-wrap table { min-width:760px; }
+        .admin-table-wrap thead th { position:sticky; top:0; z-index:3; background:#F7FAFE; box-shadow:inset 0 -1px 0 #E2EBF5; white-space:nowrap; }
+        .admin-table-wrap tbody tr { transition:background-color 0.18s ease,transform 0.18s ease; }
+        .admin-table-wrap tbody tr:hover { background:#F8FBFF; }
+        .admin-table-wrap tbody tr:last-child td { border-bottom:0 !important; }
+        .admin-table-wrap button { min-height:34px; }
+        .admin-main input,.admin-main select,.admin-main textarea { background:#fff; transition:border-color .2s ease,box-shadow .2s ease,background-color .2s ease; }
+        .admin-main input:focus,.admin-main select:focus,.admin-main textarea:focus { border-color:#0145A8 !important; box-shadow:0 0 0 4px rgba(1,69,168,.09); background:#fff; }
+        .admin-toast { position:fixed; top:92px; right:clamp(1rem,3vw,2rem); z-index:12000; width:min(390px,calc(100vw - 2rem)); display:flex; align-items:flex-start; gap:.75rem; padding:1rem 1.1rem; border-radius:14px; box-shadow:0 18px 50px rgba(15,23,42,.2); animation:adminToastIn .3s cubic-bezier(.22,1,.36,1); }
+        .admin-toast::before { content:''; width:9px; height:9px; margin-top:.42rem; border-radius:50%; flex:0 0 auto; background:currentColor; box-shadow:0 0 0 5px color-mix(in srgb,currentColor 14%,transparent); }
+        .admin-loading-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; }
+        .admin-skeleton { min-height:120px; border:1px solid #E2EBF5; border-radius:16px; background:linear-gradient(100deg,#fff 20%,#F0F5FA 40%,#fff 60%); background-size:220% 100%; animation:adminSkeleton 1.2s linear infinite; }
+        .admin-main div[style*="z-index: 10000"] > div { border:1px solid rgba(226,235,245,.9); box-shadow:0 30px 90px rgba(10,22,40,.28) !important; }
+        .admin-modal-backdrop { animation:adminBackdropIn .2s ease both; }
+        .admin-modal-backdrop > div { animation:adminModalIn .3s cubic-bezier(.22,1,.36,1) both !important; }
+        .admin-main button { transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease,background-color .18s ease,color .18s ease; }
+        .admin-main button:not(:disabled):active { transform:translateY(1px); }
+        .admin-main button:focus-visible,.admin-sidebar button:focus-visible { outline:3px solid rgba(253,188,1,.75); outline-offset:3px; }
+        @keyframes adminBackdropIn { from { opacity:0; } to { opacity:1; } }
+        @keyframes adminModalIn { from { opacity:0; transform:translateY(18px) scale(.98); } to { opacity:1; transform:none; } }
+        @keyframes adminToastIn { from { opacity:0; transform:translate3d(20px,-8px,0); } to { opacity:1; transform:none; } }
+        @keyframes adminSkeleton { to { background-position:-220% 0; } }
         @media (max-width: 900px) {
           .admin-hamburger { display: flex !important; }
           .admin-sidebar { position: fixed !important; left: -280px !important; z-index: 999; transition: left 0.3s ease !important; }
@@ -404,6 +464,16 @@ export default function AdminPage() {
           .admin-stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .admin-table-wrap { overflow-x: auto; }
           .admin-grid-responsive { grid-template-columns: 1fr !important; }
+          .admin-loading-grid { grid-template-columns:1fr 1fr; }
+          .admin-main > div { padding-left:1rem !important; padding-right:1rem !important; }
+        }
+        @media (max-width: 560px) {
+          .admin-stat-grid,.admin-loading-grid { grid-template-columns:1fr !important; }
+          .admin-toast { top:82px; right:1rem; }
+          .admin-table-wrap { margin-inline:-.25rem; border-radius:12px; }
+          .admin-modal-backdrop { align-items:flex-end !important; padding:0 !important; }
+          .admin-modal-backdrop > div { width:100% !important; max-width:none !important; max-height:92vh !important; border-radius:20px 20px 0 0 !important; padding:1.25rem !important; }
+          .admin-modal-backdrop > div div[style*="grid-template-columns"] { grid-template-columns:1fr !important; }
         }
       `}</style>
 
@@ -493,8 +563,14 @@ export default function AdminPage() {
             <div style={{ padding: 'clamp(1.5rem, 3vw, 2.5rem)' }}>
 
               {msg && (
-                <div style={{ padding: '0.75rem 1rem', background: msg.includes('Failed') ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${msg.includes('Failed') ? '#FECACA' : '#BBF7D0'}`, borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: msg.includes('Failed') ? '#DC2626' : '#16A34A' }}>
+                <div role="status" aria-live="polite" className="admin-toast" style={{ background: msg.includes('Failed') ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${msg.includes('Failed') ? '#FECACA' : '#BBF7D0'}`, fontFamily: 'var(--font-body)', fontSize: '0.92rem', fontWeight: 700, color: msg.includes('Failed') ? '#DC2626' : '#15803D' }}>
                   {msg}
+                </div>
+              )}
+
+              {loading && (
+                <div role="status" aria-label="Loading admin dashboard" className="admin-loading-grid" style={{ marginBottom: '1.5rem' }}>
+                  <div className="admin-skeleton" /><div className="admin-skeleton" /><div className="admin-skeleton" />
                 </div>
               )}
 
@@ -859,7 +935,7 @@ export default function AdminPage() {
                               </td>
                               <td style={tdStyle}>
                                 <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'nowrap' }}>
-                                  <button title="Invoice" onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>Invoice - ${e.ID || e._id}</title><style>body{font-family:sans-serif;padding:40px}h1{font-size:20px;border-bottom:2px solid #0145A8;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:6px 10px;border-bottom:1px solid #eee;font-size:13px}.lbl{color:#64748b;width:140px}</style></head><body><h1>A Precision Driving School</h1><p style="color:#64748b">Invoice</p><table>${Object.entries({ID:e.ID,Student:e.Full_Name,Email:e.Email,Course:e.Course_Name,Price:e.Price,Total:e.Total,Status:e.Status,Date:e.Applied_date}).filter(([k,v])=>v).map(([k,v])=>`<tr><td class="lbl">${k}</td><td>${v}</td></tr>`).join('')}</table></body></html>`); w.document.close(); w.print() }} style={{ background:'none', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Invoice</button>
+                                  <button title="Invoice" onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>Invoice - ${e.ID || e._id}</title><style>body{font-family:sans-serif;padding:40px}h1{font-size:20px;border-bottom:2px solid #0145A8;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:6px 10px;border-bottom:1px solid #eee;font-size:13px}.lbl{color:#64748b;width:140px}</style></head><body><h1>A Precision Driving School</h1><p style="color:#64748b">Invoice</p><table>${Object.entries({ID:e.ID,Student:e.Full_Name,Email:e.Email,Course:e.Course_Name,Price:e.Price,Total:e.Total,Status:e.Status,Date:e.Applied_date}).filter(([,v])=>v).map(([k,v])=>`<tr><td class="lbl">${k}</td><td>${v}</td></tr>`).join('')}</table></body></html>`); w.document.close(); w.print() }} style={{ background:'none', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Invoice</button>
                                   <button title="Form" onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>Enrollment Form - ${e.Full_Name || e.ID}</title><style>body{font-family:sans-serif;padding:40px}h1{font-size:18px;border-bottom:2px solid #FDBC01;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:5px 8px;border:1px solid #ddd;font-size:12px;vertical-align:top}.lbl{background:#f5f7fa;font-weight:600;width:160px;color:#1a2332}</style></head><body><h1>A Precision Driving School - Enrollment Form</h1><table>${Object.entries(e).filter(([k])=>k!=='_id'&&k!=='updatedAt'&&k!='__v').map(([k,v])=>`<tr><td class="lbl">${k}</td><td>${v||'—'}</td></tr>`).join('')}</table></body></html>`); w.document.close() }} style={{ background:'none', border:'none', color:GOLD_DEEP, cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Form</button>
                                   <button onClick={() => { setEnrollForm({ ID: e.ID || '', Status: e.Status || 'pending', Full_Name: e.Full_Name || '', Email: e.Email || '', 'Student Phone': e['Student Phone'] || '', Gender: e.Gender || '', Date_of_Birth: e.Date_of_Birth || '', Address: e.Address || '', City: e.City || '', State: e.State || '', Zip: e.Zip || '', Permit: e.Permit || '', Issue_Date: e.Issue_Date || '', Expire_Date: e.Expire_Date || '', Parent_Phone: e.Parent_Phone || '', Pickup_Address: e.Pickup_Address || '', Course_Name: e.Course_Name || '', Booking_Date: e.Booking_Date || '', Meds: e.Meds || '', Notes: e.Notes || '', Calender_booking_Id: e.Calender_booking_Id || '', Price: e.Price || '', Total: e.Total || '' }); setEnrollEdit(e._id) }} style={{ background:'none', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Edit</button>
                                   <button onClick={async () => { if (!confirm('Delete this enrollment?')) return; try { await api.adminDeleteEnrollment(e._id); setEnrollments(prev => prev.filter(x => x._id !== e._id)); setEnrollTotal(prev => prev - 1) } catch {} }} style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Delete</button>
@@ -1223,7 +1299,7 @@ export default function AdminPage() {
               )}
 
               {contactEdit && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setContactEdit(null) }}>
+                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setContactEdit(null) }}>
                   <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '500px', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>Edit Contact</h3>
@@ -1270,7 +1346,7 @@ export default function AdminPage() {
               )}
 
               {pricingEdit && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setPricingEdit(null) }}>
+                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setPricingEdit(null) }}>
                   <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>
@@ -1359,7 +1435,7 @@ export default function AdminPage() {
               )}
 
               {areasEdit && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setAreasEdit(null) }}>
+                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setAreasEdit(null) }}>
                   <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{areasEdit === 'new' ? 'Add Location' : 'Edit Location'}</h3>
@@ -1408,7 +1484,7 @@ export default function AdminPage() {
               )}
 
               {socialsEdit && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setSocialsEdit(null) }}>
+                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setSocialsEdit(null) }}>
                   <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '500px', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{socialsEdit === 'new' ? 'Add Social Link' : 'Edit Social Link'}</h3>
@@ -1459,7 +1535,7 @@ export default function AdminPage() {
               )}
 
               {refundEdit && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setRefundEdit(null) }}>
+                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setRefundEdit(null) }}>
                   <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{refundEdit === 'new' ? 'Add Refund' : 'Edit Refund'}</h3>
@@ -1525,7 +1601,7 @@ export default function AdminPage() {
               )}
 
               {enrollEdit && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setEnrollEdit(null) }}>
+                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setEnrollEdit(null) }}>
                   <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{enrollEdit === 'new' ? 'Add Enrollment' : 'Edit Enrollment'}</h3>
@@ -1619,6 +1695,22 @@ export default function AdminPage() {
           </main>
         </div>
       </div>
+
+      {confirmDialog && (
+        <div role="presentation" style={{ position: 'fixed', inset: 0, zIndex: 15000, display: 'grid', placeItems: 'center', padding: '1rem', background: 'rgba(10,22,40,0.68)', backdropFilter: 'blur(10px)' }} onClick={(event) => { if (event.target === event.currentTarget && !confirmDialog.busy) setConfirmDialog(null) }}>
+          <div role="alertdialog" aria-modal="true" aria-labelledby="admin-confirm-title" aria-describedby="admin-confirm-description" style={{ width: 'min(100%, 430px)', padding: '1.75rem', borderRadius: '18px', background: '#fff', border: '1px solid #E2EBF5', boxShadow: '0 30px 90px rgba(10,22,40,0.32)' }}>
+            <div style={{ width: '46px', height: '46px', display: 'grid', placeItems: 'center', marginBottom: '1rem', borderRadius: '13px', background: '#FEF2F2', color: '#DC2626' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.7 2.4 17.4A2 2 0 0 0 4.1 20h15.8a2 2 0 0 0 1.7-2.6L13.7 3.7a2 2 0 0 0-3.4 0Z"/></svg>
+            </div>
+            <h2 id="admin-confirm-title" style={{ margin: '0 0 0.5rem', color: DARK, fontSize: '1.35rem', fontWeight: 800 }}>{confirmDialog.title}</h2>
+            <p id="admin-confirm-description" style={{ margin: '0 0 1.4rem', color: '#64748b', fontSize: '0.92rem' }}>{confirmDialog.message}</p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <button autoFocus disabled={confirmDialog.busy} onClick={() => setConfirmDialog(null)} style={{ minHeight: '44px', padding: '0.65rem 1rem', border: '1px solid #CBD5E1', borderRadius: '10px', color: '#475569', background: '#fff', fontWeight: 800 }}>Cancel</button>
+              <button disabled={confirmDialog.busy} onClick={runConfirmedAction} style={{ minWidth: '126px', minHeight: '44px', padding: '0.65rem 1rem', borderRadius: '10px', color: '#fff', background: '#DC2626', fontWeight: 800, boxShadow: '0 8px 20px rgba(220,38,38,0.2)' }}>{confirmDialog.busy ? 'Processing…' : 'Confirm'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

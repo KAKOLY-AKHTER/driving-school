@@ -48,7 +48,7 @@ export default function Hero() {
         display: 'flex',
         alignItems: 'center',
         position: 'relative',
-        paddingTop: 'clamp(7rem, 15vw, 11rem)',
+        paddingTop: 'clamp(9rem, 16vw, 13rem)',
         paddingBottom: '4rem',
         overflow: 'hidden',
       }}
@@ -66,7 +66,7 @@ export default function Hero() {
           <h1 className="hero-title" style={{
             fontSize: 'clamp(2.8rem, 6vw, 4.8rem)',
             color: '#ffffff',
-            textShadow: '0 4px 24px rgba(0,0,0,0.9), 0 2px 8px rgba(0,0,0,0.6)',
+            textShadow: '0 2px 4px rgba(0,0,0,0.92), 0 10px 28px rgba(0,0,0,0.56)',
             marginBottom: '1.2rem',
             lineHeight: 1.1,
           }}>
@@ -77,7 +77,7 @@ export default function Hero() {
           <p className="hero-subtitle" style={{
             fontSize: 'clamp(1rem, 1.5vw, 1.15rem)',
             color: '#eeeeee',
-            textShadow: '0 2px 8px rgba(0,0,0,0.9), 0 1px 4px rgba(0,0,0,0.6)',
+            textShadow: '0 2px 3px rgba(0,0,0,0.94), 0 8px 20px rgba(0,0,0,0.5)',
             maxWidth: '48ch',
             lineHeight: 1.6,
             marginBottom: '1.8rem',
@@ -94,9 +94,11 @@ export default function Hero() {
               height: 'clamp(100px, 14vw, 180px)',
               width: 'auto',
               objectFit: 'contain',
+              imageRendering: 'auto',
+              backfaceVisibility: 'hidden',
               display: 'block',
               marginBottom: '1.8rem',
-              filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.85)) drop-shadow(0 0 18px rgba(253,188,1,0.45))',
+              filter: 'drop-shadow(0 6px 15px rgba(0,0,0,0.58)) drop-shadow(0 0 7px rgba(253,188,1,0.24))',
             }}
           />
 

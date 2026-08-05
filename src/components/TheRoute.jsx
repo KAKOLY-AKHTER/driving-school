@@ -285,7 +285,7 @@ export default function TheRoute() {
 
                     {/* Image */}
                     <div className="route-img-wrap">
-                      <img src={step.img} alt={step.title} />
+                      <img src={step.img} alt={step.title} loading="lazy" decoding="async" />
                     </div>
 
                     {/* CTA */}

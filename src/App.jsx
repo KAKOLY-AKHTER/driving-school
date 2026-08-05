@@ -1,28 +1,36 @@
-import { useEffect, useRef } from 'react'
+import { lazy, Suspense, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { CartProvider } from './contexts/CartContext'
 import Nav from './components/Nav'
 import Footer from './components/Footer'
-import Home from './pages/Home'
-import AboutPage from './pages/AboutPage'
-import PricingPage from './pages/PricingPage'
-import ContactPage from './pages/ContactPage'
-import RegisterPage from './pages/RegisterPage'
-import SchedulePage from './pages/SchedulePage'
-import LoginPage from './pages/LoginPage'
-import DashboardPage from './pages/DashboardPage'
-import CartPage from './pages/CartPage'
-import AdminPage from './pages/AdminPage'
-import AdminLoginPage from './pages/AdminLoginPage'
-import AdminSetupPage from './pages/AdminSetupPage'
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
-import TermsPage from './pages/TermsPage'
-import OnlineCoursePage from './pages/OnlineCoursePage'
-import OnlineCourseDetailsPage from './pages/OnlineCourseDetailsPage'
-import OnlineCoursePricingPage from './pages/OnlineCoursePricingPage'
-import OnlineCoursePermitPage from './pages/OnlineCoursePermitPage'
-import OnlineCourseDriverLicensePage from './pages/OnlineCourseDriverLicensePage'
+const Home = lazy(() => import('./pages/Home'))
+const AboutPage = lazy(() => import('./pages/AboutPage'))
+const PricingPage = lazy(() => import('./pages/PricingPage'))
+const ContactPage = lazy(() => import('./pages/ContactPage'))
+const RegisterPage = lazy(() => import('./pages/RegisterPage'))
+const SchedulePage = lazy(() => import('./pages/SchedulePage'))
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const CartPage = lazy(() => import('./pages/CartPage'))
+const AdminPage = lazy(() => import('./pages/AdminPage'))
+const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'))
+const AdminSetupPage = lazy(() => import('./pages/AdminSetupPage'))
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
+const TermsPage = lazy(() => import('./pages/TermsPage'))
+const OnlineCoursePage = lazy(() => import('./pages/OnlineCoursePage'))
+const OnlineCourseDetailsPage = lazy(() => import('./pages/OnlineCourseDetailsPage'))
+const OnlineCoursePricingPage = lazy(() => import('./pages/OnlineCoursePricingPage'))
+const OnlineCoursePermitPage = lazy(() => import('./pages/OnlineCoursePermitPage'))
+const OnlineCourseDriverLicensePage = lazy(() => import('./pages/OnlineCourseDriverLicensePage'))
+
+function PageLoader() {
+  return (
+    <div role="status" aria-live="polite" aria-label="Loading page" style={{ minHeight: '55vh', display: 'grid', placeItems: 'center', background: '#ffffff' }}>
+      <div style={{ width: '42px', height: '42px', border: '3px solid rgba(1,69,168,0.15)', borderTopColor: '#0145A8', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+    </div>
+  )
+}
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -108,8 +116,10 @@ function AppRoutes() {
 
   return (
     <>
+      {!hideShell && <a className="skip-link" href="#main-content">Skip to main content</a>}
       {!hideShell && <Nav />}
-      <main style={{ minHeight: hideShell ? 'auto' : '100vh', display: 'flex', flexDirection: 'column' }}>
+      <main id="main-content" tabIndex="-1" style={{ minHeight: hideShell ? 'auto' : '100vh', display: 'flex', flexDirection: 'column' }}>
+        <Suspense fallback={<PageLoader />}>
         <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/about" element={<AboutPage />} />
@@ -145,12 +155,13 @@ function AppRoutes() {
               <Route path="*" element={
                 <div style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '4rem 2rem' }}>
                   <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(4rem, 10vw, 8rem)', color: 'var(--color-gold)', lineHeight: 1, marginBottom: '1rem' }}>404</h1>
-                  <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--color-paper)', marginBottom: '0.5rem' }}>Page not found</p>
-                  <p style={{ color: 'var(--color-paper-muted)', marginBottom: '2rem' }}>The page you are looking for does not exist.</p>
+                  <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--color-ink)', marginBottom: '0.5rem' }}>Page not found</p>
+                  <p style={{ color: 'var(--color-ink-muted)', marginBottom: '2rem' }}>The page you are looking for does not exist.</p>
                   <a href="/" className="btn-gold">Back to Home</a>
                 </div>
               } />
-            </Routes>
+        </Routes>
+        </Suspense>
           </main>
           {!hideShell && <Footer />}
         </>

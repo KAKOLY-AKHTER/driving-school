@@ -5,7 +5,12 @@ async function request(path, options = {}) {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   })
-  return res.json()
+  const contentType = res.headers.get('content-type') || ''
+  const data = contentType.includes('application/json') ? await res.json() : null
+  if (!res.ok) {
+    throw new Error(data?.error || `Request failed with status ${res.status}`)
+  }
+  return data
 }
 
 export const api = {

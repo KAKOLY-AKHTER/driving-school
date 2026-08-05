@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useLocation, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { DEFAULT_SOCIALS, socialIcon } from '../socials'
 import { useSiteSettings, phoneHref } from '../useSiteSettings'
@@ -7,7 +7,6 @@ import { useSiteSettings, phoneHref } from '../useSiteSettings'
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
 const GOLD_BRIGHT = '#FFD54F'
-const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
 
 function RoadCar({ color, delay = '0s' }) {
@@ -174,11 +173,13 @@ export default function Footer() {
                 <img
                   src="/driving-logo.png"
                   alt="A Precision Driving School Logo"
+                  loading="lazy"
+                  decoding="async"
                   style={{
-                    height: '130px',
+                    height: '150px',
                     width: 'auto',
                     objectFit: 'contain',
-                    filter: 'drop-shadow(0 0 18px rgba(255,255,255,0.95)) drop-shadow(0 0 6px rgba(255,255,255,0.8))',
+                    filter: 'drop-shadow(0 0 22px rgba(255,255,255,1)) drop-shadow(0 6px 14px rgba(0,0,0,0.3))',
                   }}
                 />
               </div>

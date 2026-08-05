@@ -2,8 +2,6 @@ import { Link, useNavigate } from 'react-router-dom'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
-const GOLD_BRIGHT = '#FFD54F'
-const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
 const DARK_MID = '#0d1f3c'
 
