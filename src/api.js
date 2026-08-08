@@ -1,14 +1,45 @@
+import { auth } from './firebase'
+
 const API_URL = import.meta.env.VITE_API_URL || ''
+const REQUEST_TIMEOUT_MS = 20_000
 
 async function request(path, options = {}) {
-  const res = await fetch(`${API_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  })
+  const headers = new Headers(options.headers || {})
+  headers.set('Accept', 'application/json')
+  if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+
+  const currentUser = auth.currentUser
+  if (currentUser) {
+    const token = await currentUser.getIdToken()
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  if (options.signal) {
+    if (options.signal.aborted) controller.abort()
+    else options.signal.addEventListener('abort', () => controller.abort(), { once: true })
+  }
+
+  let res
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (error.name === 'AbortError') throw new Error('The server took too long to respond. Please try again.')
+    throw new Error('Unable to reach the server. Check your connection and try again.')
+  } finally {
+    window.clearTimeout(timeout)
+  }
   const contentType = res.headers.get('content-type') || ''
   const data = contentType.includes('application/json') ? await res.json() : null
   if (!res.ok) {
-    throw new Error(data?.error || `Request failed with status ${res.status}`)
+    const error = new Error(data?.error || `Request failed with status ${res.status}`)
+    error.status = res.status
+    throw error
   }
   return data
 }
@@ -18,7 +49,6 @@ export const api = {
   saveUser: (uid, data) => request(`/api/users/${uid}`, { method: 'PUT', body: JSON.stringify(data) }),
   getBookings: (uid) => request(`/api/bookings/${uid}`),
   getBookingAvailability: (date) => request(`/api/bookings/availability?date=${encodeURIComponent(date)}`),
-  createBooking: (data) => request('/api/bookings', { method: 'POST', body: JSON.stringify(data) }),
   deleteBooking: (id) => request(`/api/bookings/${id}`, { method: 'DELETE' }),
   adminStats: () => request('/api/admin/stats'),
   adminUsers: () => request('/api/admin/users'),

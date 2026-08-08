@@ -1,9 +1,10 @@
-import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { signInWithEmailAndPassword, signInWithPopup, sendPasswordResetEmail } from 'firebase/auth'
 import { auth, googleProvider } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
 import { usePageMeta } from '../usePageMeta'
+import { consumeBookingReturn } from '../utils/bookingStorage'
 
 const GOLD = '#FDBC01'
 const GOLD_BRIGHT = '#FFD54F'
@@ -18,6 +19,16 @@ export default function LoginPage() {
   const [successMsg, setSuccessMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
+  const requestedReturn = location.state?.from === '/cart' ? '/cart' : ''
+  const returnPathRef = useRef('')
+
+  const finishLogin = () => {
+    if (!returnPathRef.current) {
+      returnPathRef.current = requestedReturn || consumeBookingReturn() || '/dashboard'
+    }
+    navigate(returnPathRef.current, { replace: true })
+  }
 
   const handleForgotPassword = async () => {
     if (!email) {
@@ -37,10 +48,13 @@ export default function LoginPage() {
   }
   const { user } = useAuth()
 
-  if (user) {
-    navigate('/dashboard', { replace: true })
-    return null
-  }
+  useEffect(() => {
+    if (user) finishLogin()
+    // finishLogin intentionally depends on the current navigation state only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
+
+  if (user) return null
 
   const handleEmailLogin = async (e) => {
     e.preventDefault()
@@ -48,7 +62,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await signInWithEmailAndPassword(auth, email, password)
-      navigate('/dashboard')
+      finishLogin()
     } catch (err) {
       if (err.code === 'auth/user-not-found') setError('No account found with this email.')
       else if (err.code === 'auth/wrong-password') setError('Incorrect password.')
@@ -63,7 +77,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await signInWithPopup(auth, googleProvider)
-      navigate('/dashboard')
+      finishLogin()
     } catch (err) {
       if (err.code !== 'auth/popup-closed-by-user') {
         setError('Google login failed. Please try again.')
@@ -189,7 +203,7 @@ export default function LoginPage() {
 
             <p style={{ textAlign: 'center', marginTop: '2rem', fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#8899aa' }}>
               Don't have an account?{' '}
-              <Link to="/register" style={{ color: SKY_BLUE, fontWeight: 600, textDecoration: 'none' }}>Register now</Link>
+              <Link to="/register" state={requestedReturn ? { from: requestedReturn } : undefined} style={{ color: SKY_BLUE, fontWeight: 600, textDecoration: 'none' }}>Register now</Link>
             </p>
           </div>
         </div>

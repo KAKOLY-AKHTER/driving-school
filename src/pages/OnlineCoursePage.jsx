@@ -58,7 +58,7 @@ export default function OnlineCoursePage() {
 
       <nav className="oc-subnav" aria-label="Online course sections">
         <div className="oc-container oc-subnav-inner">
-          <a className="active" href="#course-home">Home</a>
+          <a className="active" href="#course-home" aria-current="page">Home</a>
           <Link to="/online-drivers-ed/details">Course Details</Link>
           <Link to="/online-drivers-ed/pricing">Pricing</Link>
           <Link to="/online-drivers-ed/permit">Permit</Link>
@@ -97,7 +97,7 @@ export default function OnlineCoursePage() {
 
       <section className="oc-section" id="driver-license" style={{ background:'#edf3fa' }}>
         <div className="oc-container">
-          <h2 className="oc-title">Complete Your Lesson</h2>
+          <h2 className="oc-title">Complete Your Course</h2>
           <div className="oc-lessons">{lessons.map((lesson,i)=><div className="oc-lesson" key={lesson}><span>{String(i+1).padStart(2,'0')}</span>{lesson}</div>)}</div>
           <div style={{ textAlign:'center', marginTop:'2rem' }}><Link to="/register" className="oc-btn">Get Started</Link></div>
         </div>
@@ -117,14 +117,14 @@ export default function OnlineCoursePage() {
       <section className="oc-section oc-about" id="behind-wheel">
         <div className="oc-container oc-about-inner">
           <div className="oc-about-visual">
-            <img className="oc-about-main" src="/buy-plan1.png" alt="Student completing online driver education" />
-            <img className="oc-about-small" src="/driving-lesson-premium.jpg" alt="Teen driver receiving behind-the-wheel guidance" loading="lazy" decoding="async" />
+            <img className="oc-about-main" src="/buy-plan1.png" alt="Student completing online driver education" width="1060" height="707" loading="lazy" decoding="async" />
+            <img className="oc-about-small" src="/driving-lesson-premium.jpg" alt="Teen driver receiving behind-the-wheel guidance" width="900" height="1350" loading="lazy" decoding="async" />
           </div>
           <div className="oc-about-copy">
             <h2>100% Online California Driver Education</h2>
             <p><strong style={{ color:'#052c67' }}>A Precision Driving School</strong> provides effective driver education for first-time drivers to learn safe driving skills and meet California DMV requirements. Students under 18 can complete their required education online before beginning supervised driving.</p>
             <p>Our registration, course and student information systems are secure, convenient and designed so learners can progress confidently from any device.</p>
-            <ul className="oc-checks"><li>Access to Course Trainer</li><li>Live Chat Support</li><li>Log On and Off — Course Saves Your Progress</li><li>Get Unlimited Chances to Pass</li><li>Official DMV Certificate Upon Completion</li><li>Mobile-Friendly Learning</li></ul>
+            <ul className="oc-checks"><li>Access to a Course Instructor</li><li>Live Chat Support</li><li>Automatic Progress Saving</li><li>Unlimited Attempts to Pass</li><li>Official DMV Certificate Upon Completion</li><li>Mobile-Friendly Learning</li></ul>
           </div>
         </div>
       </section>

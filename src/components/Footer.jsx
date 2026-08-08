@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
-import { DEFAULT_SOCIALS, socialIcon } from '../socials'
+import { DEFAULT_SOCIALS, socialIcon, socialPlatformLabel } from '../socials'
 import { useSiteSettings, phoneHref } from '../useSiteSettings'
+import { safeHttpUrl } from '../utils/urlSafety'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -41,6 +42,10 @@ export default function Footer() {
       })
       .catch(() => {})
   }, [])
+
+  const safeSocials = socials
+    .map(social => ({ ...social, safeUrl: safeHttpUrl(social.url) }))
+    .filter(social => social.safeUrl)
 
   return (
     <>
@@ -127,9 +132,9 @@ export default function Footer() {
           animation: ftCarDrive 15s linear infinite;
         }
         @keyframes ftCarDrive {
-          0% { transform: translateX(calc(100vw + 240px)) translateY(0); }
+          0% { transform: translateX(0) translateY(0); }
           50% { transform: translateX(calc(50vw + 120px)) translateY(-2px); }
-          100% { transform: translateX(0) translateY(0); }
+          100% { transform: translateX(calc(100vw + 240px)) translateY(0); }
         }
         @media (min-width: 768px) {
           .ft-grid { grid-template-columns: 1.5fr 1fr 1fr 1.2fr !important; }
@@ -172,7 +177,9 @@ export default function Footer() {
               <div style={{ marginBottom: '1.5rem' }}>
                 <img
                   src="/driving-logo.png"
-                  alt="A Precision Driving School Logo"
+                  alt="A Precision Driving School"
+                  width="532"
+                  height="532"
                   loading="lazy"
                   decoding="async"
                   style={{
@@ -191,11 +198,11 @@ export default function Footer() {
                 maxWidth: '30ch',
                 marginBottom: '1.5rem',
               }}>
-                Most complete and affordable way to do all in one package. Fully Bonded, Licensed and Insured.
+                Complete, affordable driver education and behind-the-wheel training. Fully bonded, licensed, and insured.
               </p>
               <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-                {socials.map(s => (
-                  <a key={s._id || s.platform} href={s.url || '#'} target="_blank" rel="noopener noreferrer" className="ft-social" aria-label={s.platform || 'Social link'}>
+                {safeSocials.map(s => (
+                  <a key={s._id || s.platform} href={s.safeUrl} target="_blank" rel="noopener noreferrer" className="ft-social" aria-label={`Visit ${socialPlatformLabel(s.platform)} (opens in a new tab)`}>
                     {socialIcon(s.platform, 18)}
                   </a>
                 ))}
@@ -310,7 +317,7 @@ export default function Footer() {
                 &copy; {currentYear} A Precision Driving School. All rights reserved.
               </p>
               <p style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.45)', fontSize: '0.75rem', margin: 0 }}>
-                Design and Developed by <a href="https://nexviya.com" target="_blank" rel="noopener noreferrer" style={{ color: GOLD, textDecoration: 'none', fontWeight: 600 }}>Nexviya.com</a>
+                Designed and developed by <a href="https://nexviya.com" target="_blank" rel="noopener noreferrer" style={{ color: GOLD, textDecoration: 'none', fontWeight: 600 }}>Nexviya.com</a>
               </p>
             <div style={{ display: 'flex', gap: '1.5rem' }}>
               <Link to="/privacy-policy" style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', textDecoration: 'none', transition: 'color 0.3s ease', cursor: 'pointer' }}

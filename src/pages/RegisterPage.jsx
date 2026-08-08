@@ -4,6 +4,7 @@ import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
 import { auth } from '../firebase'
 import { api } from '../api'
 import { usePageMeta } from '../usePageMeta'
+import { consumeBookingReturn } from '../utils/bookingStorage'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -35,7 +36,7 @@ const COURSE_TYPES = [
 const STEPS = [
   { label: 'Personal', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
   { label: 'Course', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' },
-  { label: 'Payment', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
+  { label: 'Enrollment', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
   { label: 'Confirm', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
 ]
 
@@ -55,10 +56,6 @@ export default function RegisterPage() {
     address1: '', address2: '', city: '', state: 'California', zipCode: '',
     courseType: '1',
     username: '', password: '', confirmPassword: '',
-    ccType: '', ccMonth: '', ccYear: '', ccNumber: '', ccCvv: '',
-    sameBilling: true,
-    billFirstName: '', billLastName: '', billAddress1: '', billAddress2: '',
-    billCity: '', billState: 'California', billZip: '', billPhone: '', billEmail: '',
     disclaimer: '',
   })
 
@@ -74,23 +71,6 @@ export default function RegisterPage() {
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm(prev => ({ ...prev, [name]: value }))
-  }
-
-  const handleSameBilling = (e) => {
-    const checked = e.target.checked
-    setForm(prev => ({
-      ...prev,
-      sameBilling: checked,
-      ...(checked ? {
-        billFirstName: prev.firstName, billLastName: prev.lastName,
-        billAddress1: prev.address1, billAddress2: prev.address2,
-        billCity: prev.city, billState: prev.state, billZip: prev.zipCode,
-        billPhone: prev.phone, billEmail: prev.email,
-      } : {
-        billFirstName: '', billLastName: '', billAddress1: '', billAddress2: '',
-        billCity: '', billState: 'California', billZip: '', billPhone: '', billEmail: '',
-      }),
-    }))
   }
 
   const handleSubmit = async () => {
@@ -131,7 +111,8 @@ export default function RegisterPage() {
       }
       await api.saveUser(user.uid, profileData)
 
-      navigate('/dashboard')
+      const requestedReturn = location.state?.from === '/cart' ? '/cart' : ''
+      navigate(requestedReturn || consumeBookingReturn() || '/dashboard', { replace: true })
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') setRegError('An account with this email already exists.')
       else if (err.code === 'auth/weak-password') setRegError('Password must be at least 6 characters.')
@@ -432,7 +413,7 @@ export default function RegisterPage() {
             fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.65)',
             fontSize: 'clamp(0.85rem, 1.3vw, 1rem)', maxWidth: '36ch',
             marginInline: 'auto', lineHeight: 1.7,
-          }}>Register and pay via credit card to get started today.</p>
+          }}>Create your account and complete your enrollment to get started today.</p>
         </div>
       </section>
 
@@ -595,92 +576,27 @@ export default function RegisterPage() {
                     </svg>
                   </div>
                   <div>
-                    <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: DARK, fontWeight: 700, margin: 0 }}>Payment Details</h2>
+                    <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: DARK, fontWeight: 700, margin: 0 }}>Enrollment Details</h2>
                     <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>Step 3 of 4</p>
                   </div>
                 </div>
 
                 <div style={{
-                  background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 'var(--radius-md)',
-                  padding: '1rem 1.25rem', marginBottom: '1.25rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start',
+                  background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 'var(--radius-md)',
+                  padding: '1.25rem', marginBottom: '1.25rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start',
                   textAlign: 'left'
                 }}>
-                  <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>⚠️</span>
+                  <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px' }}>
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
                   <div>
-                    <h4 style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#B45309', fontWeight: 700, margin: '0 0 0.25rem 0' }}>Demo Mode Active</h4>
-                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#D97706', margin: 0, lineHeight: 1.5 }}>
-                      This system is in demonstration mode. Please do NOT input real credit card credentials. You may use simulated inputs to complete the registration. No payment is processed and no card info is stored.
+                    <h4 style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: '#063B82', fontWeight: 700, margin: '0 0 0.35rem 0' }}>No payment details required</h4>
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#365A84', margin: 0, lineHeight: 1.6 }}>
+                      Online payment will be enabled after the secure payment provider is connected. You can complete your account registration now without entering any card information.
                     </p>
                   </div>
                 </div>
 
-                <div style={{
-                  background: '#ffffff', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-md)',
-                  padding: '1.5rem', marginBottom: '1.25rem',
-                }}>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, marginBottom: '1rem' }}>Card Information</p>
-                  <div className="rw-form-grid">
-                    <Field label="Card Type" required>
-                      <select name="ccType" value={form.ccType} onChange={handleChange} required className="rw-input rw-select" style={inputStyle}>
-                        <option value="">Select...</option>
-                        <option value="Visa">Visa</option>
-                        <option value="MasterCard">MasterCard</option>
-                        <option value="Discover">Discover</option>
-                        <option value="Amex">American Express</option>
-                      </select>
-                    </Field>
-                    <Field label="Card Number" required><input name="ccNumber" value={form.ccNumber} onChange={handleChange} required maxLength={16} placeholder="XXXX XXXX XXXX XXXX" className="rw-input" style={inputStyle} /></Field>
-                    <Field label="Exp Month" required>
-                      <select name="ccMonth" value={form.ccMonth} onChange={handleChange} required className="rw-input rw-select" style={inputStyle}>
-                        <option value="">Month</option>
-                        {['01','02','03','04','05','06','07','08','09','10','11','12'].map(m => (
-                          <option key={m} value={m}>{m}</option>
-                        ))}
-                      </select>
-                    </Field>
-                    <Field label="Exp Year" required>
-                      <select name="ccYear" value={form.ccYear} onChange={handleChange} required className="rw-input rw-select" style={inputStyle}>
-                        <option value="">Year</option>
-                        {Array.from({ length: 16 }, (_, i) => 26 + i).map(y => (
-                          <option key={y} value={y}>{y}</option>
-                        ))}
-                      </select>
-                    </Field>
-                    <Field label="CVV" required><input name="ccCvv" value={form.ccCvv} onChange={handleChange} required maxLength={4} placeholder="3-4 digits" className="rw-input" style={inputStyle} /></Field>
-                  </div>
-                </div>
-
-                {/* Billing */}
-                <div style={{
-                  background: '#ffffff', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-md)',
-                  padding: '1.5rem',
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, margin: 0 }}>Billing Address</p>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={form.sameBilling} onChange={handleSameBilling} style={{ accentColor: SKY_BLUE, width: '16px', height: '16px' }} />
-                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: SKY_BLUE, fontWeight: 600 }}>Same as mailing</span>
-                    </label>
-                  </div>
-                  {!form.sameBilling && (
-                    <div className="rw-form-grid">
-                      <Field label="First Name" required><input name="billFirstName" value={form.billFirstName} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
-                      <Field label="Last Name" required><input name="billLastName" value={form.billLastName} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
-                      <Field label="Address" required><input name="billAddress1" value={form.billAddress1} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
-                      <Field label="City" required><input name="billCity" value={form.billCity} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
-                      <div className="rw-form-grid-2fr1fr">
-                        <Field label="State" required>
-                          <select name="billState" value={form.billState} onChange={handleChange} required className="rw-input rw-select" style={inputStyle}>
-                            {STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                          </select>
-                        </Field>
-                        <Field label="Zip" required><input name="billZip" value={form.billZip} onChange={handleChange} required maxLength={5} className="rw-input" style={inputStyle} /></Field>
-                      </div>
-                      <Field label="Phone" required><input name="billPhone" value={form.billPhone} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
-                      <Field label="Email" required><input name="billEmail" type="email" value={form.billEmail} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
-                    </div>
-                  )}
-                </div>
               </div>
             )}
 
@@ -723,9 +639,9 @@ export default function RegisterPage() {
                     <SumLine label="Street" value={form.address1 || '—'} />
                     <SumLine label="City" value={form.city || form.state || form.zipCode ? `${form.city}, ${form.state} ${form.zipCode}` : '—'} />
                   </SummaryCard>
-                  <SummaryCard title="Payment">
-                    <SumLine label="Card" value={form.ccType ? `${form.ccType} ****${form.ccNumber.slice(-4)}` : '—'} />
-                    <SumLine label="Expires" value={form.ccMonth && form.ccYear ? `${form.ccMonth}/${form.ccYear}` : '—'} />
+                  <SummaryCard title="Enrollment">
+                    <SumLine label="Account" value="Ready to create" />
+                    <SumLine label="Payment" value="Not required at registration" />
                   </SummaryCard>
                 </div>
 

@@ -6,12 +6,20 @@ import { useAuth } from '../contexts/AuthContext'
 import { useCart } from '../contexts/CartContext'
 import { api } from '../api'
 import { usePageMeta } from '../usePageMeta'
+import { openPrintableDocument } from '../utils/printDocument'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
 const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
+
+const localDateKey = (date = new Date()) => {
+  const offset = date.getTimezoneOffset() * 60_000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10)
+}
+
+const isErrorMessage = (message) => /failed|incorrect|invalid|must|please|unavailable|could not/i.test(message)
 
 const TIME_SLOTS = [
   { id: 'slot1', label: 'Morning 1', time: '9:00 AM - 11:00 AM', hours: 2 },
@@ -38,7 +46,7 @@ const I = {
 }
 
 export default function DashboardPage() {
-  usePageMeta('Student Dashboard — A Precision Driving School', 'Manage your driving courses, lesson bookings and payments with A Precision Driving School.')
+  usePageMeta('Student Dashboard — A Precision Driving School', 'Manage your driving courses, lesson bookings, profile and support with A Precision Driving School.')
   const { user } = useAuth()
   const { count: cartCount } = useCart()
   const navigate = useNavigate()
@@ -47,11 +55,10 @@ export default function DashboardPage() {
   const [courseType, setCourseType] = useState('')
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [loadVersion, setLoadVersion] = useState(0)
   const [activeTab, setActiveTab] = useState('dashboard')
   const [bookings, setBookings] = useState([])
-  const [bookingDate, setBookingDate] = useState('')
-  const [bookingSlot, setBookingSlot] = useState('')
-  const [bookingLoading, setBookingLoading] = useState(false)
   const [completedModules, setCompletedModules] = useState([])
   const [activeModule, setActiveModule] = useState(null)
   const [moduleStep, setModuleStep] = useState(0)
@@ -85,10 +92,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) return
+    let active = true
     const load = async () => {
+      setLoading(true)
+      setLoadError('')
       try {
-        const [profile, bookingsData] = await Promise.all([api.getUser(user.uid), api.getBookings(user.uid)])
-        if (profile) {
+        const [profileResult, bookingsResult] = await Promise.allSettled([api.getUser(user.uid), api.getBookings(user.uid)])
+        if (!active) return
+        const profile = profileResult.status === 'fulfilled' ? profileResult.value : null
+        if (profile && typeof profile === 'object') {
           setPhone(profile.phone || '')
           setAddress(profile.address || '')
           setCourseType(profile.courseType || '')
@@ -99,8 +111,8 @@ export default function DashboardPage() {
           setSubmittedAt(profile.submittedAt || '')
           setIssueDate(profile.issueDate || '')
           setExpiryDate(profile.expiryDate || '')
-          setCourses(profile.courses || [])
-          setPayments(profile.payments || [])
+          setCourses(Array.isArray(profile.courses) ? profile.courses : [])
+          setPayments(Array.isArray(profile.payments) ? profile.payments : [])
           setSUsername(profile.username || profile.displayName || '')
           setSPhone(profile.phone || '')
           setSAddress(profile.address || '')
@@ -110,7 +122,7 @@ export default function DashboardPage() {
           setSSubmittedAt(profile.submittedAt || '')
           setSIssueDate(profile.issueDate || '')
           setSExpiryDate(profile.expiryDate || '')
-          if (profile.courses && profile.courses.length > 0) {
+          if (Array.isArray(profile.courses) && profile.courses.length > 0) {
             const seen = new Map()
             for (const c of profile.courses) {
               if (!seen.has(c.id)) seen.set(c.id, c)
@@ -118,16 +130,23 @@ export default function DashboardPage() {
             const deduped = Array.from(seen.values())
             if (deduped.length !== profile.courses.length) {
               setCourses(deduped)
-              api.dedupCourses(user.uid)
+              api.dedupCourses(user.uid).catch(() => {})
             }
           }
         }
-        setBookings(bookingsData)
-      } catch {}
-      setLoading(false)
+        setBookings(bookingsResult.status === 'fulfilled' && Array.isArray(bookingsResult.value) ? bookingsResult.value : [])
+        if (profileResult.status === 'rejected' || bookingsResult.status === 'rejected') {
+          setLoadError('Some dashboard information could not be loaded. Please retry.')
+        }
+      } catch {
+        if (active) setLoadError('Dashboard information could not be loaded. Check your connection and retry.')
+      } finally {
+        if (active) setLoading(false)
+      }
     }
     load()
-  }, [user])
+    return () => { active = false }
+  }, [user, loadVersion])
 
   const handleLogout = async () => { await signOut(auth); navigate('/') }
   const [courseDetail, setCourseDetail] = useState(null)
@@ -137,6 +156,7 @@ export default function DashboardPage() {
   const [chatMessages, setChatMessages] = useState([])
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
+  const [conversationLoading, setConversationLoading] = useState(false)
   const chatEndRef = useRef(null)
 
   useEffect(() => {
@@ -144,17 +164,28 @@ export default function DashboardPage() {
   }, [chatMessages, chatLoading])
   const [conversations, setConversations] = useState([])
   const [activeConvId, setActiveConvId] = useState(null)
-  const handleBookLesson = async () => {
-    if (!bookingDate || !bookingSlot) { setMsg('Please select a date and time slot.'); setTimeout(() => setMsg(''), 2000); return }
-    setBookingLoading(true)
-    try {
-      const today = new Date().toISOString().split('T')[0]
-      const selectedSlot = TIME_SLOTS.find(slot => slot.id === bookingSlot)
-      const newBooking = await api.createBooking({ userId: user.uid, email: user.email, date: bookingDate, timeSlot: selectedSlot?.time || bookingSlot, status: bookingDate < today ? 'completed' : 'scheduled' })
-      setBookings(prev => [newBooking, ...prev]); setBookingDate(''); setBookingSlot(''); setMsg('Lesson booked successfully!'); setTimeout(() => setMsg(''), 2000)
-    } catch { setMsg('Failed to book lesson.') }
-    setBookingLoading(false)
-  }
+
+  useEffect(() => {
+    if (!user || activeTab !== 'support') return
+    let active = true
+    const loadConversations = async () => {
+      setConversationLoading(true)
+      try {
+        const data = await api.getConversations(user.uid)
+        if (active) setConversations(Array.isArray(data) ? data : [])
+      } catch {
+        if (active) {
+          setConversations([])
+          setMsg('Support history could not be loaded. You can still start a new conversation.')
+          setTimeout(() => setMsg(''), 3000)
+        }
+      } finally {
+        if (active) setConversationLoading(false)
+      }
+    }
+    loadConversations()
+    return () => { active = false }
+  }, [activeTab, user])
   const handleCancelBooking = (id) => setBookingCancelConfirm(id)
   const confirmCancelBooking = async () => {
     if (!bookingCancelConfirm) return
@@ -314,24 +345,58 @@ export default function DashboardPage() {
   }
 
   const handleSelectConv = async (convId) => {
-    const conv = await api.getConversation(user.uid, convId)
-    if (conv) {
-      setChatMessages(conv.messages || [])
-      setActiveConvId(convId)
+    setConversationLoading(true)
+    try {
+      const conv = await api.getConversation(user.uid, convId)
+      if (conv) {
+        setChatMessages(Array.isArray(conv.messages) ? conv.messages : [])
+        setActiveConvId(convId)
+      }
+    } catch {
+      setMsg('The conversation could not be loaded. Please try again.')
+      setTimeout(() => setMsg(''), 3000)
+    } finally {
+      setConversationLoading(false)
     }
   }
 
   const handleDeleteConv = async (e, convId) => {
     e.stopPropagation()
-    await api.deleteConversation(user.uid, convId)
-    setConversations(prev => prev.filter(c => c.id !== convId))
-    if (activeConvId === convId) {
-      setChatMessages([])
-      setActiveConvId(null)
+    try {
+      await api.deleteConversation(user.uid, convId)
+      setConversations(prev => prev.filter(c => c.id !== convId))
+      if (activeConvId === convId) {
+        setChatMessages([])
+        setActiveConvId(null)
+      }
+    } catch {
+      setMsg('The conversation could not be deleted. Please try again.')
+      setTimeout(() => setMsg(''), 3000)
     }
   }
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  const handlePrintPayment = (payment) => {
+    const opened = openPrintableDocument({
+      title: `Invoice - ${payment.ref || 'Booking'}`,
+      heading: 'A Precision Driving School',
+      subtitle: 'Booking invoice',
+      rows: [
+        ['Date', payment.date],
+        ['Reference', payment.ref],
+        ['Email', payment.email],
+        ['Item', payment.item],
+        ['Amount', payment.amount],
+        ['Status', payment.status],
+      ],
+      autoPrint: true,
+    })
+    if (!opened) {
+      setMsg('Please allow pop-ups to print this invoice.')
+      setTimeout(() => setMsg(''), 3000)
+    }
+  }
+
+  const todayStr = localDateKey()
   const upcomingBookings = bookings.filter(b => b.date >= todayStr && ['scheduled', 'confirmed'].includes(b.status))
   const pastBookings = bookings.filter(b => b.date < todayStr || ['completed', 'cancelled'].includes(b.status))
   const initials = user?.displayName ? user.displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : user?.email?.[0]?.toUpperCase() || '?'
@@ -590,9 +655,15 @@ export default function DashboardPage() {
               </div>
             )}
             <div style={{ padding:'clamp(1rem,3vw,2.5rem)' }}>
+              {loadError && (
+                <div role="alert" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'1rem', flexWrap:'wrap', padding:'0.9rem 1rem', marginBottom:'1rem', border:'1px solid #FECACA', borderRadius:'12px', background:'#FEF2F2', color:'#B91C1C', fontFamily:'var(--font-body)' }}>
+                  <span>{loadError}</span>
+                  <button type="button" onClick={() => setLoadVersion(version => version + 1)} disabled={loading} style={{ padding:'0.45rem 0.8rem', border:'1px solid #FCA5A5', borderRadius:'8px', background:'#fff', color:'#B91C1C', fontWeight:800, cursor:loading ? 'wait' : 'pointer' }}>{loading ? 'Retrying...' : 'Retry'}</button>
+                </div>
+              )}
               {msg && (
-                <div className="dash-toast" role="status" aria-live="polite" style={{ padding:'0.95rem 1.2rem', background:msg.includes('Failed') || msg.includes('incorrect') ? '#FFF7F7' : '#F3FFF7', border:`1px solid ${msg.includes('Failed') || msg.includes('incorrect') ? 'rgba(220,38,38,0.22)' : 'rgba(34,197,94,0.22)'}`, borderRadius:'14px', fontFamily:'var(--font-body)', fontSize:'1rem', color:msg.includes('Failed') || msg.includes('incorrect') ? '#B91C1C' : '#15803D', boxShadow:'0 18px 50px rgba(15,23,42,.18)', display:'flex', alignItems:'center', gap:'0.65rem' }}>
-                  {msg.includes('Failed') ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>}
+                <div className="dash-toast" role={isErrorMessage(msg) ? 'alert' : 'status'} aria-live={isErrorMessage(msg) ? 'assertive' : 'polite'} style={{ padding:'0.95rem 1.2rem', background:isErrorMessage(msg) ? '#FFF7F7' : '#F3FFF7', border:`1px solid ${isErrorMessage(msg) ? 'rgba(220,38,38,0.22)' : 'rgba(34,197,94,0.22)'}`, borderRadius:'14px', fontFamily:'var(--font-body)', fontSize:'1rem', color:isErrorMessage(msg) ? '#B91C1C' : '#15803D', boxShadow:'0 18px 50px rgba(15,23,42,.18)', display:'flex', alignItems:'center', gap:'0.65rem' }}>
+                  {isErrorMessage(msg) ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>}
                   {msg}
                 </div>
               )}
@@ -878,7 +949,7 @@ export default function DashboardPage() {
                             <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', fontWeight:600 }}>{p.item}</td>
                             <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#0F172A', fontWeight:700 }}>{p.amount}</td>
                             <td style={{ padding:'1rem' }}><span style={{ padding:'0.25rem 0.7rem', background:p.status==='Paid' ? 'rgba(5,150,105,0.06)' : 'rgba(220,38,38,0.04)', color:p.status==='Paid' ? '#059669' : '#DC2626', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:700 }}>{p.status}</span></td>
-                            <td style={{ padding:'1rem', textAlign:'center' }}><button onClick={() => { const r = window.open('','_blank'); r.document.write(`<html><head><title>Receipt - ${p.ref}</title><style>body{font-family:sans-serif;padding:40px;color:#333}h1{font-size:20px;border-bottom:2px solid #0145A8;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:8px 12px;border-bottom:1px solid #eee}.lbl{color:#475569;width:120px}</style></head><body><h1>A Precision Driving School</h1><p style="color:#475569">Payment Receipt</p><table><tr><td class="lbl">Date</td><td>${p.date}</td></tr><tr><td class="lbl">Reference</td><td>${p.ref}</td></tr><tr><td class="lbl">Email</td><td>${p.email}</td></tr><tr><td class="lbl">Item</td><td>${p.item}</td></tr><tr><td class="lbl">Amount</td><td><strong>${p.amount}</strong></td></tr><tr><td class="lbl">Status</td><td>${p.status}</td></tr></table><p style="margin-top:40px;color:#475569;font-size:12px">A Precision Driving School - San Ramon, CA</p></body></html>`); r.document.close(); r.print() }} style={{ background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.35rem', borderRadius:'8px', display:'inline-flex' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg></button></td>
+                            <td style={{ padding:'1rem', textAlign:'center' }}><button type="button" aria-label={`Print invoice ${p.ref || ''}`} title="Print invoice" onClick={() => handlePrintPayment(p)} style={{ background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.35rem', borderRadius:'8px', display:'inline-flex' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg></button></td>
                           </tr>
                         ))}
                       </tbody>
@@ -981,16 +1052,18 @@ export default function DashboardPage() {
                       </button>
                     </div>
                     <div style={{ flex:1, overflowY:'auto', padding:'0.5rem' }}>
-                      {conversations.length === 0 ? (
+                      {conversationLoading ? (
+                        <div role="status" aria-live="polite" style={{ textAlign:'center', padding:'2rem 1rem', color:'#64748b', fontFamily:'var(--font-body)' }}>Loading conversations...</div>
+                      ) : conversations.length === 0 ? (
                         <div style={{ textAlign:'center', padding:'2rem 1rem' }}>
                           <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#B0B8C4', margin:0 }}>No conversations yet.</p>
                         </div>
                       ) : (
                         conversations.map(conv => (
-                          <div key={conv.id} onClick={() => handleSelectConv(conv.id)} style={{ padding:'0.6rem 0.75rem', borderRadius:'10px', cursor:'pointer', marginBottom:'0.2rem', background: activeConvId === conv.id ? 'rgba(1,69,168,0.06)' : 'transparent', border: activeConvId === conv.id ? '1px solid rgba(1,69,168,0.1)' : '1px solid transparent', transition:'all 0.15s', display:'flex', alignItems:'center', gap:'0.5rem', position:'relative' }} onMouseEnter={(e) => { if (activeConvId !== conv.id) e.currentTarget.style.background='rgba(0,0,0,0.02)' }} onMouseLeave={(e) => { if (activeConvId !== conv.id) e.currentTarget.style.background='transparent' }}>
+                          <div key={conv.id} role="button" tabIndex={0} aria-pressed={activeConvId === conv.id} onClick={() => handleSelectConv(conv.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleSelectConv(conv.id) } }} style={{ padding:'0.6rem 0.75rem', borderRadius:'10px', cursor:'pointer', marginBottom:'0.2rem', background: activeConvId === conv.id ? 'rgba(1,69,168,0.06)' : 'transparent', border: activeConvId === conv.id ? '1px solid rgba(1,69,168,0.1)' : '1px solid transparent', transition:'all 0.15s', display:'flex', alignItems:'center', gap:'0.5rem', position:'relative' }} onMouseEnter={(e) => { if (activeConvId !== conv.id) e.currentTarget.style.background='rgba(0,0,0,0.02)' }} onMouseLeave={(e) => { if (activeConvId !== conv.id) e.currentTarget.style.background='transparent' }}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="1.5" style={{ flexShrink:0 }}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
                             <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color: activeConvId === conv.id ? DARK : '#475569', margin:0, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontWeight: activeConvId === conv.id ? 600 : 400 }}>{conv.title}</p>
-                            <button onClick={(e) => handleDeleteConv(e, conv.id)} style={{ background:'none', border:'none', cursor:'pointer', padding:'2px', borderRadius:'4px', display:'flex', opacity:0.4, transition:'opacity 0.2s', flexShrink:0 }} onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(220,38,38,0.06)' }} onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.background = 'none' }}>
+                            <button type="button" aria-label={`Delete conversation ${conv.title || ''}`} title="Delete conversation" onClick={(e) => handleDeleteConv(e, conv.id)} onKeyDown={(e) => e.stopPropagation()} style={{ background:'none', border:'none', cursor:'pointer', padding:'2px', borderRadius:'4px', display:'flex', opacity:0.4, transition:'opacity 0.2s', flexShrink:0 }} onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(220,38,38,0.06)' }} onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.background = 'none' }}>
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
                             </button>
                           </div>
@@ -1063,25 +1136,13 @@ export default function DashboardPage() {
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT},${GOLD})`, backgroundSize:'200% 100%', animation:'dashShimmer 4s linear infinite' }} />
                     <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.15rem', color:DARK, fontWeight:700, marginBottom:'1.25rem', display:'flex', alignItems:'center', gap:'0.6rem' }}>
                       <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(253,188,1,0.1),rgba(253,188,1,0.04))', display:'flex', alignItems:'center', justifyContent:'center' }}>{I.calendar}</div>
-                      Schedule a Lesson
+                      Book More Lessons
                     </h3>
-                    <div style={{ marginBottom:'1.25rem' }}>
-                      <label style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', fontWeight:600, display:'block', marginBottom:'0.35rem' }}>Select Date</label>
-                      <input type="date" min={todayStr} value={bookingDate} onChange={(e) => setBookingDate(e.target.value)} className="dash-input" />
+                    <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', lineHeight:1.7, color:'#475569', margin:'0 0 1rem' }}>Lesson dates and times are reserved while you select a package. This keeps availability and the required number of slots accurate for every plan.</p>
+                    <div style={{ padding:'1rem', marginBottom:'1.25rem', border:'1px solid #DBEAFE', borderRadius:'12px', background:'#EFF6FF', color:'#1E3A8A', fontFamily:'var(--font-body)', fontSize:'0.92rem', lineHeight:1.6 }}>
+                      To add or replace lessons, choose a package and complete its date and time selection. Existing confirmed bookings appear beside this panel.
                     </div>
-                    <div style={{ marginBottom:'1.5rem' }}>
-                      <label style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', fontWeight:600, display:'block', marginBottom:'0.35rem' }}>Select Time Slot</label>
-                      <div className="dash-slot-grid" style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:'0.75rem', marginTop:'0.4rem' }}>
-                        {TIME_SLOTS.map(slot => (
-                          <div key={slot.id} onClick={() => setBookingSlot(slot.id)} className={`dash-slot ${bookingSlot === slot.id ? 'dash-slot-sel' : ''}`}>
-                            <div style={{ fontFamily:'var(--font-display)', fontSize:'1.05rem', color:bookingSlot === slot.id ? GOLD_DEEP : DARK, fontWeight:700, marginBottom:'0.2rem', position:'relative', zIndex:1 }}>{slot.label}</div>
-                            <div style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', marginBottom:'0.15rem', position:'relative', zIndex:1 }}>{slot.time}</div>
-                            <div style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.1em', textTransform:'uppercase', color:bookingSlot === slot.id ? GOLD_DEEP : '#aaa', fontWeight:600, position:'relative', zIndex:1 }}>{slot.hours} Hours</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <button onClick={handleBookLesson} disabled={bookingLoading || !bookingDate || !bookingSlot} className={!bookingDate || !bookingSlot ? '' : 'dash-btn-gold'} style={{ width:'100%', padding:'0.9rem', background:(!bookingDate || !bookingSlot) ? 'linear-gradient(135deg,#ccc,#ddd)' : undefined, color:(!bookingDate || !bookingSlot) ? '#999' : undefined, borderRadius:'14px', border:'none', fontFamily:'var(--font-mono)', fontSize:'0.95rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, cursor:(!bookingDate || !bookingSlot) ? 'not-allowed' : 'pointer', transition:'all 0.4s cubic-bezier(0.22,1,0.36,1)', boxShadow:(!bookingDate || !bookingSlot) ? 'none' : undefined }}>{bookingLoading ? 'Booking...' : 'Book Lesson'}</button>
+                    <button type="button" onClick={() => navigate('/pricing')} className="dash-btn-gold" style={{ width:'100%', padding:'0.9rem', borderRadius:'14px', border:'none', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, cursor:'pointer' }}>View Packages &amp; Times</button>
                   </div>
                   <div className="dash-anim dash-d1 dash-card-premium">
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${SKY_BLUE},${GOLD_BRIGHT},${SKY_BLUE})`, backgroundSize:'200% 100%', animation:'dashShimmer 5s linear infinite' }} />
@@ -1092,7 +1153,7 @@ export default function DashboardPage() {
                     {bookings.length === 0 ? (
                       <div style={{ textAlign:'center', padding:'2.5rem 1rem' }}>
                         <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg></div>
-                        <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569' }}>No bookings yet. Schedule your first lesson!</p>
+                        <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569' }}>No bookings yet. Choose a package to reserve your lesson times.</p>
                       </div>
                     ) : (
                       <div style={{ display:'flex', flexDirection:'column', gap:'0.75rem', maxHeight:'400px', overflowY:'auto' }}>

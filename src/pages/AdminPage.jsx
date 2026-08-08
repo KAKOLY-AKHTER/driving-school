@@ -6,12 +6,42 @@ import { useAuth } from '../contexts/AuthContext'
 import { api, makeEmbedCode } from '../api'
 import { DEFAULT_SOCIALS, SOCIAL_PLATFORMS, socialIcon, socialPlatformLabel } from '../socials'
 import { usePageMeta } from '../usePageMeta'
+import { openPrintableDocument } from '../utils/printDocument'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
 const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
+
+const GOOGLE_MAPS_HOSTS = ['google.com', 'googleusercontent.com']
+
+function validateHttpsUrl(value, { required = true, googleMapsOnly = false } = {}) {
+  const raw = String(value || '').trim()
+  if (!raw) return required
+    ? { error: 'Please enter a secure HTTPS URL.' }
+    : { value: '' }
+
+  try {
+    const parsed = new URL(raw)
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password) {
+      return { error: 'Only secure HTTPS URLs without embedded credentials are allowed.' }
+    }
+    if (googleMapsOnly) {
+      const host = parsed.hostname.toLowerCase()
+      const isGoogleMaps = GOOGLE_MAPS_HOSTS.some(domain => host === domain || host.endsWith(`.${domain}`))
+      if (!isGoogleMaps) return { error: 'Please use a secure Google Maps embed URL.' }
+    }
+    return { value: parsed.toString() }
+  } catch {
+    return { error: 'Please enter a complete, valid URL beginning with https://.' }
+  }
+}
+
+function showPopupBlockedMessage(setMessage) {
+  setMessage('Your browser blocked the document window. Please allow pop-ups and try again.')
+  window.setTimeout(() => setMessage(''), 3500)
+}
 
 const COURSE_MAP = {
   '1': 'TEEN ONLINE DRIVERS ED',
@@ -63,6 +93,8 @@ export default function AdminPage() {
   const [bookingSearch, setBookingSearch] = useState('')
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [courseModal, setCourseModal] = useState(null)
   const [selectedCourseId, setSelectedCourseId] = useState('')
@@ -70,12 +102,13 @@ export default function AdminPage() {
   const [contactForm, setContactForm] = useState({ firstName: '', lastName: '', phone: '', email: '', comments: '', status: '' })
   const [settings, setSettings] = useState({ phone: '', email: '', address: '', subaddress: '', scheduleLabel: '', scheduleLink: '' })
   const [settingsMsg, setSettingsMsg] = useState('')
+  const [settingsSaving, setSettingsSaving] = useState(false)
   const [pricing, setPricing] = useState([])
   const [pricingEdit, setPricingEdit] = useState(null)
   const [pricingForm, setPricingForm] = useState({ planName: '', id: '', planPrice: '', planPriceTwo: '', option1: '', perm1: 'Select', option2: '', perm2: 'Select', option3: '', perm3: 'Select', option4: '', perm4: 'Select', option5: '', perm5: 'Select' })
   const [areas, setAreas] = useState([])
   const [areasEdit, setAreasEdit] = useState(null)
-  const [areasForm, setAreasForm] = useState({ name: '', map: '', icon: '' })
+  const [areasForm, setAreasForm] = useState({ name: '', map: '', icon: '', order: 0 })
   const [copiedArea, setCopiedArea] = useState(null)
   const [socials, setSocials] = useState([])
   const [socialsEdit, setSocialsEdit] = useState(null)
@@ -97,6 +130,8 @@ export default function AdminPage() {
     Booking_Date: '', Meds: '', Notes: '', Calender_booking_Id: '', Price: '', Total: '',
   })
   const [enrollLoading, setEnrollLoading] = useState(false)
+  const [enrollError, setEnrollError] = useState('')
+  const [enrollAttempt, setEnrollAttempt] = useState(0)
   const [refunds, setRefunds] = useState([])
   const [refundTotal, setRefundTotal] = useState(0)
   const [refundPage, setRefundPage] = useState(1)
@@ -104,6 +139,9 @@ export default function AdminPage() {
   const [refundLimit, setRefundLimit] = useState('10')
   const [refundSearch, setRefundSearch] = useState('')
   const [refundStats, setRefundStats] = useState({ totalRequests: 0, totalRefunded: 0, totalAmount: 0, pending: 0 })
+  const [refundLoading, setRefundLoading] = useState(false)
+  const [refundError, setRefundError] = useState('')
+  const [refundAttempt, setRefundAttempt] = useState(0)
   const [refundEdit, setRefundEdit] = useState(null)
   const [refundForm, setRefundForm] = useState({ Full_Name: '', Email: '', Phone: '', Course_Name: '', Amount: '', Reason: '', Status: 'pending' })
   const [accName, setAccName] = useState('')
@@ -136,7 +174,10 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
+    let cancelled = false
     const load = async () => {
+      setLoading(true)
+      setLoadError('')
       try {
         const [s, u, b, c, st, p, a, so] = await Promise.all([
           api.adminStats(),
@@ -148,19 +189,24 @@ export default function AdminPage() {
           api.getAreas().catch(() => []),
           api.getSocials().catch(() => DEFAULT_SOCIALS),
         ])
-        setStats(s)
-        setUsers(u)
-        setBookings(b)
-        setContacts(c)
+        if (cancelled) return
+        setStats(s || { totalUsers: 0, totalBookings: 0, activeEnrollments: 0 })
+        setUsers(Array.isArray(u) ? u : [])
+        setBookings(Array.isArray(b) ? b : [])
+        setContacts(Array.isArray(c) ? c : [])
         setSettings(prev => ({ ...prev, ...st }))
         setPricing(Array.isArray(p) ? p : [])
         setAreas(Array.isArray(a) ? a : [])
         setSocials(Array.isArray(so) ? so : [])
-      } catch {}
-      setLoading(false)
+      } catch (error) {
+        if (!cancelled) setLoadError(error?.message || 'The admin dashboard could not be loaded. Please try again.')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
     load()
-  }, [])
+    return () => { cancelled = true }
+  }, [loadAttempt])
 
   const handleLogout = async () => { await signOut(auth); navigate('/') }
 
@@ -176,9 +222,16 @@ export default function AdminPage() {
     setAccErr(''); setAccMsg(''); setAccLoading(true)
     try {
       const cur = auth.currentUser
-      await updateProfile(cur, { displayName: accName, photoURL: accPhoto })
-      await api.saveUser(user.uid, { name: accName, email: accEmail, photoURL: accPhoto })
-      setAccMsg('Profile updated!')
+      const displayName = accName.trim()
+      if (!cur || !user?.uid) throw new Error('Your session has expired. Please sign in again.')
+      if (!displayName) throw new Error('Display name is required.')
+      const photoResult = validateHttpsUrl(accPhoto, { required: false })
+      if (photoResult.error) throw new Error(`Profile photo: ${photoResult.error}`)
+      await updateProfile(cur, { displayName, photoURL: photoResult.value })
+      await api.saveUser(user.uid, { name: displayName, email: accEmail.trim(), photoURL: photoResult.value })
+      setAccName(displayName)
+      setAccPhoto(photoResult.value)
+      setAccMsg('Profile updated.')
       setTimeout(() => setAccMsg(''), 2500)
     } catch (e) {
       setAccErr(e.message || 'Failed to update profile.')
@@ -191,10 +244,12 @@ export default function AdminPage() {
     setAccErr(''); setAccMsg(''); setAccLoading(true)
     try {
       const cur = auth.currentUser
+      if (!cur || !user?.email) throw new Error('Your session has expired. Please sign in again.')
+      if (accNewPass.length < 6) throw new Error('New password must be at least 6 characters.')
       await reauthenticateWithCredential(cur, EmailAuthProvider.credential(user.email, accPass))
       await updatePassword(cur, accNewPass)
       setAccPass(''); setAccNewPass('')
-      setAccMsg('Password changed!')
+      setAccMsg('Password changed.')
       setTimeout(() => setAccMsg(''), 2500)
     } catch (e) {
       if (e.code === 'auth/wrong-password') setAccErr('Incorrect current password.')
@@ -209,11 +264,15 @@ export default function AdminPage() {
     setAccErr(''); setAccMsg(''); setAccLoading(true)
     try {
       const cur = auth.currentUser
+      const nextEmail = accEmail.trim().toLowerCase()
+      if (!cur || !user?.email) throw new Error('Your session has expired. Please sign in again.')
+      if (!/^\S+@\S+\.\S+$/.test(nextEmail)) throw new Error('Please enter a valid email address.')
       await reauthenticateWithCredential(cur, EmailAuthProvider.credential(user.email, accPass))
-      await updateEmail(cur, accEmail)
-      await api.saveUser(user.uid, { email: accEmail })
+      await updateEmail(cur, nextEmail)
+      await api.saveUser(user.uid, { email: nextEmail })
+      setAccEmail(nextEmail)
       setAccPass('')
-      setAccMsg('Email updated!')
+      setAccMsg('Email updated.')
       setTimeout(() => setAccMsg(''), 2500)
     } catch (e) {
       if (e.code === 'auth/wrong-password') setAccErr('Incorrect current password.')
@@ -225,7 +284,7 @@ export default function AdminPage() {
     }
   }
 
-  const handleToggleAdmin = async (uid, currentIsAdmin) => {
+  const updateAdminRole = async (uid, currentIsAdmin) => {
     try {
       await api.adminSetRole(uid, !currentIsAdmin)
       setUsers(prev => prev.map(u => u.uid === uid ? { ...u, isAdmin: !currentIsAdmin } : u))
@@ -235,6 +294,18 @@ export default function AdminPage() {
       setMsg('Failed to update role.')
       setTimeout(() => setMsg(''), 2000)
     }
+  }
+
+  const handleToggleAdmin = (uid, currentIsAdmin) => {
+    const target = users.find(item => item.uid === uid)
+    const isCurrentUser = uid === user?.uid
+    requestConfirmation(
+      currentIsAdmin ? 'Remove administrator access?' : 'Grant administrator access?',
+      currentIsAdmin
+        ? `${target?.email || 'This user'} will lose administrator access.${isCurrentUser ? ' You may be signed out of this panel.' : ''}`
+        : `${target?.email || 'This user'} will be able to view and change protected website data.`,
+      () => updateAdminRole(uid, currentIsAdmin),
+    )
   }
 
   const deleteBooking = async (id) => {
@@ -330,13 +401,133 @@ export default function AdminPage() {
     () => deleteContact(id),
   )
 
+  const deletePricing = async (id) => {
+    try {
+      await api.adminDeletePricing(id)
+      setPricing(prev => prev.filter(item => item._id !== id))
+      setMsg('Pricing plan deleted.')
+    } catch {
+      setMsg('Failed to delete pricing plan.')
+    }
+    setTimeout(() => setMsg(''), 2500)
+  }
+
+  const deleteEnrollment = async (id) => {
+    try {
+      await api.adminDeleteEnrollment(id)
+      setEnrollments(prev => prev.filter(item => item._id !== id))
+      setEnrollTotal(prev => Math.max(0, prev - 1))
+      setMsg('Enrollment deleted.')
+    } catch {
+      setMsg('Failed to delete enrollment.')
+    }
+    setTimeout(() => setMsg(''), 2500)
+  }
+
+  const deleteRefund = async (id) => {
+    try {
+      await api.adminDeleteRefund(id)
+      setRefunds(prev => prev.filter(item => item._id !== id))
+      setRefundTotal(prev => Math.max(0, prev - 1))
+      setMsg('Refund record deleted.')
+    } catch {
+      setMsg('Failed to delete refund record.')
+    }
+    setTimeout(() => setMsg(''), 2500)
+  }
+
+  const deleteArea = async (id) => {
+    try {
+      await api.adminDeleteArea(id)
+      setAreas(prev => prev.filter(item => item._id !== id))
+      setMsg('Location deleted.')
+    } catch {
+      setMsg('Failed to delete location.')
+    }
+    setTimeout(() => setMsg(''), 2500)
+  }
+
+  const deleteSocial = async (id) => {
+    try {
+      await api.adminDeleteSocial(id)
+      setSocials(prev => prev.filter(item => item._id !== id))
+      setMsg('Social link deleted.')
+    } catch {
+      setMsg('Failed to delete social link.')
+    }
+    setTimeout(() => setMsg(''), 2500)
+  }
+
+  const openEnrollmentInvoice = (enrollment) => {
+    const opened = openPrintableDocument({
+      title: `Invoice - ${enrollment.ID || enrollment._id || 'Enrollment'}`,
+      heading: 'A Precision Driving School',
+      subtitle: 'Enrollment invoice',
+      rows: Object.entries({
+        ID: enrollment.ID,
+        Student: enrollment.Full_Name,
+        Email: enrollment.Email,
+        Course: enrollment.Course_Name,
+        Price: enrollment.Price,
+        Total: enrollment.Total,
+        Status: enrollment.Status,
+        Date: enrollment.Applied_date,
+      }).filter(([, value]) => value !== null && value !== undefined && value !== ''),
+      autoPrint: true,
+    })
+    if (!opened) showPopupBlockedMessage(setMsg)
+  }
+
+  const openEnrollmentForm = (enrollment) => {
+    const rows = Object.entries(enrollment)
+      .filter(([key]) => !['_id', 'updatedAt', '__v'].includes(key))
+      .map(([key, value]) => [key.replaceAll('_', ' '), value])
+    const opened = openPrintableDocument({
+      title: `Enrollment Form - ${enrollment.Full_Name || enrollment.ID || 'Student'}`,
+      heading: 'A Precision Driving School',
+      subtitle: 'Enrollment form',
+      rows,
+    })
+    if (!opened) showPopupBlockedMessage(setMsg)
+  }
+
+  useEffect(() => {
+    const dialogOpen = Boolean(contactEdit || pricingEdit || areasEdit || socialsEdit || refundEdit || enrollEdit || confirmDialog)
+    if (!dialogOpen && !sidebarOpen) return undefined
+
+    const previousOverflow = document.body.style.overflow
+    if (dialogOpen) document.body.style.overflow = 'hidden'
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape') return
+      if (confirmDialog) {
+        if (!confirmDialog.busy) setConfirmDialog(null)
+      } else if (enrollEdit) setEnrollEdit(null)
+      else if (refundEdit) setRefundEdit(null)
+      else if (socialsEdit) setSocialsEdit(null)
+      else if (areasEdit) setAreasEdit(null)
+      else if (pricingEdit) setPricingEdit(null)
+      else if (contactEdit) setContactEdit(null)
+      else setSidebarOpen(false)
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = previousOverflow
+    }
+  }, [areasEdit, confirmDialog, contactEdit, enrollEdit, pricingEdit, refundEdit, sidebarOpen, socialsEdit])
+
   const todayStr = new Date().toISOString().split('T')[0]
   const initials = user?.displayName ? user.displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : user?.email?.[0]?.toUpperCase() || '?'
+  const profilePhotoPreview = validateHttpsUrl(accPhoto, { required: false }).value
+  const msgIsError = /failed|could not|cannot|required|invalid|blocked|only secure|please (enter|use)/i.test(msg)
+  const settingsMsgIsError = /failed|could not|cannot|required|invalid|please (enter|use)/i.test(settingsMsg)
 
   useEffect(() => {
     if (activeTab !== 'enrolled') return
+    let cancelled = false
     const load = async () => {
       setEnrollLoading(true)
+      setEnrollError('')
       try {
         const params = { page: enrollPage, limit: enrollLimit }
         if (enrollSearch) params.search = enrollSearch
@@ -346,19 +537,27 @@ export default function AdminPage() {
           api.adminEnrollments(params),
           api.adminEnrollmentsStats(),
         ])
-        setEnrollments(list.data || [])
+        if (cancelled) return
+        setEnrollments(Array.isArray(list.data) ? list.data : [])
         setEnrollTotal(list.total || 0)
         setEnrollPages(list.totalPages || 1)
-        setEnrollStats(stats)
-      } catch {}
-      setEnrollLoading(false)
+        setEnrollStats(stats || { totalStudents: 0, totalPackages: 0, totalEnrolled: 0 })
+      } catch (error) {
+        if (!cancelled) setEnrollError(error?.message || 'Enrollments could not be loaded.')
+      } finally {
+        if (!cancelled) setEnrollLoading(false)
+      }
     }
     load()
-  }, [activeTab, enrollPage, enrollLimit, enrollSearch, enrollFrom, enrollTo])
+    return () => { cancelled = true }
+  }, [activeTab, enrollPage, enrollLimit, enrollSearch, enrollFrom, enrollTo, enrollAttempt])
 
   useEffect(() => {
     if (activeTab !== 'refunds') return
+    let cancelled = false
     const load = async () => {
+      setRefundLoading(true)
+      setRefundError('')
       try {
         const params = { page: refundPage, limit: refundLimit }
         if (refundSearch) params.search = refundSearch
@@ -366,14 +565,20 @@ export default function AdminPage() {
           api.adminRefunds(params),
           api.adminRefundsStats(),
         ])
-        setRefunds(list.data || [])
+        if (cancelled) return
+        setRefunds(Array.isArray(list.data) ? list.data : [])
         setRefundTotal(list.total || 0)
         setRefundPages(list.totalPages || 1)
-        setRefundStats(stats)
-      } catch {}
+        setRefundStats(stats || { totalRequests: 0, totalRefunded: 0, totalAmount: 0, pending: 0 })
+      } catch (error) {
+        if (!cancelled) setRefundError(error?.message || 'Refund records could not be loaded.')
+      } finally {
+        if (!cancelled) setRefundLoading(false)
+      }
     }
     load()
-  }, [activeTab, refundPage, refundLimit, refundSearch])
+    return () => { cancelled = true }
+  }, [activeTab, refundPage, refundLimit, refundSearch, refundAttempt])
 
   const filteredUsers = users.filter(u => {
     const q = userSearch.toLowerCase()
@@ -386,7 +591,7 @@ export default function AdminPage() {
     const u = users.find(ux => ux.uid === b.userId)
     const name = (u?.displayName || '').toLowerCase()
     const email = (u?.email || '').toLowerCase()
-    return name.includes(q) || email.includes(q) || b.date.includes(q) || (TIME_SLOT_MAP[b.timeSlot] || '').toLowerCase().includes(q)
+    return name.includes(q) || email.includes(q) || String(b.date || '').toLowerCase().includes(q) || String(TIME_SLOT_MAP[b.timeSlot] || b.timeSlot || '').toLowerCase().includes(q)
   })
 
 
@@ -451,6 +656,8 @@ export default function AdminPage() {
         .admin-main button { transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease,background-color .18s ease,color .18s ease; }
         .admin-main button:not(:disabled):active { transform:translateY(1px); }
         .admin-main button:focus-visible,.admin-sidebar button:focus-visible { outline:3px solid rgba(253,188,1,.75); outline-offset:3px; }
+        .admin-modal-backdrop button:focus-visible,.admin-confirm-dialog button:focus-visible { outline:3px solid rgba(1,69,168,.32); outline-offset:3px; }
+        .admin-toolbar-input { width:min(100%,280px) !important; }
         @keyframes adminBackdropIn { from { opacity:0; } to { opacity:1; } }
         @keyframes adminModalIn { from { opacity:0; transform:translateY(18px) scale(.98); } to { opacity:1; transform:none; } }
         @keyframes adminToastIn { from { opacity:0; transform:translate3d(20px,-8px,0); } to { opacity:1; transform:none; } }
@@ -474,6 +681,15 @@ export default function AdminPage() {
           .admin-modal-backdrop { align-items:flex-end !important; padding:0 !important; }
           .admin-modal-backdrop > div { width:100% !important; max-width:none !important; max-height:92vh !important; border-radius:20px 20px 0 0 !important; padding:1.25rem !important; }
           .admin-modal-backdrop > div div[style*="grid-template-columns"] { grid-template-columns:1fr !important; }
+          .admin-brand-subtitle,.admin-user-copy { display:none !important; }
+          .admin-header-inner { padding-inline:.75rem !important; }
+          .admin-toolbar,.admin-toolbar > div { align-items:stretch !important; width:100%; }
+          .admin-toolbar-input { width:100% !important; }
+          .admin-toolbar input,.admin-toolbar select,.admin-toolbar button { max-width:100%; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .admin-stat,.admin-nav-item,.admin-modal-backdrop,.admin-modal-backdrop > div,.admin-toast,.admin-skeleton { animation:none !important; transition:none !important; }
+          .admin-stat:hover,.admin-nav-item:hover { transform:none !important; }
         }
       `}</style>
 
@@ -481,9 +697,9 @@ export default function AdminPage() {
 
         <header style={{ position: 'sticky', top: 0, zIndex: 100, background: '#0145A8', borderBottom: '1px solid rgba(253,188,1,0.2)', boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(253,188,1,0.08)' }}>
           <div style={{ height: '2.5px', background: `linear-gradient(90deg,transparent 5%,${GOLD} 20%,${GOLD_BRIGHT} 35%,#fff 50%,${GOLD_BRIGHT} 65%,${GOLD} 80%,transparent 95%)` }} />
-          <div style={{ padding: '0 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '72px' }}>
+          <div className="admin-header-inner" style={{ padding: '0 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '72px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <button className="admin-hamburger" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'rgba(253,188,1,0.08)', border: '1px solid rgba(253,188,1,0.15)', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0.4rem', width: '40px', height: '40px', justifyContent: 'center' }}>
+              <button type="button" className="admin-hamburger" aria-label={sidebarOpen ? 'Close admin menu' : 'Open admin menu'} aria-expanded={sidebarOpen} aria-controls="admin-sidebar" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'rgba(253,188,1,0.08)', border: '1px solid rgba(253,188,1,0.15)', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0.4rem', width: '40px', height: '40px', justifyContent: 'center' }}>
                 {sidebarOpen ? SVG.close : SVG.menu}
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
@@ -492,17 +708,17 @@ export default function AdminPage() {
                 </Link>
                 <div>
                   <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', color: '#fff', margin: 0, fontWeight: 800, lineHeight: 1.2, textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>Admin Panel</p>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: GOLD_BRIGHT, margin: 0, fontWeight: 700, textShadow: '0 0 8px rgba(253,188,1,0.3)' }}>A Precision Driving School</p>
+                  <p className="admin-brand-subtitle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: GOLD_BRIGHT, margin: 0, fontWeight: 700, textShadow: '0 0 8px rgba(253,188,1,0.3)' }}>A Precision Driving School</p>
                 </div>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ textAlign: 'right' }}>
+              <div className="admin-user-copy" style={{ textAlign: 'right' }}>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.92rem', color: '#fff', margin: 0, fontWeight: 600 }}>{user?.displayName || 'Admin'}</p>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'rgba(255,255,255,0.65)', margin: 0 }}>{user?.email}</p>
               </div>
               <div style={{ position: 'relative' }}>
-                {user?.photoURL ? <img src={user.photoURL} alt="" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.3)', flexShrink: 0 }} /> : <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', fontWeight: 800, color: DARK, border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.3)', flexShrink: 0 }}>{initials}</div>}
+                {user?.photoURL ? <img src={user.photoURL} alt={`${user.displayName || 'Administrator'} profile`} style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.3)', flexShrink: 0 }} /> : <div aria-label={`${user?.displayName || 'Administrator'} profile`} style={{ width: '42px', height: '42px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', fontWeight: 800, color: DARK, border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.3)', flexShrink: 0 }}>{initials}</div>}
                 <div style={{ position: 'absolute', bottom: 0, right: 0, width: '11px', height: '11px', borderRadius: '50%', background: 'linear-gradient(135deg,#22C55E,#16A34A)', border: '2.5px solid #0145A8', boxShadow: '0 0 6px rgba(34,197,94,0.4)' }} />
               </div>
             </div>
@@ -511,7 +727,7 @@ export default function AdminPage() {
 
         <div style={{ display: 'flex', flex: 1 }}>
 
-          <div className={`admin-sidebar ${sidebarOpen ? 'admin-sidebar-open' : ''}`} style={{ width: '260px', background: 'linear-gradient(180deg,#0c2a5e 0%,#0145A8 50%,#082048 100%)', padding: 0, position: 'sticky', top: '76px', height: 'calc(100vh - 76px)', overflowY: 'auto', flexShrink: 0, transition: 'left 0.4s', borderRight: '1px solid rgba(253,188,1,0.12)', display: 'flex', flexDirection: 'column', boxShadow: 'inset -1px 0 0 rgba(253,188,1,0.05)' }}>
+          <div id="admin-sidebar" className={`admin-sidebar ${sidebarOpen ? 'admin-sidebar-open' : ''}`} style={{ width: '260px', background: 'linear-gradient(180deg,#0c2a5e 0%,#0145A8 50%,#082048 100%)', padding: 0, position: 'sticky', top: '76px', height: 'calc(100vh - 76px)', overflowY: 'auto', flexShrink: 0, transition: 'left 0.4s', borderRight: '1px solid rgba(253,188,1,0.12)', display: 'flex', flexDirection: 'column', boxShadow: 'inset -1px 0 0 rgba(253,188,1,0.05)' }}>
             <div style={{ padding: '1.5rem 1rem 1.1rem', borderBottom: '1px solid rgba(253,188,1,0.12)', background: 'linear-gradient(135deg,rgba(253,188,1,0.07),transparent 65%)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
                 <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -525,13 +741,13 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <nav style={{ padding: '1.25rem 0.75rem' }}>
+            <nav aria-label="Admin sections" style={{ padding: '1.25rem 0.75rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0 0.75rem 0.75rem', marginBottom: '0.5rem' }}>
                 <span style={{ width: '18px', height: '2px', background: 'linear-gradient(90deg,transparent,#FDBC01)', borderRadius: '2px' }} />
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(253,188,1,0.75)', fontWeight: 700 }}>Menu</span>
               </div>
               {navItems.map(item => (
-                <button key={item.id} onClick={() => switchTab(item.id)} className={`admin-nav-item ${activeTab === item.id ? 'admin-nav-active' : ''}`} style={{ marginBottom: '4px' }}>
+                <button type="button" key={item.id} aria-current={activeTab === item.id ? 'page' : undefined} onClick={() => switchTab(item.id)} className={`admin-nav-item ${activeTab === item.id ? 'admin-nav-active' : ''}`} style={{ marginBottom: '4px' }}>
                   <div style={{ flexShrink: 0, width: '34px', height: '34px', borderRadius: '10px', background: activeTab === item.id ? 'linear-gradient(135deg,rgba(253,188,1,0.25),rgba(253,188,1,0.10))' : 'linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s' }}>{item.icon}</div>
                   <span>{item.label}</span>
                 </button>
@@ -551,9 +767,9 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className={`admin-sidebar-overlay ${sidebarOpen ? 'admin-sidebar-overlay-show' : ''}`} onClick={() => setSidebarOpen(false)} />
+          <div role="presentation" aria-hidden="true" className={`admin-sidebar-overlay ${sidebarOpen ? 'admin-sidebar-overlay-show' : ''}`} onClick={() => setSidebarOpen(false)} />
 
-          <main className="admin-main" style={{ flex: 1, marginLeft: '0', minWidth: 0 }}>
+          <main id="main-content" className="admin-main" style={{ flex: 1, marginLeft: '0', minWidth: 0 }}>
             <div style={{ padding: 'clamp(1.5rem, 4vw, 2.5rem) clamp(1rem, 3vw, 2rem) 0' }}>
               <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.5rem, 3vw, 2.2rem)', color: '#0F172A', lineHeight: 1.15, fontWeight: 800, margin: 0 }}>
                 {navItems.find(n => n.id === activeTab)?.label || 'Admin Dashboard'}
@@ -563,7 +779,7 @@ export default function AdminPage() {
             <div style={{ padding: 'clamp(1.5rem, 3vw, 2.5rem)' }}>
 
               {msg && (
-                <div role="status" aria-live="polite" className="admin-toast" style={{ background: msg.includes('Failed') ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${msg.includes('Failed') ? '#FECACA' : '#BBF7D0'}`, fontFamily: 'var(--font-body)', fontSize: '0.92rem', fontWeight: 700, color: msg.includes('Failed') ? '#DC2626' : '#15803D' }}>
+                <div role={msgIsError ? 'alert' : 'status'} aria-live="polite" className="admin-toast" style={{ background: msgIsError ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${msgIsError ? '#FECACA' : '#BBF7D0'}`, fontFamily: 'var(--font-body)', fontSize: '0.92rem', fontWeight: 700, color: msgIsError ? '#DC2626' : '#15803D' }}>
                   {msg}
                 </div>
               )}
@@ -574,7 +790,16 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {activeTab === 'dashboard' && (
+              {!loading && loadError && (
+                <div role="alert" style={{ ...cardStyle, maxWidth: '720px', margin: '1rem auto', textAlign: 'center', borderColor: '#FECACA', background: '#FFFBFB' }}>
+                  <div aria-hidden="true" style={{ width: '48px', height: '48px', display: 'grid', placeItems: 'center', margin: '0 auto 1rem', borderRadius: '14px', background: '#FEF2F2', color: '#DC2626' }}>{SVG.shield}</div>
+                  <h2 style={{ margin: '0 0 .5rem', color: DARK, fontSize: '1.25rem' }}>Dashboard data is unavailable</h2>
+                  <p style={{ margin: '0 auto 1.25rem', maxWidth: '540px', color: '#64748b', lineHeight: 1.6 }}>{loadError}</p>
+                  <button type="button" onClick={() => setLoadAttempt(value => value + 1)} style={{ minHeight: '44px', padding: '.7rem 1.2rem', border: 0, borderRadius: '10px', background: `linear-gradient(135deg,${SKY_BLUE},#0a2a5e)`, color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Try Again</button>
+                </div>
+              )}
+
+              {!loading && !loadError && activeTab === 'dashboard' && (
                 <div>
                   <div className="admin-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
                     {[
@@ -638,11 +863,11 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {activeTab === 'users' && (
+              {!loading && !loadError && activeTab === 'users' && (
                 <div style={cardStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.users} All Users ({users.length})</h3>
-                    <input type="text" placeholder="Search by name, email, phone..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} style={{ ...inputStyle, width: '280px' }} />
+                    <input className="admin-toolbar-input" aria-label="Search users" type="search" placeholder="Search by name, email, phone…" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} style={{ ...inputStyle, width: '280px' }} />
                   </div>
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -677,14 +902,14 @@ export default function AdminPage() {
                                       <span style={{ padding: '0.15rem 0.4rem', background: 'rgba(34,197,94,0.1)', color: '#16A34A', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 700, whiteSpace: 'nowrap' }}>
                                         {c.title || COURSE_MAP[c.id] || `Course ${c.id}`}
                                       </span>
-                                      <button onClick={() => handleRemoveCourse(u.uid, c.id)} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', padding: '0 0.2rem', fontSize: '0.95rem', lineHeight: 1 }} title="Remove course">&times;</button>
+                                      <button type="button" aria-label={`Remove ${c.title || COURSE_MAP[c.id] || 'course'} from ${u.displayName || u.email || 'user'}`} onClick={() => handleRemoveCourse(u.uid, c.id)} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', padding: '0 0.2rem', fontSize: '0.95rem', lineHeight: 1 }} title="Remove course">&times;</button>
                                     </div>
                                   ))}
                                 </div>
                               ) : <span style={{ color: '#64748b' }}>—</span>}
                               {courseModal === u.uid ? (
                                 <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
-                                  <select value={selectedCourseId} onChange={(e) => setSelectedCourseId(e.target.value)} style={{ ...inputStyle, width: 'auto', flex: 1, padding: '0.3rem 0.5rem', fontSize: '1.05rem' }}>
+                                  <select aria-label={`Select a course for ${u.displayName || u.email || 'user'}`} value={selectedCourseId} onChange={(e) => setSelectedCourseId(e.target.value)} style={{ ...inputStyle, width: 'auto', flex: 1, padding: '0.3rem 0.5rem', fontSize: '1.05rem' }}>
                                     <option value="">Select course...</option>
                                     {Object.entries(COURSE_MAP).map(([id, name]) => (
                                       <option key={id} value={id}>{name}</option>
@@ -703,7 +928,7 @@ export default function AdminPage() {
                                 : <span style={{ padding: '0.2rem 0.5rem', background: 'rgba(136,153,170,0.1)', color: '#64748b', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>User</span>}
                             </td>
                             <td style={tdStyle}>
-                              <button onClick={() => handleToggleAdmin(u.uid, u.isAdmin)} style={{ background: 'none', border: `1.5px solid ${u.isAdmin ? '#DC2626' : SKY_BLUE}`, color: u.isAdmin ? '#DC2626' : SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.7rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
+                              <button aria-label={`${u.isAdmin ? 'Remove administrator access from' : 'Grant administrator access to'} ${u.displayName || u.email || 'user'}`} onClick={() => handleToggleAdmin(u.uid, u.isAdmin)} style={{ background: 'none', border: `1.5px solid ${u.isAdmin ? '#DC2626' : SKY_BLUE}`, color: u.isAdmin ? '#DC2626' : SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.7rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
                                 {u.isAdmin ? 'Remove Admin' : 'Make Admin'}
                               </button>
                             </td>
@@ -718,11 +943,11 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {activeTab === 'bookings' && (
+              {!loading && !loadError && activeTab === 'bookings' && (
                 <div style={cardStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.calendar} All Bookings ({bookings.length})</h3>
-                    <input type="text" placeholder="Search by user, date, time..." value={bookingSearch} onChange={(e) => setBookingSearch(e.target.value)} style={{ ...inputStyle, width: '280px' }} />
+                    <input className="admin-toolbar-input" aria-label="Search bookings" type="search" placeholder="Search by user, date, time…" value={bookingSearch} onChange={(e) => setBookingSearch(e.target.value)} style={{ ...inputStyle, width: '280px' }} />
                   </div>
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -769,7 +994,7 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {activeTab === 'contacts' && (
+              {!loading && !loadError && activeTab === 'contacts' && (
                 <div style={cardStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.mail} Contact Messages ({contacts.length})</h3>
@@ -815,7 +1040,7 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {activeTab === 'pricing' && (
+              {!loading && !loadError && activeTab === 'pricing' && (
                 <div style={cardStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.dollar} Pricing Plan ({pricing.length})</h3>
@@ -865,7 +1090,7 @@ export default function AdminPage() {
                                       option5: opts[4]?.text || '', perm5: opts[4]?.permission || 'Select',
                                     }); setPricingEdit(t._id)
                                   }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
-                                  <button onClick={async () => { if (!confirm('Delete this package?')) return; try { await api.adminDeletePricing(t._id); setPricing(prev => prev.filter(x => x._id !== t._id)); setMsg('Package deleted.'); setTimeout(() => setMsg(''), 2000) } catch { setMsg('Failed to delete.'); setTimeout(() => setMsg(''), 2000) } }} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+                                  <button onClick={() => requestConfirmation('Delete pricing plan?', `${t.planName || 'This plan'} will be permanently removed.`, () => deletePricing(t._id))} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
                                 </div>
                               </td>
                             </tr>
@@ -880,7 +1105,7 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {activeTab === 'enrolled' && (
+              {!loading && !loadError && activeTab === 'enrolled' && (
                 <div>
                   <div className="admin-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
                     {[
@@ -899,11 +1124,11 @@ export default function AdminPage() {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.book} Enrolled Courses ({enrollTotal})</h3>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <input type="date" value={enrollFrom} onChange={e => { setEnrollFrom(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '140px', fontSize: '1.05rem' }} title="From" />
+                        <input aria-label="Enrollment start date" type="date" value={enrollFrom} onChange={e => { setEnrollFrom(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '140px', fontSize: '1.05rem' }} title="From" />
                         <span style={{ color: '#64748b', fontSize: '1.05rem' }}>to</span>
-                        <input type="date" value={enrollTo} onChange={e => { setEnrollTo(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '140px', fontSize: '1.05rem' }} title="To" />
-                        <input type="text" placeholder="Search..." value={enrollSearch} onChange={e => { setEnrollSearch(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '160px' }} />
-                        <select value={enrollLimit} onChange={e => { setEnrollLimit(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '90px', fontSize: '1.05rem' }}>
+                        <input aria-label="Enrollment end date" type="date" value={enrollTo} onChange={e => { setEnrollTo(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '140px', fontSize: '1.05rem' }} title="To" />
+                        <input aria-label="Search enrollments" type="search" placeholder="Search enrollments…" value={enrollSearch} onChange={e => { setEnrollSearch(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '160px' }} />
+                        <select aria-label="Enrollments per page" value={enrollLimit} onChange={e => { setEnrollLimit(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '90px', fontSize: '1.05rem' }}>
                           <option value="10">10 / page</option>
                           <option value="20">20 / page</option>
                           <option value="50">50 / page</option>
@@ -924,7 +1149,12 @@ export default function AdminPage() {
                         </thead>
                         <tbody>
                           {enrollLoading ? (
-                            <tr><td colSpan={25} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>Loading...</td></tr>
+                            <tr><td role="status" aria-live="polite" colSpan={25} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>Loading enrollments…</td></tr>
+                          ) : enrollError ? (
+                            <tr><td role="alert" colSpan={25} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#B91C1C' }}>
+                              <p style={{ margin: '0 0 .75rem' }}>{enrollError}</p>
+                              <button type="button" onClick={() => setEnrollAttempt(value => value + 1)} style={{ padding: '.55rem .9rem', border: '1px solid #FCA5A5', borderRadius: '9px', background: '#fff', color: '#B91C1C', fontWeight: 800, cursor: 'pointer' }}>Try Again</button>
+                            </td></tr>
                           ) : enrollments.length === 0 ? (
                             <tr><td colSpan={25} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>No enrollments found</td></tr>
                           ) : enrollments.map(e => (
@@ -935,10 +1165,10 @@ export default function AdminPage() {
                               </td>
                               <td style={tdStyle}>
                                 <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'nowrap' }}>
-                                  <button title="Invoice" onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>Invoice - ${e.ID || e._id}</title><style>body{font-family:sans-serif;padding:40px}h1{font-size:20px;border-bottom:2px solid #0145A8;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:6px 10px;border-bottom:1px solid #eee;font-size:13px}.lbl{color:#64748b;width:140px}</style></head><body><h1>A Precision Driving School</h1><p style="color:#64748b">Invoice</p><table>${Object.entries({ID:e.ID,Student:e.Full_Name,Email:e.Email,Course:e.Course_Name,Price:e.Price,Total:e.Total,Status:e.Status,Date:e.Applied_date}).filter(([,v])=>v).map(([k,v])=>`<tr><td class="lbl">${k}</td><td>${v}</td></tr>`).join('')}</table></body></html>`); w.document.close(); w.print() }} style={{ background:'none', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Invoice</button>
-                                  <button title="Form" onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>Enrollment Form - ${e.Full_Name || e.ID}</title><style>body{font-family:sans-serif;padding:40px}h1{font-size:18px;border-bottom:2px solid #FDBC01;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:5px 8px;border:1px solid #ddd;font-size:12px;vertical-align:top}.lbl{background:#f5f7fa;font-weight:600;width:160px;color:#1a2332}</style></head><body><h1>A Precision Driving School - Enrollment Form</h1><table>${Object.entries(e).filter(([k])=>k!=='_id'&&k!=='updatedAt'&&k!='__v').map(([k,v])=>`<tr><td class="lbl">${k}</td><td>${v||'—'}</td></tr>`).join('')}</table></body></html>`); w.document.close() }} style={{ background:'none', border:'none', color:GOLD_DEEP, cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Form</button>
+                                  <button type="button" aria-label={`Open invoice for ${e.Full_Name || e.ID || 'student'}`} title="Open invoice" onClick={() => openEnrollmentInvoice(e)} style={{ background:'none', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Invoice</button>
+                                  <button type="button" aria-label={`Open enrollment form for ${e.Full_Name || e.ID || 'student'}`} title="Open enrollment form" onClick={() => openEnrollmentForm(e)} style={{ background:'none', border:'none', color:GOLD_DEEP, cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Form</button>
                                   <button onClick={() => { setEnrollForm({ ID: e.ID || '', Status: e.Status || 'pending', Full_Name: e.Full_Name || '', Email: e.Email || '', 'Student Phone': e['Student Phone'] || '', Gender: e.Gender || '', Date_of_Birth: e.Date_of_Birth || '', Address: e.Address || '', City: e.City || '', State: e.State || '', Zip: e.Zip || '', Permit: e.Permit || '', Issue_Date: e.Issue_Date || '', Expire_Date: e.Expire_Date || '', Parent_Phone: e.Parent_Phone || '', Pickup_Address: e.Pickup_Address || '', Course_Name: e.Course_Name || '', Booking_Date: e.Booking_Date || '', Meds: e.Meds || '', Notes: e.Notes || '', Calender_booking_Id: e.Calender_booking_Id || '', Price: e.Price || '', Total: e.Total || '' }); setEnrollEdit(e._id) }} style={{ background:'none', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Edit</button>
-                                  <button onClick={async () => { if (!confirm('Delete this enrollment?')) return; try { await api.adminDeleteEnrollment(e._id); setEnrollments(prev => prev.filter(x => x._id !== e._id)); setEnrollTotal(prev => prev - 1) } catch {} }} style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Delete</button>
+                                  <button onClick={() => requestConfirmation('Delete enrollment?', `${e.Full_Name || 'This enrollment'} will be permanently removed.`, () => deleteEnrollment(e._id))} style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Delete</button>
                                 </div>
                               </td>
                               <td style={tdStyle}>{e.Applied_date ? new Date(e.Applied_date).toLocaleString() : '—'}</td>
@@ -985,7 +1215,7 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {activeTab === 'refunds' && (
+              {!loading && !loadError && activeTab === 'refunds' && (
                 <div>
                   <div className="admin-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
                     {[
@@ -1005,14 +1235,18 @@ export default function AdminPage() {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.refund} Refunds ({refundTotal})</h3>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <input type="text" placeholder="Search by name, email, course..." value={refundSearch} onChange={e => { setRefundSearch(e.target.value); setRefundPage(1) }} style={{ ...inputStyle, width: '220px' }} />
-                        <select value={refundLimit} onChange={e => { setRefundLimit(e.target.value); setRefundPage(1) }} style={{ ...inputStyle, width: '90px', fontSize: '1.05rem' }}>
+                        <input className="admin-toolbar-input" aria-label="Search refund records" type="search" placeholder="Search by name, email, course…" value={refundSearch} onChange={e => { setRefundSearch(e.target.value); setRefundPage(1) }} style={{ ...inputStyle, width: '220px' }} />
+                        <select aria-label="Refund records per page" value={refundLimit} onChange={e => { setRefundLimit(e.target.value); setRefundPage(1) }} style={{ ...inputStyle, width: '90px', fontSize: '1.05rem' }}>
                           <option value="10">10 / page</option>
                           <option value="20">20 / page</option>
                           <option value="50">50 / page</option>
                         </select>
                         <button onClick={() => { setRefundForm({ Full_Name: '', Email: '', Phone: '', Course_Name: '', Amount: '', Reason: '', Status: 'pending' }); setRefundEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Refund</button>
                       </div>
+                    </div>
+
+                    <div role="note" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #BFDBFE', borderRadius: '12px', background: '#EFF6FF', color: '#1E3A8A', fontSize: '.9rem', lineHeight: 1.55 }}>
+                      These are administrative records only. This dashboard does not transfer or return funds; payment processing will be connected separately.
                     </div>
 
                     <div className="admin-table-wrap">
@@ -1031,7 +1265,14 @@ export default function AdminPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {refunds.length === 0 ? (
+                          {refundLoading ? (
+                            <tr><td role="status" aria-live="polite" colSpan={9} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>Loading refund records…</td></tr>
+                          ) : refundError ? (
+                            <tr><td role="alert" colSpan={9} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#B91C1C' }}>
+                              <p style={{ margin: '0 0 .75rem' }}>{refundError}</p>
+                              <button type="button" onClick={() => setRefundAttempt(value => value + 1)} style={{ padding: '.55rem .9rem', border: '1px solid #FCA5A5', borderRadius: '9px', background: '#fff', color: '#B91C1C', fontWeight: 800, cursor: 'pointer' }}>Try Again</button>
+                            </td></tr>
+                          ) : refunds.length === 0 ? (
                             <tr><td colSpan={9} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>No refunds found. Click "+ Add Refund" to create one.</td></tr>
                           ) : refunds.map(r => (
                             <tr key={r._id}>
@@ -1048,7 +1289,7 @@ export default function AdminPage() {
                               <td style={tdStyle}>
                                 <div style={{ display: 'flex', gap: '0.4rem' }}>
                                   <button onClick={() => { setRefundForm({ Full_Name: r.Full_Name || '', Email: r.Email || '', Phone: r.Phone || '', Course_Name: r.Course_Name || '', Amount: r.Amount || '', Reason: r.Reason || '', Status: r.Status || 'pending' }); setRefundEdit(r._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
-                                  <button onClick={async () => { if (!confirm('Delete this refund?')) return; try { await api.adminDeleteRefund(r._id); setRefunds(prev => prev.filter(x => x._id !== r._id)); setRefundTotal(prev => prev - 1); setMsg('Refund deleted.'); setTimeout(() => setMsg(''), 2000) } catch { setMsg('Failed to delete refund.'); setTimeout(() => setMsg(''), 2000) } }} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+                                  <button onClick={() => requestConfirmation('Delete refund record?', `${r.Full_Name || 'This record'} will be permanently removed. No funds are transferred by this action.`, () => deleteRefund(r._id))} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
                                 </div>
                               </td>
                             </tr>
@@ -1068,11 +1309,11 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {activeTab === 'maps' && (
+              {!loading && !loadError && activeTab === 'maps' && (
                 <div style={cardStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.map} Maps / Locations ({areas.length})</h3>
-                    <button onClick={() => { setAreasForm({ name: '', map: '', icon: '' }); setAreasEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Location</button>
+                    <button onClick={() => { setAreasForm({ name: '', map: '', icon: '', order: 0 }); setAreasEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Location</button>
                   </div>
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1092,7 +1333,13 @@ export default function AdminPage() {
                             <td style={tdStyle}>
                               <button
                                 onClick={async () => {
-                                  const code = makeEmbedCode(a.map)
+                                  const mapResult = validateHttpsUrl(a.map, { googleMapsOnly: true })
+                                  if (mapResult.error) {
+                                    setMsg(`Cannot copy embed code: ${mapResult.error}`)
+                                    setTimeout(() => setMsg(''), 3000)
+                                    return
+                                  }
+                                  const code = makeEmbedCode(mapResult.value)
                                   try {
                                     await navigator.clipboard.writeText(code)
                                   } catch {
@@ -1113,8 +1360,8 @@ export default function AdminPage() {
                             </td>
                             <td style={tdStyle}>
                               <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                <button onClick={() => { setAreasForm({ name: a.name, map: a.map, icon: a.icon || '' }); setAreasEdit(a._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
-                                <button onClick={async () => { if (!confirm('Delete this location?')) return; try { await api.adminDeleteArea(a._id); setAreas(prev => prev.filter(x => x._id !== a._id)); setMsg('Location deleted.'); setTimeout(() => setMsg(''), 2000) } catch { setMsg('Failed to delete.'); setTimeout(() => setMsg(''), 2000) } }} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+                                <button onClick={() => { setAreasForm({ name: a.name, map: a.map, icon: a.icon || '', order: Number(a.order) || 0 }); setAreasEdit(a._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
+                                <button onClick={() => requestConfirmation('Delete location?', `${a.name || 'This location'} will be permanently removed.`, () => deleteArea(a._id))} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
                               </div>
                             </td>
                           </tr>
@@ -1128,7 +1375,7 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {activeTab === 'socials' && (
+              {!loading && !loadError && activeTab === 'socials' && (
                 <div style={cardStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.share} Social Links ({socials.length})</h3>
@@ -1158,7 +1405,7 @@ export default function AdminPage() {
                             <td style={tdStyle}>
                               <div style={{ display: 'flex', gap: '0.4rem' }}>
                                 <button onClick={() => { setSocialsForm({ platform: s.platform || 'link', url: s.url || '', order: s.order ?? 0 }); setSocialsEdit(s._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
-                                <button onClick={async () => { if (!confirm('Delete this social link?')) return; try { await api.adminDeleteSocial(s._id); setSocials(prev => prev.filter(x => x._id !== s._id)); setMsg('Social link deleted.'); setTimeout(() => setMsg(''), 2000) } catch { setMsg('Failed to delete.'); setTimeout(() => setMsg(''), 2000) } }} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+                                <button onClick={() => requestConfirmation('Delete social link?', `${socialPlatformLabel(s.platform)} will be removed from the website.`, () => deleteSocial(s._id))} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
                               </div>
                             </td>
                           </tr>
@@ -1172,72 +1419,89 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {activeTab === 'settings' && (
+              {!loading && !loadError && activeTab === 'settings' && (
                 <div style={cardStyle}>
                   <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>{SVG.settings} Contact Information</h3>
                   {settingsMsg && (
-                    <div style={{ padding: '0.75rem 1rem', background: settingsMsg.includes('Failed') ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${settingsMsg.includes('Failed') ? '#FECACA' : '#BBF7D0'}`, borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: settingsMsg.includes('Failed') ? '#DC2626' : '#16A34A' }}>
+                    <div role={settingsMsgIsError ? 'alert' : 'status'} aria-live="polite" style={{ padding: '0.75rem 1rem', background: settingsMsgIsError ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${settingsMsgIsError ? '#FECACA' : '#BBF7D0'}`, borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: settingsMsgIsError ? '#DC2626' : '#16A34A' }}>
                       {settingsMsg}
                     </div>
                   )}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', maxWidth: '800px' }}>
                     <div>
                       <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Phone</label>
-                      <input type="text" value={settings.phone} onChange={e => setSettings(prev => ({ ...prev, phone: e.target.value }))} style={inputStyle} />
+                      <input aria-label="Business phone" type="tel" autoComplete="tel" value={settings.phone} onChange={e => setSettings(prev => ({ ...prev, phone: e.target.value }))} style={inputStyle} />
                     </div>
                     <div>
                       <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Email</label>
-                      <input type="text" value={settings.email} onChange={e => setSettings(prev => ({ ...prev, email: e.target.value }))} style={inputStyle} />
+                      <input aria-label="Business email" type="email" autoComplete="email" value={settings.email} onChange={e => setSettings(prev => ({ ...prev, email: e.target.value }))} style={inputStyle} />
                     </div>
                     <div>
                       <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Address</label>
-                      <input type="text" value={settings.address} onChange={e => setSettings(prev => ({ ...prev, address: e.target.value }))} style={inputStyle} />
+                      <input aria-label="Street address" type="text" autoComplete="street-address" value={settings.address} onChange={e => setSettings(prev => ({ ...prev, address: e.target.value }))} style={inputStyle} />
                     </div>
                     <div>
                       <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>City / State / ZIP</label>
-                      <input type="text" value={settings.subaddress} onChange={e => setSettings(prev => ({ ...prev, subaddress: e.target.value }))} style={inputStyle} />
+                      <input aria-label="City, state, and ZIP code" type="text" value={settings.subaddress} onChange={e => setSettings(prev => ({ ...prev, subaddress: e.target.value }))} style={inputStyle} />
                     </div>
                     <div>
                       <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Schedule Label</label>
-                      <input type="text" value={settings.scheduleLabel} onChange={e => setSettings(prev => ({ ...prev, scheduleLabel: e.target.value }))} style={inputStyle} />
+                      <input aria-label="Schedule link label" type="text" value={settings.scheduleLabel} onChange={e => setSettings(prev => ({ ...prev, scheduleLabel: e.target.value }))} style={inputStyle} />
                     </div>
                     <div>
                       <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Schedule Link</label>
-                      <input type="text" value={settings.scheduleLink} onChange={e => setSettings(prev => ({ ...prev, scheduleLink: e.target.value }))} style={inputStyle} />
+                      <input aria-label="Schedule HTTPS URL" type="url" inputMode="url" autoComplete="url" value={settings.scheduleLink} onChange={e => setSettings(prev => ({ ...prev, scheduleLink: e.target.value }))} style={inputStyle} placeholder="https://example.com/schedule" />
                     </div>
                   </div>
                   <div style={{ marginTop: '1.5rem' }}>
-                    <button onClick={async () => {
+                    <button disabled={settingsSaving} onClick={async () => {
+                      const scheduleResult = validateHttpsUrl(settings.scheduleLink, { required: false })
+                      if (scheduleResult.error) {
+                        setSettingsMsg(`Failed: Schedule link — ${scheduleResult.error}`)
+                        setTimeout(() => setSettingsMsg(''), 3500)
+                        return
+                      }
+                      const email = String(settings.email || '').trim().toLowerCase()
+                      if (email && !/^\S+@\S+\.\S+$/.test(email)) {
+                        setSettingsMsg('Failed: Please enter a valid business email address.')
+                        setTimeout(() => setSettingsMsg(''), 3500)
+                        return
+                      }
+                      setSettingsSaving(true)
                       try {
-                        await api.adminUpdateSettings(settings)
-                        setSettingsMsg('Settings saved!')
+                        const nextSettings = { ...settings, email, scheduleLink: scheduleResult.value }
+                        await api.adminUpdateSettings(nextSettings)
+                        setSettings(nextSettings)
+                        setSettingsMsg('Settings saved.')
                         setTimeout(() => setSettingsMsg(''), 2000)
                       } catch {
                         setSettingsMsg('Failed to save settings.')
                         setTimeout(() => setSettingsMsg(''), 2000)
+                      } finally {
+                        setSettingsSaving(false)
                       }
-                    }} style={{ padding: '0.75rem 2rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
-                      Save Settings
+                    }} style={{ padding: '0.75rem 2rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: settingsSaving ? 'wait' : 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)', opacity: settingsSaving ? .7 : 1 }}>
+                      {settingsSaving ? 'Saving…' : 'Save Settings'}
                     </button>
                   </div>
                 </div>
               )}
 
-              {activeTab === 'account' && (
+              {!loading && !loadError && activeTab === 'account' && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }} className="admin-grid-responsive">
                   <div style={cardStyle}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>{SVG.shield} Profile</h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                      {accPhoto ? <img src={accPhoto} alt="" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.35)', flexShrink: 0 }} /> : <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', fontWeight: 800, color: DARK, border: '2.5px solid #FDBC01', flexShrink: 0 }}>{initials}</div>}
+                      {profilePhotoPreview ? <img src={profilePhotoPreview} alt="Profile preview" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.35)', flexShrink: 0 }} /> : <div aria-label="Profile preview" style={{ width: '72px', height: '72px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', fontWeight: 800, color: DARK, border: '2.5px solid #FDBC01', flexShrink: 0 }}>{initials}</div>}
                       <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#64748b', margin: 0, lineHeight: 1.5 }}>Change your display name and profile photo. The photo can be any image URL.</p>
                     </div>
                     <div style={{ marginBottom: '1.25rem' }}>
                       <label style={labelStyle}>Display Name</label>
-                      <input type="text" value={accName} onChange={e => setAccName(e.target.value)} style={inputStyle} />
+                      <input aria-label="Administrator display name" type="text" autoComplete="name" value={accName} onChange={e => setAccName(e.target.value)} style={inputStyle} />
                     </div>
                     <div style={{ marginBottom: '1.5rem' }}>
                       <label style={labelStyle}>Profile Photo URL</label>
-                      <input type="text" value={accPhoto} onChange={e => setAccPhoto(e.target.value)} style={inputStyle} placeholder="https://example.com/photo.jpg" />
+                      <input aria-label="Profile photo HTTPS URL" type="url" inputMode="url" autoComplete="url" value={accPhoto} onChange={e => setAccPhoto(e.target.value)} style={inputStyle} placeholder="https://example.com/photo.jpg" />
                     </div>
                     <button onClick={handleSaveProfile} disabled={accLoading} style={{ padding: '0.75rem 2rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)', opacity: accLoading ? 0.6 : 1 }}>
                       {accLoading ? 'Saving...' : 'Save Profile'}
@@ -1300,38 +1564,38 @@ export default function AdminPage() {
 
               {contactEdit && (
                 <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setContactEdit(null) }}>
-                  <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '500px', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
+                  <div role="dialog" aria-modal="true" aria-labelledby="contact-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '500px', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>Edit Contact</h3>
-                      <button onClick={() => setContactEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
+                      <h3 id="contact-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>Edit Contact</h3>
+                      <button type="button" aria-label="Close contact editor" onClick={() => setContactEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>First Name</label>
-                        <input type="text" value={contactForm.firstName} onChange={e => setContactForm(prev => ({ ...prev, firstName: e.target.value }))} style={inputStyle} />
+                        <input autoFocus aria-label="Contact first name" type="text" value={contactForm.firstName} onChange={e => setContactForm(prev => ({ ...prev, firstName: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Last Name</label>
-                        <input type="text" value={contactForm.lastName} onChange={e => setContactForm(prev => ({ ...prev, lastName: e.target.value }))} style={inputStyle} />
+                        <input aria-label="Contact last name" type="text" value={contactForm.lastName} onChange={e => setContactForm(prev => ({ ...prev, lastName: e.target.value }))} style={inputStyle} />
                       </div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Phone</label>
-                        <input type="text" value={contactForm.phone} onChange={e => setContactForm(prev => ({ ...prev, phone: e.target.value }))} style={inputStyle} />
+                        <input aria-label="Contact phone" type="tel" value={contactForm.phone} onChange={e => setContactForm(prev => ({ ...prev, phone: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Email</label>
-                        <input type="text" value={contactForm.email} onChange={e => setContactForm(prev => ({ ...prev, email: e.target.value }))} style={inputStyle} />
+                        <input aria-label="Contact email" type="email" value={contactForm.email} onChange={e => setContactForm(prev => ({ ...prev, email: e.target.value }))} style={inputStyle} />
                       </div>
                     </div>
                     <div style={{ marginBottom: '1rem' }}>
                       <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Comments</label>
-                      <textarea rows="4" value={contactForm.comments} onChange={e => setContactForm(prev => ({ ...prev, comments: e.target.value }))} style={{ ...inputStyle, resize: 'vertical' }} />
+                      <textarea aria-label="Contact comments" rows="4" value={contactForm.comments} onChange={e => setContactForm(prev => ({ ...prev, comments: e.target.value }))} style={{ ...inputStyle, resize: 'vertical' }} />
                     </div>
                     <div style={{ marginBottom: '1.5rem' }}>
                       <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Status</label>
-                      <select value={contactForm.status} onChange={e => setContactForm(prev => ({ ...prev, status: e.target.value }))} style={inputStyle}>
+                      <select aria-label="Contact status" value={contactForm.status} onChange={e => setContactForm(prev => ({ ...prev, status: e.target.value }))} style={inputStyle}>
                         <option value="new">New</option>
                         <option value="read">Read</option>
                         <option value="replied">Replied</option>
@@ -1347,17 +1611,17 @@ export default function AdminPage() {
 
               {pricingEdit && (
                 <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setPricingEdit(null) }}>
-                  <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
+                  <div role="dialog" aria-modal="true" aria-labelledby="pricing-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>
+                      <h3 id="pricing-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>
                         {pricingEdit === 'new' ? 'Add Pricing Plan' : 'Edit Pricing Plan'}
                       </h3>
-                      <button onClick={() => setPricingEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
+                      <button type="button" aria-label="Close pricing editor" onClick={() => setPricingEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Plan Name *</label>
-                        <input type="text" value={pricingForm.planName} onChange={e => setPricingForm(prev => ({ ...prev, planName: e.target.value }))} style={inputStyle} />
+                        <input autoFocus aria-label="Plan name" type="text" value={pricingForm.planName} onChange={e => setPricingForm(prev => ({ ...prev, planName: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>ID *</label>
@@ -1436,15 +1700,15 @@ export default function AdminPage() {
 
               {areasEdit && (
                 <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setAreasEdit(null) }}>
-                  <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
+                  <div role="dialog" aria-modal="true" aria-labelledby="area-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{areasEdit === 'new' ? 'Add Location' : 'Edit Location'}</h3>
-                      <button onClick={() => setAreasEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
+                      <h3 id="area-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{areasEdit === 'new' ? 'Add Location' : 'Edit Location'}</h3>
+                      <button type="button" aria-label="Close location editor" onClick={() => setAreasEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Name *</label>
-                        <input type="text" value={areasForm.name} onChange={e => setAreasForm(prev => ({ ...prev, name: e.target.value }))} style={inputStyle} placeholder="San Ramon" />
+                        <input autoFocus aria-label="Location name" type="text" value={areasForm.name} onChange={e => setAreasForm(prev => ({ ...prev, name: e.target.value }))} style={inputStyle} placeholder="San Ramon" />
                       </div>
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Order</label>
@@ -1453,16 +1717,18 @@ export default function AdminPage() {
                     </div>
                     <div style={{ marginBottom: '1.5rem' }}>
                       <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Google Maps Embed URL *</label>
-                      <textarea rows="4" value={areasForm.map} onChange={e => setAreasForm(prev => ({ ...prev, map: e.target.value }))} style={{ ...inputStyle, resize: 'vertical', fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }} placeholder="https://www.google.com/maps/embed?pb=..." />
+                      <textarea aria-label="Google Maps secure embed URL" rows="4" value={areasForm.map} onChange={e => setAreasForm(prev => ({ ...prev, map: e.target.value }))} style={{ ...inputStyle, resize: 'vertical', fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }} placeholder="https://www.google.com/maps/embed?pb=..." />
                       <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: '#64748b', margin: '0.4rem 0 0', lineHeight: 1.5 }}>
-                        Google Maps te location search kore "Share" â†’ "Embed a map" â†’ iframe er <code>src="..."</code> value ta ekhane paste korun.
+                        In Google Maps, choose Share → Embed a map, then paste only the secure <code>src="https://…"</code> URL here.
                       </p>
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
                       <button onClick={() => setAreasEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Cancel</button>
                       <button onClick={async () => {
                         if (!areasForm.name || !areasForm.map) { setMsg('Name and Map URL are required.'); setTimeout(() => setMsg(''), 2000); return }
-                        const doc = { name: areasForm.name, map: areasForm.map, icon: areasForm.icon || '', order: areasForm.order || 0 }
+                        const mapResult = validateHttpsUrl(areasForm.map, { googleMapsOnly: true })
+                        if (mapResult.error) { setMsg(mapResult.error); setTimeout(() => setMsg(''), 3500); return }
+                        const doc = { name: areasForm.name.trim(), map: mapResult.value, icon: areasForm.icon || '', order: areasForm.order || 0 }
                         try {
                           if (areasEdit === 'new') {
                             const r = await api.adminAddArea(doc)
@@ -1485,15 +1751,15 @@ export default function AdminPage() {
 
               {socialsEdit && (
                 <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setSocialsEdit(null) }}>
-                  <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '500px', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
+                  <div role="dialog" aria-modal="true" aria-labelledby="social-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '500px', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{socialsEdit === 'new' ? 'Add Social Link' : 'Edit Social Link'}</h3>
-                      <button onClick={() => setSocialsEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
+                      <h3 id="social-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{socialsEdit === 'new' ? 'Add Social Link' : 'Edit Social Link'}</h3>
+                      <button type="button" aria-label="Close social link editor" onClick={() => setSocialsEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Platform *</label>
-                        <select value={socialsForm.platform} onChange={e => setSocialsForm(prev => ({ ...prev, platform: e.target.value }))} style={inputStyle}>
+                        <select autoFocus aria-label="Social platform" value={socialsForm.platform} onChange={e => setSocialsForm(prev => ({ ...prev, platform: e.target.value }))} style={inputStyle}>
                           {SOCIAL_PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                         </select>
                       </div>
@@ -1504,16 +1770,18 @@ export default function AdminPage() {
                     </div>
                     <div style={{ marginBottom: '1.5rem' }}>
                       <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>URL *</label>
-                      <input type="text" value={socialsForm.url} onChange={e => setSocialsForm(prev => ({ ...prev, url: e.target.value }))} style={inputStyle} placeholder="https://facebook.com/yourpage" />
+                      <input aria-label="Social profile HTTPS URL" type="url" inputMode="url" autoComplete="url" value={socialsForm.url} onChange={e => setSocialsForm(prev => ({ ...prev, url: e.target.value }))} style={inputStyle} placeholder="https://facebook.com/yourpage" />
                       <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: '#64748b', margin: '0.4rem 0 0', lineHeight: 1.5 }}>
-                        Link nosto hoye gele ekhane notun link diye save korlei footer e update hoye jabe.
+                        Use the complete HTTPS address for this profile. Saving updates the website footer.
                       </p>
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
                       <button onClick={() => setSocialsEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Cancel</button>
                       <button onClick={async () => {
                         if (!socialsForm.url) { setMsg('URL is required.'); setTimeout(() => setMsg(''), 2000); return }
-                        const doc = { platform: socialsForm.platform, url: socialsForm.url, order: Number(socialsForm.order) || 0 }
+                        const urlResult = validateHttpsUrl(socialsForm.url)
+                        if (urlResult.error) { setMsg(urlResult.error); setTimeout(() => setMsg(''), 3500); return }
+                        const doc = { platform: socialsForm.platform, url: urlResult.value, order: Number(socialsForm.order) || 0 }
                         try {
                           if (socialsEdit === 'new') {
                             const r = await api.adminAddSocial(doc)
@@ -1536,27 +1804,27 @@ export default function AdminPage() {
 
               {refundEdit && (
                 <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setRefundEdit(null) }}>
-                  <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
+                  <div role="dialog" aria-modal="true" aria-labelledby="refund-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{refundEdit === 'new' ? 'Add Refund' : 'Edit Refund'}</h3>
-                      <button onClick={() => setRefundEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
+                      <h3 id="refund-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{refundEdit === 'new' ? 'Add Refund Record' : 'Edit Refund Record'}</h3>
+                      <button type="button" aria-label="Close refund editor" onClick={() => setRefundEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Student Name *</label>
-                        <input type="text" value={refundForm.Full_Name} onChange={e => setRefundForm(prev => ({ ...prev, Full_Name: e.target.value }))} style={inputStyle} />
+                        <input autoFocus aria-label="Refund record student name" type="text" value={refundForm.Full_Name} onChange={e => setRefundForm(prev => ({ ...prev, Full_Name: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Amount *</label>
-                        <input type="text" value={refundForm.Amount} onChange={e => setRefundForm(prev => ({ ...prev, Amount: e.target.value }))} style={inputStyle} placeholder="$210" />
+                        <input aria-label="Refund record amount" type="text" inputMode="decimal" value={refundForm.Amount} onChange={e => setRefundForm(prev => ({ ...prev, Amount: e.target.value }))} style={inputStyle} placeholder="$210" />
                       </div>
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Email</label>
-                        <input type="text" value={refundForm.Email} onChange={e => setRefundForm(prev => ({ ...prev, Email: e.target.value }))} style={inputStyle} />
+                        <input aria-label="Refund record email" type="email" value={refundForm.Email} onChange={e => setRefundForm(prev => ({ ...prev, Email: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Phone</label>
-                        <input type="text" value={refundForm.Phone} onChange={e => setRefundForm(prev => ({ ...prev, Phone: e.target.value }))} style={inputStyle} />
+                        <input aria-label="Refund record phone" type="tel" value={refundForm.Phone} onChange={e => setRefundForm(prev => ({ ...prev, Phone: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Course</label>
@@ -1602,10 +1870,10 @@ export default function AdminPage() {
 
               {enrollEdit && (
                 <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setEnrollEdit(null) }}>
-                  <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
+                  <div role="dialog" aria-modal="true" aria-labelledby="enrollment-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{enrollEdit === 'new' ? 'Add Enrollment' : 'Edit Enrollment'}</h3>
-                      <button onClick={() => setEnrollEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
+                      <h3 id="enrollment-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{enrollEdit === 'new' ? 'Add Enrollment' : 'Edit Enrollment'}</h3>
+                      <button type="button" aria-label="Close enrollment editor" onClick={() => setEnrollEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
                       {[
@@ -1629,11 +1897,11 @@ export default function AdminPage() {
                         <div key={k}>
                           <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>{label}</label>
                           {type === 'select' ? (
-                            <select value={enrollForm[k] || ''} onChange={e => setEnrollForm(prev => ({ ...prev, [k]: e.target.value }))} style={inputStyle}>
+                            <select aria-label={label.replace(' *', '')} value={enrollForm[k] || ''} onChange={e => setEnrollForm(prev => ({ ...prev, [k]: e.target.value }))} style={inputStyle}>
                               {opts.map(o => <option key={o} value={o}>{o}</option>)}
                             </select>
                           ) : (
-                            <input type={type || 'text'} value={enrollForm[k] || ''} onChange={e => setEnrollForm(prev => ({ ...prev, [k]: e.target.value }))} style={inputStyle} placeholder={ph || ''} />
+                            <input autoFocus={k === 'Full_Name'} aria-label={label.replace(' *', '')} type={type || 'text'} value={enrollForm[k] || ''} onChange={e => setEnrollForm(prev => ({ ...prev, [k]: e.target.value }))} style={inputStyle} placeholder={ph || ''} />
                           )}
                         </div>
                       ))}
@@ -1698,7 +1966,7 @@ export default function AdminPage() {
 
       {confirmDialog && (
         <div role="presentation" style={{ position: 'fixed', inset: 0, zIndex: 15000, display: 'grid', placeItems: 'center', padding: '1rem', background: 'rgba(10,22,40,0.68)', backdropFilter: 'blur(10px)' }} onClick={(event) => { if (event.target === event.currentTarget && !confirmDialog.busy) setConfirmDialog(null) }}>
-          <div role="alertdialog" aria-modal="true" aria-labelledby="admin-confirm-title" aria-describedby="admin-confirm-description" style={{ width: 'min(100%, 430px)', padding: '1.75rem', borderRadius: '18px', background: '#fff', border: '1px solid #E2EBF5', boxShadow: '0 30px 90px rgba(10,22,40,0.32)' }}>
+          <div className="admin-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="admin-confirm-title" aria-describedby="admin-confirm-description" style={{ width: 'min(100%, 430px)', padding: '1.75rem', borderRadius: '18px', background: '#fff', border: '1px solid #E2EBF5', boxShadow: '0 30px 90px rgba(10,22,40,0.32)' }}>
             <div style={{ width: '46px', height: '46px', display: 'grid', placeItems: 'center', marginBottom: '1rem', borderRadius: '13px', background: '#FEF2F2', color: '#DC2626' }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.7 2.4 17.4A2 2 0 0 0 4.1 20h15.8a2 2 0 0 0 1.7-2.6L13.7 3.7a2 2 0 0 0-3.4 0Z"/></svg>
             </div>

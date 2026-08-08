@@ -356,7 +356,7 @@ export default function SchedulePage() {
         ))}
 
         <div className="container" style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-          <img src="/driving-logo.png" alt="A Precision Driving School" style={{
+          <img src="/driving-logo.png" alt="A Precision Driving School" width="532" height="532" decoding="async" style={{
             height: 'clamp(100px, 15vw, 160px)', width: 'auto', objectFit: 'contain',
             display: 'block', margin: '0 auto 1.25rem',
             filter: 'drop-shadow(0 8px 40px rgba(255,255,255,0.85)) drop-shadow(0 0 35px rgba(255,255,255,0.6)) drop-shadow(0 0 60px rgba(255,255,255,0.3))',
@@ -391,8 +391,8 @@ export default function SchedulePage() {
             fontSize: 'clamp(0.9rem, 1.4vw, 1.1rem)', maxWidth: '42ch',
             marginInline: 'auto', lineHeight: 1.7, marginBottom: '2rem',
           }}>
-            Choose a package and register online. For live chat call{' '}
-            <span style={{ color: GOLD, fontWeight: 700 }}>{settings.phone.replace('+1 ', '')}</span> (9am–5pm)
+            Choose a package and register online. For assistance, text{' '}
+            <span style={{ color: GOLD, fontWeight: 700 }}>{settings.phone.replace('+1 ', '')}</span> between 9 a.m. and 5 p.m.
           </p>
 
           {/* Trust Stats */}
@@ -516,7 +516,7 @@ export default function SchedulePage() {
                 transition: 'color 0.3s ease',
               }}
             >
-              Click here to login
+              Log in to your account
             </Link>
           </div>
         </div>

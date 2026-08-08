@@ -14,3 +14,24 @@ The React Compiler is not enabled on this template because of its impact on dev 
 ## Expanding the Oxlint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+
+## Production API configuration
+
+The API verifies private requests with Firebase Admin and uses MongoDB transactions
+to reserve lesson slots safely. Configure these variables on the API host (Render
+and/or Vercel):
+
+- `MONGO_URI`: a MongoDB Atlas/replica-set connection string. Transactions are required.
+- `CLIENT_URL`: the deployed frontend origin. Separate multiple origins with commas.
+- `FIREBASE_PROJECT_ID`: the Firebase project ID used by the frontend.
+- Firebase Admin credentials, using `FIREBASE_SERVICE_ACCOUNT` (JSON),
+  `FIREBASE_SERVICE_ACCOUNT_BASE64`, or `FIREBASE_CLIENT_EMAIL` plus
+  `FIREBASE_PRIVATE_KEY`.
+- First-admin allowlist: `ADMIN_UID` (preferred for an existing Firebase user), or
+  `ADMIN_EMAIL` (the exact address must be verified in Firebase).
+- `BOOKING_HOLD_MINUTES`: optional; defaults to `15` and is limited to 5–60 minutes.
+
+Never place Firebase Admin credentials in a `VITE_` variable or commit them to Git.
+With `ADMIN_EMAIL`, create the account at `/admin/setup`, verify the email, and sign
+in at `/admin/login`. With `ADMIN_UID`, create the Firebase user first and sign in
+directly at `/admin/login`.

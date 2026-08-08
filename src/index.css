@@ -82,6 +82,21 @@ img, video { display: block; max-width: 100%; }
 ul, ol { list-style: none; }
 button { cursor: pointer; background: none; border: none; font: inherit; }
 
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--color-gold) !important;
+  outline-offset: 3px;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(1, 69, 168, 0.28) !important;
+  outline-offset: 1px;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    LAYOUT
 ═══════════════════════════════════════════════════════════════════ */

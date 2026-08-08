@@ -200,6 +200,10 @@ export default function Hero() {
             className="hero-logo"
             src="/hero-icon-logo.png"
             alt="A Precision Driving School"
+            width="432"
+            height="164"
+            decoding="async"
+            fetchPriority="high"
             style={{
               height: 'clamp(100px, 14vw, 180px)',
               width: 'auto',

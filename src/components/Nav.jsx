@@ -51,7 +51,7 @@ export default function Nav() {
           : solidBg
             ? '#0145A8'
             : 'linear-gradient(180deg, rgba(3, 28, 66, 0.68) 0%, rgba(3, 28, 66, 0.28) 76%, rgba(3, 28, 66, 0) 100%)',
-        borderBottom: isOnlineCourse ? '1px solid #e2e8f0' : solidBg ? '1px solid rgba(253, 188, 1, 0.2)' : 'none',
+        borderBottom: isOnlineCourse ? '1px solid #e2e8f0' : 'none',
         boxShadow: isOnlineCourse ? '0 4px 18px rgba(15,40,75,0.08)' : solidBg
           ? '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(253,188,1,0.08)'
           : '0 8px 28px rgba(3,18,39,0.08)',

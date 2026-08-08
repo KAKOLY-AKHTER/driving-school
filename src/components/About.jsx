@@ -177,6 +177,8 @@ export default function About() {
                 <img
                   src="/instructor.png"
                   alt="Professional driving instructor teaching student"
+                  width="1024"
+                  height="1024"
                   loading="lazy"
                   decoding="async"
                 />
@@ -530,6 +532,8 @@ export default function About() {
                 <img
                   src="/dual-car.png"
                   alt="Dual control car interior"
+                  width="736"
+                  height="552"
                   loading="lazy"
                   decoding="async"
                   style={{ height: '380px' }}
@@ -703,6 +707,8 @@ export default function About() {
               <img
                 src="/student-pass.png"
                 alt="Student passing driving test"
+                width="1000"
+                height="667"
                 loading="lazy"
                 decoding="async"
                 style={{

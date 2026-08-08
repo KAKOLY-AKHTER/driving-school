@@ -209,14 +209,16 @@ function buildPrograms() {
     title: 'Six hours. Three lessons. One permit sign-off.',
     img: '/behind-wheel-training.jpg',
     imgFallback: '/teenager-car.png',
+    imgWidth: 1000,
+    imgHeight: 667,
     meta: ['6 training hours', '3 private lessons'],
     bullets: [
       'Six hours with an instructor, split into three 2-hour lessons',
-      'We recommend spacing between each so students can practice',
-      'Instructor signs off permit after 1st lesson (can then legally drive with parent)',
+      'We recommend spacing lessons apart so students have time to practice',
+      'The instructor signs the permit after the first lesson so the student can legally practice with a parent',
     ],
     policyTitle: 'Important Requirements & Fees',
-    policy: 'The permit must come to every lesson — it\'s the student\'s responsibility to bring it. A missed permit or late cancellation carries a $60 fee; a flat $60 processing fee applies to any refund.',
+    policy: 'Students must bring their permit to every lesson. A missing permit or late cancellation carries a $60 fee; a flat $60 processing fee applies to any refund.',
     cta: 'Book Teen Lessons',
     href: '/schedule',
     gradient: 'linear-gradient(90deg, #0145A8, #0145A8)',
@@ -229,14 +231,16 @@ function buildPrograms() {
     title: 'Bring a valid license. Leave with confidence.',
     img: '/prog-adult.png',
     imgFallback: 'https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?w=600&h=400&fit=crop',
+    imgWidth: 1199,
+    imgHeight: 834,
     meta: ['One-on-one coaching', 'Flexible training'],
     bullets: [
       'Adults may train with a valid license from their own country',
       'Must bring license to every lesson',
-      'To hold a CA license, adults first need a Learner\'s Permit from the DMV',
+      'To earn a California license, adults first need a learner\'s permit from the DMV',
     ],
     policyTitle: 'Communication Policy',
-    policy: 'Questions go to text only — please don\'t call or leave a voicemail. We reply by text or email, usually the same day.',
+    policy: 'Please send questions by text instead of calling or leaving voicemail. We usually respond by text or email the same day.',
     cta: 'Book Adult Lessons',
     href: '/schedule',
     gradient: 'linear-gradient(90deg, #FDBC01, #FDBC01)',
@@ -276,6 +280,8 @@ export default function Programs() {
                 <img
                   src={prog.img}
                   alt={prog.label}
+                  width={prog.imgWidth}
+                  height={prog.imgHeight}
                   loading="lazy"
                   decoding="async"
                   onError={(e) => { e.target.src = prog.imgFallback }}

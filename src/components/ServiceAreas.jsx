@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api, makeEmbedCode } from '../api'
+import { safeGoogleMapsUrl } from '../utils/urlSafety'
 
 const LOCATIONS = [
   { name: 'San Ramon', map: 'https://maps.google.com/maps?q=San+Ramon+CA&t=&z=13&ie=UTF8&iwloc=&output=embed', icon: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5' },
@@ -14,6 +15,20 @@ const GOLD_DEEP = '#C8960C'
 const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
 
+function getLocationName(location) {
+  return typeof location?.name === 'string' && location.name.trim()
+    ? location.name.trim().slice(0, 80)
+    : 'Service area'
+}
+
+function getSafeMapUrl(location) {
+  const configuredUrl = safeGoogleMapsUrl(location?.map)
+  if (configuredUrl) return configuredUrl
+
+  const query = encodeURIComponent(`${getLocationName(location)}, California`)
+  return `https://maps.google.com/maps?q=${query}&t=&z=13&ie=UTF8&iwloc=&output=embed`
+}
+
 export default function ServiceAreas() {
   const [areas, setAreas] = useState(null)
   const [copied, setCopied] = useState(null)
@@ -25,10 +40,11 @@ export default function ServiceAreas() {
   const list = areas && areas.length ? areas : LOCATIONS
 
   const copyEmbed = async (loc) => {
-    const code = makeEmbedCode(loc.map)
+    const locationName = getLocationName(loc)
+    const code = makeEmbedCode(getSafeMapUrl(loc))
     try {
       await navigator.clipboard.writeText(code)
-      setCopied(loc.name)
+      setCopied(locationName)
       setTimeout(() => setCopied(null), 2000)
     } catch {
       const ta = document.createElement('textarea')
@@ -37,21 +53,27 @@ export default function ServiceAreas() {
       ta.select()
       document.execCommand('copy')
       document.body.removeChild(ta)
-      setCopied(loc.name)
+      setCopied(locationName)
       setTimeout(() => setCopied(null), 2000)
     }
   }
 
-  const renderCard = (loc, extraStyle = undefined) => (
-    <div key={loc.name} className="area-card" style={extraStyle}>
+  const renderCard = (loc, extraStyle = undefined) => {
+    const locationName = getLocationName(loc)
+    const mapUrl = getSafeMapUrl(loc)
+
+    return (
+    <div key={locationName} className="area-card" style={extraStyle}>
       <div className="area-map-wrap">
         <iframe
-          src={loc.map}
+          src={mapUrl}
+          width="600"
+          height="220"
           style={{ width: '100%', height: '100%', border: 0 }}
           allowFullScreen=""
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
-          title={`${loc.name} map`}
+          title={`Map of ${locationName}, California`}
         />
         <div className="area-pin">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="#0a1628">
@@ -80,7 +102,7 @@ export default function ServiceAreas() {
               margin: 0,
             }}
           >
-            {loc.name}
+            {locationName}
           </h3>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', paddingLeft: '14px', flexWrap: 'wrap' }}>
@@ -95,29 +117,31 @@ export default function ServiceAreas() {
             Bay Area, California
           </p>
           <button
+            type="button"
             onClick={() => copyEmbed(loc)}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.4rem',
               padding: '0.35rem 0.7rem',
-              background: copied === loc.name ? 'rgba(34,197,94,0.1)' : 'rgba(1,69,168,0.06)',
-              border: `1px solid ${copied === loc.name ? 'rgba(34,197,94,0.3)' : 'rgba(1,69,168,0.15)'}`,
+              background: copied === locationName ? 'rgba(34,197,94,0.1)' : 'rgba(1,69,168,0.06)',
+              border: `1px solid ${copied === locationName ? 'rgba(34,197,94,0.3)' : 'rgba(1,69,168,0.15)'}`,
               borderRadius: '999px',
               fontFamily: 'var(--font-mono)',
               fontSize: '0.45rem',
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
               fontWeight: 700,
-              color: copied === loc.name ? '#16A34A' : SKY_BLUE,
+              color: copied === locationName ? '#16A34A' : SKY_BLUE,
               cursor: 'pointer',
               transition: 'all 0.2s',
             }}
-            onMouseEnter={(e) => { if (copied !== loc.name) { e.currentTarget.style.background = 'rgba(1,69,168,0.12)'; e.currentTarget.style.borderColor = SKY_BLUE } }}
-            onMouseLeave={(e) => { if (copied !== loc.name) { e.currentTarget.style.background = 'rgba(1,69,168,0.06)'; e.currentTarget.style.borderColor = 'rgba(1,69,168,0.15)' } }}
-            title="Copy embed code"
+            onMouseEnter={(e) => { if (copied !== locationName) { e.currentTarget.style.background = 'rgba(1,69,168,0.12)'; e.currentTarget.style.borderColor = SKY_BLUE } }}
+            onMouseLeave={(e) => { if (copied !== locationName) { e.currentTarget.style.background = 'rgba(1,69,168,0.06)'; e.currentTarget.style.borderColor = 'rgba(1,69,168,0.15)' } }}
+            aria-label={`Copy the ${locationName} map embed code`}
+            aria-live="polite"
           >
-            {copied === loc.name ? (
+            {copied === locationName ? (
               <>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                 Copied!
@@ -132,7 +156,8 @@ export default function ServiceAreas() {
         </div>
       </div>
     </div>
-  )
+    )
+  }
 
   return (
     <>

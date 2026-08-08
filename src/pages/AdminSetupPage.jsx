@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { createUserWithEmailAndPassword } from 'firebase/auth'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { createUserWithEmailAndPassword, sendEmailVerification, signOut, updateProfile } from 'firebase/auth'
 import { auth } from '../firebase'
-import { useAuth } from '../contexts/AuthContext'
 import { api } from '../api'
 import { usePageMeta } from '../usePageMeta'
 
@@ -18,29 +17,26 @@ const DEFAULT_PHOTO = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
 export default function AdminSetupPage() {
   usePageMeta('Admin Setup — A Precision Driving School', 'Create the admin account for A Precision Driving School.')
   const [name, setName] = useState('Site Administrator')
-  const [email, setEmail] = useState('info@aprecision.com')
-  const [password, setPassword] = useState('Admin@123456')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [photo, setPhoto] = useState(DEFAULT_PHOTO)
   const [error, setError] = useState('')
   const [created, setCreated] = useState(false)
   const [loading, setLoading] = useState(false)
-  const navigate = useNavigate()
-  const { user, isAdmin } = useAuth()
-
-  useEffect(() => {
-    if (created && user && isAdmin) navigate('/admin', { replace: true })
-  }, [created, user, isAdmin, navigate])
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password)
-      await api.saveUser(cred.user.uid, { name, email, photoURL: photo, isAdmin: true })
+      await updateProfile(cred.user, { displayName: name, photoURL: photo })
+      await api.saveUser(cred.user.uid, { name, email, photoURL: photo })
+      await sendEmailVerification(cred.user)
+      await signOut(auth)
       setCreated(true)
     } catch (err) {
+      if (auth.currentUser) await signOut(auth).catch(() => {})
       if (err.code === 'auth/email-already-in-use') setError('An account with this email already exists. Go to Admin Login to sign in.')
       else if (err.code === 'auth/weak-password') setError('Password must be at least 6 characters.')
       else if (err.code === 'auth/invalid-email') setError('Invalid email address.')
@@ -71,8 +67,9 @@ export default function AdminSetupPage() {
           <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#F0FDF4', border: '1px solid #BBF7D0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.2"><polyline points="20 6 9 17 4 12" /></svg>
           </div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', color: DARK, margin: 0, fontWeight: 800 }}>Admin account created!</h1>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: '#64748b', margin: '0.75rem 0 1.5rem' }}>Redirecting you to the Admin Panel...</p>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', color: DARK, margin: 0, fontWeight: 800 }}>Verify your admin email</h1>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: '#64748b', margin: '0.75rem 0 1.5rem', lineHeight: 1.6 }}>We sent a verification link to <strong>{email}</strong>. Open it, then sign in. Admin access is only granted to the verified address configured on the server.</p>
+          <Link to="/admin/login" style={{ display: 'inline-flex', padding: '0.8rem 1.15rem', borderRadius: 'var(--radius-sm)', background: SKY_BLUE, color: '#fff', textDecoration: 'none', fontFamily: 'var(--font-mono)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: '0.72rem' }}>Go to Admin Login</Link>
         </div>
       </div>
     )

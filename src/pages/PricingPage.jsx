@@ -5,6 +5,7 @@ import { useCart } from '../contexts/CartContext'
 import { api } from '../api'
 import Pricing from '../components/Pricing'
 import { usePageMeta } from '../usePageMeta'
+import { saveBookingReturn } from '../utils/bookingStorage'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -79,7 +80,7 @@ export default function PricingPage() {
     'Compare driving school packages: online drivers ed, 2, 6 and 10-hour behind-the-wheel training, DMV drive test car rental and freeway focused courses. 99% pass rate, free pickup & drop.'
   )
   const { user } = useAuth()
-  const { addToCart, removeFromCart } = useCart()
+  const { addToCart } = useCart()
   const navigate = useNavigate()
   const location = useLocation()
   const [step, setStep] = useState(null)
@@ -92,6 +93,7 @@ export default function PricingPage() {
   const [selectedSlots, setSelectedSlots] = useState([])
   const [pendingDate, setPendingDate] = useState('')
   const [bookedTimes, setBookedTimes] = useState([])
+  const [availabilityLoading, setAvailabilityLoading] = useState(false)
   const [error, setError] = useState('')
   const [tiers, setTiers] = useState(null)
 
@@ -117,10 +119,14 @@ export default function PricingPage() {
 
   useEffect(() => {
     if (!pendingDate) return
+    let active = true
     setBookedTimes([])
+    setAvailabilityLoading(true)
     api.getBookingAvailability(pendingDate)
-      .then(data => setBookedTimes(Array.isArray(data?.bookedTimes) ? data.bookedTimes : []))
-      .catch(() => setBookedTimes([]))
+      .then(data => { if (active) setBookedTimes(Array.isArray(data?.bookedTimes) ? data.bookedTimes : []) })
+      .catch(() => { if (active) setBookedTimes([]) })
+      .finally(() => { if (active) setAvailabilityLoading(false) })
+    return () => { active = false }
   }, [pendingDate])
 
   const handleChoose = (tier) => {
@@ -155,14 +161,10 @@ export default function PricingPage() {
       setError('Please select the required number of date and time slots for every plan.')
       return
     }
-    if (!user) {
-      navigate('/login')
-      return
-    }
     setStep('loading')
     try {
       for (const plan of selectedPlans) {
-        await addToCart({
+        const result = await addToCart({
           id: plan.tier.id,
           title: plan.tier.planName,
           price: plan.tier.planPrice,
@@ -171,12 +173,16 @@ export default function PricingPage() {
           pickupTime: plan.slots[0]?.time || '',
           pickupSlots: plan.slots,
         })
-        await Promise.all(plan.slots.map(slot => api.createBooking({ userId: user.uid, courseId: plan.tier.id, date: slot.date, timeSlot: slot.time, status: 'scheduled' })))
+        if (!result?.ok) throw new Error(result?.error || 'Unable to save this package.')
+      }
+      if (!user) {
+        saveBookingReturn('/cart')
+        navigate('/login', { state: { from: '/cart' } })
+        return
       }
       navigate('/cart')
     } catch (bookingError) {
-      await Promise.allSettled(selectedPlans.map(plan => removeFromCart(plan.tier.id)))
-      setError(bookingError.message || 'Failed to add booking to cart. Please try again.')
+      setError(bookingError.message || 'One or more packages could not be saved. Your other selections remain in the cart.')
       setStep('calendar')
     }
   }
@@ -205,7 +211,6 @@ export default function PricingPage() {
           return
         }
         if (goToCart) {
-          await Promise.all(selectedSlots.map(slot => api.createBooking({ userId: user.uid, courseId: selectedTier.id, date: slot.date, timeSlot: slot.time, status: 'scheduled' })))
           navigate('/cart')
         } else setStep('success')
       } else {
@@ -213,7 +218,6 @@ export default function PricingPage() {
         setStep(goToCart ? 'calendar' : 'confirm')
       }
     } catch (bookingError) {
-      await removeFromCart(selectedTier.id).catch(() => {})
       setError(bookingError.message || 'Failed to add to cart. Please try again.')
       setStep(goToCart ? 'calendar' : 'confirm')
     }
@@ -468,7 +472,10 @@ export default function PricingPage() {
                   <p style={{ margin: '0 0 1.2rem', color: '#102a46', fontFamily: 'var(--font-body)', fontSize: '1rem' }}>Choose your preferred pickup time:</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
                     {PICKUP_TIMES.map(time => {
-                      const booked = bookedTimes.includes(time) || selectedSlots.some(slot => slot.date === pendingDate && slot.time === time)
+                      const booked = bookedTimes.includes(time)
+                        || selectedSlots.some(slot => slot.date === pendingDate && slot.time === time)
+                        || selectedPlans.some(plan => String(plan.tier.id) !== String(selectedTier.id)
+                          && plan.slots.some(slot => slot.date === pendingDate && slot.time === time))
                       const slotLimit = slotLimitForPlan(selectedTier)
                       const limitReached = selectedSlots.length >= slotLimit
                       return (
@@ -477,7 +484,7 @@ export default function PricingPage() {
                         {booked ? (
                           <button disabled style={{ padding: '0.55rem 0.75rem', border: 0, borderRadius: '5px', background: '#e93647', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.9rem', fontWeight: 800, cursor: 'not-allowed' }}>Booked</button>
                         ) : (
-                          <button disabled={limitReached} onClick={() => { const nextSlots = [...selectedSlots, { date: pendingDate, time }]; setSelectedSlots(nextSlots); setSelectedPlans(prev => prev.map(plan => plan.tier.id === selectedTier.id ? { ...plan, slots: nextSlots } : plan)); setSelectedDate(pendingDate); setSelectedTime(time); setPendingDate(''); setError('') }} style={{ padding: '0.55rem 0.75rem', border: 0, borderRadius: '5px', background: limitReached ? '#94a3b8' : '#0866ff', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.9rem', cursor: limitReached ? 'not-allowed' : 'pointer' }}>{limitReached ? `Max ${slotLimit} Slot${slotLimit > 1 ? 's' : ''}` : 'Book Now'}</button>
+                          <button disabled={limitReached || availabilityLoading} onClick={() => { const nextSlots = [...selectedSlots, { date: pendingDate, time }]; setSelectedSlots(nextSlots); setSelectedPlans(prev => prev.map(plan => plan.tier.id === selectedTier.id ? { ...plan, slots: nextSlots } : plan)); setSelectedDate(pendingDate); setSelectedTime(time); setPendingDate(''); setError('') }} style={{ padding: '0.55rem 0.75rem', border: 0, borderRadius: '5px', background: limitReached || availabilityLoading ? '#94a3b8' : '#0866ff', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.9rem', cursor: limitReached || availabilityLoading ? 'not-allowed' : 'pointer' }}>{availabilityLoading ? 'Checking...' : limitReached ? `Max ${slotLimit} Slot${slotLimit > 1 ? 's' : ''}` : 'Book Now'}</button>
                         )}
                       </div>
                     )})}

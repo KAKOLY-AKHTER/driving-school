@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { makeEmbedCode } from '../api'
 import { usePageMeta } from '../usePageMeta'
+import { useSiteSettings } from '../useSiteSettings'
+import { safeGoogleMapsUrl } from '../utils/urlSafety'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -9,6 +11,19 @@ const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
 const API = import.meta.env.VITE_API_URL || ''
+
+function buildGoogleMapsUrl(settings, embed = false) {
+  const query = [settings.address, settings.subaddress].filter(Boolean).join(' ').trim()
+  const base = embed ? 'https://maps.google.com/maps' : 'https://maps.google.com/'
+  const url = new URL(base)
+  url.searchParams.set('q', query || '2001 Omega Rd Ste 205 San Ramon CA 94583')
+  if (embed) {
+    url.searchParams.set('z', '15')
+    url.searchParams.set('iwloc', '')
+    url.searchParams.set('output', 'embed')
+  }
+  return safeGoogleMapsUrl(url.href) || 'https://maps.google.com/'
+}
 
 const CONTACTS = [
   {
@@ -60,13 +75,14 @@ export default function ContactPage() {
   const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', email: '', comments: '' })
   const [formLoading, setFormLoading] = useState(false)
   const [formMsg, setFormMsg] = useState('')
-  const [settings, setSettings] = useState(null)
+  const [formStatus, setFormStatus] = useState('idle')
   const [copied, setCopied] = useState(false)
+  const settings = useSiteSettings()
+  const mapEmbedUrl = buildGoogleMapsUrl(settings, true)
+  const mapSearchUrl = buildGoogleMapsUrl(settings)
 
   const copyMapEmbed = async () => {
-    const q = settings ? `${(settings.address || '')} ${(settings.subaddress || '')}` : '2001 Omega Rd Ste 205 San Ramon CA 94583'
-    const url = `https://maps.google.com/maps?q=${encodeURIComponent(q)}&t=&z=15&ie=UTF8&iwloc=&output=embed`
-    const code = makeEmbedCode(url)
+    const code = makeEmbedCode(mapEmbedUrl)
     try {
       await navigator.clipboard.writeText(code)
     } catch {
@@ -81,40 +97,46 @@ export default function ContactPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  useEffect(() => {
-    fetch(`${API}/api/settings`)
-      .then(r => r.json())
-      .then(d => setSettings(d))
-      .catch(() => {})
-  }, [])
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.firstName || !form.lastName || !form.phone || !form.email || !form.comments) {
-      setFormMsg('Please fill all fields.'); setTimeout(() => setFormMsg(''), 3000); return
+      setFormStatus('error')
+      setFormMsg('Please complete every required field.')
+      return
     }
     setFormLoading(true)
+    setFormStatus('idle')
+    setFormMsg('')
     try {
       const res = await fetch(`${API}/api/contact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
-      const data = await res.json()
-      if (data.ok) {
-        setFormMsg('Message sent! We will get back to you within 24 hours.')
+      const data = await res.json().catch(() => null)
+      if (res.ok && data?.ok) {
+        setFormStatus('success')
+        setFormMsg('Your message has been sent. We will respond within 24 hours.')
         setForm({ firstName: '', lastName: '', phone: '', email: '', comments: '' })
       } else {
-        setFormMsg('Failed to send. Please try again.')
+        setFormStatus('error')
+        setFormMsg(data?.error || 'We could not send your message. Please try again.')
       }
     } catch {
-      setFormMsg('Network error. Please try again.')
+      setFormStatus('error')
+      setFormMsg('We could not connect to the server. Please check your connection and try again.')
+    } finally {
+      setFormLoading(false)
     }
-    setFormLoading(false)
-    setTimeout(() => setFormMsg(''), 3000)
   }
 
-  const update = (k, v) => setForm(prev => ({ ...prev, [k]: v }))
+  const update = (k, v) => {
+    setForm(prev => ({ ...prev, [k]: v }))
+    if (formMsg) {
+      setFormMsg('')
+      setFormStatus('idle')
+    }
+  }
   return (
     <>
       <style>{`
@@ -324,6 +346,38 @@ export default function ContactPage() {
           margin: 0 auto;
         }
 
+        .c-name-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.85rem;
+        }
+        .c-field-label {
+          display: flex;
+          flex-direction: column;
+          gap: 0.35rem;
+          color: ${DARK};
+          font-family: var(--font-body);
+          font-size: 0.76rem;
+          font-weight: 700;
+        }
+        .c-form-field {
+          width: 100%;
+          padding: 0.85rem 1rem;
+          border: 1.5px solid #E2EBF5;
+          border-radius: 12px;
+          outline: none;
+          background: #F8FAFD;
+          color: ${DARK};
+          font-family: var(--font-body);
+          font-size: 0.88rem;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .c-form-field:focus-visible {
+          border-color: ${SKY_BLUE};
+          box-shadow: 0 0 0 3px rgba(1,69,168,0.12);
+        }
+        .c-form-field::placeholder { color: #75869b; }
+
         @media (min-width: 768px) {
           .c-cards-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .c-map-hours { grid-template-columns: 1.2fr 1fr !important; }
@@ -333,6 +387,9 @@ export default function ContactPage() {
         }
         @media (max-width: 767px) {
           .c-map-card iframe { height: 260px; }
+        }
+        @media (max-width: 520px) {
+          .c-name-grid { grid-template-columns: 1fr; }
         }
       `}</style>
 
@@ -495,8 +552,7 @@ export default function ContactPage() {
                   return `tel:${p.replace(/[^+\d]/g, '')}`
                 }
                 if (c.key === 'visit') {
-                  const q = [settings && settings.address, settings && settings.subaddress].filter(Boolean).join(' ').trim()
-                  return q ? `https://maps.google.com/?q=${encodeURIComponent(q)}` : ''
+                  return mapSearchUrl
                 }
                 return c.hrefPrefix ? c.hrefPrefix + val : (settings ? settings[c.hrefKey] || '' : '')
               })()
@@ -580,7 +636,7 @@ export default function ContactPage() {
             {/* Map */}
             <div className="c-map-card" style={{ position: 'relative' }}>
               <iframe
-                src={settings ? `https://maps.google.com/maps?q=${encodeURIComponent((settings.address || '') + ' ' + (settings.subaddress || ''))}&t=&z=15&ie=UTF8&iwloc=&output=embed` : `https://maps.google.com/maps?q=2001%20Omega%20Rd%20Ste%20205%20San%20Ramon%20CA%2094583&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                src={mapEmbedUrl}
                 width="100%"
                 height="420"
                 style={{ border: 0, display: 'block' }}
@@ -590,6 +646,7 @@ export default function ContactPage() {
                 title="A Precision Driving School Location"
               />
               <button
+                type="button"
                 onClick={copyMapEmbed}
                 style={{
                   position: 'absolute',
@@ -615,7 +672,8 @@ export default function ContactPage() {
                 }}
                 onMouseEnter={(e) => { if (!copied) { e.currentTarget.style.background = 'rgba(1,69,168,0.08)' } }}
                 onMouseLeave={(e) => { if (!copied) { e.currentTarget.style.background = 'rgba(255,255,255,0.95)' } }}
-                title="Copy embed code"
+                aria-label="Copy the location map embed code"
+                aria-live="polite"
               >
                 {copied ? (
                   <>
@@ -649,19 +707,32 @@ export default function ContactPage() {
 
               <div className="c-gold-divider" style={{ marginBottom: '1.5rem' }} />
 
-              <form onSubmit={handleSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
-                  <input type="text" placeholder="First Name" value={form.firstName} onChange={e => update('firstName', e.target.value)} style={{ padding: '0.85rem 1rem', borderRadius: '12px', border: '1.5px solid #E2EBF5', fontFamily: 'var(--font-body)', fontSize: '0.88rem', outline: 'none', transition: 'border-color 0.3s', background: '#F8FAFD' }} onFocus={e => e.target.style.borderColor = SKY_BLUE} onBlur={e => e.target.style.borderColor = '#E2EBF5'} />
-                  <input type="text" placeholder="Last Name" value={form.lastName} onChange={e => update('lastName', e.target.value)} style={{ padding: '0.85rem 1rem', borderRadius: '12px', border: '1.5px solid #E2EBF5', fontFamily: 'var(--font-body)', fontSize: '0.88rem', outline: 'none', transition: 'border-color 0.3s', background: '#F8FAFD' }} onFocus={e => e.target.style.borderColor = SKY_BLUE} onBlur={e => e.target.style.borderColor = '#E2EBF5'} />
+              <form onSubmit={handleSubmit} aria-busy={formLoading} aria-describedby="contact-form-status" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                <div className="c-name-grid">
+                  <label className="c-field-label" htmlFor="contact-first-name">
+                    First name
+                    <input id="contact-first-name" className="c-form-field" name="firstName" type="text" autoComplete="given-name" placeholder="First name" maxLength="80" required value={form.firstName} onChange={e => update('firstName', e.target.value)} />
+                  </label>
+                  <label className="c-field-label" htmlFor="contact-last-name">
+                    Last name
+                    <input id="contact-last-name" className="c-form-field" name="lastName" type="text" autoComplete="family-name" placeholder="Last name" maxLength="80" required value={form.lastName} onChange={e => update('lastName', e.target.value)} />
+                  </label>
                 </div>
-                <input type="tel" placeholder="Phone Number" value={form.phone} onChange={e => update('phone', e.target.value)} style={{ padding: '0.85rem 1rem', borderRadius: '12px', border: '1.5px solid #E2EBF5', fontFamily: 'var(--font-body)', fontSize: '0.88rem', outline: 'none', transition: 'border-color 0.3s', background: '#F8FAFD' }} onFocus={e => e.target.style.borderColor = SKY_BLUE} onBlur={e => e.target.style.borderColor = '#E2EBF5'} />
-                <input type="email" placeholder="Email Address" value={form.email} onChange={e => update('email', e.target.value)} style={{ padding: '0.85rem 1rem', borderRadius: '12px', border: '1.5px solid #E2EBF5', fontFamily: 'var(--font-body)', fontSize: '0.88rem', outline: 'none', transition: 'border-color 0.3s', background: '#F8FAFD' }} onFocus={e => e.target.style.borderColor = SKY_BLUE} onBlur={e => e.target.style.borderColor = '#E2EBF5'} />
-                <textarea placeholder="Comments" rows="4" value={form.comments} onChange={e => update('comments', e.target.value)} style={{ padding: '0.85rem 1rem', borderRadius: '12px', border: '1.5px solid #E2EBF5', fontFamily: 'var(--font-body)', fontSize: '0.88rem', outline: 'none', transition: 'border-color 0.3s', background: '#F8FAFD', resize: 'vertical' }} onFocus={e => e.target.style.borderColor = SKY_BLUE} onBlur={e => e.target.style.borderColor = '#E2EBF5'} />
-                {formMsg && (
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: formMsg.includes('sent') || formMsg.includes('success') ? '#16A34A' : '#DC2626', margin: 0 }}>{formMsg}</p>
-                )}
+                <label className="c-field-label" htmlFor="contact-phone">
+                  Phone number
+                  <input id="contact-phone" className="c-form-field" name="phone" type="tel" autoComplete="tel" inputMode="tel" placeholder="Phone number" maxLength="30" required value={form.phone} onChange={e => update('phone', e.target.value)} />
+                </label>
+                <label className="c-field-label" htmlFor="contact-email">
+                  Email address
+                  <input id="contact-email" className="c-form-field" name="email" type="email" autoComplete="email" inputMode="email" placeholder="Email address" maxLength="254" required value={form.email} onChange={e => update('email', e.target.value)} />
+                </label>
+                <label className="c-field-label" htmlFor="contact-comments">
+                  How can we help?
+                  <textarea id="contact-comments" className="c-form-field" name="comments" placeholder="Tell us about the lessons or service you need" rows="4" maxLength="2000" required value={form.comments} onChange={e => update('comments', e.target.value)} style={{ resize: 'vertical' }} />
+                </label>
+                <p id="contact-form-status" role={formStatus === 'error' ? 'alert' : 'status'} aria-live={formStatus === 'error' ? 'assertive' : 'polite'} aria-atomic="true" style={{ minHeight: '1.25rem', fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: formStatus === 'success' ? '#15803D' : '#B91C1C', margin: 0 }}>{formMsg}</p>
                 <button type="submit" disabled={formLoading} style={{ width: '100%', padding: '0.9rem', background: formLoading ? '#94A3B8' : `linear-gradient(135deg,${SKY_BLUE},#0a2a5e)`, color: '#fff', border: 'none', borderRadius: '12px', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, cursor: formLoading ? 'not-allowed' : 'pointer', transition: 'all 0.3s', boxShadow: formLoading ? 'none' : '0 4px 16px rgba(1,69,168,0.25)' }}>
-                  {formLoading ? 'Sending...' : 'Send'}
+                  {formLoading ? 'Sending message...' : 'Send Message'}
                 </button>
               </form>
             </div>

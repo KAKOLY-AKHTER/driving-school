@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useCart } from '../contexts/CartContext'
+import { useAuth } from '../contexts/AuthContext'
 import { usePageMeta } from '../usePageMeta'
+import { saveBookingReturn } from '../utils/bookingStorage'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -19,7 +21,8 @@ export default function CartPage() {
     'Your Cart — A Precision Driving School',
     'Review the packages you selected before enrolling at A Precision Driving School.'
   )
-  const { items, removeFromCart, enrollAll } = useCart()
+  const { items, removeFromCart, enrollAll, refreshCart, loading: cartLoading, syncError } = useCart()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [removing, setRemoving] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -40,6 +43,12 @@ export default function CartPage() {
   }
 
   const handleEnrollAll = async () => {
+    if (cartLoading || syncError) return
+    if (!user) {
+      saveBookingReturn('/cart')
+      navigate('/login', { state: { from: '/cart' } })
+      return
+    }
     setBusy(true)
     setError('')
     try {
@@ -49,8 +58,8 @@ export default function CartPage() {
       } else {
         setError(result.error || 'Checkout failed. Please try again.')
       }
-    } catch {
-      setError('Checkout failed. Please try again.')
+    } catch (checkoutError) {
+      setError(checkoutError.message || 'Checkout failed. Please try again.')
     }
     setBusy(false)
   }
@@ -87,7 +96,16 @@ export default function CartPage() {
           <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#475569', margin: 0 }}>Review the packages you selected, then enroll in all of them at once.</p>
         </div>
 
-        {items.length === 0 ? (
+        {syncError && (
+          <div role="alert" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', padding: '0.8rem 1rem', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 'var(--radius-sm)', margin: '0 0 1rem', fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#B91C1C' }}>
+            <span>{syncError}</span>
+            <button type="button" onClick={refreshCart} disabled={cartLoading} style={{ padding: '0.4rem 0.7rem', border: '1px solid #FCA5A5', borderRadius: '6px', background: '#fff', color: '#B91C1C', fontWeight: 800, cursor: cartLoading ? 'wait' : 'pointer' }}>{cartLoading ? 'Retrying...' : 'Retry'}</button>
+          </div>
+        )}
+
+        {cartLoading && items.length === 0 ? (
+          <div style={{ padding: '3rem', textAlign: 'center', color: '#475569', fontFamily: 'var(--font-body)' }}>Restoring your saved selection...</div>
+        ) : items.length === 0 ? (
           <div style={{ background: '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-xl)', padding: '3.5rem 2rem', textAlign: 'center', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
             <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" /></svg>
@@ -99,11 +117,22 @@ export default function CartPage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {items.map((it) => (
-              <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', background: '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-lg)', padding: '1.25rem 1.5rem', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', transition: 'all 0.3s ease' }}>
+              <div key={it.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '1.25rem', background: '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-lg)', padding: '1.25rem 1.5rem', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', transition: 'all 0.3s ease', flexWrap: 'wrap' }}>
                 <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: 'linear-gradient(135deg,rgba(1,69,168,0.08),rgba(1,69,168,0.03))', color: SKY_BLUE, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '1.05rem', fontWeight: 800, flexShrink: 0, border: '1px solid rgba(1,69,168,0.08)' }}>{it.id}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', color: DARK, fontWeight: 800, margin: '0 0 0.2rem', textTransform: 'uppercase' }}>{it.title}</h3>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#475569', margin: 0 }}>{it.price}</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#0755ae', fontWeight: 800, margin: '0 0 0.65rem' }}>{it.price}</p>
+                  <div style={{ display: 'grid', gap: '0.4rem', color: '#475569', fontFamily: 'var(--font-body)', fontSize: '0.82rem', lineHeight: 1.45 }}>
+                    {it.city && <div><strong style={{ color: DARK }}>City:</strong> {it.city}</div>}
+                    {(Array.isArray(it.pickupSlots) && it.pickupSlots.length ? it.pickupSlots : [{ date: it.preferredDate, time: it.pickupTime }]).filter(slot => slot?.date || slot?.time).map((slot, index) => (
+                      <div key={`${slot.date || 'date'}-${slot.time || 'time'}-${index}`} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                        <span style={{ color: DARK, fontWeight: 800 }}>Slot {index + 1}:</span>
+                        {slot.date && <span>{new Date(`${slot.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>}
+                        {slot.date && slot.time && <span aria-hidden="true">&middot;</span>}
+                        {slot.time && <span>{slot.time}</span>}
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <button onClick={() => handleRemove(it.id)} disabled={removing === it.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 0.9rem', background: 'none', color: '#DC2626', border: '1px solid rgba(220,38,38,0.15)', borderRadius: '8px', fontFamily: 'var(--font-body)', fontSize: '0.95rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }} onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(220,38,38,0.04)'; e.currentTarget.style.borderColor = 'rgba(220,38,38,0.3)' }} onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = 'rgba(220,38,38,0.15)' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
@@ -118,7 +147,7 @@ export default function CartPage() {
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#475569', fontWeight: 700, margin: 0 }}>Subtotal ({items.length} {items.length === 1 ? 'package' : 'packages'})</p>
                   <p style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: GOLD, fontWeight: 800, margin: '0.25rem 0 0', lineHeight: 1 }}>${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                 </div>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: '#8899aa', margin: 0, maxWidth: '280px', lineHeight: 1.5 }}>Enrolling creates a pending invoice. Payment is handled in person — no card required online.</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: '#8899aa', margin: 0, maxWidth: '300px', lineHeight: 1.5 }}>Your booking creates a pending invoice. Our team will provide payment instructions; no card details are collected here.</p>
               </div>
 
               {error && (
@@ -126,8 +155,8 @@ export default function CartPage() {
               )}
 
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-                <button onClick={handleEnrollAll} disabled={busy} style={{ flex: 2, minWidth: '220px', padding: '0.95rem 1.5rem', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, color: DARK, background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, border: 'none', borderRadius: 'var(--radius-sm)', cursor: busy ? 'not-allowed' : 'pointer', transition: 'all 0.3s', boxShadow: busy ? 'none' : '0 4px 16px rgba(253,188,1,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { if (!busy) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(253,188,1,0.4)' } }} onMouseLeave={(e) => { if (!busy) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(253,188,1,0.25)' } }}>
-                  {busy ? 'Enrolling...' : 'Enroll All'}
+                <button onClick={handleEnrollAll} disabled={busy || cartLoading || Boolean(syncError)} style={{ flex: 2, minWidth: '220px', padding: '0.95rem 1.5rem', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, color: DARK, background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, border: 'none', borderRadius: 'var(--radius-sm)', cursor: busy || cartLoading || syncError ? 'not-allowed' : 'pointer', opacity: syncError ? 0.6 : 1, transition: 'all 0.3s', boxShadow: busy || cartLoading || syncError ? 'none' : '0 4px 16px rgba(253,188,1,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { if (!busy && !cartLoading && !syncError) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(253,188,1,0.4)' } }} onMouseLeave={(e) => { if (!busy && !cartLoading && !syncError) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(253,188,1,0.25)' } }}>
+                  {cartLoading ? 'Restoring Cart...' : busy ? 'Enrolling...' : user ? 'Enroll All' : 'Sign In to Continue'}
                 </button>
                 <button onClick={() => navigate('/pricing')} style={{ flex: 1, minWidth: '160px', padding: '0.95rem 1.5rem', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, color: SKY_BLUE, background: 'transparent', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.borderColor = SKY_BLUE }} onMouseLeave={(e) => { e.currentTarget.borderColor = '#E2EBF5' }}>
                   Keep Shopping

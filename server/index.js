@@ -1,64 +1,573 @@
 import 'dotenv/config'
-import dns from 'dns'
 import express from 'express'
 import cors from 'cors'
+import dns from 'node:dns'
 import { MongoClient, ObjectId } from 'mongodb'
 import Groq from 'groq-sdk'
+import { randomUUID } from 'node:crypto'
+import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app'
+import { getAuth } from 'firebase-admin/auth'
 
 
-dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1'])
+const configuredDnsServers = String(process.env.DNS_SERVERS || '')
+  .split(',')
+  .map(server => server.trim())
+  .filter(Boolean)
+const isLoopbackDnsServer = (server) => {
+  const value = String(server || '').trim().toLowerCase()
+  return /^127(?:\.\d{1,3}){3}(?::\d+)?$/.test(value)
+    || value === '::1'
+    || value === '0:0:0:0:0:0:0:1'
+    || /^\[::1\](?::\d+)?$/.test(value)
+}
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
+if (configuredDnsServers.length > 0) {
+  try {
+    dns.setServers(configuredDnsServers)
+  } catch (error) {
+    console.warn('DNS_SERVERS could not be applied:', error?.message || error)
+  }
+} else if (process.platform === 'win32') {
+  const currentDnsServers = dns.getServers()
+  if (currentDnsServers.length > 0 && currentDnsServers.every(isLoopbackDnsServer)) {
+    dns.setServers(['1.1.1.1', '8.8.8.8'])
+  }
+}
+
+
+const groq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null
 
 const app = express()
-const allowedOrigins = String(process.env.CLIENT_URL || '').split(',').map(value => value.trim()).filter(Boolean)
+app.disable('x-powered-by')
+app.set('trust proxy', Math.max(0, Math.min(2, Number(process.env.TRUST_PROXY_HOPS) || 1)))
+
+const normalizeOrigin = (value) => {
+  try {
+    return new URL(String(value).trim()).origin
+  } catch {
+    return ''
+  }
+}
+const allowedOrigins = String(process.env.CLIENT_URL || '')
+  .split(',')
+  .map(normalizeOrigin)
+  .filter(Boolean)
+const isProduction = process.env.NODE_ENV === 'production'
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) return callback(null, true)
+    const normalized = origin ? normalizeOrigin(origin) : ''
+    if (!origin || allowedOrigins.includes(normalized) || (!isProduction && allowedOrigins.length === 0)) return callback(null, true)
     return callback(new Error('Origin not allowed by CORS'))
   },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Authorization', 'Content-Type'],
+  maxAge: 86_400,
 }))
 app.use(express.json({ limit: '100kb' }))
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  next()
+})
 
 const rateBuckets = new Map()
+let lastRateBucketSweep = 0
+let nextRateLimiterId = 0
+const MAX_RATE_BUCKETS = 10_000
+
+function sweepRateBuckets(now) {
+  for (const [bucketKey, value] of rateBuckets) {
+    if (value.expiresAt <= now) rateBuckets.delete(bucketKey)
+  }
+  if (rateBuckets.size < MAX_RATE_BUCKETS) return
+
+  const targetSize = Math.floor(MAX_RATE_BUCKETS * 0.9)
+  for (const bucketKey of rateBuckets.keys()) {
+    rateBuckets.delete(bucketKey)
+    if (rateBuckets.size <= targetSize) break
+  }
+}
+
 function rateLimit({ windowMs = 60_000, max = 20 } = {}) {
+  const limiterId = ++nextRateLimiterId
   return (req, res, next) => {
-    const key = `${req.ip}:${req.path}`
     const now = Date.now()
+    if (now - lastRateBucketSweep >= 60_000 || rateBuckets.size >= MAX_RATE_BUCKETS) {
+      sweepRateBuckets(now)
+      lastRateBucketSweep = now
+    }
+    const key = `${limiterId}:${req.ip}`
     const bucket = rateBuckets.get(key)
-    if (!bucket || now - bucket.startedAt >= windowMs) {
-      rateBuckets.set(key, { startedAt: now, count: 1 })
+    if (!bucket || bucket.expiresAt <= now) {
+      rateBuckets.set(key, { startedAt: now, expiresAt: now + windowMs, count: 1 })
+      res.setHeader('RateLimit-Limit', String(max))
+      res.setHeader('RateLimit-Remaining', String(Math.max(0, max - 1)))
       return next()
     }
     bucket.count += 1
-    if (bucket.count > max) return res.status(429).json({ error: 'Too many requests. Please try again shortly.' })
+    const remaining = Math.max(0, max - bucket.count)
+    res.setHeader('RateLimit-Limit', String(max))
+    res.setHeader('RateLimit-Remaining', String(remaining))
+    if (bucket.count > max) {
+      const retryAfter = Math.max(1, Math.ceil((windowMs - (now - bucket.startedAt)) / 1000))
+      res.setHeader('Retry-After', String(retryAfter))
+      return res.status(429).json({ error: 'Too many requests. Please try again shortly.' })
+    }
     return next()
   }
 }
 
 const cleanText = (value, maxLength = 500) => String(value || '').trim().slice(0, maxLength)
 const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-const isDateKey = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value)
+const isDateKey = (value) => {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return false
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  if (year < 1 || month < 1 || month > 12 || day < 1) return false
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+  const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  return day <= daysInMonth[month - 1]
+}
+const californiaDateFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/Los_Angeles',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+const californiaDateKey = (date = new Date()) => {
+  const parts = Object.fromEntries(
+    californiaDateFormatter.formatToParts(date)
+      .filter(part => part.type !== 'literal')
+      .map(part => [part.type, part.value])
+  )
+  return `${parts.year}-${parts.month}-${parts.day}`
+}
+const isPlainObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+const cleanInteger = (value, fallback = 0, min = -10_000, max = 10_000) => {
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) ? Math.max(min, Math.min(max, parsed)) : fallback
+}
+const cleanHttpUrl = (value, maxLength = 2000) => {
+  const raw = cleanText(value, maxLength)
+  if (!raw) return ''
+  try {
+    const url = new URL(raw)
+    return url.protocol === 'https:' ? url.toString() : ''
+  } catch {
+    return ''
+  }
+}
+const safeRecord = (value, depth = 0) => {
+  if (depth > 3) return undefined
+  if (typeof value === 'string') return cleanText(value, 4000)
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined
+  if (typeof value === 'boolean' || value === null) return value
+  if (Array.isArray(value)) return value.slice(0, 100).map(item => safeRecord(item, depth + 1)).filter(item => item !== undefined)
+  if (!isPlainObject(value)) return undefined
+  const output = {}
+  for (const [key, item] of Object.entries(value).slice(0, 100)) {
+    if (!/^[A-Za-z0-9 _-]{1,80}$/.test(key)) continue
+    const sanitized = safeRecord(item, depth + 1)
+    if (sanitized !== undefined) output[key] = sanitized
+  }
+  return output
+}
+const sendServerError = (res, error, context = 'Request failed') => {
+  console.error(`${context}:`, error?.message || error)
+  return res.status(500).json({ error: 'Something went wrong. Please try again.' })
+}
+const USER_TEXT_FIELDS = new Map([
+  ['firstName', 80], ['middleName', 80], ['lastName', 80], ['displayName', 160], ['name', 160],
+  ['username', 160], ['dob', 20], ['phone', 30], ['email', 320], ['address', 500], ['city', 100],
+  ['state', 80], ['zipCode', 20], ['courseType', 120], ['photoURL', 2000], ['permit', 160],
+  ['medications', 1000], ['notes', 2000], ['submittedAt', 40], ['issueDate', 40], ['expiryDate', 40],
+])
+function sanitizeUserProfile(value) {
+  if (!isPlainObject(value)) throw new HttpError(400, 'A valid profile is required.')
+  const output = {}
+  for (const [field, maxLength] of USER_TEXT_FIELDS) {
+    if (value[field] === undefined) continue
+    output[field] = field === 'email'
+      ? normalizeEmail(value[field])
+      : field === 'photoURL'
+        ? cleanHttpUrl(value[field])
+        : cleanText(value[field], maxLength)
+  }
+  if (output.email && !isEmail(output.email)) throw new HttpError(400, 'Please enter a valid email address.')
+  if (value.completedModules !== undefined) {
+    if (!Array.isArray(value.completedModules)) throw new HttpError(400, 'Completed modules must be a list.')
+    output.completedModules = [...new Set(value.completedModules.map(item => cleanText(item, 120)).filter(Boolean))].slice(0, 200)
+  }
+  return output
+}
+function sanitizeChatMessages(value, maxMessages = 100) {
+  if (!Array.isArray(value)) throw new HttpError(400, 'Messages must be a list.')
+  return value.slice(-maxMessages).map(message => {
+    const role = message?.role === 'assistant' ? 'assistant' : 'user'
+    const content = cleanText(message?.content ?? message?.text, 4000)
+    if (!content) throw new HttpError(400, 'Messages cannot be empty.')
+    return { role, content }
+  })
+}
+function sanitizePricing(value) {
+  if (!isPlainObject(value)) throw new HttpError(400, 'A valid pricing plan is required.')
+  const id = cleanText(value.id, 120)
+  const planName = cleanText(value.planName, 160)
+  const planPrice = cleanText(value.planPrice, 40)
+  const planPriceTwo = cleanText(value.planPriceTwo, 40)
+  if (!id || !planName || !planPrice) throw new HttpError(400, 'Plan id, name, and price are required.')
+  const allowedPermissions = new Set(['Select', 'Included', 'Optional', 'Not Included'])
+  const options = (Array.isArray(value.options) ? value.options : []).slice(0, 20).map(option => ({
+    text: cleanText(option?.text, 500),
+    permission: allowedPermissions.has(option?.permission) ? option.permission : 'Select',
+  }))
+  return { id, planName, planPrice, planPriceTwo: planPriceTwo || planPrice, options, order: cleanInteger(value.order, 0, 0, 10_000) }
+}
+function sanitizeArea(value) {
+  if (!isPlainObject(value)) throw new HttpError(400, 'A valid service area is required.')
+  const name = cleanText(value.name, 120)
+  const map = cleanHttpUrl(value.map)
+  let mapHost = ''
+  try {
+    mapHost = new URL(map).hostname.toLowerCase()
+  } catch {
+    // The validation message below intentionally covers malformed URLs.
+  }
+  const isGoogleMapsHost = mapHost === 'google.com'
+    || mapHost.endsWith('.google.com')
+    || mapHost === 'googleusercontent.com'
+    || mapHost.endsWith('.googleusercontent.com')
+  if (!name || !map || !isGoogleMapsHost) {
+    throw new HttpError(400, 'Area name and a secure Google Maps URL are required.')
+  }
+  return { name, map, icon: cleanText(value.icon, 4000), order: cleanInteger(value.order, 0, 0, 10_000) }
+}
+function sanitizeSocial(value) {
+  if (!isPlainObject(value)) throw new HttpError(400, 'A valid social link is required.')
+  const platform = cleanText(value.platform || 'website', 40).toLowerCase()
+  const url = cleanHttpUrl(value.url)
+  if (!url) throw new HttpError(400, 'A secure social URL is required.')
+  const allowedPlatforms = new Set([
+    'facebook', 'instagram', 'youtube', 'linkedin', 'x', 'twitter', 'tiktok', 'whatsapp', 'link', 'website',
+  ])
+  if (!allowedPlatforms.has(platform)) throw new HttpError(400, 'Please choose a supported social platform.')
+  return { platform, url, order: cleanInteger(value.order, 0, 0, 10_000) }
+}
+function sanitizeSettings(value) {
+  if (!isPlainObject(value)) throw new HttpError(400, 'Valid site settings are required.')
+  const output = {
+    phone: cleanText(value.phone, 40),
+    email: normalizeEmail(value.email),
+    address: cleanText(value.address, 300),
+    subaddress: cleanText(value.subaddress, 300),
+    scheduleLabel: cleanText(value.scheduleLabel, 200),
+    scheduleLink: cleanHttpUrl(value.scheduleLink),
+  }
+  if (output.email && !isEmail(output.email)) throw new HttpError(400, 'Please enter a valid settings email address.')
+  if (value.scheduleLink && !output.scheduleLink) throw new HttpError(400, 'Schedule link must be a secure HTTPS URL.')
+  return output
+}
 const BOOKING_TIMES = new Set([
-  '07:00 AM - 09:00 AM', '09:00 AM - 11:00 AM', '12:00 PM - 02:00 PM', '02:00 PM - 04:00 PM', '04:00 PM - 06:00 PM',
+  '07:00 AM - 09:00 AM', '09:00 AM - 11:00 AM', '11:00 AM - 01:00 PM', '12:00 PM - 02:00 PM', '02:00 PM - 04:00 PM', '04:00 PM - 06:00 PM',
   '9:00 AM - 11:00 AM', '11:00 AM - 1:00 PM', '2:00 PM - 4:00 PM', '4:00 PM - 6:00 PM',
 ])
+const BOOKING_HOLD_MINUTES = Math.max(5, Math.min(60, Number(process.env.BOOKING_HOLD_MINUTES) || 15))
+const ACTIVE_BOOKING_STATUSES = ['held', 'scheduled', 'confirmed', 'booked']
+
+const normalizeEmail = (value) => cleanText(value, 320).toLowerCase()
+const normalizeBookingTime = (value) => {
+  const compact = cleanText(value, 80).replace(/\s+/g, ' ')
+  const aliases = {
+    '9:00 AM - 11:00 AM': '09:00 AM - 11:00 AM',
+    '11:00 AM - 1:00 PM': '11:00 AM - 01:00 PM',
+    '2:00 PM - 4:00 PM': '02:00 PM - 04:00 PM',
+    '4:00 PM - 6:00 PM': '04:00 PM - 06:00 PM',
+  }
+  return aliases[compact] || compact
+}
+const bookingSlotKey = (date, timeSlot) => `${date}|${normalizeBookingTime(timeSlot)}`
+
+let firebaseAuth
+function getFirebaseAdminAuth() {
+  if (firebaseAuth) return firebaseAuth
+
+  let serviceAccount
+  const rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
+    || (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64
+      ? Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8')
+      : '')
+
+  if (rawServiceAccount) {
+    try {
+      serviceAccount = JSON.parse(rawServiceAccount)
+    } catch {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT must contain valid JSON.')
+    }
+  } else if (process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+    serviceAccount = {
+      projectId: process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    }
+  }
+
+  const projectId = serviceAccount?.projectId || serviceAccount?.project_id
+    || process.env.FIREBASE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT
+    || process.env.VITE_FIREBASE_PROJECT_ID
+  if (!projectId) throw new Error('FIREBASE_PROJECT_ID is required for API authentication.')
+
+  const options = { projectId }
+  if (serviceAccount) {
+    options.credential = cert({
+      projectId,
+      clientEmail: serviceAccount.clientEmail || serviceAccount.client_email,
+      privateKey: String(serviceAccount.privateKey || serviceAccount.private_key || '').replace(/\\n/g, '\n'),
+    })
+  } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    options.credential = applicationDefault()
+  }
+
+  const firebaseApp = getApps()[0] || initializeApp(options)
+  firebaseAuth = getAuth(firebaseApp)
+  return firebaseAuth
+}
+
+async function requireAuth(req, res, next) {
+  const authorization = String(req.headers.authorization || '')
+  const match = authorization.match(/^Bearer\s+(.+)$/i)
+  if (!match) return res.status(401).json({ error: 'Authentication required.' })
+
+  try {
+    req.auth = await getFirebaseAdminAuth().verifyIdToken(match[1], true)
+    return next()
+  } catch (error) {
+    console.warn('Authentication rejected:', error.code || error.message)
+    return res.status(401).json({ error: 'Your session is invalid or expired. Please sign in again.' })
+  }
+}
+
+async function requireSelf(req, res, next) {
+  if (req.auth?.uid && req.auth.uid === req.params.uid) return next()
+  try {
+    const admin = await usersCol?.findOne({ uid: req.auth?.uid, isAdmin: true }, { projection: { _id: 1 } })
+    if (admin) return next()
+  } catch (error) {
+    return sendServerError(res, error, 'Account authorization check failed')
+  }
+  return res.status(403).json({ error: 'You cannot access another user\'s account.' })
+}
 
 const PORT = process.env.PORT || 3001
 const MONGO_URI = process.env.MONGO_URI
 const DB_NAME = 'driving_school'
 
-let db, usersCol, bookingsCol, contactCol, settingsCol, pricingCol, enrollmentsCol, areasCol, socialsCol, refundsCol, cartsCol
+let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, contactCol, settingsCol, pricingCol, enrollmentsCol, areasCol, socialsCol, refundsCol, cartsCol
 let connectPromise = null
+
+class HttpError extends Error {
+  constructor(status, message) {
+    super(message)
+    this.status = status
+  }
+}
+
+const isDuplicateKey = (error) => error?.code === 11000
+const activeHoldExpiry = () => new Date(Date.now() + BOOKING_HOLD_MINUTES * 60_000)
+
+function validateBookingSlot(date, timeSlot) {
+  const cleanDate = cleanText(date, 10)
+  const cleanTime = cleanText(timeSlot, 80).replace(/\s+/g, ' ')
+  if (!isDateKey(cleanDate) || !BOOKING_TIMES.has(cleanTime)) {
+    throw new HttpError(400, 'Please choose a valid booking date and time.')
+  }
+  if (cleanDate < californiaDateKey()) {
+    throw new HttpError(400, 'Past dates cannot be booked.')
+  }
+  return { date: cleanDate, timeSlot: normalizeBookingTime(cleanTime) }
+}
+
+function pickupSlotsFromCourse(course) {
+  const source = Array.isArray(course?.pickupSlots) ? course.pickupSlots : []
+  const slots = source.map(slot => validateBookingSlot(slot?.date, slot?.time || slot?.timeSlot))
+  const seen = new Set()
+  for (const slot of slots) {
+    const key = bookingSlotKey(slot.date, slot.timeSlot)
+    if (seen.has(key)) throw new HttpError(400, 'The same date and time cannot be selected twice.')
+    seen.add(key)
+  }
+  return slots
+}
+
+function slotLimitForTier(tier) {
+  const id = String(tier?.id || '')
+  const name = String(tier?.planName || '').toUpperCase()
+  if (id === '2' || name.includes('BASIC PLAN')) return 1
+  if (id === '5' || name.includes('PREMIER')) return 5
+  if (id === '3' || name.includes('ESSENTIAL')) return 3
+  if (id === '4' || name.includes('IDEAL FOR STUDENTS')) return 3
+  if (id === '6' || id === '7' || name.includes('DMV DRIVE TEST CAR RENTAL')) return 1
+  if (id === '8' || name.includes('FREEWAY FOCUSED COURSE')) return 1
+  return 3
+}
+
+async function pricingTierById(courseId, session) {
+  const candidates = [String(courseId)]
+  if (/^\d+$/.test(String(courseId))) candidates.push(Number(courseId))
+  return pricingCol.findOne({ id: { $in: candidates } }, { session })
+}
+
+let holdCleanupPromise = null
+let lastHoldCleanupAt = 0
+async function cleanupExpiredHolds(force = false) {
+  if (!bookingSlotsCol || !bookingsCol) return
+  const nowMs = Date.now()
+  if (!force && nowMs - lastHoldCleanupAt < 30_000) return holdCleanupPromise
+  if (holdCleanupPromise) return holdCleanupPromise
+
+  lastHoldCleanupAt = nowMs
+  holdCleanupPromise = (async () => {
+    const now = new Date()
+    const expiredLocks = await bookingSlotsCol
+      .find({ status: 'held', expiresAt: { $lte: now } }, { projection: { bookingId: 1 } })
+      .toArray()
+    const bookingIds = expiredLocks.map(lock => lock.bookingId).filter(Boolean)
+
+    await bookingSlotsCol.deleteMany({ status: 'held', expiresAt: { $lte: now } })
+    if (bookingIds.length) {
+      await bookingsCol.deleteMany({
+        _id: { $in: bookingIds },
+        status: 'held',
+        holdExpiresAt: { $lte: now },
+      })
+    }
+    await bookingsCol.deleteMany({ status: 'held', holdExpiresAt: { $lte: now } })
+    if (cartsCol) {
+      await cartsCol.updateMany(
+        { 'items.holdExpiresAt': { $lte: now.toISOString() } },
+        { $pull: { items: { holdExpiresAt: { $lte: now.toISOString() } } }, $set: { updatedAt: now.toISOString() } }
+      )
+      await cartsCol.deleteMany({ items: { $size: 0 } })
+    }
+  })().finally(() => {
+    holdCleanupPromise = null
+  })
+  return holdCleanupPromise
+}
+
+async function backfillBookingSlotLocks() {
+  const now = new Date()
+  const cursor = bookingsCol.find({ status: { $in: ACTIVE_BOOKING_STATUSES } })
+  for await (const booking of cursor) {
+    if (!isDateKey(booking.date) || !BOOKING_TIMES.has(String(booking.timeSlot || '').replace(/\s+/g, ' '))) continue
+    if (booking.status === 'held' && (!booking.holdExpiresAt || new Date(booking.holdExpiresAt) <= now)) continue
+
+    const timeSlot = normalizeBookingTime(booking.timeSlot)
+    const held = booking.status === 'held'
+    const lock = {
+      _id: bookingSlotKey(booking.date, timeSlot),
+      date: booking.date,
+      timeSlot,
+      userId: booking.userId,
+      courseId: String(booking.courseId || ''),
+      bookingId: booking._id,
+      status: held ? 'held' : 'confirmed',
+      createdAt: new Date(),
+    }
+    if (held) lock.expiresAt = new Date(booking.holdExpiresAt)
+    await bookingSlotsCol.updateOne({ _id: lock._id }, { $setOnInsert: lock }, { upsert: true })
+  }
+}
+
+async function releaseCourseHolds(uid, courseId, session) {
+  const filter = { userId: uid, courseId: String(courseId), status: 'held' }
+  const heldBookings = await bookingsCol.find(filter, { session, projection: { _id: 1 } }).toArray()
+  const bookingIds = heldBookings.map(booking => booking._id)
+  if (bookingIds.length) {
+    await bookingSlotsCol.deleteMany(
+      { userId: uid, courseId: String(courseId), status: 'held', bookingId: { $in: bookingIds } },
+      { session }
+    )
+    await bookingsCol.deleteMany({ ...filter, _id: { $in: bookingIds } }, { session })
+  }
+}
+
+async function createSlotHold({ uid, courseId, date, timeSlot, session, expiresAt }) {
+  const key = bookingSlotKey(date, timeSlot)
+  await bookingSlotsCol.deleteOne(
+    { _id: key, status: 'held', expiresAt: { $lte: new Date() } },
+    { session }
+  )
+
+  const bookingId = new ObjectId()
+  const holdToken = randomUUID()
+  const now = new Date()
+  try {
+    await bookingSlotsCol.insertOne({
+      _id: key,
+      date,
+      timeSlot,
+      userId: uid,
+      courseId: String(courseId),
+      bookingId,
+      holdToken,
+      status: 'held',
+      expiresAt,
+      createdAt: now,
+    }, { session })
+  } catch (error) {
+    if (isDuplicateKey(error)) throw new HttpError(409, 'This time slot has already been booked. Please choose another slot.')
+    throw error
+  }
+
+  await bookingsCol.insertOne({
+    _id: bookingId,
+    userId: uid,
+    date,
+    timeSlot,
+    courseId: String(courseId),
+    hours: 2,
+    status: 'held',
+    holdToken,
+    holdExpiresAt: expiresAt,
+    createdAt: now.toISOString(),
+  }, { session })
+  return bookingId
+}
+
+async function withMongoTransaction(callback) {
+  const session = mongoClient.startSession()
+  try {
+    let value
+    await session.withTransaction(async () => {
+      value = await callback(session)
+    }, {
+      readConcern: { level: 'snapshot' },
+      writeConcern: { w: 'majority' },
+      readPreference: 'primary',
+    })
+    return value
+  } finally {
+    await session.endSession()
+  }
+}
 
 async function connectDB() {
   if (connectPromise) return connectPromise
   connectPromise = (async () => {
-    const client = new MongoClient(MONGO_URI)
-    await client.connect()
-    db = client.db(DB_NAME)
+    if (!MONGO_URI) throw new Error('MONGO_URI is required.')
+    mongoClient = new MongoClient(MONGO_URI, {
+      serverSelectionTimeoutMS: 10_000,
+      connectTimeoutMS: 10_000,
+      maxPoolSize: Math.max(5, Math.min(50, Number(process.env.MONGO_MAX_POOL_SIZE) || 20)),
+    })
+    await mongoClient.connect()
+    db = mongoClient.db(DB_NAME)
     usersCol = db.collection('users')
     bookingsCol = db.collection('bookings')
+    bookingSlotsCol = db.collection('booking_slots')
     contactCol = db.collection('contact')
     settingsCol = db.collection('settings')
     pricingCol = db.collection('pricing')
@@ -69,7 +578,12 @@ async function connectDB() {
     cartsCol = db.collection('carts')
     await usersCol.createIndex({ uid: 1 }, { unique: true })
     await bookingsCol.createIndex({ userId: 1, date: 1 })
+    await bookingsCol.createIndex({ holdExpiresAt: 1 }, { expireAfterSeconds: 0, name: 'expire_booking_holds' })
+    await bookingSlotsCol.createIndex({ date: 1 })
+    await bookingSlotsCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, name: 'expire_slot_holds' })
     await cartsCol.createIndex({ uid: 1 }, { unique: true })
+    await cleanupExpiredHolds(true)
+    await backfillBookingSlotLocks()
     await seedPricing()
     await seedAreas()
     await seedSocials()
@@ -82,16 +596,40 @@ async function connectDB() {
   return connectPromise
 }
 
+app.get('/api/health', async (_req, res) => {
+  try {
+    await connectDB()
+    await db.command({ ping: 1 })
+    res.setHeader('Cache-Control', 'no-store')
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('Health check failed:', error?.message || error)
+    return res.status(503).json({ ok: false })
+  }
+})
+
+app.use('/api', rateLimit({ windowMs: 60_000, max: 300 }))
 app.use(async (req, res, next) => {
   try {
     await connectDB()
     next()
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Database connection failed')
   }
 })
 
-app.get('/api/health', (req, res) => res.json({ ok: true }))
+async function requireAdmin(req, res, next) {
+  try {
+    const admin = await usersCol.findOne({ uid: req.auth?.uid, isAdmin: true }, { projection: { _id: 1 } })
+    if (!admin) return res.status(403).json({ error: 'Administrator access required.' })
+    return next()
+  } catch (error) {
+    return sendServerError(res, error, 'Administrator check failed')
+  }
+}
+
+app.use('/api/admin', requireAuth, requireAdmin)
+app.use('/api/users/:uid', requireAuth, requireSelf)
 
 app.post('/api/contact', rateLimit({ windowMs: 10 * 60_000, max: 5 }), async (req, res) => {
   try {
@@ -107,7 +645,7 @@ app.post('/api/contact', rateLimit({ windowMs: 10 * 60_000, max: 5 }), async (re
     await contactCol.insertOne({ firstName, lastName, phone, email, comments, createdAt: new Date().toISOString() })
     res.json({ ok: true })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Contact submission failed')
   }
 })
 
@@ -116,109 +654,205 @@ app.get('/api/users/:uid', async (req, res) => {
     const user = await usersCol.findOne({ uid: req.params.uid })
     res.json(user || { uid: req.params.uid })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Profile lookup failed')
   }
 })
+
+async function claimInitialAdmin(decodedToken) {
+  const allowedUid = cleanText(process.env.ADMIN_UID, 160)
+  const allowedEmail = normalizeEmail(process.env.ADMIN_EMAIL)
+  const tokenEmail = normalizeEmail(decodedToken?.email)
+  const uidAuthorized = allowedUid && decodedToken?.uid === allowedUid
+  const verifiedEmailAuthorized = !allowedUid
+    && allowedEmail
+    && decodedToken?.email_verified === true
+    && tokenEmail === allowedEmail
+  if (!uidAuthorized && !verifiedEmailAuthorized) return false
+
+  const currentAdmin = await usersCol.findOne({ isAdmin: true }, { projection: { uid: 1 } })
+  if (currentAdmin) return currentAdmin.uid === decodedToken.uid
+
+  try {
+    await settingsCol.insertOne({
+      _id: 'admin-bootstrap',
+      uid: decodedToken.uid,
+      email: tokenEmail,
+      createdAt: new Date(),
+    })
+  } catch (error) {
+    if (error.code !== 11000) throw error
+  }
+
+  const bootstrap = await settingsCol.findOne({ _id: 'admin-bootstrap' })
+  return bootstrap?.uid === decodedToken.uid
+}
 
 app.put('/api/users/:uid', async (req, res) => {
   try {
     const { uid } = req.params
-    const data = { ...req.body }
-    delete data._id
-    delete data.uid
+    const requestedAdminBootstrap = req.body?.isAdmin === true
+    const data = sanitizeUserProfile(req.body)
+
+    if (requestedAdminBootstrap) {
+      const canBootstrap = await claimInitialAdmin(req.auth)
+      if (!canBootstrap) {
+        return res.status(403).json({
+          error: process.env.ADMIN_UID
+            ? 'Administrator setup is restricted to the configured administrator account.'
+            : process.env.ADMIN_EMAIL
+              ? 'Administrator setup requires the configured administrator email to be verified.'
+              : 'Administrator setup is disabled until ADMIN_EMAIL or ADMIN_UID is configured on the server.',
+        })
+      }
+      data.isAdmin = true
+    }
+
     await usersCol.updateOne(
       { uid },
-      { $set: data },
+      {
+        $set: data,
+        $setOnInsert: { uid, createdAt: new Date().toISOString() },
+      },
       { upsert: true }
     )
     res.json({ ok: true })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    if (e.status) return res.status(e.status).json({ error: e.message })
+    sendServerError(res, e, 'Profile update failed')
   }
 })
 
 app.get('/api/bookings/availability', async (req, res) => {
   try {
-    if (!req.query.date) return res.status(400).json({ error: 'Date required' })
-    const bookings = await bookingsCol.find({ date: req.query.date, status: { $ne: 'cancelled' } }).toArray()
-    res.json({ bookedTimes: [...new Set(bookings.map(b => b.timeSlot).filter(Boolean))] })
+    const date = cleanText(req.query.date, 10)
+    if (!isDateKey(date)) return res.status(400).json({ error: 'A valid date is required.' })
+    await cleanupExpiredHolds()
+    const now = new Date()
+    const locks = await bookingSlotsCol.find({
+      date,
+      $or: [
+        { status: 'confirmed' },
+        { status: 'held', expiresAt: { $gt: now } },
+      ],
+    }, { projection: { timeSlot: 1 } }).toArray()
+    res.json({ bookedTimes: [...new Set(locks.map(lock => lock.timeSlot).filter(Boolean))] })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Booking availability lookup failed')
   }
 })
 
-app.get('/api/bookings/:uid', async (req, res) => {
+app.get('/api/bookings/:uid', requireAuth, requireSelf, async (req, res) => {
   try {
     const bookings = await bookingsCol
-      .find({ userId: req.params.uid })
+      .find({ userId: req.auth.uid, status: { $ne: 'held' } })
       .sort({ date: -1 })
       .toArray()
     res.json(bookings)
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Booking history lookup failed')
   }
 })
 
-app.post('/api/bookings', rateLimit({ windowMs: 60_000, max: 30 }), async (req, res) => {
+app.post('/api/bookings', requireAuth, requireAdmin, rateLimit({ windowMs: 60_000, max: 30 }), async (req, res) => {
   try {
-    const { userId, date, timeSlot } = req.body
-    if (!userId || !date || !timeSlot) {
-      return res.status(400).json({ error: 'User, date, and time slot are required.' })
-    }
-    if (!isDateKey(date) || !BOOKING_TIMES.has(timeSlot)) {
-      return res.status(400).json({ error: 'Please choose a valid booking date and time.' })
-    }
-    if (new Date(`${date}T23:59:59`) < new Date()) {
-      return res.status(400).json({ error: 'Past dates cannot be booked.' })
-    }
-    const existing = await bookingsCol.findOne({ date, timeSlot, status: { $ne: 'cancelled' } })
-    if (existing) {
-      return res.status(409).json({ error: 'This time slot has already been booked. Please choose another slot.' })
-    }
-    const booking = {
-      userId,
-      date,
-      timeSlot,
-      courseId: String(req.body.courseId || ''),
-      hours: 2,
-      status: req.body.status || 'scheduled',
-      createdAt: new Date().toISOString(),
-    }
-    const result = await bookingsCol.insertOne(booking)
-    res.json({ ...booking, _id: result.insertedId })
+    const { date, timeSlot } = validateBookingSlot(req.body.date, req.body.timeSlot)
+    const userId = req.auth.uid
+    const courseId = cleanText(req.body.courseId, 120)
+    await cleanupExpiredHolds()
+
+    const booking = await withMongoTransaction(async (session) => {
+      const key = bookingSlotKey(date, timeSlot)
+      await bookingSlotsCol.deleteOne({ _id: key, status: 'held', expiresAt: { $lte: new Date() } }, { session })
+      const existingLock = await bookingSlotsCol.findOne({ _id: key }, { session })
+      if (existingLock) {
+        if (existingLock.status === 'held' && existingLock.userId === userId && existingLock.courseId === courseId) {
+          const existingBooking = await bookingsCol.findOne({ _id: existingLock.bookingId, userId }, { session })
+          if (existingBooking) return existingBooking
+        }
+        throw new HttpError(409, 'This time slot has already been booked. Please choose another slot.')
+      }
+
+      const bookingId = new ObjectId()
+      const now = new Date()
+      const doc = {
+        _id: bookingId,
+        userId,
+        email: normalizeEmail(req.auth.email),
+        date,
+        timeSlot,
+        courseId,
+        hours: 2,
+        status: 'scheduled',
+        createdAt: now.toISOString(),
+      }
+      try {
+        await bookingSlotsCol.insertOne({
+          _id: key,
+          date,
+          timeSlot,
+          userId,
+          courseId,
+          bookingId,
+          status: 'confirmed',
+          createdAt: now,
+        }, { session })
+      } catch (error) {
+        if (isDuplicateKey(error)) throw new HttpError(409, 'This time slot has already been booked. Please choose another slot.')
+        throw error
+      }
+      await bookingsCol.insertOne(doc, { session })
+      return doc
+    })
+
+    res.json(booking)
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    res.status(e.status || (isDuplicateKey(e) ? 409 : 500)).json({
+      error: e.status || isDuplicateKey(e)
+        ? e.message || 'This time slot has already been booked. Please choose another slot.'
+        : 'Unable to create the booking. Please try again.',
+    })
   }
 })
 
-app.delete('/api/bookings/:id', async (req, res) => {
+app.delete('/api/bookings/:id', requireAuth, async (req, res) => {
   try {
-    await bookingsCol.deleteOne({ _id: new ObjectId(req.params.id) })
+    if (!ObjectId.isValid(req.params.id)) return res.status(400).json({ error: 'Invalid booking id.' })
+    const bookingId = new ObjectId(req.params.id)
+    const deleted = await withMongoTransaction(async (session) => {
+      const booking = await bookingsCol.findOne({ _id: bookingId, userId: req.auth.uid }, { session })
+      if (!booking) return false
+      await bookingSlotsCol.deleteOne({ bookingId, userId: req.auth.uid }, { session })
+      await bookingsCol.deleteOne({ _id: bookingId, userId: req.auth.uid }, { session })
+      return true
+    })
+    if (!deleted) return res.status(404).json({ error: 'Booking not found.' })
     res.json({ ok: true })
-  } catch (e) {
-    res.status(500).json({ error: e.message })
+  } catch {
+    res.status(500).json({ error: 'Unable to cancel the booking. Please try again.' })
   }
 })
 
-app.post('/api/users/:uid/courses', async (req, res) => {
+app.post('/api/users/:uid/courses', requireAdmin, async (req, res) => {
   try {
     const { uid } = req.params
-    const course = req.body
-    if (!course || !course.id) return res.status(400).json({ error: 'Course id required' })
+    const course = safeRecord(req.body)
+    const courseId = cleanText(course?.id, 120)
+    if (!courseId) return res.status(400).json({ error: 'Course id required' })
+    course.id = courseId
     const user = await usersCol.findOne({ uid })
-    const existing = (user?.courses || []).find(c => c.id === course.id)
+    const existing = (user?.courses || []).find(c => String(c.id) === courseId)
     if (existing) {
       return res.json({ ok: true, courses: user.courses, duplicate: true })
     }
     await usersCol.updateOne(
       { uid },
-      { $push: { courses: course } },
+      { $push: { courses: { $each: [course], $slice: -100 } }, $setOnInsert: { uid, createdAt: new Date().toISOString() } },
       { upsert: true }
     )
     const updated = await usersCol.findOne({ uid })
     res.json({ ok: true, courses: updated?.courses || [] })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Course assignment failed')
   }
 })
 
@@ -232,115 +866,251 @@ app.delete('/api/users/:uid/courses/:courseId', async (req, res) => {
     const user = await usersCol.findOne({ uid })
     res.json({ ok: true, courses: user?.courses || [] })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Course removal failed')
   }
 })
 
-app.post('/api/users/:uid/payments', async (req, res) => {
+app.post('/api/users/:uid/payments', requireAdmin, async (req, res) => {
   try {
     const { uid } = req.params
-    const payment = req.body
-    if (!payment) return res.status(400).json({ error: 'Payment data required' })
+    const payment = safeRecord(req.body)
+    if (!payment || Object.keys(payment).length === 0) return res.status(400).json({ error: 'Payment data required' })
     await usersCol.updateOne(
       { uid },
-      { $push: { payments: { $each: [payment], $position: 0 } } },
+      {
+        $push: { payments: { $each: [payment], $position: 0, $slice: 100 } },
+        $setOnInsert: { uid, createdAt: new Date().toISOString() },
+      },
       { upsert: true }
     )
     const user = await usersCol.findOne({ uid })
     res.json({ ok: true, payments: user?.payments || [] })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Payment record update failed')
   }
 })
 
 app.get('/api/users/:uid/cart', async (req, res) => {
   try {
+    await cleanupExpiredHolds()
     const cart = await cartsCol.findOne({ uid: req.params.uid })
     res.json(cart?.items || [])
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Cart lookup failed')
   }
 })
 
 app.post('/api/users/:uid/cart', async (req, res) => {
   try {
-    const { uid } = req.params
-    const course = req.body
-    if (!course || !course.id) return res.status(400).json({ error: 'Course id required' })
-    const cart = await cartsCol.findOne({ uid })
-    const existing = (cart?.items || []).find(c => c.id === course.id)
-    if (existing) {
-      return res.json({ ok: true, items: cart.items, duplicate: true })
-    }
-    const items = [...(cart?.items || []), course]
-    await cartsCol.updateOne({ uid }, { $set: { items, updatedAt: new Date().toISOString() } }, { upsert: true })
-    res.json({ ok: true, items })
+    const uid = req.auth.uid
+    const courseId = cleanText(req.body?.id, 120)
+    if (!courseId) return res.status(400).json({ ok: false, error: 'Course id required' })
+
+    const slots = pickupSlotsFromCourse(req.body)
+    await cleanupExpiredHolds()
+    const expiresAt = activeHoldExpiry()
+    const result = await withMongoTransaction(async (session) => {
+      const tier = await pricingTierById(courseId, session)
+      if (!tier) throw new HttpError(400, 'The selected pricing plan is not available.')
+      const user = await usersCol.findOne({ uid }, { session, projection: { courses: 1 } })
+      if ((user?.courses || []).some(course => String(course.id) === courseId)) {
+        throw new HttpError(409, 'You are already enrolled in this plan. Please choose a different plan.')
+      }
+      const requiredSlots = slotLimitForTier(tier)
+      if (slots.length !== requiredSlots) {
+        throw new HttpError(400, `This plan requires exactly ${requiredSlots} booking slot${requiredSlots === 1 ? '' : 's'}.`)
+      }
+
+      const cart = await cartsCol.findOne({ uid }, { session })
+      const oldItems = cart?.items || []
+      const existingIndex = oldItems.findIndex(item => String(item.id) === courseId)
+      const duplicate = existingIndex >= 0
+
+      if (duplicate) await releaseCourseHolds(uid, courseId, session)
+      for (const slot of slots) {
+        await createSlotHold({ uid, courseId, ...slot, session, expiresAt })
+      }
+
+      const course = {
+        id: courseId,
+        title: cleanText(tier.planName, 160),
+        price: cleanText(tier.planPrice, 40),
+        city: cleanText(req.body?.city, 120),
+        pickupSlots: slots.map(slot => ({ date: slot.date, time: slot.timeSlot })),
+      }
+      if (slots.length) {
+        course.preferredDate = slots[0].date
+        course.pickupTime = slots[0].timeSlot
+        course.holdExpiresAt = expiresAt.toISOString()
+      } else {
+        delete course.holdExpiresAt
+      }
+
+      const items = duplicate
+        ? oldItems.map((item, index) => index === existingIndex ? course : item)
+        : [...oldItems, course]
+      await cartsCol.updateOne(
+        { uid },
+        { $set: { uid, items, updatedAt: new Date().toISOString() } },
+        { upsert: true, session }
+      )
+      return { items, duplicate }
+    })
+    res.json({ ok: true, items: result.items, duplicate: result.duplicate })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    const status = e.status || (isDuplicateKey(e) ? 409 : 500)
+    res.status(status).json({
+      ok: false,
+      error: status === 409
+        ? 'One of the selected time slots is no longer available. Please choose another slot.'
+        : e.status
+          ? e.message
+          : 'Unable to add this course to your cart.',
+    })
   }
 })
 
 app.delete('/api/users/:uid/cart/:courseId', async (req, res) => {
   try {
-    const { uid, courseId } = req.params
-    const cart = await cartsCol.findOne({ uid })
-    const items = (cart?.items || []).filter(c => c.id !== courseId)
-    await cartsCol.updateOne({ uid }, { $set: { items, updatedAt: new Date().toISOString() } }, { upsert: true })
-    await bookingsCol.deleteMany({ userId: uid, courseId: String(courseId), status: 'scheduled' })
+    const uid = req.auth.uid
+    const courseId = cleanText(req.params.courseId, 120)
+    const items = await withMongoTransaction(async (session) => {
+      const cart = await cartsCol.findOne({ uid }, { session })
+      const nextItems = (cart?.items || []).filter(item => String(item.id) !== courseId)
+      await releaseCourseHolds(uid, courseId, session)
+      if (nextItems.length) {
+        await cartsCol.updateOne(
+          { uid },
+          { $set: { items: nextItems, updatedAt: new Date().toISOString() } },
+          { session }
+        )
+      } else {
+        await cartsCol.deleteOne({ uid }, { session })
+      }
+      return nextItems
+    })
     res.json({ ok: true, items })
-  } catch (e) {
-    res.status(500).json({ error: e.message })
+  } catch {
+    res.status(500).json({ error: 'Unable to remove this course from your cart.' })
   }
 })
 
 app.post('/api/users/:uid/cart/checkout', async (req, res) => {
   try {
-    const { uid } = req.params
-    const cart = await cartsCol.findOne({ uid })
-    const items = cart?.items || []
-    if (items.length === 0) return res.json({ ok: true, enrolled: 0 })
-    const user = await usersCol.findOne({ uid })
-    const existingCourses = user?.courses || []
-    const toAdd = []
-    for (const item of items) {
-      if (existingCourses.some(c => c.id === item.id)) continue
-      toAdd.push({
-        id: item.id,
-        title: item.title,
-        price: item.price,
-        status: 'Enrolled',
-        progress: 0,
-        enrolledAt: new Date().toISOString(),
-        email: user?.email || '',
-      })
-    }
-    const payment = {
-      date: new Date().toISOString().split('T')[0],
-      ref: `INV-${Date.now().toString(36).toUpperCase()}`,
-      email: user?.email || '',
-      item: toAdd.map(c => c.title).join(' + '),
-      amount: toAdd.reduce((sum, c) => sum + (parseFloat(String(c.price).replace(/[^0-9.]/g, '')) || 0), 0),
-      status: 'Pending',
-    }
-    await usersCol.updateOne(
-      { uid },
-      {
-        $push: {
-          courses: { $each: toAdd },
-          payments: { $each: [payment], $position: 0 },
-        },
-      },
-      { upsert: true }
-    )
-    const checkedOutCourseIds = items.map(item => String(item.id))
-    await bookingsCol.updateMany(
-      { userId: uid, courseId: { $in: checkedOutCourseIds }, status: 'scheduled' },
-      { $set: { status: 'confirmed', confirmedAt: new Date().toISOString() } }
-    )
-    await cartsCol.deleteOne({ uid })
-    res.json({ ok: true, enrolled: toAdd.length, payment })
+    const uid = req.auth.uid
+    await cleanupExpiredHolds()
+    const checkout = await withMongoTransaction(async (session) => {
+      const cart = await cartsCol.findOne({ uid }, { session })
+      const items = cart?.items || []
+      if (items.length === 0) return { enrolled: 0, payment: null }
+
+      const now = new Date()
+      const holds = []
+      const verifiedItems = []
+      for (const item of items) {
+        const courseId = String(item.id)
+        const slots = pickupSlotsFromCourse(item)
+        const tier = await pricingTierById(courseId, session)
+        if (!tier) throw new HttpError(400, 'A pricing plan in your cart is no longer available.')
+        const requiredSlots = slotLimitForTier(tier)
+        if (slots.length !== requiredSlots) {
+          throw new HttpError(409, `The ${tier.planName} selection must contain exactly ${requiredSlots} booking slot${requiredSlots === 1 ? '' : 's'}.`)
+        }
+        verifiedItems.push({
+          ...item,
+          id: courseId,
+          title: tier.planName,
+          price: tier.planPrice,
+          pickupSlots: slots.map(slot => ({ date: slot.date, time: slot.timeSlot })),
+        })
+        for (const slot of slots) {
+          const lock = await bookingSlotsCol.findOne({
+            _id: bookingSlotKey(slot.date, slot.timeSlot),
+            userId: uid,
+            courseId,
+            status: 'held',
+            expiresAt: { $gt: now },
+          }, { session })
+          if (!lock) {
+            throw new HttpError(409, 'A reserved time slot expired or is no longer available. Please select the slot again.')
+          }
+          const heldBooking = await bookingsCol.findOne({
+            _id: lock.bookingId,
+            userId: uid,
+            courseId,
+            status: 'held',
+          }, { session })
+          if (!heldBooking) throw new HttpError(409, 'A reserved time slot is no longer available. Please select it again.')
+          holds.push({ lock, booking: heldBooking })
+        }
+      }
+
+      const user = await usersCol.findOne({ uid }, { session })
+      const existingCourses = user?.courses || []
+      const duplicateCourse = verifiedItems.find(item =>
+        existingCourses.some(course => String(course.id) === String(item.id))
+      )
+      if (duplicateCourse) {
+        throw new HttpError(409, `You are already enrolled in ${duplicateCourse.title}. Please remove it from the cart.`)
+      }
+      const enrolledAt = new Date().toISOString()
+      const toAdd = verifiedItems
+        .map(item => ({
+          id: item.id,
+          title: item.title,
+          price: item.price,
+          city: item.city || '',
+          preferredDate: item.preferredDate || '',
+          pickupTime: item.pickupTime || '',
+          pickupSlots: item.pickupSlots || [],
+          status: 'Enrolled',
+          progress: 0,
+          enrolledAt,
+          email: user?.email || normalizeEmail(req.auth.email),
+        }))
+
+      const payment = {
+        date: enrolledAt.split('T')[0],
+        ref: `INV-${Date.now().toString(36).toUpperCase()}`,
+        email: user?.email || normalizeEmail(req.auth.email),
+        item: toAdd.map(course => course.title).join(' + '),
+        amount: toAdd.reduce((sum, course) => sum + (parseFloat(String(course.price).replace(/[^0-9.]/g, '')) || 0), 0),
+        status: 'Pending',
+      }
+
+      const push = { payments: { $each: [payment], $position: 0 } }
+      if (toAdd.length) push.courses = { $each: toAdd }
+      await usersCol.updateOne(
+        { uid },
+        { $push: push, $setOnInsert: { uid } },
+        { upsert: true, session }
+      )
+
+      for (const { lock, booking } of holds) {
+        const lockResult = await bookingSlotsCol.updateOne(
+          { _id: lock._id, userId: uid, status: 'held', holdToken: lock.holdToken },
+          { $set: { status: 'confirmed', confirmedAt: now }, $unset: { expiresAt: '', holdToken: '' } },
+          { session }
+        )
+        const bookingResult = await bookingsCol.updateOne(
+          { _id: booking._id, userId: uid, status: 'held', holdToken: booking.holdToken },
+          { $set: { status: 'confirmed', confirmedAt: now.toISOString() }, $unset: { holdExpiresAt: '', holdToken: '' } },
+          { session }
+        )
+        if (lockResult.matchedCount !== 1 || bookingResult.matchedCount !== 1) {
+          throw new HttpError(409, 'A reserved time slot changed before checkout. Please select it again.')
+        }
+      }
+
+      await cartsCol.deleteOne({ uid }, { session })
+      return { enrolled: toAdd.length, payment }
+    })
+    res.json({ ok: true, enrolled: checkout.enrolled, payment: checkout.payment })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    res.status(e.status || 500).json({
+      ok: false,
+      error: e.status ? e.message : 'Checkout could not be completed. Please try again.',
+    })
   }
 })
 
@@ -359,7 +1129,7 @@ app.post('/api/users/:uid/dedup-courses', async (req, res) => {
     await usersCol.updateOne({ uid }, { $set: { courses: deduped } })
     res.json({ ok: true, courses: deduped })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Course cleanup failed')
   }
 })
 
@@ -368,14 +1138,15 @@ app.get('/api/users/:uid/messages', async (req, res) => {
     const user = await usersCol.findOne({ uid: req.params.uid })
     res.json(user?.messages || [])
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Message lookup failed')
   }
 })
 
 app.post('/api/users/:uid/messages', async (req, res) => {
   try {
     const { uid } = req.params
-    const { subject, text } = req.body
+    const subject = cleanText(req.body?.subject, 200)
+    const text = cleanText(req.body?.text, 4000)
     if (!subject || !text) return res.status(400).json({ error: 'Subject and text required' })
     const thread = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
@@ -386,30 +1157,34 @@ app.post('/api/users/:uid/messages', async (req, res) => {
     }
     await usersCol.updateOne(
       { uid },
-      { $push: { messages: { $each: [thread], $position: 0 } } },
+      {
+        $push: { messages: { $each: [thread], $position: 0, $slice: 100 } },
+        $setOnInsert: { uid, createdAt: new Date().toISOString() },
+      },
       { upsert: true }
     )
     const user = await usersCol.findOne({ uid })
     res.json({ ok: true, thread, messages: user?.messages || [] })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Message creation failed')
   }
 })
 
 app.post('/api/users/:uid/messages/:threadId/reply', async (req, res) => {
   try {
     const { uid, threadId } = req.params
-    const { text } = req.body
+    const text = cleanText(req.body?.text, 4000)
     if (!text) return res.status(400).json({ error: 'Text required' })
     const reply = { from: 'user', text, timestamp: new Date().toISOString() }
-    await usersCol.updateOne(
+    const result = await usersCol.updateOne(
       { uid, 'messages.id': threadId },
-      { $push: { 'messages.$.messages': reply } }
+      { $push: { 'messages.$.messages': { $each: [reply], $slice: -200 } } }
     )
+    if (result.matchedCount === 0) return res.status(404).json({ error: 'Message thread not found.' })
     const user = await usersCol.findOne({ uid })
     res.json({ ok: true, messages: user?.messages || [] })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Message reply failed')
   }
 })
 
@@ -420,7 +1195,7 @@ app.put('/api/users/:uid/messages/read', async (req, res) => {
     const user = await usersCol.findOne({ uid })
     res.json({ ok: true, messages: user?.messages || [] })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Message status update failed')
   }
 })
 
@@ -448,14 +1223,13 @@ POLICIES:
 
 app.post('/api/chat', rateLimit({ windowMs: 60_000, max: 12 }), async (req, res) => {
   try {
-    const { messages } = req.body
-    if (!messages || !Array.isArray(messages)) {
-      return res.status(400).json({ error: 'Messages array required' })
-    }
+    if (!groq) return res.status(503).json({ error: 'Chat is temporarily unavailable.' })
+    const messages = sanitizeChatMessages(req.body?.messages, 30)
+    if (messages.length === 0) return res.status(400).json({ error: 'At least one message is required.' })
 
     const chatMessages = [
       { role: 'system', content: SYSTEM_PROMPT },
-      ...messages.map(m => ({ role: m.role, content: m.content }))
+      ...messages,
     ]
 
     const completion = await groq.chat.completions.create({
@@ -468,8 +1242,8 @@ app.post('/api/chat', rateLimit({ windowMs: 60_000, max: 12 }), async (req, res)
     const reply = completion.choices[0]?.message?.content || 'Sorry, I could not process your request.'
     res.json({ ok: true, reply })
   } catch (e) {
-    console.error('Chat error:', e.message.substring(0, 200))
-    res.status(500).json({ error: e.message })
+    if (e.status) return res.status(e.status).json({ error: e.message })
+    sendServerError(res, e, 'Chat request failed')
   }
 })
 
@@ -479,7 +1253,7 @@ app.get('/api/users/:uid/conversations', async (req, res) => {
     const convs = (user?.conversations || []).map(({ messages: _messages, ...rest }) => rest)
     res.json(convs)
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Conversation list lookup failed')
   }
 })
 
@@ -489,45 +1263,52 @@ app.get('/api/users/:uid/conversations/:convId', async (req, res) => {
     const conv = (user?.conversations || []).find(c => c.id === req.params.convId)
     res.json(conv || null)
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Conversation lookup failed')
   }
 })
 
 app.post('/api/users/:uid/conversations', async (req, res) => {
   try {
     const { uid } = req.params
-    const { title, messages } = req.body
+    const title = cleanText(req.body?.title, 200) || 'New chat'
+    const messages = sanitizeChatMessages(req.body?.messages || [], 100)
     const conv = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-      title: title || 'New chat',
-      messages: messages || [],
+      title,
+      messages,
       createdAt: new Date().toISOString(),
     }
     await usersCol.updateOne(
       { uid },
-      { $push: { conversations: { $each: [conv], $position: 0 } } },
+      {
+        $push: { conversations: { $each: [conv], $position: 0, $slice: 50 } },
+        $setOnInsert: { uid, createdAt: new Date().toISOString() },
+      },
       { upsert: true }
     )
     res.json({ ok: true, conversation: conv })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    if (e.status) return res.status(e.status).json({ error: e.message })
+    sendServerError(res, e, 'Conversation creation failed')
   }
 })
 
 app.put('/api/users/:uid/conversations/:convId', async (req, res) => {
   try {
     const { uid, convId } = req.params
-    const { title, messages } = req.body
     const update = {}
-    if (title !== undefined) update['conversations.$.title'] = title
-    if (messages !== undefined) update['conversations.$.messages'] = messages
-    await usersCol.updateOne(
+    if (req.body?.title !== undefined) update['conversations.$.title'] = cleanText(req.body.title, 200)
+    if (req.body?.messages !== undefined) update['conversations.$.messages'] = sanitizeChatMessages(req.body.messages, 100)
+    if (Object.keys(update).length === 0) return res.status(400).json({ error: 'No conversation changes were provided.' })
+    const result = await usersCol.updateOne(
       { uid, 'conversations.id': convId },
       { $set: update }
     )
+    if (result.matchedCount === 0) return res.status(404).json({ error: 'Conversation not found.' })
     res.json({ ok: true })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    if (e.status) return res.status(e.status).json({ error: e.message })
+    sendServerError(res, e, 'Conversation update failed')
   }
 })
 
@@ -540,7 +1321,7 @@ app.delete('/api/users/:uid/conversations/:convId', async (req, res) => {
     )
     res.json({ ok: true })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Conversation deletion failed')
   }
 })
 
@@ -548,7 +1329,7 @@ app.get('/api/admin/stats', async (req, res) => {
   try {
     const [totalUsers, totalBookings, activeEnrollments] = await Promise.all([
       usersCol.countDocuments(),
-      bookingsCol.countDocuments(),
+      bookingsCol.countDocuments({ status: { $ne: 'held' } }),
       usersCol.countDocuments({ courseType: { $exists: true, $ne: '' } }),
     ])
     res.json({ totalUsers, totalBookings, activeEnrollments })
@@ -568,7 +1349,7 @@ app.get('/api/admin/users', async (req, res) => {
 
 app.get('/api/admin/bookings', async (req, res) => {
   try {
-    const bookings = await bookingsCol.find().sort({ _id: -1 }).toArray()
+    const bookings = await bookingsCol.find({ status: { $ne: 'held' } }).sort({ _id: -1 }).toArray()
     res.json(bookings)
   } catch (e) {
     res.status(500).json({ error: e.message })
@@ -577,8 +1358,17 @@ app.get('/api/admin/bookings', async (req, res) => {
 
 app.put('/api/admin/users/:uid/role', async (req, res) => {
   try {
-    const { isAdmin } = req.body
-    await usersCol.updateOne({ uid: req.params.uid }, { $set: { isAdmin: !!isAdmin } }, { upsert: true })
+    const targetUid = cleanText(req.params.uid, 160)
+    const isAdmin = req.body?.isAdmin === true
+    if (!targetUid) return res.status(400).json({ error: 'User id required.' })
+    if (!isAdmin && targetUid === req.auth.uid) {
+      return res.status(400).json({ error: 'You cannot remove your own administrator access.' })
+    }
+    if (!isAdmin) {
+      const adminCount = await usersCol.countDocuments({ isAdmin: true })
+      if (adminCount <= 1) return res.status(400).json({ error: 'At least one administrator must remain.' })
+    }
+    await usersCol.updateOne({ uid: targetUid }, { $set: { isAdmin } })
     res.json({ ok: true })
   } catch (e) {
     res.status(500).json({ error: e.message })
@@ -587,7 +1377,12 @@ app.put('/api/admin/users/:uid/role', async (req, res) => {
 
 app.delete('/api/admin/bookings/:id', async (req, res) => {
   try {
-    await bookingsCol.deleteOne({ _id: new ObjectId(req.params.id) })
+    if (!ObjectId.isValid(req.params.id)) return res.status(400).json({ error: 'Invalid booking id.' })
+    const bookingId = new ObjectId(req.params.id)
+    await withMongoTransaction(async (session) => {
+      await bookingSlotsCol.deleteOne({ bookingId }, { session })
+      await bookingsCol.deleteOne({ _id: bookingId }, { session })
+    })
     res.json({ ok: true })
   } catch (e) {
     res.status(500).json({ error: e.message })
@@ -626,32 +1421,35 @@ app.get('/api/pricing', async (req, res) => {
     const tiers = await pricingCol.find().sort({ order: 1, name: 1 }).toArray()
     res.json(tiers)
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Pricing lookup failed')
   }
 })
 
 app.post('/api/admin/pricing', async (req, res) => {
   try {
     const doc = {
-      ...req.body,
-      features: req.body.features || [],
+      ...sanitizePricing(req.body),
       createdAt: new Date().toISOString(),
     }
     const result = await pricingCol.insertOne(doc)
     res.json({ ok: true, _id: result.insertedId })
   } catch (e) {
+    if (e.status) return res.status(e.status).json({ error: e.message })
     res.status(500).json({ error: e.message })
   }
 })
 
 app.put('/api/admin/pricing/:id', async (req, res) => {
   try {
+    const doc = sanitizePricing(req.body)
+    if (req.body?.order === undefined) delete doc.order
     await pricingCol.updateOne(
       { _id: new ObjectId(req.params.id) },
-      { $set: { ...req.body, updatedAt: new Date().toISOString() } }
+      { $set: { ...doc, updatedAt: new Date().toISOString() } }
     )
     res.json({ ok: true })
   } catch (e) {
+    if (e.status) return res.status(e.status).json({ error: e.message })
     res.status(500).json({ error: e.message })
   }
 })
@@ -670,31 +1468,35 @@ app.get('/api/areas', async (req, res) => {
     const areas = await areasCol.find().sort({ order: 1, name: 1 }).toArray()
     res.json(areas)
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Service area lookup failed')
   }
 })
 
 app.post('/api/admin/areas', async (req, res) => {
   try {
     const doc = {
-      ...req.body,
+      ...sanitizeArea(req.body),
       createdAt: new Date().toISOString(),
     }
     const result = await areasCol.insertOne(doc)
     res.json({ ok: true, _id: result.insertedId })
   } catch (e) {
+    if (e.status) return res.status(e.status).json({ error: e.message })
     res.status(500).json({ error: e.message })
   }
 })
 
 app.put('/api/admin/areas/:id', async (req, res) => {
   try {
+    const doc = sanitizeArea(req.body)
+    if (req.body?.order === undefined) delete doc.order
     await areasCol.updateOne(
       { _id: new ObjectId(req.params.id) },
-      { $set: { ...req.body, updatedAt: new Date().toISOString() } }
+      { $set: { ...doc, updatedAt: new Date().toISOString() } }
     )
     res.json({ ok: true })
   } catch (e) {
+    if (e.status) return res.status(e.status).json({ error: e.message })
     res.status(500).json({ error: e.message })
   }
 })
@@ -713,33 +1515,35 @@ app.get('/api/socials', async (req, res) => {
     const socials = await socialsCol.find().sort({ order: 1, platform: 1 }).toArray()
     res.json(socials)
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Social link lookup failed')
   }
 })
 
 app.post('/api/admin/socials', async (req, res) => {
   try {
     const doc = {
-      platform: req.body.platform || 'website',
-      url: req.body.url || '',
-      order: Number(req.body.order) || 0,
+      ...sanitizeSocial(req.body),
       createdAt: new Date().toISOString(),
     }
     const result = await socialsCol.insertOne(doc)
     res.json({ ok: true, _id: result.insertedId })
   } catch (e) {
+    if (e.status) return res.status(e.status).json({ error: e.message })
     res.status(500).json({ error: e.message })
   }
 })
 
 app.put('/api/admin/socials/:id', async (req, res) => {
   try {
+    const doc = sanitizeSocial(req.body)
+    if (req.body?.order === undefined) delete doc.order
     await socialsCol.updateOne(
       { _id: new ObjectId(req.params.id) },
-      { $set: { ...req.body, updatedAt: new Date().toISOString() } }
+      { $set: { ...doc, updatedAt: new Date().toISOString() } }
     )
     res.json({ ok: true })
   } catch (e) {
+    if (e.status) return res.status(e.status).json({ error: e.message })
     res.status(500).json({ error: e.message })
   }
 })
@@ -768,19 +1572,21 @@ app.get('/api/settings', async (req, res) => {
     }
     res.json(settings)
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Site settings lookup failed')
   }
 })
 
 app.put('/api/admin/settings', async (req, res) => {
   try {
+    const settings = sanitizeSettings(req.body)
     await settingsCol.updateOne(
       { _id: 'site' },
-      { $set: { ...req.body, updatedAt: new Date().toISOString() } },
+      { $set: { ...settings, updatedAt: new Date().toISOString() } },
       { upsert: true }
     )
     res.json({ ok: true })
   } catch (e) {
+    if (e.status) return res.status(e.status).json({ error: e.message })
     res.status(500).json({ error: e.message })
   }
 })
@@ -1011,13 +1817,15 @@ async function seedPricing() {
   if (count === 0) {
     await pricingCol.insertMany(DEFAULT_PRICING.map(t => ({ ...t, createdAt: new Date().toISOString() })))
     console.log('Seeded default pricing packages')
-  } else {
-    const first = await pricingCol.findOne()
-    if (first && first.name && !first.planName) {
-      await pricingCol.drop()
-      await pricingCol.insertMany(DEFAULT_PRICING.map(t => ({ ...t, createdAt: new Date().toISOString() })))
-      console.log('Replaced old-format pricing with new schema')
-    }
+    return
+  }
+
+  const legacyCount = await pricingCol.countDocuments({
+    planName: { $exists: false },
+    name: { $exists: true },
+  })
+  if (legacyCount > 0) {
+    console.warn(`Found ${legacyCount} legacy pricing record(s); preserved them for a controlled migration.`)
   }
 }
 
@@ -1036,6 +1844,25 @@ async function seedSocials() {
     console.log('Seeded default social links')
   }
 }
+
+app.use('/api', (_req, res) => {
+  res.status(404).json({ error: 'API endpoint not found.' })
+})
+
+app.use((error, _req, res, next) => {
+  console.error('Unhandled request error:', error?.message || error)
+  if (res.headersSent) return next(error)
+  if (error?.message === 'Origin not allowed by CORS') {
+    return res.status(403).json({ error: 'Request origin is not allowed.' })
+  }
+  if (error?.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Request body is too large.' })
+  }
+  if (error?.type === 'entity.parse.failed' || (error instanceof SyntaxError && error?.status === 400)) {
+    return res.status(400).json({ error: 'Invalid JSON request body.' })
+  }
+  return res.status(500).json({ error: 'Something went wrong. Please try again.' })
+})
 
 if (process.env.VERCEL !== '1') {
   connectDB()

@@ -20,7 +20,7 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin, refreshProfile } = useAuth()
 
   useEffect(() => {
     if (user && isAdmin) navigate('/admin', { replace: true })
@@ -32,17 +32,29 @@ export default function AdminLoginPage() {
     setLoading(true)
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password)
-      const profile = await api.getUser(cred.user.uid)
+      let profile = await api.getUser(cred.user.uid)
+      if (!profile?.isAdmin) {
+        await api.saveUser(cred.user.uid, {
+          name: cred.user.displayName || 'Site Administrator',
+          email: cred.user.email || email,
+          photoURL: cred.user.photoURL || '',
+          isAdmin: true,
+        })
+        profile = await refreshProfile(cred.user)
+      } else {
+        await refreshProfile(cred.user)
+      }
       if (!profile?.isAdmin) {
         await signOut(auth)
         setError('This account does not have administrator access.')
         return
       }
     } catch (err) {
+      if (auth.currentUser) await signOut(auth).catch(() => {})
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') setError('Incorrect email or password.')
       else if (err.code === 'auth/invalid-email') setError('Invalid email address.')
       else if (err.code === 'auth/too-many-requests') setError('Too many attempts. Please wait a few minutes and try again.')
-      else setError('Login failed. Please try again.')
+      else setError(err.message || 'Login failed. Please try again.')
     } finally {
       setLoading(false)
     }

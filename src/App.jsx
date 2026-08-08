@@ -1,9 +1,11 @@
 import { lazy, Suspense, useEffect, useRef } from 'react'
-import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation, Navigate, Link } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { CartProvider } from './contexts/CartContext'
 import Nav from './components/Nav'
 import Footer from './components/Footer'
+import ErrorBoundary from './components/ErrorBoundary'
+import { usePageMeta } from './usePageMeta'
 const Home = lazy(() => import('./pages/Home'))
 const AboutPage = lazy(() => import('./pages/AboutPage'))
 const PricingPage = lazy(() => import('./pages/PricingPage'))
@@ -32,14 +34,27 @@ function PageLoader() {
   )
 }
 
+function NotFoundPage() {
+  usePageMeta('Page Not Found — A Precision Driving School', 'The requested page could not be found.', { noIndex: true })
+  return (
+    <div style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '4rem 2rem' }}>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(4rem, 10vw, 8rem)', color: 'var(--color-gold)', lineHeight: 1, marginBottom: '1rem' }}>404</h1>
+      <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--color-ink)', marginBottom: '0.5rem' }}>Page not found</p>
+      <p style={{ color: 'var(--color-ink-muted)', marginBottom: '2rem' }}>The page you are looking for does not exist.</p>
+      <Link to="/" className="btn-gold">Back to Home</Link>
+    </div>
+  )
+}
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
+  const location = useLocation()
   if (loading) return (
     <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a1628' }}>
       <div style={{ width: '40px', height: '40px', border: '3px solid rgba(253,188,1,0.2)', borderTopColor: '#FDBC01', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
     </div>
   )
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
   return children
 }
 
@@ -152,14 +167,7 @@ function AppRoutes() {
                   <AdminPage />
                 </AdminRoute>
               } />
-              <Route path="*" element={
-                <div style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '4rem 2rem' }}>
-                  <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(4rem, 10vw, 8rem)', color: 'var(--color-gold)', lineHeight: 1, marginBottom: '1rem' }}>404</h1>
-                  <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--color-ink)', marginBottom: '0.5rem' }}>Page not found</p>
-                  <p style={{ color: 'var(--color-ink-muted)', marginBottom: '2rem' }}>The page you are looking for does not exist.</p>
-                  <a href="/" className="btn-gold">Back to Home</a>
-                </div>
-              } />
+              <Route path="*" element={<NotFoundPage />} />
         </Routes>
         </Suspense>
           </main>
@@ -171,13 +179,15 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <CartProvider>
-          <LayoutSetup>
-            <AppRoutes />
-          </LayoutSetup>
-        </CartProvider>
-      </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <CartProvider>
+            <LayoutSetup>
+              <AppRoutes />
+            </LayoutSetup>
+          </CartProvider>
+        </AuthProvider>
+      </ErrorBoundary>
     </BrowserRouter>
   )
 }

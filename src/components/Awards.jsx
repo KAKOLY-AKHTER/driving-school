@@ -19,7 +19,7 @@ export default function Awards() {
   const total = AWARDS.length
 
   useEffect(() => {
-    if (isPaused) return
+    if (isPaused || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     const tick = () => setCurrent((c) => (c + 1) % total)
     const timer = setInterval(tick, 3000)
     return () => clearInterval(timer)
@@ -147,6 +147,8 @@ export default function Awards() {
               <div
                 onMouseEnter={() => setIsPaused(true)}
                 onMouseLeave={() => setIsPaused(false)}
+                onFocus={() => setIsPaused(true)}
+                onBlur={() => setIsPaused(false)}
                 onKeyDown={handleKey}
                 tabIndex={0}
                 role="region"
@@ -165,7 +167,9 @@ export default function Awards() {
                 <div className="award-side-wrap" style={{ flex: '0 0 22%', display: 'flex', justifyContent: 'center' }}>
                   <img
                     src={AWARDS[prev]}
-                    alt="Award"
+                    alt=""
+                    width="876"
+                    height="876"
                     loading="lazy"
                     decoding="async"
                     className="award-side-img"
@@ -200,7 +204,9 @@ export default function Awards() {
                   >
                     <img
                       src={AWARDS[current]}
-                      alt="Best of San Ramon Award"
+                      alt={`A Precision Driving School award ${current + 1}`}
+                      width="876"
+                      height="876"
                       loading="lazy"
                       decoding="async"
                       style={{
@@ -232,7 +238,9 @@ export default function Awards() {
                 <div className="award-side-wrap" style={{ flex: '0 0 22%', display: 'flex', justifyContent: 'center' }}>
                   <img
                     src={AWARDS[next]}
-                    alt="Award"
+                    alt=""
+                    width="876"
+                    height="876"
                     loading="lazy"
                     decoding="async"
                     className="award-side-img"
@@ -263,6 +271,7 @@ export default function Awards() {
                       padding: 0,
                     }}
                     aria-label={`Go to award ${i + 1}`}
+                    aria-current={current === i ? 'true' : undefined}
                   />
                 ))}
               </div>

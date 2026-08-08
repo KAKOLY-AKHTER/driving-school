@@ -15,6 +15,8 @@ function buildSteps() {
     cta: 'Sign up for online ed',
     href: '/register',
     img: '/card1.png',
+    imgWidth: 736,
+    imgHeight: 736,
   },
   {
     mile: '02',
@@ -24,6 +26,8 @@ function buildSteps() {
     href: 'https://www.dmv.ca.gov/',
     external: true,
     img: '/card2.png',
+    imgWidth: 750,
+    imgHeight: 750,
   },
   {
     mile: '03',
@@ -32,6 +36,8 @@ function buildSteps() {
     cta: 'Schedule your lessons',
     href: '/schedule',
     img: '/card3.png',
+    imgWidth: 600,
+    imgHeight: 400,
   },
 ]
 }
@@ -285,7 +291,7 @@ export default function TheRoute() {
 
                     {/* Image */}
                     <div className="route-img-wrap">
-                      <img src={step.img} alt={step.title} loading="lazy" decoding="async" />
+                      <img src={step.img} alt={step.title} width={step.imgWidth} height={step.imgHeight} loading="lazy" decoding="async" />
                     </div>
 
                     {/* CTA */}

@@ -2,7 +2,9 @@ User-agent: *
 Allow: /
 Disallow: /dashboard
 Disallow: /admin
+Disallow: /cart
 Disallow: /login
 Disallow: /register
+Disallow: /api/
 
 Sitemap: https://www.aprecisiondrivingschool.com/sitemap.xml

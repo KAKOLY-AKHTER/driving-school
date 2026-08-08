@@ -91,7 +91,7 @@ function CoverCard({ review, position, isPaused }) {
   }
 
   return (
-    <div style={baseStyle}>
+    <div style={baseStyle} aria-hidden={!isCenter}>
       {isCenter && (
         <div
           aria-hidden="true"
@@ -196,7 +196,7 @@ export default function Testimonials() {
 
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current)
-    if (!isPaused) {
+    if (!isPaused && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       timerRef.current = setInterval(() => {
         setActive((curr) => (curr + 1) % REVIEWS.length)
       }, 4000)
@@ -316,6 +316,12 @@ export default function Testimonials() {
         }}
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
+        onFocusCapture={() => setIsPaused(true)}
+        onBlurCapture={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) setIsPaused(false)
+        }}
+        role="region"
+        aria-label="Customer testimonials carousel"
       >
         <div
           aria-hidden="true"
@@ -412,6 +418,7 @@ export default function Testimonials() {
                   onClick={() => setActive(i)}
                   className={`testi-dot${active === i ? ' active' : ''}`}
                   aria-label={`Go to testimonial ${i + 1}`}
+                  aria-current={active === i ? 'true' : undefined}
                 />
               ))}
             </div>
