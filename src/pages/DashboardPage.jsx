@@ -14,10 +14,12 @@ const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
 
-const localDateKey = (date = new Date()) => {
-  const offset = date.getTimezoneOffset() * 60_000
-  return new Date(date.getTime() - offset).toISOString().slice(0, 10)
-}
+const localDateKey = (date = new Date()) => new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Los_Angeles',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+}).format(date)
 
 const isErrorMessage = (message) => /failed|incorrect|invalid|must|please|unavailable|could not/i.test(message)
 
@@ -169,11 +171,29 @@ export default function DashboardPage() {
     return () => { active = false }
   }, [user, loadVersion])
 
-  const handleLogout = async () => { await signOut(auth); navigate('/') }
+  const handleLogout = async () => {
+    if (logoutLoading) return
+    setLogoutLoading(true)
+    try {
+      await signOut(auth)
+      navigate('/', { replace: true })
+    } catch {
+      setMsg('Sign out failed. Please check your connection and try again.')
+      setTimeout(() => setMsg(''), 3000)
+      setLogoutLoading(false)
+    }
+  }
   const [courseDetail, setCourseDetail] = useState(null)
   const [refundConfirm, setRefundConfirm] = useState(null)
   const [cancelConfirm, setCancelConfirm] = useState(null)
+  const [refundReason, setRefundReason] = useState('')
+  const [courseActionLoading, setCourseActionLoading] = useState('')
+  const [courseActionError, setCourseActionError] = useState('')
   const [bookingCancelConfirm, setBookingCancelConfirm] = useState(null)
+  const [bookingCancelLoading, setBookingCancelLoading] = useState(false)
+  const [bookingCancelError, setBookingCancelError] = useState('')
+  const [logoutLoading, setLogoutLoading] = useState(false)
+  const [quizSaving, setQuizSaving] = useState(false)
   const [chatMessages, setChatMessages] = useState([])
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
@@ -185,6 +205,7 @@ export default function DashboardPage() {
   }, [chatMessages, chatLoading])
   const [conversations, setConversations] = useState([])
   const [activeConvId, setActiveConvId] = useState(null)
+  const [conversationActionId, setConversationActionId] = useState('')
 
   useEffect(() => {
     if (!user || activeTab !== 'support') return
@@ -207,55 +228,90 @@ export default function DashboardPage() {
     loadConversations()
     return () => { active = false }
   }, [activeTab, user])
-  const handleCancelBooking = (id) => setBookingCancelConfirm(id)
+  const handleCancelBooking = (id) => {
+    setBookingCancelError('')
+    setBookingCancelConfirm(id)
+  }
   const confirmCancelBooking = async () => {
-    if (!bookingCancelConfirm) return
+    if (!bookingCancelConfirm || bookingCancelLoading) return
+    setBookingCancelLoading(true)
+    setBookingCancelError('')
     try {
-      await api.deleteBooking(bookingCancelConfirm)
-      setBookings(prev => prev.filter(b => b._id !== bookingCancelConfirm))
+      const result = await api.deleteBooking(bookingCancelConfirm)
+      setBookings(prev => result?.booking
+        ? prev.map(booking => booking._id === bookingCancelConfirm ? result.booking : booking)
+        : prev.map(booking => booking._id === bookingCancelConfirm ? { ...booking, status: 'cancelled' } : booking))
       setBookingCancelConfirm(null)
       setMsg('Booking cancelled successfully.')
       setTimeout(() => setMsg(''), 2200)
-    } catch {
-      setMsg('Failed to cancel booking.')
-      setTimeout(() => setMsg(''), 2200)
+    } catch (error) {
+      setBookingCancelError(error.message || 'The booking could not be cancelled. Please try again.')
+    } finally {
+      setBookingCancelLoading(false)
     }
   }
   const handleCompleteQuiz = async (moduleId, correctCount) => {
     setQuizScore(correctCount); setQuizSubmitted(true)
     if (correctCount >= 2 && !completedModules.includes(moduleId)) {
-      const updated = [...completedModules, moduleId]; setCompletedModules(updated); await api.saveUser(user.uid, { completedModules: updated })
+      const updated = [...completedModules, moduleId]
+      setQuizSaving(true)
+      try {
+        await api.saveUser(user.uid, { completedModules: updated })
+        setCompletedModules(updated)
+      } catch (error) {
+        setMsg(error.message || 'Your quiz result could not be saved. Please try again.')
+        setTimeout(() => setMsg(''), 3000)
+      } finally {
+        setQuizSaving(false)
+      }
     }
   }
   const openModule = (moduleId) => { setActiveModule(moduleId); setModuleStep(0); setQuizAnswers({}); setQuizSubmitted(false); setQuizScore(0) }
 
   const handleCancelCourse = async (courseId) => {
+    if (courseActionLoading) return
+    setCourseActionLoading('cancel')
+    setCourseActionError('')
     try {
       const result = await api.removeCourse(user.uid, courseId)
-      if (result.ok) {
-        setCourses(result.courses || [])
-        setCancelConfirm(null)
-        setMsg('Course cancelled successfully.')
-        setTimeout(() => setMsg(''), 2000)
-      }
-    } catch {
-      setMsg('Failed to cancel course.')
-      setTimeout(() => setMsg(''), 2000)
+      if (!result?.ok) throw new Error('The course could not be cancelled.')
+      setCourses(Array.isArray(result.courses)
+        ? result.courses
+        : prev => prev.filter(course => String(course.id) !== String(courseId)))
+      setCancelConfirm(null)
+      setMsg(result.unlinkedBookings > 0
+        ? `Course cancelled. Please review ${result.unlinkedBookings} older unlinked lesson booking${result.unlinkedBookings === 1 ? '' : 's'} on the Lessons page.`
+        : 'Course and its linked lesson bookings were cancelled successfully.')
+      setTimeout(() => setMsg(''), result.unlinkedBookings > 0 ? 5000 : 2500)
+    } catch (error) {
+      setCourseActionError(error.message || 'The course could not be cancelled. Please try again.')
+    } finally {
+      setCourseActionLoading('')
     }
   }
 
   const handleRefundCourse = async (courseId) => {
+    if (courseActionLoading) return
+    setCourseActionLoading('refund')
+    setCourseActionError('')
     try {
-      const result = await api.removeCourse(user.uid, courseId)
-      if (result.ok) {
-        setCourses(result.courses || [])
-        setRefundConfirm(null)
-        setMsg('Refund request submitted. Course removed.')
-        setTimeout(() => setMsg(''), 2000)
-      }
-    } catch {
-      setMsg('Failed to process refund.')
-      setTimeout(() => setMsg(''), 2000)
+      const result = await api.requestCourseRefund(user.uid, courseId, refundReason.trim())
+      if (!result?.ok) throw new Error('The refund request could not be submitted.')
+      setCourses(Array.isArray(result.courses)
+        ? result.courses
+        : prev => prev.map(course => String(course.id) === String(courseId) ? { ...course, status: 'Refund Pending' } : course))
+      setRefundConfirm(null)
+      setRefundReason('')
+      setMsg(result.duplicate
+        ? 'Your refund request is already pending.'
+        : result.unlinkedBookings > 0
+          ? `Refund request submitted. Please review ${result.unlinkedBookings} older unlinked lesson booking${result.unlinkedBookings === 1 ? '' : 's'} on the Lessons page.`
+          : 'Refund request submitted for review. Linked future lessons were cancelled.')
+      setTimeout(() => setMsg(''), result.unlinkedBookings > 0 ? 5000 : 3000)
+    } catch (error) {
+      setCourseActionError(error.message || 'The refund request could not be submitted. Please try again.')
+    } finally {
+      setCourseActionLoading('')
     }
   }
 
@@ -287,50 +343,68 @@ export default function DashboardPage() {
       return
     }
     setSSaving(true)
+    let passwordUpdated = false
     try {
+      if (changingPassword) {
+        const credential = EmailAuthProvider.credential(user.email, sCurrentPass)
+        await reauthenticateWithCredential(user, credential)
+        await updatePassword(user, sNewPass)
+        passwordUpdated = true
+        setSCurrentPass('')
+        setSNewPass('')
+        setSConfirmPass('')
+      }
       const data = {
-        username: sUsername,
-        phone: sPhone,
-        address: sAddress,
-        permit: sPermit,
-        medications: sMedications,
-        notes: sNotes,
+        username: sUsername.trim(),
+        phone: sPhone.trim(),
+        address: sAddress.trim(),
+        permit: sPermit.trim(),
+        medications: sMedications.trim(),
+        notes: sNotes.trim(),
         submittedAt: sSubmittedAt,
         issueDate: sIssueDate,
         expiryDate: sExpiryDate,
       }
       await api.saveUser(user.uid, data)
-      if (sUsername && sUsername !== user.displayName) {
-        await updateProfile(user, { displayName: sUsername })
+      if (data.username !== user.displayName) {
+        await updateProfile(user, { displayName: data.username })
       }
-      setPhone(sPhone)
-      setAddress(sAddress)
-      setPermit(sPermit)
-      setMedications(sMedications)
-      setNotes(sNotes)
+      setSUsername(data.username)
+      setSPhone(data.phone)
+      setSAddress(data.address)
+      setSPermit(data.permit)
+      setSMedications(data.medications)
+      setSNotes(data.notes)
+      setPhone(data.phone)
+      setAddress(data.address)
+      setPermit(data.permit)
+      setMedications(data.medications)
+      setNotes(data.notes)
       setSubmittedAt(sSubmittedAt)
       setIssueDate(sIssueDate)
       setExpiryDate(sExpiryDate)
-      let pwMsg = ''
-      if (changingPassword) {
-          const cred = EmailAuthProvider.credential(user.email, sCurrentPass)
-          await reauthenticateWithCredential(user, cred)
-          await updatePassword(user, sNewPass)
-          pwMsg = ' Password updated.'
-          setSCurrentPass(''); setSNewPass(''); setSConfirmPass('')
-      }
-      setMsg('Settings saved successfully!' + pwMsg)
+      setMsg(passwordUpdated ? 'Settings and password updated successfully.' : 'Settings saved successfully!')
       setTimeout(() => setMsg(''), 2500)
     } catch (e) {
-      const msg = e.code === 'auth/wrong-password' ? 'Current password is incorrect.' : e.code === 'auth/weak-password' ? 'New password is too weak.' : 'Failed to save settings.'
-      setMsg(msg)
+      const authCode = String(e.code || '')
+      const message = ['auth/wrong-password', 'auth/invalid-credential', 'auth/invalid-login-credentials'].includes(authCode)
+        ? 'Current password is incorrect.'
+        : authCode === 'auth/weak-password'
+          ? 'New password is too weak.'
+          : authCode === 'auth/requires-recent-login'
+            ? 'Please sign out, sign in again, and retry the password change.'
+            : passwordUpdated
+              ? 'Your password was updated, but the profile changes could not be saved. Please retry.'
+              : e.message || 'Failed to save settings.'
+      setMsg(message)
       setTimeout(() => setMsg(''), 2500)
+    } finally {
+      setSSaving(false)
     }
-    setSSaving(false)
   }
 
   const handleChat = async () => {
-    if (!chatInput.trim() || chatLoading) return
+    if (!chatInput.trim() || chatLoading || conversationLoading) return
     const userMsg = { role: 'user', content: chatInput.trim() }
     const newMessages = [...chatMessages, userMsg]
     setChatMessages(newMessages)
@@ -338,9 +412,10 @@ export default function DashboardPage() {
     setChatLoading(true)
     try {
       const result = await api.chat(newMessages.map(m => ({ role: m.role, content: m.content })))
-      if (result.ok) {
-        const updated = [...newMessages, { role: 'assistant', content: result.reply }]
-        setChatMessages(updated)
+      if (!result?.ok || !result.reply) throw new Error('The assistant did not return an answer.')
+      const updated = [...newMessages, { role: 'assistant', content: result.reply }]
+      setChatMessages(updated)
+      try {
         if (activeConvId) {
           await api.updateConversation(user.uid, activeConvId, { messages: updated })
         } else {
@@ -349,23 +424,27 @@ export default function DashboardPage() {
           if (res2.ok) setActiveConvId(res2.conversation.id)
         }
         const allConvs = await api.getConversations(user.uid)
-        setConversations(allConvs || [])
-      } else {
-        setChatMessages([...newMessages, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }])
+        setConversations(Array.isArray(allConvs) ? allConvs : [])
+      } catch {
+        setMsg('Your answer is visible, but the conversation history could not be saved.')
+        setTimeout(() => setMsg(''), 3500)
       }
-    } catch {
-      setChatMessages([...newMessages, { role: 'assistant', content: 'Sorry, I am temporarily unavailable. Please try again later or contact us at +1 925 329 1736.' }])
+    } catch (error) {
+      setChatMessages([...newMessages, { role: 'assistant', content: error.message || 'Sorry, I am temporarily unavailable. Please try again later or contact us at +1 925 329 1736.' }])
+    } finally {
+      setChatLoading(false)
     }
-    setChatLoading(false)
   }
 
   const handleNewChat = () => {
+    if (chatLoading || conversationLoading || conversationActionId) return
     setChatMessages([])
     setActiveConvId(null)
     setChatInput('')
   }
 
   const handleSelectConv = async (convId) => {
+    if (chatLoading || conversationLoading || conversationActionId || convId === activeConvId) return
     setConversationLoading(true)
     try {
       const conv = await api.getConversation(user.uid, convId)
@@ -383,6 +462,8 @@ export default function DashboardPage() {
 
   const handleDeleteConv = async (e, convId) => {
     e.stopPropagation()
+    if (chatLoading || conversationLoading || conversationActionId) return
+    setConversationActionId(convId)
     try {
       await api.deleteConversation(user.uid, convId)
       setConversations(prev => prev.filter(c => c.id !== convId))
@@ -393,6 +474,8 @@ export default function DashboardPage() {
     } catch {
       setMsg('The conversation could not be deleted. Please try again.')
       setTimeout(() => setMsg(''), 3000)
+    } finally {
+      setConversationActionId('')
     }
   }
 
@@ -423,10 +506,12 @@ export default function DashboardPage() {
   const initials = user?.displayName ? user.displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : user?.email?.[0]?.toUpperCase() || '?'
   const activeMod = COURSE_MODULES.find(m => m.id === activeModule)
   const hasPasswordProvider = (user?.providerData || []).some(p => p.providerId === 'password')
+  const supportBusy = chatLoading || conversationLoading || Boolean(conversationActionId)
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', sublabel: 'Profile & summary', icon: I.dashboard },
     { id: 'courses', label: 'Courses', sublabel: 'Your courses', icon: I.book },
+    { id: 'bookings', label: 'Lessons', sublabel: 'Your bookings', icon: I.calendar },
     { id: 'payments', label: 'Payments', sublabel: 'Invoices', icon: I.profile },
     ...(showCourse ? [{ id: 'course', label: 'Driver Ed', sublabel: 'Online modules', icon: I.book }] : []),
     { id: 'settings', label: 'Settings', sublabel: 'Account', icon: I.shield },
@@ -435,7 +520,19 @@ export default function DashboardPage() {
   const visibleLoadError = activeTab === 'bookings'
     ? loadErrors.bookings
     : profileTabs.has(activeTab) ? loadErrors.profile : ''
-  const switchTab = (tab) => { setActiveTab(tab); setSidebarOpen(false); setActiveModule(null); setModuleStep(0); setCourseDetail(null); setCancelConfirm(null); setRefundConfirm(null); setBookingCancelConfirm(null) }
+  const switchTab = (tab) => {
+    setActiveTab(tab)
+    setSidebarOpen(false)
+    setActiveModule(null)
+    setModuleStep(0)
+    setCourseDetail(null)
+    setCancelConfirm(null)
+    setRefundConfirm(null)
+    setRefundReason('')
+    setCourseActionError('')
+    setBookingCancelConfirm(null)
+    setBookingCancelError('')
+  }
 
   return (
     <>
@@ -611,8 +708,8 @@ export default function DashboardPage() {
                       ))}
                     </div>
                     <div style={{ padding:'0.5rem', borderTop:'1px solid rgba(1,69,168,0.1)' }}>
-                      <button onClick={async () => { setProfileMenuOpen(false); await signOut(auth); navigate('/') }} style={{ display:'flex', alignItems:'center', gap:'0.7rem', padding:'0.65rem 0.8rem', width:'100%', fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#DC2626', background:'none', border:'none', borderRadius:'10px', cursor:'pointer', textAlign:'left', transition:'all 0.2s' }}>
-                        {I.logout} Sign Out
+                      <button type="button" disabled={logoutLoading} onClick={() => { setProfileMenuOpen(false); handleLogout() }} style={{ display:'flex', alignItems:'center', gap:'0.7rem', padding:'0.65rem 0.8rem', width:'100%', fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#DC2626', background:'none', border:'none', borderRadius:'10px', cursor:logoutLoading ? 'wait' : 'pointer', textAlign:'left', transition:'all 0.2s', opacity:logoutLoading ? 0.65 : 1 }}>
+                        {I.logout} {logoutLoading ? 'Signing Out…' : 'Sign Out'}
                       </button>
                     </div>
                   </div>
@@ -659,9 +756,9 @@ export default function DashboardPage() {
                 <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:'linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))', display:'flex', alignItems:'center', justifyContent:'center' }}>{I.home}</div>
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}><span>Back to Home</span></div>
               </button>
-              <button onClick={handleLogout} className="dash-nav-item dash-logout-item" style={{ marginBottom:'1rem', background:'linear-gradient(135deg,rgba(220,38,38,0.22),rgba(220,38,38,0.10))', border:'1px solid rgba(220,38,38,0.35)', color:'#FCA5A5' }}>
+              <button type="button" disabled={logoutLoading} onClick={handleLogout} className="dash-nav-item dash-logout-item" style={{ marginBottom:'1rem', background:'linear-gradient(135deg,rgba(220,38,38,0.22),rgba(220,38,38,0.10))', border:'1px solid rgba(220,38,38,0.35)', color:'#FCA5A5', cursor:logoutLoading ? 'wait' : 'pointer', opacity:logoutLoading ? 0.7 : 1 }}>
                 <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:'linear-gradient(135deg,#DC2626,#B91C1C)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 12px rgba(220,38,38,0.35)' }}>{I.logout}</div>
-                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}><span>Logout</span><span style={{ fontSize:'0.85rem', fontWeight:400, color:'rgba(252,165,165,0.75)', marginTop:'2px' }}>Sign out</span></div>
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}><span>{logoutLoading ? 'Signing out…' : 'Logout'}</span><span style={{ fontSize:'0.85rem', fontWeight:400, color:'rgba(252,165,165,0.75)', marginTop:'2px' }}>Sign out</span></div>
               </button>
               <div style={{ padding:'0.85rem 1rem', background:'linear-gradient(145deg,rgba(253,188,1,0.10),rgba(255,255,255,0.03))', borderRadius:'14px', border:'1px solid rgba(253,188,1,0.2)', boxShadow:'inset 0 1px 0 rgba(255,255,255,0.06)' }}>
                 <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'rgba(253,188,1,0.85)', margin:0, fontWeight:700 }}>Member Since</p>
@@ -807,15 +904,19 @@ export default function DashboardPage() {
                         </div>
                       )}
                       {[...courses].sort((a, b) => {
-                        const order = { 'Enrolled': 0, 'In Progress': 1, 'Paid': 0, 'Pending': 2, 'Completed': 3, 'Refunded': 4, 'Cancelled': 5 }
+                        const order = { 'Enrolled': 0, 'In Progress': 1, 'Paid': 0, 'Pending': 2, 'Refund Pending': 3, 'Completed': 4, 'Refunded': 5, 'Cancelled': 6 }
                         return (order[a.status] ?? 1) - (order[b.status] ?? 1)
-                      }).map((course, i) => (
+                      }).map((course, i) => {
+                        const status = String(course.status || 'Enrolled')
+                        const normalizedStatus = status.toLowerCase()
+                        const canRequestAction = !['refund pending', 'refunded', 'cancelled'].includes(normalizedStatus)
+                        return (
                         <div key={course.id || i} className="dash-course-card" style={{ animationDelay:`${i * 0.06}s` }}>
                           <div className="dash-course-icon" style={{ width:'52px', height:'52px', borderRadius:'14px', background:'linear-gradient(135deg,rgba(1,69,168,0.08),rgba(1,69,168,0.03))', color:SKY_BLUE, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-display)', fontSize:'1.05rem', fontWeight:800, flexShrink:0, border:'1px solid rgba(1,69,168,0.08)' }}>{course.id}</div>
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', flexWrap:'wrap', marginBottom:'0.25rem' }}>
                               <h4 style={{ fontFamily:'var(--font-display)', fontSize:'1.05rem', color:'#0F172A', fontWeight:800, margin:0, textTransform:'uppercase' }}>{course.title}</h4>
-                              <span style={{ padding:'0.15rem 0.5rem', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.7rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700, ...(course.status === 'Enrolled' || course.status === 'Paid' ? { background:'rgba(34,197,94,0.08)', color:'#16A34A' } : course.status === 'Completed' ? { background:'rgba(1,69,168,0.08)', color:SKY_BLUE } : course.status === 'Refunded' || course.status === 'Cancelled' ? { background:'rgba(220,38,38,0.06)', color:'#DC2626' } : { background:'rgba(234,179,8,0.08)', color:'#CA8A04' }) }}>{course.status}</span>
+                              <span style={{ padding:'0.15rem 0.5rem', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.7rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700, ...(normalizedStatus === 'enrolled' || normalizedStatus === 'paid' ? { background:'rgba(34,197,94,0.08)', color:'#16A34A' } : normalizedStatus === 'completed' ? { background:'rgba(1,69,168,0.08)', color:SKY_BLUE } : normalizedStatus === 'refunded' || normalizedStatus === 'cancelled' ? { background:'rgba(220,38,38,0.06)', color:'#DC2626' } : { background:'rgba(234,179,8,0.08)', color:'#CA8A04' }) }}>{status}</span>
                             </div>
                             <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', margin:'0 0 0.5rem' }}>{course.price}</p>
                             <div style={{ height:'6px', background:'#E8EDF4', borderRadius:'3px', overflow:'hidden', marginBottom:'0.4rem', maxWidth:'300px' }}>
@@ -824,22 +925,23 @@ export default function DashboardPage() {
                             <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:0 }}>{course.progress || 0}% complete</p>
                           </div>
                           <div style={{ display:'flex', gap:'0.5rem', flexShrink:0, flexWrap:'wrap', justifyContent:'flex-end', alignItems:'center' }}>
-                            <button onClick={() => setCourseDetail(course)} style={{ padding:'0.5rem 1rem', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', color:SKY_BLUE, border:'1px solid rgba(1,69,168,0.1)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:'0.4rem', transition:'all 0.2s' }}>
+                            <button type="button" onClick={() => setCourseDetail(course)} style={{ padding:'0.5rem 1rem', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', color:SKY_BLUE, border:'1px solid rgba(1,69,168,0.1)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:'0.4rem', transition:'all 0.2s' }}>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></svg> Details
                             </button>
-                            {course.status !== 'Refunded' && course.status !== 'Cancelled' && (
+                            {canRequestAction && (
                               <>
-                                <button onClick={() => setCancelConfirm(course.id)} style={{ padding:'0.5rem 1rem', background:'none', color:'#DC2626', border:'1px solid rgba(220,38,38,0.15)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:700, cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background='rgba(220,38,38,0.04)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.3)' }} onMouseLeave={(e) => { e.currentTarget.style.background='none'; e.currentTarget.style.borderColor='rgba(220,38,38,0.15)' }}>
+                                <button type="button" onClick={() => { setCourseActionError(''); setCancelConfirm(course.id) }} style={{ padding:'0.5rem 1rem', background:'none', color:'#DC2626', border:'1px solid rgba(220,38,38,0.15)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:700, cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background='rgba(220,38,38,0.04)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.3)' }} onMouseLeave={(e) => { e.currentTarget.style.background='none'; e.currentTarget.style.borderColor='rgba(220,38,38,0.15)' }}>
                                   Cancel
                                 </button>
-                                <button onClick={() => setRefundConfirm(course.id)} style={{ padding:'0.5rem 1rem', background:'none', color:'#CA8A04', border:'1px solid rgba(202,138,4,0.15)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:700, cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background='rgba(202,138,4,0.04)'; e.currentTarget.style.borderColor='rgba(202,138,4,0.3)' }} onMouseLeave={(e) => { e.currentTarget.style.background='none'; e.currentTarget.style.borderColor='rgba(202,138,4,0.15)' }}>
+                                <button type="button" onClick={() => { setCourseActionError(''); setRefundReason(''); setRefundConfirm(course.id) }} style={{ padding:'0.5rem 1rem', background:'none', color:'#CA8A04', border:'1px solid rgba(202,138,4,0.15)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:700, cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background='rgba(202,138,4,0.04)'; e.currentTarget.style.borderColor='rgba(202,138,4,0.3)' }} onMouseLeave={(e) => { e.currentTarget.style.background='none'; e.currentTarget.style.borderColor='rgba(202,138,4,0.15)' }}>
                                   Refund
                                 </button>
                               </>
                             )}
                           </div>
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 </div>
@@ -890,37 +992,41 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {cancelConfirm && (
-                <div style={{ position:'fixed', inset:0, background:'rgba(10,22,40,0.6)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem', animation:'dashFadeIn 0.3s ease' }} onClick={(e) => { if (e.target === e.currentTarget) setCancelConfirm(null) }}>
-                  <div style={{ background:'#fff', borderRadius:'var(--radius-xl)', width:'100%', maxWidth:'400px', boxShadow:'0 24px 80px rgba(0,0,0,0.25)', animation:'dashSlideUp 0.4s cubic-bezier(0.22,1,0.36,1)', overflow:'hidden' }}>
+              {cancelConfirm !== null && (
+                <div style={{ position:'fixed', inset:0, background:'rgba(10,22,40,0.6)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem', animation:'dashFadeIn 0.3s ease' }} onClick={(e) => { if (e.target === e.currentTarget && !courseActionLoading) { setCancelConfirm(null); setCourseActionError('') } }}>
+                  <div role="alertdialog" aria-modal="true" aria-labelledby="cancel-course-title" aria-describedby="cancel-course-copy" style={{ background:'#fff', borderRadius:'var(--radius-xl)', width:'100%', maxWidth:'400px', boxShadow:'0 24px 80px rgba(0,0,0,0.25)', animation:'dashSlideUp 0.4s cubic-bezier(0.22,1,0.36,1)', overflow:'hidden' }}>
                     <div style={{ padding:'2rem 2rem 1.5rem', textAlign:'center' }}>
                       <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'rgba(220,38,38,0.06)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}>
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
                       </div>
-                      <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.2rem', color:'#0F172A', fontWeight:800, margin:'0 0 0.5rem' }}>Cancel Enrollment</h3>
-                      <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:0, lineHeight:1.5 }}>Are you sure you want to cancel this course? This action cannot be undone.</p>
+                      <h3 id="cancel-course-title" style={{ fontFamily:'var(--font-display)', fontSize:'1.2rem', color:'#0F172A', fontWeight:800, margin:'0 0 0.5rem' }}>Cancel Enrollment</h3>
+                      <p id="cancel-course-copy" style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:0, lineHeight:1.5 }}>Are you sure you want to cancel this course? Its linked future lessons will also be cancelled. Older unlinked lessons remain available on the Lessons page for review. This action cannot be undone.</p>
+                      {courseActionError && <p role="alert" style={{ margin:'1rem 0 0', padding:'0.7rem 0.8rem', borderRadius:'10px', background:'#FEF2F2', border:'1px solid #FECACA', color:'#B91C1C', fontFamily:'var(--font-body)', fontSize:'0.92rem', textAlign:'left' }}>{courseActionError}</p>}
                     </div>
                     <div style={{ padding:'0 2rem 2rem', display:'flex', gap:'0.75rem' }}>
-                      <button onClick={() => setCancelConfirm(null)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#475569', background:'transparent', border:'1.5px solid #E2EBF5', borderRadius:'var(--radius-sm)', cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.borderColor='#CBD5E0'; e.currentTarget.style.color='#0F172A' }} onMouseLeave={(e) => { e.currentTarget.style.borderColor='#E2EBF5'; e.currentTarget.style.color='#475569' }}>Keep Course</button>
-                      <button onClick={() => handleCancelCourse(cancelConfirm)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#fff', background:'linear-gradient(135deg,#DC2626,#B91C1C)', border:'none', borderRadius:'var(--radius-sm)', cursor:'pointer', transition:'all 0.3s', boxShadow:'0 4px 16px rgba(220,38,38,0.25)' }} onMouseEnter={(e) => { e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(220,38,38,0.35)' }} onMouseLeave={(e) => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 4px 16px rgba(220,38,38,0.25)' }}>Yes, Cancel</button>
+                      <button type="button" disabled={Boolean(courseActionLoading)} onClick={() => { setCancelConfirm(null); setCourseActionError('') }} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#475569', background:'transparent', border:'1.5px solid #E2EBF5', borderRadius:'var(--radius-sm)', cursor:courseActionLoading ? 'wait' : 'pointer', transition:'all 0.2s', opacity:courseActionLoading ? 0.65 : 1 }} onMouseEnter={(e) => { e.currentTarget.style.borderColor='#CBD5E0'; e.currentTarget.style.color='#0F172A' }} onMouseLeave={(e) => { e.currentTarget.style.borderColor='#E2EBF5'; e.currentTarget.style.color='#475569' }}>Keep Course</button>
+                      <button type="button" disabled={Boolean(courseActionLoading)} onClick={() => handleCancelCourse(cancelConfirm)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#fff', background:'linear-gradient(135deg,#DC2626,#B91C1C)', border:'none', borderRadius:'var(--radius-sm)', cursor:courseActionLoading ? 'wait' : 'pointer', transition:'all 0.3s', boxShadow:'0 4px 16px rgba(220,38,38,0.25)', opacity:courseActionLoading ? 0.72 : 1 }} onMouseEnter={(e) => { if (!courseActionLoading) { e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(220,38,38,0.35)' } }} onMouseLeave={(e) => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 4px 16px rgba(220,38,38,0.25)' }}>{courseActionLoading === 'cancel' ? 'Cancelling…' : 'Yes, Cancel'}</button>
                     </div>
                   </div>
                 </div>
               )}
 
-              {refundConfirm && (
-                <div style={{ position:'fixed', inset:0, background:'rgba(10,22,40,0.6)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem', animation:'dashFadeIn 0.3s ease' }} onClick={(e) => { if (e.target === e.currentTarget) setRefundConfirm(null) }}>
-                  <div style={{ background:'#fff', borderRadius:'var(--radius-xl)', width:'100%', maxWidth:'400px', boxShadow:'0 24px 80px rgba(0,0,0,0.25)', animation:'dashSlideUp 0.4s cubic-bezier(0.22,1,0.36,1)', overflow:'hidden' }}>
+              {refundConfirm !== null && (
+                <div style={{ position:'fixed', inset:0, background:'rgba(10,22,40,0.6)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem', animation:'dashFadeIn 0.3s ease' }} onClick={(e) => { if (e.target === e.currentTarget && !courseActionLoading) { setRefundConfirm(null); setRefundReason(''); setCourseActionError('') } }}>
+                  <div role="dialog" aria-modal="true" aria-labelledby="refund-course-title" aria-describedby="refund-course-copy" style={{ background:'#fff', borderRadius:'var(--radius-xl)', width:'100%', maxWidth:'440px', boxShadow:'0 24px 80px rgba(0,0,0,0.25)', animation:'dashSlideUp 0.4s cubic-bezier(0.22,1,0.36,1)', overflow:'hidden' }}>
                     <div style={{ padding:'2rem 2rem 1.5rem', textAlign:'center' }}>
                       <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'rgba(202,138,4,0.06)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}>
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#CA8A04" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" /></svg>
                       </div>
-                      <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.2rem', color:'#0F172A', fontWeight:800, margin:'0 0 0.5rem' }}>Request Refund</h3>
-                      <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:0, lineHeight:1.5 }}>Are you sure you want to request a refund for this course? The course will be removed from your dashboard.</p>
+                      <h3 id="refund-course-title" style={{ fontFamily:'var(--font-display)', fontSize:'1.2rem', color:'#0F172A', fontWeight:800, margin:'0 0 0.5rem' }}>Request Refund</h3>
+                      <p id="refund-course-copy" style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:0, lineHeight:1.5 }}>Submit this course for review. It will stay visible as “Refund Pending” while the school reviews your request, and linked future lessons will be cancelled. Older unlinked lessons can be reviewed on the Lessons page.</p>
+                      <label htmlFor="refund-reason" style={{ display:'block', textAlign:'left', margin:'1rem 0 0.4rem', fontFamily:'var(--font-body)', fontSize:'0.9rem', fontWeight:700, color:'#334155' }}>Reason (optional)</label>
+                      <textarea id="refund-reason" value={refundReason} maxLength={1000} disabled={Boolean(courseActionLoading)} onChange={(event) => setRefundReason(event.target.value)} rows="3" placeholder="Briefly tell us why you are requesting a refund" className="dash-input" style={{ resize:'vertical', minHeight:'82px', textAlign:'left' }} />
+                      {courseActionError && <p role="alert" style={{ margin:'1rem 0 0', padding:'0.7rem 0.8rem', borderRadius:'10px', background:'#FEF2F2', border:'1px solid #FECACA', color:'#B91C1C', fontFamily:'var(--font-body)', fontSize:'0.92rem', textAlign:'left' }}>{courseActionError}</p>}
                     </div>
                     <div style={{ padding:'0 2rem 2rem', display:'flex', gap:'0.75rem' }}>
-                      <button onClick={() => setRefundConfirm(null)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#475569', background:'transparent', border:'1.5px solid #E2EBF5', borderRadius:'var(--radius-sm)', cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.borderColor='#CBD5E0'; e.currentTarget.style.color='#0F172A' }} onMouseLeave={(e) => { e.currentTarget.style.borderColor='#E2EBF5'; e.currentTarget.style.color='#475569' }}>Keep Course</button>
-                      <button onClick={() => handleRefundCourse(refundConfirm)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#fff', background:'linear-gradient(135deg,#CA8A04,#A16207)', border:'none', borderRadius:'var(--radius-sm)', cursor:'pointer', transition:'all 0.3s', boxShadow:'0 4px 16px rgba(202,138,4,0.25)' }} onMouseEnter={(e) => { e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(202,138,4,0.35)' }} onMouseLeave={(e) => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 4px 16px rgba(202,138,4,0.25)' }}>Yes, Refund</button>
+                      <button type="button" disabled={Boolean(courseActionLoading)} onClick={() => { setRefundConfirm(null); setRefundReason(''); setCourseActionError('') }} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#475569', background:'transparent', border:'1.5px solid #E2EBF5', borderRadius:'var(--radius-sm)', cursor:courseActionLoading ? 'wait' : 'pointer', transition:'all 0.2s', opacity:courseActionLoading ? 0.65 : 1 }} onMouseEnter={(e) => { e.currentTarget.style.borderColor='#CBD5E0'; e.currentTarget.style.color='#0F172A' }} onMouseLeave={(e) => { e.currentTarget.style.borderColor='#E2EBF5'; e.currentTarget.style.color='#475569' }}>Keep Course</button>
+                      <button type="button" disabled={Boolean(courseActionLoading)} onClick={() => handleRefundCourse(refundConfirm)} style={{ flex:1, padding:'0.75rem 1.5rem', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700, color:'#fff', background:'linear-gradient(135deg,#CA8A04,#A16207)', border:'none', borderRadius:'var(--radius-sm)', cursor:courseActionLoading ? 'wait' : 'pointer', transition:'all 0.3s', boxShadow:'0 4px 16px rgba(202,138,4,0.25)', opacity:courseActionLoading ? 0.72 : 1 }} onMouseEnter={(e) => { if (!courseActionLoading) { e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(202,138,4,0.35)' } }} onMouseLeave={(e) => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 4px 16px rgba(202,138,4,0.25)' }}>{courseActionLoading === 'refund' ? 'Submitting…' : 'Submit Request'}</button>
                     </div>
                   </div>
                 </div>
@@ -1062,7 +1168,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     )}
-                    <button onClick={handleSaveSettings} disabled={sSaving} className="dash-btn-primary" style={{ boxShadow:sSaving ? 'none' : undefined }}>{sSaving ? 'Saving...' : 'Save changes'}</button>
+                    <button type="button" onClick={handleSaveSettings} disabled={sSaving} className="dash-btn-primary" style={{ boxShadow:sSaving ? 'none' : undefined, cursor:sSaving ? 'wait' : 'pointer', opacity:sSaving ? .7 : 1 }}>{sSaving ? 'Saving…' : 'Save changes'}</button>
                   </div>
                 </div>
               )}
@@ -1071,8 +1177,8 @@ export default function DashboardPage() {
                 <div className="dash-chat-wrap" style={{ maxWidth:'1100px', margin:'0 auto', display:'flex', gap:'1rem', height:'clamp(500px,70vh,650px)' }}>
                   <div className="dash-anim dash-chat-list" style={{ width:'260px', flexShrink:0, background:'#ffffff', borderRadius:'18px', border:'1px solid rgba(226,235,245,0.6)', boxShadow:'0 1px 3px rgba(0,0,0,0.02), 0 4px 16px rgba(0,0,0,0.03)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
                     <div style={{ padding:'1rem', borderBottom:'1px solid #E8EDF4' }}>
-                      <button onClick={handleNewChat} style={{ width:'100%', padding:'0.65rem', background: chatMessages.length === 0 && !activeConvId ? 'rgba(1,69,168,0.06)' : 'transparent', border:'1.5px solid rgba(1,69,168,0.1)', borderRadius:'10px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:600, color:SKY_BLUE, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem', transition:'all 0.2s' }} onMouseEnter={(e) => { if (!(chatMessages.length === 0 && !activeConvId)) { e.currentTarget.style.background='rgba(1,69,168,0.04)'; e.currentTarget.style.borderColor='rgba(1,69,168,0.2)' } }} onMouseLeave={(e) => { if (!(chatMessages.length === 0 && !activeConvId)) { e.currentTarget.style.background='transparent'; e.currentTarget.style.borderColor='rgba(1,69,168,0.1)' } }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg> New Chat
+                      <button type="button" disabled={supportBusy} onClick={handleNewChat} style={{ width:'100%', padding:'0.65rem', background: chatMessages.length === 0 && !activeConvId ? 'rgba(1,69,168,0.06)' : 'transparent', border:'1.5px solid rgba(1,69,168,0.1)', borderRadius:'10px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:600, color:SKY_BLUE, cursor:supportBusy ? 'wait' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem', transition:'all 0.2s', opacity:supportBusy ? .65 : 1 }} onMouseEnter={(e) => { if (!supportBusy && !(chatMessages.length === 0 && !activeConvId)) { e.currentTarget.style.background='rgba(1,69,168,0.04)'; e.currentTarget.style.borderColor='rgba(1,69,168,0.2)' } }} onMouseLeave={(e) => { if (!(chatMessages.length === 0 && !activeConvId)) { e.currentTarget.style.background='transparent'; e.currentTarget.style.borderColor='rgba(1,69,168,0.1)' } }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg> {supportBusy ? 'Please wait…' : 'New Chat'}
                       </button>
                     </div>
                     <div style={{ flex:1, overflowY:'auto', padding:'0.5rem' }}>
@@ -1087,7 +1193,7 @@ export default function DashboardPage() {
                           <div key={conv.id} role="button" tabIndex={0} aria-pressed={activeConvId === conv.id} onClick={() => handleSelectConv(conv.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleSelectConv(conv.id) } }} style={{ padding:'0.6rem 0.75rem', borderRadius:'10px', cursor:'pointer', marginBottom:'0.2rem', background: activeConvId === conv.id ? 'rgba(1,69,168,0.06)' : 'transparent', border: activeConvId === conv.id ? '1px solid rgba(1,69,168,0.1)' : '1px solid transparent', transition:'all 0.15s', display:'flex', alignItems:'center', gap:'0.5rem', position:'relative' }} onMouseEnter={(e) => { if (activeConvId !== conv.id) e.currentTarget.style.background='rgba(0,0,0,0.02)' }} onMouseLeave={(e) => { if (activeConvId !== conv.id) e.currentTarget.style.background='transparent' }}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="1.5" style={{ flexShrink:0 }}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
                             <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color: activeConvId === conv.id ? DARK : '#475569', margin:0, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontWeight: activeConvId === conv.id ? 600 : 400 }}>{conv.title}</p>
-                            <button type="button" aria-label={`Delete conversation ${conv.title || ''}`} title="Delete conversation" onClick={(e) => handleDeleteConv(e, conv.id)} onKeyDown={(e) => e.stopPropagation()} style={{ background:'none', border:'none', cursor:'pointer', padding:'2px', borderRadius:'4px', display:'flex', opacity:0.4, transition:'opacity 0.2s', flexShrink:0 }} onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(220,38,38,0.06)' }} onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.background = 'none' }}>
+                            <button type="button" disabled={supportBusy} aria-label={`${conversationActionId === conv.id ? 'Deleting' : 'Delete'} conversation ${conv.title || ''}`} title="Delete conversation" onClick={(e) => handleDeleteConv(e, conv.id)} onKeyDown={(e) => e.stopPropagation()} style={{ background:'none', border:'none', cursor:supportBusy ? 'wait' : 'pointer', padding:'2px', borderRadius:'4px', display:'flex', opacity:conversationActionId === conv.id ? 1 : 0.4, transition:'opacity 0.2s', flexShrink:0 }} onMouseEnter={(e) => { if (!supportBusy) { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(220,38,38,0.06)' } }} onMouseLeave={(e) => { e.currentTarget.style.opacity = conversationActionId === conv.id ? '1' : '0.4'; e.currentTarget.style.background = 'none' }}>
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
                             </button>
                           </div>
@@ -1145,8 +1251,8 @@ export default function DashboardPage() {
                       <div ref={chatEndRef} />
                     </div>
                     <div style={{ padding:'1rem 1.5rem', borderTop:'1px solid #E8EDF4', background:'linear-gradient(135deg,#FAFBFD,#F5F7FB)', display:'flex', gap:'0.6rem', alignItems:'flex-end' }}>
-                      <textarea value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChat() } }} rows="1" placeholder="Ask about courses, scheduling, payments..." className="dash-input" style={{ flex:1, background:'#fff', borderRadius:'14px', padding:'0.75rem 1rem', fontSize:'1.05rem', resize:'none', minHeight:'44px', maxHeight:'100px' }} />
-                      <button onClick={handleChat} disabled={chatLoading || !chatInput.trim()} style={{ width:'44px', height:'44px', borderRadius:'14px', border:'none', background:(!chatInput.trim() || chatLoading) ? '#E2EBF5' : `linear-gradient(135deg,${SKY_BLUE},#0a2a5e)`, color:(!chatInput.trim() || chatLoading) ? '#475569' : '#fff', cursor:(!chatInput.trim() || chatLoading) ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.3s', boxShadow:(!chatInput.trim() || chatLoading) ? 'none' : '0 4px 12px rgba(1,69,168,0.25)', flexShrink:0 }}>
+                      <textarea aria-label="Message the support assistant" maxLength={4000} disabled={conversationLoading} value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChat() } }} rows="1" placeholder="Ask about courses, scheduling, payments..." className="dash-input" style={{ flex:1, background:'#fff', borderRadius:'14px', padding:'0.75rem 1rem', fontSize:'1.05rem', resize:'none', minHeight:'44px', maxHeight:'100px', opacity:conversationLoading ? .65 : 1 }} />
+                      <button type="button" aria-label="Send message" onClick={handleChat} disabled={chatLoading || conversationLoading || !chatInput.trim()} style={{ width:'44px', height:'44px', borderRadius:'14px', border:'none', background:(!chatInput.trim() || chatLoading || conversationLoading) ? '#E2EBF5' : `linear-gradient(135deg,${SKY_BLUE},#0a2a5e)`, color:(!chatInput.trim() || chatLoading || conversationLoading) ? '#475569' : '#fff', cursor:(!chatInput.trim() || chatLoading || conversationLoading) ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.3s', boxShadow:(!chatInput.trim() || chatLoading || conversationLoading) ? 'none' : '0 4px 12px rgba(1,69,168,0.25)', flexShrink:0 }}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
                       </button>
                     </div>
@@ -1193,7 +1299,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
                                   <span style={{ padding:'0.25rem 0.7rem', background:b.status === 'confirmed' ? 'rgba(1,69,168,.10)' : 'rgba(34,197,94,.10)', color:b.status === 'confirmed' ? SKY_BLUE : '#15803D', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700 }}>{b.status === 'confirmed' ? 'Confirmed' : 'Scheduled'}</span>
-                                  {b.status !== 'confirmed' && <button aria-label="Cancel booking" title="Cancel booking" onClick={() => handleCancelBooking(b._id)} style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', padding:'0.35rem', borderRadius:'6px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>}
+                                  <button type="button" aria-label="Cancel booking" title="Cancel booking" onClick={() => handleCancelBooking(b._id)} style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', padding:'0.35rem', borderRadius:'6px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
                                 </div>
                               </div>
                             )
@@ -1262,9 +1368,9 @@ export default function DashboardPage() {
                                 <span style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', fontWeight:800, color:quizScore >= 2 ? '#22C55E' : '#DC2626' }}>{quizScore}/{activeMod.quiz.length}</span>
                               </div>
                               <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.2rem', color:DARK, fontWeight:700, marginBottom:'0.5rem' }}>{quizScore >= 2 ? 'Congratulations! Module Passed' : 'Not Passed'}</h3>
-                              <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', marginBottom:'1.5rem' }}>{quizScore >= 2 ? 'You have successfully completed this module.' : 'You need at least 2 correct answers to pass.'}</p>
-                              {quizScore < 2 && <button onClick={() => { setModuleStep(0); setQuizAnswers({}); setQuizSubmitted(false) }} style={{ padding:'0.7rem 1.5rem', background:SKY_BLUE, color:'#fff', border:'none', borderRadius:'10px', fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.1em', textTransform:'uppercase', fontWeight:700, cursor:'pointer' }}>Review Lessons</button>}
-                              {quizScore >= 2 && <button onClick={() => { setActiveModule(null); setModuleStep(0) }} style={{ padding:'0.7rem 1.5rem', background:GOLD, color:DARK, border:'none', borderRadius:'10px', fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.1em', textTransform:'uppercase', fontWeight:700, cursor:'pointer' }}>Back to Modules</button>}
+                              <p role={quizSaving ? 'status' : undefined} aria-live="polite" style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', marginBottom:'1.5rem' }}>{quizSaving ? 'Saving your progress…' : quizScore >= 2 ? 'You have successfully completed this module.' : 'You need at least 2 correct answers to pass.'}</p>
+                              {quizScore < 2 && <button type="button" onClick={() => { setModuleStep(0); setQuizAnswers({}); setQuizSubmitted(false) }} style={{ padding:'0.7rem 1.5rem', background:SKY_BLUE, color:'#fff', border:'none', borderRadius:'10px', fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.1em', textTransform:'uppercase', fontWeight:700, cursor:'pointer' }}>Review Lessons</button>}
+                              {quizScore >= 2 && <button type="button" disabled={quizSaving} onClick={() => { setActiveModule(null); setModuleStep(0) }} style={{ padding:'0.7rem 1.5rem', background:GOLD, color:DARK, border:'none', borderRadius:'10px', fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.1em', textTransform:'uppercase', fontWeight:700, cursor:quizSaving ? 'wait' : 'pointer', opacity:quizSaving ? .65 : 1 }}>{quizSaving ? 'Saving…' : 'Back to Modules'}</button>}
                             </div>
                           )}
                         </div>
@@ -1309,14 +1415,15 @@ export default function DashboardPage() {
             </div>
 
             {bookingCancelConfirm && (
-              <div className="dash-modal-backdrop" role="presentation" style={{ position:'fixed', inset:0, background:'rgba(10,22,40,.68)', backdropFilter:'blur(10px)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setBookingCancelConfirm(null) }}>
+              <div className="dash-modal-backdrop" role="presentation" style={{ position:'fixed', inset:0, background:'rgba(10,22,40,.68)', backdropFilter:'blur(10px)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }} onClick={(e) => { if (e.target === e.currentTarget && !bookingCancelLoading) { setBookingCancelConfirm(null); setBookingCancelError('') } }}>
                 <div className="dash-confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="cancel-booking-title" aria-describedby="cancel-booking-copy" style={{ width:'100%', maxWidth:'420px', background:'#fff', borderRadius:'22px', boxShadow:'0 28px 90px rgba(2,12,27,.35)', padding:'2rem' }}>
                   <div style={{ width:'58px', height:'58px', borderRadius:'18px', background:'rgba(220,38,38,.08)', color:'#DC2626', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'1.2rem' }}><svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M9 15l6 0"/></svg></div>
                   <h2 id="cancel-booking-title" style={{ fontFamily:'var(--font-display)', fontSize:'1.35rem', color:DARK, margin:'0 0 .55rem' }}>Cancel this booking?</h2>
                   <p id="cancel-booking-copy" style={{ fontFamily:'var(--font-body)', fontSize:'1rem', lineHeight:1.65, color:'#475569', margin:'0 0 1.5rem' }}>The selected lesson will be removed from your upcoming bookings. This action cannot be undone.</p>
+                  {bookingCancelError && <p role="alert" style={{ margin:'0 0 1.25rem', padding:'0.7rem 0.8rem', borderRadius:'10px', background:'#FEF2F2', border:'1px solid #FECACA', color:'#B91C1C', fontFamily:'var(--font-body)', fontSize:'0.92rem' }}>{bookingCancelError}</p>}
                   <div style={{ display:'flex', gap:'.75rem', justifyContent:'flex-end', flexWrap:'wrap' }}>
-                    <button autoFocus onClick={() => setBookingCancelConfirm(null)} style={{ padding:'.8rem 1.15rem', border:'1px solid #CBD5E1', borderRadius:'11px', background:'#fff', color:'#334155', fontWeight:700, cursor:'pointer' }}>Keep Booking</button>
-                    <button onClick={confirmCancelBooking} style={{ padding:'.8rem 1.15rem', border:0, borderRadius:'11px', background:'linear-gradient(135deg,#DC2626,#B91C1C)', color:'#fff', fontWeight:700, cursor:'pointer', boxShadow:'0 7px 18px rgba(220,38,38,.22)' }}>Yes, Cancel</button>
+                    <button type="button" autoFocus disabled={bookingCancelLoading} onClick={() => { setBookingCancelConfirm(null); setBookingCancelError('') }} style={{ padding:'.8rem 1.15rem', border:'1px solid #CBD5E1', borderRadius:'11px', background:'#fff', color:'#334155', fontWeight:700, cursor:bookingCancelLoading ? 'wait' : 'pointer', opacity:bookingCancelLoading ? .65 : 1 }}>Keep Booking</button>
+                    <button type="button" disabled={bookingCancelLoading} onClick={confirmCancelBooking} style={{ padding:'.8rem 1.15rem', border:0, borderRadius:'11px', background:'linear-gradient(135deg,#DC2626,#B91C1C)', color:'#fff', fontWeight:700, cursor:bookingCancelLoading ? 'wait' : 'pointer', boxShadow:'0 7px 18px rgba(220,38,38,.22)', opacity:bookingCancelLoading ? .72 : 1 }}>{bookingCancelLoading ? 'Cancelling…' : 'Yes, Cancel'}</button>
                   </div>
                 </div>
               </div>

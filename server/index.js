@@ -278,6 +278,30 @@ function sanitizeSettings(value) {
   if (value.scheduleLink && !output.scheduleLink) throw new HttpError(400, 'Schedule link must be a secure HTTPS URL.')
   return output
 }
+function sanitizeRefundRecord(value, { partial = false } = {}) {
+  if (!isPlainObject(value)) throw new HttpError(400, 'Valid refund information is required.')
+  const fields = new Map([
+    ['Full_Name', 200], ['Email', 320], ['Phone', 40], ['Course_Name', 200],
+    ['Amount', 40], ['Reason', 1000],
+  ])
+  const output = {}
+  for (const [field, maxLength] of fields) {
+    if (partial && value[field] === undefined) continue
+    output[field] = field === 'Email'
+      ? normalizeEmail(value[field])
+      : cleanText(value[field], maxLength)
+  }
+  if (output.Email && !isEmail(output.Email)) throw new HttpError(400, 'Please enter a valid refund email address.')
+  if (!partial && (!output.Full_Name || !output.Amount)) {
+    throw new HttpError(400, 'Student name and refund amount are required.')
+  }
+  if (!partial || value.Status !== undefined) {
+    const status = cleanText(value.Status || 'pending', 20).toLowerCase()
+    if (!['pending', 'refunded', 'denied'].includes(status)) throw new HttpError(400, 'Please choose a valid refund status.')
+    output.Status = status
+  }
+  return output
+}
 const BOOKING_TIMES = new Set([
   '07:00 AM - 09:00 AM', '09:00 AM - 11:00 AM', '11:00 AM - 01:00 PM', '12:00 PM - 02:00 PM', '02:00 PM - 04:00 PM', '04:00 PM - 06:00 PM',
   '9:00 AM - 11:00 AM', '11:00 AM - 1:00 PM', '2:00 PM - 4:00 PM', '4:00 PM - 6:00 PM',
@@ -297,6 +321,12 @@ const normalizeBookingTime = (value) => {
   return aliases[compact] || compact
 }
 const bookingSlotKey = (date, timeSlot) => `${date}|${normalizeBookingTime(timeSlot)}`
+const courseIdCandidates = (courseId) => {
+  const normalized = cleanText(courseId, 120)
+  const candidates = [normalized]
+  if (/^\d+$/.test(normalized)) candidates.push(Number(normalized))
+  return [...new Set(candidates)]
+}
 
 let firebaseAuth
 let canCheckFirebaseTokenRevocation = false
@@ -357,12 +387,20 @@ async function requireAuth(req, res, next) {
   try {
     const adminAuth = getFirebaseAdminAuth()
     if (isProduction && !canCheckFirebaseTokenRevocation) {
-      throw new Error('Firebase Admin credentials are required in production.')
+      const configurationError = new Error('Firebase Admin credentials are required in production.')
+      configurationError.code = 'auth/server-misconfigured'
+      throw configurationError
     }
     req.auth = await adminAuth.verifyIdToken(match[1], canCheckFirebaseTokenRevocation)
     return next()
   } catch (error) {
     console.warn('Authentication rejected:', error.code || error.message)
+    if (!isProduction && error.code && error.message) {
+      console.warn('Authentication detail:', error.message)
+    }
+    if (error.code === 'auth/server-misconfigured') {
+      return res.status(503).json({ error: 'Authentication service is temporarily unavailable.' })
+    }
     return res.status(401).json({ error: 'Your session is invalid or expired. Please sign in again.' })
   }
 }
@@ -500,16 +538,124 @@ async function backfillBookingSlotLocks() {
 }
 
 async function releaseCourseHolds(uid, courseId, session) {
-  const filter = { userId: uid, courseId: String(courseId), status: 'held' }
+  const filter = { userId: uid, courseId: { $in: courseIdCandidates(courseId) }, status: 'held' }
   const heldBookings = await bookingsCol.find(filter, { session, projection: { _id: 1 } }).toArray()
   const bookingIds = heldBookings.map(booking => booking._id)
   if (bookingIds.length) {
     await bookingSlotsCol.deleteMany(
-      { userId: uid, courseId: String(courseId), status: 'held', bookingId: { $in: bookingIds } },
+      { userId: uid, courseId: { $in: courseIdCandidates(courseId) }, status: 'held', bookingId: { $in: bookingIds } },
       { session }
     )
     await bookingsCol.deleteMany({ ...filter, _id: { $in: bookingIds } }, { session })
   }
+}
+
+const unassignedBookingCourseFilter = [
+  { courseId: { $exists: false } },
+  { courseId: null },
+  { courseId: '' },
+]
+
+async function countUnassignedActiveBookings(uid, session) {
+  return bookingsCol.countDocuments({
+    userId: uid,
+    status: { $in: ACTIVE_BOOKING_STATUSES },
+    $or: unassignedBookingCourseFilter,
+  }, { session })
+}
+
+async function cancelCourseBookings(uid, courseId, reason, session, { includeUnassigned = false } = {}) {
+  const courseIds = courseIdCandidates(courseId)
+  const activeFilter = {
+    userId: uid,
+    status: { $in: ACTIVE_BOOKING_STATUSES },
+    ...(includeUnassigned
+      ? { $or: [{ courseId: { $in: courseIds } }, ...unassignedBookingCourseFilter] }
+      : { courseId: { $in: courseIds } }),
+  }
+  const activeBookings = await bookingsCol
+    .find(activeFilter, { session, projection: { _id: 1, status: 1 } })
+    .toArray()
+  const bookingIds = activeBookings.map(booking => booking._id)
+
+  if (bookingIds.length) {
+    await bookingSlotsCol.deleteMany(
+      { userId: uid, bookingId: { $in: bookingIds } },
+      { session }
+    )
+  }
+  // Remove any stale lock that lost its booking document as well.
+  await bookingSlotsCol.deleteMany(
+    {
+      userId: uid,
+      status: { $in: ['held', 'confirmed'] },
+      ...(includeUnassigned
+        ? { $or: [{ courseId: { $in: courseIds } }, ...unassignedBookingCourseFilter] }
+        : { courseId: { $in: courseIds } }),
+    },
+    { session }
+  )
+
+  const heldIds = activeBookings.filter(booking => booking.status === 'held').map(booking => booking._id)
+  if (heldIds.length) {
+    await bookingsCol.deleteMany(
+      { _id: { $in: heldIds }, userId: uid, status: 'held' },
+      { session }
+    )
+  }
+
+  const confirmedIds = activeBookings.filter(booking => booking.status !== 'held').map(booking => booking._id)
+  if (confirmedIds.length) {
+    await bookingsCol.updateMany(
+      { _id: { $in: confirmedIds }, userId: uid, status: { $in: ACTIVE_BOOKING_STATUSES.filter(status => status !== 'held') } },
+      {
+        $set: {
+          status: 'cancelled',
+          cancellationReason: cleanText(reason, 120),
+          cancelledAt: new Date().toISOString(),
+        },
+        $unset: { holdExpiresAt: '', holdToken: '' },
+      },
+      { session }
+    )
+  }
+
+  return activeBookings.length
+}
+
+async function applyRefundDecisionToCourse(refund, status, session) {
+  const uid = cleanText(refund?.uid || refund?.User_UID, 160)
+  const courseId = cleanText(refund?.Course_ID, 120)
+  if (!uid || !courseId) return 0
+
+  const normalizedStatus = cleanText(status, 20).toLowerCase()
+  const courseStatus = normalizedStatus === 'refunded'
+    ? 'Refunded'
+    : normalizedStatus === 'denied'
+      ? 'Enrolled'
+      : 'Refund Pending'
+  if (normalizedStatus === 'refunded') {
+    await cancelCourseBookings(uid, courseId, 'refund_approved', session)
+  }
+
+  const decisionAt = new Date().toISOString()
+  const update = {
+    $set: {
+      'courses.$[course].status': courseStatus,
+      'courses.$[course].refundStatus': normalizedStatus,
+    },
+  }
+  if (normalizedStatus === 'pending') {
+    update.$unset = { 'courses.$[course].refundDecisionAt': '' }
+  } else {
+    update.$set['courses.$[course].refundDecisionAt'] = decisionAt
+  }
+  const result = await usersCol.updateOne(
+    { uid },
+    update,
+    { session, arrayFilters: [{ 'course.id': { $in: courseIdCandidates(courseId) } }] }
+  )
+  return result.modifiedCount
 }
 
 async function createSlotHold({ uid, courseId, date, timeSlot, session, expiresAt }) {
@@ -600,6 +746,7 @@ async function connectDB() {
     await bookingSlotsCol.createIndex({ date: 1 })
     await bookingSlotsCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, name: 'expire_slot_holds' })
     await cartsCol.createIndex({ uid: 1 }, { unique: true })
+    await refundsCol.createIndex({ requestKey: 1 }, { unique: true, sparse: true, name: 'unique_user_refund_request' })
     await cleanupExpiredHolds(true)
     await backfillBookingSlotLocks()
     await seedPricing()
@@ -710,6 +857,8 @@ app.put('/api/users/:uid', async (req, res) => {
     const { uid } = req.params
     const requestedAdminBootstrap = req.body?.isAdmin === true
     const data = sanitizeUserProfile(req.body)
+    const authenticatedEmail = normalizeEmail(req.auth?.email)
+    if (authenticatedEmail) data.email = authenticatedEmail
 
     if (requestedAdminBootstrap) {
       const canBootstrap = await claimInitialAdmin(req.auth)
@@ -836,17 +985,33 @@ app.delete('/api/bookings/:id', requireAuth, async (req, res) => {
   try {
     if (!ObjectId.isValid(req.params.id)) return res.status(400).json({ error: 'Invalid booking id.' })
     const bookingId = new ObjectId(req.params.id)
-    const deleted = await withMongoTransaction(async (session) => {
+    const result = await withMongoTransaction(async (session) => {
       const booking = await bookingsCol.findOne({ _id: bookingId, userId: req.auth.uid }, { session })
-      if (!booking) return false
+      if (!booking) return { found: false }
+      if (booking.status === 'cancelled') return { found: true, duplicate: true, booking }
+      if (booking.status === 'completed') {
+        throw new HttpError(409, 'A completed lesson cannot be cancelled.')
+      }
       await bookingSlotsCol.deleteOne({ bookingId, userId: req.auth.uid }, { session })
-      await bookingsCol.deleteOne({ _id: bookingId, userId: req.auth.uid }, { session })
-      return true
+      if (booking.status === 'held') {
+        await bookingsCol.deleteOne({ _id: bookingId, userId: req.auth.uid, status: 'held' }, { session })
+        return { found: true, removedHold: true, booking: { ...booking, status: 'cancelled' } }
+      }
+      const cancelledAt = new Date().toISOString()
+      await bookingsCol.updateOne(
+        { _id: bookingId, userId: req.auth.uid },
+        {
+          $set: { status: 'cancelled', cancelledAt, cancellationReason: 'student_request' },
+          $unset: { holdExpiresAt: '', holdToken: '' },
+        },
+        { session }
+      )
+      return { found: true, booking: { ...booking, status: 'cancelled', cancelledAt } }
     })
-    if (!deleted) return res.status(404).json({ error: 'Booking not found.' })
-    res.json({ ok: true })
-  } catch {
-    res.status(500).json({ error: 'Unable to cancel the booking. Please try again.' })
+    if (!result.found) return res.status(404).json({ error: 'Booking not found.' })
+    res.json({ ok: true, booking: result.booking, duplicate: Boolean(result.duplicate) })
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.status ? e.message : 'Unable to cancel the booking. Please try again.' })
   }
 })
 
@@ -876,15 +1041,173 @@ app.post('/api/users/:uid/courses', requireAdmin, async (req, res) => {
 
 app.delete('/api/users/:uid/courses/:courseId', async (req, res) => {
   try {
-    const { uid, courseId } = req.params
-    await usersCol.updateOne(
-      { uid },
-      { $pull: { courses: { id: courseId } } }
-    )
-    const user = await usersCol.findOne({ uid })
-    res.json({ ok: true, courses: user?.courses || [] })
+    const uid = req.auth.uid
+    const courseId = cleanText(req.params.courseId, 120)
+    if (!courseId) return res.status(400).json({ error: 'Course id required.' })
+    const result = await withMongoTransaction(async (session) => {
+      const user = await usersCol.findOne({ uid }, { session })
+      const course = (user?.courses || []).find(item => String(item?.id) === courseId)
+      if (!course) return { found: false }
+      if (String(course.status || '').toLowerCase() === 'refund pending') {
+        throw new HttpError(409, 'This course already has a pending refund request.')
+      }
+
+      const activeCourseCount = (user?.courses || []).filter(item => {
+        const status = String(item?.status || 'enrolled').toLowerCase()
+        return !['cancelled', 'refunded'].includes(status)
+      }).length
+      // Old dashboard bookings did not store a courseId. They can only be
+      // associated safely when this is the student's sole active course.
+      const releasedBookings = await cancelCourseBookings(
+        uid,
+        courseId,
+        'course_cancelled',
+        session,
+        { includeUnassigned: activeCourseCount === 1 }
+      )
+      const unlinkedBookings = await countUnassignedActiveBookings(uid, session)
+      const ids = courseIdCandidates(courseId)
+      await usersCol.updateOne(
+        { uid },
+        { $pull: { courses: { id: { $in: ids } } } },
+        { session }
+      )
+      await cartsCol.updateOne(
+        { uid },
+        { $pull: { items: { id: { $in: ids } } }, $set: { updatedAt: new Date().toISOString() } },
+        { session }
+      )
+      await cartsCol.deleteOne({ uid, items: { $size: 0 } }, { session })
+      const updated = await usersCol.findOne({ uid }, { session, projection: { courses: 1 } })
+      return { found: true, course, releasedBookings, unlinkedBookings, courses: updated?.courses || [] }
+    })
+    if (!result.found) return res.status(404).json({ error: 'Course not found.' })
+    res.json({
+      ok: true,
+      courses: result.courses,
+      cancelledCourse: result.course,
+      releasedBookings: result.releasedBookings,
+      unlinkedBookings: result.unlinkedBookings,
+    })
   } catch (e) {
-    sendServerError(res, e, 'Course removal failed')
+    if (e.status) return res.status(e.status).json({ error: e.message })
+    sendServerError(res, e, 'Course cancellation failed')
+  }
+})
+
+app.post('/api/users/:uid/courses/:courseId/refund', rateLimit({ windowMs: 10 * 60_000, max: 10 }), async (req, res) => {
+  try {
+    const uid = req.auth.uid
+    const courseId = cleanText(req.params.courseId, 120)
+    const reason = cleanText(req.body?.reason, 1000) || 'Requested by student from the dashboard.'
+    if (!courseId) return res.status(400).json({ error: 'Course id required.' })
+
+    const result = await withMongoTransaction(async (session) => {
+      const user = await usersCol.findOne({ uid }, { session })
+      const courses = user?.courses || []
+      const course = courses.find(item => String(item?.id) === courseId)
+      if (!course) return { found: false }
+
+      const enrollmentFingerprint = cleanText(
+        course.enrolledAt || course.createdAt || course.paymentRef || 'legacy-current-enrollment',
+        160
+      )
+      const requestKey = `${uid}|${courseId}|${enrollmentFingerprint}`
+      const existing = await refundsCol.findOne({ requestKey }, { session })
+      if (existing) {
+        const existingStatus = cleanText(existing.Status || 'pending', 20).toLowerCase()
+        if (existingStatus === 'denied') {
+          throw new HttpError(409, 'The refund request for this enrollment was reviewed and denied. Please contact the school if you need further help.')
+        }
+        if (existingStatus === 'refunded') {
+          throw new HttpError(409, 'This enrollment has already been refunded.')
+        }
+        return { found: true, duplicate: true, refund: existing, courses }
+      }
+
+      const refundId = new ObjectId()
+      const requestedAt = new Date()
+      const fullName = cleanText(
+        user.displayName || user.username || user.name
+          || [user.firstName, user.middleName, user.lastName].filter(Boolean).join(' '),
+        200
+      ) || 'Student'
+      const refund = {
+        _id: refundId,
+        requestKey,
+        uid,
+        User_UID: uid,
+        Course_ID: courseId,
+        Enrollment_Date: enrollmentFingerprint,
+        Full_Name: fullName,
+        Email: normalizeEmail(req.auth.email || user.email),
+        Phone: cleanText(user.phone, 40),
+        Course_Name: cleanText(course.title || course.planName || 'Driving course', 200),
+        Amount: cleanText(course.price, 40) || '$0',
+        Reason: reason,
+        Status: 'pending',
+        created_at: requestedAt.toISOString().replace('T', ' ').slice(0, 19),
+        createdAt: requestedAt,
+      }
+      await refundsCol.insertOne(refund, { session })
+
+      const activeCourseCount = courses.filter(item => {
+        const status = String(item?.status || 'enrolled').toLowerCase()
+        return !['cancelled', 'refunded'].includes(status)
+      }).length
+      const releasedBookings = await cancelCourseBookings(
+        uid,
+        courseId,
+        'refund_requested',
+        session,
+        { includeUnassigned: activeCourseCount === 1 }
+      )
+      const unlinkedBookings = await countUnassignedActiveBookings(uid, session)
+      const ids = courseIdCandidates(courseId)
+      await usersCol.updateOne(
+        { uid },
+        {
+          $set: {
+            'courses.$[course].status': 'Refund Pending',
+            'courses.$[course].refundStatus': 'pending',
+            'courses.$[course].refundRequestId': refundId.toString(),
+            'courses.$[course].refundRequestedAt': requestedAt.toISOString(),
+          },
+        },
+        { session, arrayFilters: [{ 'course.id': { $in: ids } }] }
+      )
+      await cartsCol.updateOne(
+        { uid },
+        { $pull: { items: { id: { $in: ids } } }, $set: { updatedAt: requestedAt.toISOString() } },
+        { session }
+      )
+      await cartsCol.deleteOne({ uid, items: { $size: 0 } }, { session })
+      const updated = await usersCol.findOne({ uid }, { session, projection: { courses: 1 } })
+      return {
+        found: true,
+        duplicate: false,
+        refund,
+        releasedBookings,
+        unlinkedBookings,
+        courses: updated?.courses || [],
+      }
+    })
+
+    if (!result.found) return res.status(404).json({ error: 'Course not found.' })
+    res.status(result.duplicate ? 200 : 201).json({
+      ok: true,
+      duplicate: Boolean(result.duplicate),
+      refund: result.refund,
+      courses: result.courses,
+      releasedBookings: result.releasedBookings || 0,
+      unlinkedBookings: result.unlinkedBookings || 0,
+    })
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ error: e.message })
+    if (isDuplicateKey(e)) {
+      return res.status(409).json({ error: 'A refund request already exists for this course enrollment.' })
+    }
+    sendServerError(res, e, 'Refund request failed')
   }
 })
 
@@ -979,10 +1302,10 @@ app.post('/api/users/:uid/cart', async (req, res) => {
     const status = e.status || (isDuplicateKey(e) ? 409 : 500)
     res.status(status).json({
       ok: false,
-      error: status === 409
-        ? 'One of the selected time slots is no longer available. Please choose another slot.'
-        : e.status
-          ? e.message
+      error: e.status
+        ? e.message
+        : isDuplicateKey(e)
+          ? 'One of the selected time slots is no longer available. Please choose another slot.'
           : 'Unable to add this course to your cart.',
     })
   }
@@ -1084,13 +1407,13 @@ app.post('/api/users/:uid/cart/checkout', async (req, res) => {
           status: 'Enrolled',
           progress: 0,
           enrolledAt,
-          email: user?.email || normalizeEmail(req.auth.email),
+          email: normalizeEmail(req.auth.email) || user?.email || '',
         }))
 
       const payment = {
         date: enrolledAt.split('T')[0],
         ref: `INV-${Date.now().toString(36).toUpperCase()}`,
-        email: user?.email || normalizeEmail(req.auth.email),
+        email: normalizeEmail(req.auth.email) || user?.email || '',
         item: toAdd.map(course => course.title).join(' + '),
         amount: toAdd.reduce((sum, course) => sum + (parseFloat(String(course.price).replace(/[^0-9.]/g, '')) || 0), 0),
         status: 'Pending',
@@ -1141,7 +1464,8 @@ app.post('/api/users/:uid/dedup-courses', async (req, res) => {
     }
     const seen = new Map()
     for (const c of user.courses) {
-      if (!seen.has(c.id)) seen.set(c.id, c)
+      const key = String(c?.id ?? '')
+      if (key && !seen.has(key)) seen.set(key, c)
     }
     const deduped = Array.from(seen.values())
     await usersCol.updateOne({ uid }, { $set: { courses: deduped } })
@@ -1209,7 +1533,10 @@ app.post('/api/users/:uid/messages/:threadId/reply', async (req, res) => {
 app.put('/api/users/:uid/messages/read', async (req, res) => {
   try {
     const { uid } = req.params
-    await usersCol.updateOne({ uid }, { $set: { 'messages.$[].read': true } })
+    await usersCol.updateOne(
+      { uid, messages: { $type: 'array' } },
+      { $set: { 'messages.$[].read': true } }
+    )
     const user = await usersCol.findOne({ uid })
     res.json({ ok: true, messages: user?.messages || [] })
   } catch (e) {
@@ -1217,36 +1544,51 @@ app.put('/api/users/:uid/messages/read', async (req, res) => {
   }
 })
 
-const SYSTEM_PROMPT = `You are a friendly AI assistant for A Precision Driving School located in San Ramon, California. You help students with questions about driving courses, scheduling, payments, and general driving education. Keep responses concise, helpful, and friendly. Respond in the same language the user writes in.
+async function supportSystemPrompt() {
+  const [settings, pricing] = await Promise.all([
+    settingsCol.findOne({ _id: 'site' }),
+    pricingCol.find({}).sort({ order: 1, planName: 1 }).limit(50).toArray(),
+  ])
+  const phone = cleanText(settings?.phone, 40) || '+1 925 329 1736'
+  const email = normalizeEmail(settings?.email) || 'aprecisiondrivingschool@gmail.com'
+  const address = [cleanText(settings?.address, 300), cleanText(settings?.subaddress, 300)]
+    .filter(Boolean)
+    .join(', ') || '2001 Omega Rd, Ste 205, San Ramon, CA 94583'
+  const courseLines = pricing.length
+    ? pricing.map((tier, index) => {
+      const name = cleanText(tier.planName, 160) || `Plan ${index + 1}`
+      const price = cleanText(tier.planPrice, 40)
+      const slots = slotLimitForTier(tier)
+      return `${index + 1}. ${name}${price ? ` (${price})` : ''} - requires ${slots} lesson slot${slots === 1 ? '' : 's'}`
+    }).join('\n')
+    : 'Current packages and prices are available on the website Pricing page.'
 
-KEY INFORMATION:
-- Location: San Ramon, CA
-- Phone: (925) 555-0123
-- Email: info@aprecisiondriving.com
+  return `You are the support assistant for A Precision Driving School. Help students with the school website, course selection, lesson scheduling, permits, invoices, refund requests, and general California driving education. Keep answers concise, clear, professional, and friendly. Respond in the same language as the student.
 
-COURSES:
-1. Online Driver Ed ($59.99) - State-approved online course
-2. Basic BTW Package A ($299.99) - 2 hours in-car
-3. Basic BTW Package D ($499.99) - 4 hours in-car
-4. Essential BTW Package B ($749.99) - 6 hours in-car
-5. Ideal BTW + Online Package C ($799.99) - 6 hours BTW + online
-6. Premier BTW Package E ($1,199.99) - 10 hours in-car
-7. Duplicate Certificate 400C ($25.00)
+CURRENT SCHOOL INFORMATION:
+- Address: ${address}
+- Phone: ${phone}
+- Email: ${email}
 
-POLICIES:
-- Must have learner's permit for BTW lessons
-- 24-hour cancellation notice required
-- Refunds from dashboard
-- 2-hour time slots: 9-11AM, 11AM-1PM, 2-4PM, 4-6PM`
+CURRENT WEBSITE PACKAGES:
+${courseLines}
 
-app.post('/api/chat', rateLimit({ windowMs: 60_000, max: 12 }), async (req, res) => {
+WEBSITE WORKFLOWS:
+- Students choose a package, city, required dates and time slots from the Pricing page, then continue through the cart.
+- Students can view invoices, cancel future bookings, cancel a course, or submit a refund request from their dashboard.
+- A submitted refund remains Refund Pending until an administrator approves or denies it.
+- Payment-provider and bank instructions are not yet configured. Never request or invent card, bank, routing, or payment credentials; direct payment questions to the school using the contact details above.
+- Do not invent prices, policies, availability, confirmations, or refund decisions. If current information is unavailable, ask the student to contact the school.`
+}
+
+app.post('/api/chat', requireAuth, rateLimit({ windowMs: 60_000, max: 12 }), async (req, res) => {
   try {
     if (!groq) return res.status(503).json({ error: 'Chat is temporarily unavailable.' })
     const messages = sanitizeChatMessages(req.body?.messages, 30)
     if (messages.length === 0) return res.status(400).json({ error: 'At least one message is required.' })
 
     const chatMessages = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: await supportSystemPrompt() },
       ...messages,
     ]
 
@@ -1783,11 +2125,11 @@ app.get('/api/admin/refunds/stats', async (req, res) => {
   try {
     const all = await refundsCol.find({}).toArray()
     const totalRequests = all.length
-    const totalRefunded = all.filter(x => x.Status === 'refunded').length
+    const totalRefunded = all.filter(x => String(x.Status || '').toLowerCase() === 'refunded').length
     const totalAmount = all
-      .filter(x => x.Status === 'refunded' && x.Amount)
+      .filter(x => String(x.Status || '').toLowerCase() === 'refunded' && x.Amount)
       .reduce((sum, x) => sum + (parseFloat(String(x.Amount).replace(/[^0-9.]/g, '')) || 0), 0)
-    const pending = all.filter(x => x.Status === 'pending' || !x.Status).length
+    const pending = all.filter(x => String(x.Status || 'pending').toLowerCase() === 'pending').length
     res.json({ totalRequests, totalRefunded, totalAmount, pending })
   } catch (e) {
     res.status(500).json({ error: e.message })
@@ -1796,36 +2138,78 @@ app.get('/api/admin/refunds/stats', async (req, res) => {
 
 app.post('/api/admin/refunds', async (req, res) => {
   try {
+    const sanitized = sanitizeRefundRecord(req.body)
     const doc = {
-      ...req.body,
-      Status: req.body.Status || 'pending',
+      ...sanitized,
       created_at: new Date().toISOString().replace('T', ' ').slice(0, 19),
     }
     const r = await refundsCol.insertOne(doc)
     res.json({ ok: true, _id: r.insertedId })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    if (e.status) return res.status(e.status).json({ error: e.message })
+    sendServerError(res, e, 'Refund record creation failed')
   }
 })
 
 app.put('/api/admin/refunds/:id', async (req, res) => {
   try {
-    await refundsCol.updateOne(
-      { _id: new ObjectId(req.params.id) },
-      { $set: { ...req.body, updated_at: new Date().toISOString().replace('T', ' ').slice(0, 19) } }
-    )
-    res.json({ ok: true })
+    if (!ObjectId.isValid(req.params.id)) return res.status(400).json({ error: 'Invalid refund id.' })
+    const refundId = new ObjectId(req.params.id)
+    const sanitized = sanitizeRefundRecord(req.body, { partial: true })
+    const result = await withMongoTransaction(async (session) => {
+      const existing = await refundsCol.findOne({ _id: refundId }, { session })
+      if (!existing) return { found: false }
+      const updatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19)
+      await refundsCol.updateOne(
+        { _id: refundId },
+        { $set: { ...sanitized, updated_at: updatedAt } },
+        { session }
+      )
+      const nextStatus = sanitized.Status || existing.Status || 'pending'
+      await applyRefundDecisionToCourse(existing, nextStatus, session)
+      return { found: true, status: nextStatus }
+    })
+    if (!result.found) return res.status(404).json({ error: 'Refund record not found.' })
+    res.json({ ok: true, status: result.status })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    if (e.status) return res.status(e.status).json({ error: e.message })
+    sendServerError(res, e, 'Refund record update failed')
   }
 })
 
 app.delete('/api/admin/refunds/:id', async (req, res) => {
   try {
-    await refundsCol.deleteOne({ _id: new ObjectId(req.params.id) })
+    if (!ObjectId.isValid(req.params.id)) return res.status(400).json({ error: 'Invalid refund id.' })
+    const refundId = new ObjectId(req.params.id)
+    const result = await withMongoTransaction(async (session) => {
+      const existing = await refundsCol.findOne({ _id: refundId }, { session })
+      if (!existing) return false
+      if (String(existing.Status || 'pending').toLowerCase() === 'pending') {
+        const uid = cleanText(existing.uid || existing.User_UID, 160)
+        const courseId = cleanText(existing.Course_ID, 120)
+        if (uid && courseId) {
+          await usersCol.updateOne(
+            { uid },
+            {
+              $set: { 'courses.$[course].status': 'Enrolled' },
+              $unset: {
+                'courses.$[course].refundRequestId': '',
+                'courses.$[course].refundRequestedAt': '',
+                'courses.$[course].refundStatus': '',
+                'courses.$[course].refundDecisionAt': '',
+              },
+            },
+            { session, arrayFilters: [{ 'course.id': { $in: courseIdCandidates(courseId) } }] }
+          )
+        }
+      }
+      await refundsCol.deleteOne({ _id: refundId }, { session })
+      return true
+    })
+    if (!result) return res.status(404).json({ error: 'Refund record not found.' })
     res.json({ ok: true })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Refund record deletion failed')
   }
 })
 

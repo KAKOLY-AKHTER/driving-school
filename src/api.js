@@ -2,17 +2,24 @@ import { auth } from './firebase'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 const REQUEST_TIMEOUT_MS = 20_000
+const pathPart = (value) => encodeURIComponent(String(value ?? ''))
 
 async function request(path, options = {}) {
   const headers = new Headers(options.headers || {})
   headers.set('Accept', 'application/json')
   if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
 
-  const currentUser = auth.currentUser
-  if (currentUser) {
-    const token = await currentUser.getIdToken()
+  const applyAuthHeader = async (forceRefresh = false) => {
+    const currentUser = auth.currentUser
+    if (!currentUser) {
+      headers.delete('Authorization')
+      return false
+    }
+    const token = await currentUser.getIdToken(forceRefresh)
     headers.set('Authorization', `Bearer ${token}`)
+    return true
   }
+  await applyAuthHeader()
 
   const controller = new AbortController()
   const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
@@ -21,13 +28,28 @@ async function request(path, options = {}) {
     else options.signal.addEventListener('abort', () => controller.abort(), { once: true })
   }
 
+  const send = () => fetch(`${API_URL}${path}`, {
+    ...options,
+    headers,
+    signal: controller.signal,
+  })
+
   let res
   try {
-    res = await fetch(`${API_URL}${path}`, {
-      ...options,
-      headers,
-      signal: controller.signal,
-    })
+    res = await send()
+
+    // Firebase can retain a previously issued ID token across a browser or API
+    // restart. If the API rejects that token, ask Firebase for a fresh one and
+    // retry exactly once. Authentication is still fully verified by the API.
+    if (res.status === 401 && auth.currentUser) {
+      try {
+        await applyAuthHeader(true)
+        res = await send()
+      } catch {
+        // Preserve the API's original, user-friendly 401 response when the
+        // Firebase session itself can no longer be refreshed.
+      }
+    }
   } catch (error) {
     if (error.name === 'AbortError') throw new Error('The server took too long to respond. Please try again.')
     throw new Error('Unable to reach the server. Check your connection and try again.')
@@ -45,61 +67,62 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  getUser: (uid) => request(`/api/users/${uid}`),
-  saveUser: (uid, data) => request(`/api/users/${uid}`, { method: 'PUT', body: JSON.stringify(data) }),
-  getBookings: (uid) => request(`/api/bookings/${uid}`),
+  getUser: (uid) => request(`/api/users/${pathPart(uid)}`),
+  saveUser: (uid, data) => request(`/api/users/${pathPart(uid)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getBookings: (uid) => request(`/api/bookings/${pathPart(uid)}`),
   getBookingAvailability: (date) => request(`/api/bookings/availability?date=${encodeURIComponent(date)}`),
-  deleteBooking: (id) => request(`/api/bookings/${id}`, { method: 'DELETE' }),
+  deleteBooking: (id) => request(`/api/bookings/${pathPart(id)}`, { method: 'DELETE' }),
   adminStats: () => request('/api/admin/stats'),
   adminUsers: () => request('/api/admin/users'),
   adminBookings: () => request('/api/admin/bookings'),
-  adminSetRole: (uid, isAdmin) => request(`/api/admin/users/${uid}/role`, { method: 'PUT', body: JSON.stringify({ isAdmin }) }),
-  adminDeleteBooking: (id) => request(`/api/admin/bookings/${id}`, { method: 'DELETE' }),
+  adminSetRole: (uid, isAdmin) => request(`/api/admin/users/${pathPart(uid)}/role`, { method: 'PUT', body: JSON.stringify({ isAdmin }) }),
+  adminDeleteBooking: (id) => request(`/api/admin/bookings/${pathPart(id)}`, { method: 'DELETE' }),
   adminContacts: () => request('/api/admin/contacts'),
-  adminUpdateContact: (id, data) => request(`/api/admin/contacts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  adminDeleteContact: (id) => request(`/api/admin/contacts/${id}`, { method: 'DELETE' }),
-  addCourse: (uid, course) => request(`/api/users/${uid}/courses`, { method: 'POST', body: JSON.stringify(course) }),
-  removeCourse: (uid, courseId) => request(`/api/users/${uid}/courses/${courseId}`, { method: 'DELETE' }),
-  addPayment: (uid, payment) => request(`/api/users/${uid}/payments`, { method: 'POST', body: JSON.stringify(payment) }),
-  dedupCourses: (uid) => request(`/api/users/${uid}/dedup-courses`, { method: 'POST' }),
-  getCart: (uid) => request(`/api/users/${uid}/cart`),
-  addToCart: (uid, course) => request(`/api/users/${uid}/cart`, { method: 'POST', body: JSON.stringify(course) }),
-  removeFromCart: (uid, courseId) => request(`/api/users/${uid}/cart/${courseId}`, { method: 'DELETE' }),
-  enrollAllCart: (uid) => request(`/api/users/${uid}/cart/checkout`, { method: 'POST' }),
-  getMessages: (uid) => request(`/api/users/${uid}/messages`),
-  createThread: (uid, subject, text) => request(`/api/users/${uid}/messages`, { method: 'POST', body: JSON.stringify({ subject, text }) }),
-  replyThread: (uid, threadId, text) => request(`/api/users/${uid}/messages/${threadId}/reply`, { method: 'POST', body: JSON.stringify({ text }) }),
-  markAllRead: (uid) => request(`/api/users/${uid}/messages/read`, { method: 'PUT' }),
+  adminUpdateContact: (id, data) => request(`/api/admin/contacts/${pathPart(id)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  adminDeleteContact: (id) => request(`/api/admin/contacts/${pathPart(id)}`, { method: 'DELETE' }),
+  addCourse: (uid, course) => request(`/api/users/${pathPart(uid)}/courses`, { method: 'POST', body: JSON.stringify(course) }),
+  removeCourse: (uid, courseId) => request(`/api/users/${pathPart(uid)}/courses/${pathPart(courseId)}`, { method: 'DELETE' }),
+  requestCourseRefund: (uid, courseId, reason = '') => request(`/api/users/${pathPart(uid)}/courses/${pathPart(courseId)}/refund`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  addPayment: (uid, payment) => request(`/api/users/${pathPart(uid)}/payments`, { method: 'POST', body: JSON.stringify(payment) }),
+  dedupCourses: (uid) => request(`/api/users/${pathPart(uid)}/dedup-courses`, { method: 'POST' }),
+  getCart: (uid) => request(`/api/users/${pathPart(uid)}/cart`),
+  addToCart: (uid, course) => request(`/api/users/${pathPart(uid)}/cart`, { method: 'POST', body: JSON.stringify(course) }),
+  removeFromCart: (uid, courseId) => request(`/api/users/${pathPart(uid)}/cart/${pathPart(courseId)}`, { method: 'DELETE' }),
+  enrollAllCart: (uid) => request(`/api/users/${pathPart(uid)}/cart/checkout`, { method: 'POST' }),
+  getMessages: (uid) => request(`/api/users/${pathPart(uid)}/messages`),
+  createThread: (uid, subject, text) => request(`/api/users/${pathPart(uid)}/messages`, { method: 'POST', body: JSON.stringify({ subject, text }) }),
+  replyThread: (uid, threadId, text) => request(`/api/users/${pathPart(uid)}/messages/${pathPart(threadId)}/reply`, { method: 'POST', body: JSON.stringify({ text }) }),
+  markAllRead: (uid) => request(`/api/users/${pathPart(uid)}/messages/read`, { method: 'PUT' }),
   chat: (messages) => request('/api/chat', { method: 'POST', body: JSON.stringify({ messages }) }),
-  getConversations: (uid) => request(`/api/users/${uid}/conversations`),
-  getConversation: (uid, convId) => request(`/api/users/${uid}/conversations/${convId}`),
-  createConversation: (uid, title, messages) => request(`/api/users/${uid}/conversations`, { method: 'POST', body: JSON.stringify({ title, messages }) }),
-  updateConversation: (uid, convId, data) => request(`/api/users/${uid}/conversations/${convId}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteConversation: (uid, convId) => request(`/api/users/${uid}/conversations/${convId}`, { method: 'DELETE' }),
+  getConversations: (uid) => request(`/api/users/${pathPart(uid)}/conversations`),
+  getConversation: (uid, convId) => request(`/api/users/${pathPart(uid)}/conversations/${pathPart(convId)}`),
+  createConversation: (uid, title, messages) => request(`/api/users/${pathPart(uid)}/conversations`, { method: 'POST', body: JSON.stringify({ title, messages }) }),
+  updateConversation: (uid, convId, data) => request(`/api/users/${pathPart(uid)}/conversations/${pathPart(convId)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteConversation: (uid, convId) => request(`/api/users/${pathPart(uid)}/conversations/${pathPart(convId)}`, { method: 'DELETE' }),
   getSettings: () => request('/api/settings'),
   adminUpdateSettings: (data) => request('/api/admin/settings', { method: 'PUT', body: JSON.stringify(data) }),
   getPricing: () => request('/api/pricing'),
   adminEnrollments: (params) => request(`/api/admin/enrollments?${new URLSearchParams(params)}`),
   adminEnrollmentsStats: () => request('/api/admin/enrollments/stats'),
   adminAddEnrollment: (data) => request('/api/admin/enrollments', { method: 'POST', body: JSON.stringify(data) }),
-  adminUpdateEnrollment: (id, data) => request(`/api/admin/enrollments/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  adminDeleteEnrollment: (id) => request(`/api/admin/enrollments/${id}`, { method: 'DELETE' }),
+  adminUpdateEnrollment: (id, data) => request(`/api/admin/enrollments/${pathPart(id)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  adminDeleteEnrollment: (id) => request(`/api/admin/enrollments/${pathPart(id)}`, { method: 'DELETE' }),
   adminRefunds: (params) => request(`/api/admin/refunds?${new URLSearchParams(params)}`),
   adminRefundsStats: () => request('/api/admin/refunds/stats'),
   adminAddRefund: (data) => request('/api/admin/refunds', { method: 'POST', body: JSON.stringify(data) }),
-  adminUpdateRefund: (id, data) => request(`/api/admin/refunds/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  adminDeleteRefund: (id) => request(`/api/admin/refunds/${id}`, { method: 'DELETE' }),
+  adminUpdateRefund: (id, data) => request(`/api/admin/refunds/${pathPart(id)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  adminDeleteRefund: (id) => request(`/api/admin/refunds/${pathPart(id)}`, { method: 'DELETE' }),
   adminAddPricing: (data) => request('/api/admin/pricing', { method: 'POST', body: JSON.stringify(data) }),
-  adminUpdatePricing: (id, data) => request(`/api/admin/pricing/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  adminDeletePricing: (id) => request(`/api/admin/pricing/${id}`, { method: 'DELETE' }),
+  adminUpdatePricing: (id, data) => request(`/api/admin/pricing/${pathPart(id)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  adminDeletePricing: (id) => request(`/api/admin/pricing/${pathPart(id)}`, { method: 'DELETE' }),
   getAreas: () => request('/api/areas'),
   adminAddArea: (data) => request('/api/admin/areas', { method: 'POST', body: JSON.stringify(data) }),
-  adminUpdateArea: (id, data) => request(`/api/admin/areas/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  adminDeleteArea: (id) => request(`/api/admin/areas/${id}`, { method: 'DELETE' }),
+  adminUpdateArea: (id, data) => request(`/api/admin/areas/${pathPart(id)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  adminDeleteArea: (id) => request(`/api/admin/areas/${pathPart(id)}`, { method: 'DELETE' }),
   getSocials: () => request('/api/socials'),
   adminAddSocial: (data) => request('/api/admin/socials', { method: 'POST', body: JSON.stringify(data) }),
-  adminUpdateSocial: (id, data) => request(`/api/admin/socials/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  adminDeleteSocial: (id) => request(`/api/admin/socials/${id}`, { method: 'DELETE' }),
+  adminUpdateSocial: (id, data) => request(`/api/admin/socials/${pathPart(id)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  adminDeleteSocial: (id) => request(`/api/admin/socials/${pathPart(id)}`, { method: 'DELETE' }),
 }
 
 export function makeEmbedCode(mapUrl) {

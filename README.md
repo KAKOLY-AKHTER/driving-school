@@ -29,7 +29,23 @@ and/or Vercel):
   `FIREBASE_PRIVATE_KEY`.
 - First-admin allowlist: `ADMIN_UID` (preferred for an existing Firebase user), or
   `ADMIN_EMAIL` (the exact address must be verified in Firebase).
-- `BOOKING_HOLD_MINUTES`: optional; defaults to `15` and is limited to 5–60 minutes.
+- `BOOKING_HOLD_MINUTES`: optional; defaults to `15` and is limited to 5-60 minutes.
+
+### Vercel Firebase Admin setup
+
+1. In Firebase Console, open **Project settings > Service accounts** and generate a
+   new private key for the same project used by the frontend.
+2. Convert the downloaded JSON to Base64 in PowerShell:
+
+   ```powershell
+   [Convert]::ToBase64String([IO.File]::ReadAllBytes('C:\path\service-account.json'))
+   ```
+
+3. In **Vercel > Project > Settings > Environment Variables**, add
+   `FIREBASE_PROJECT_ID` and `FIREBASE_SERVICE_ACCOUNT_BASE64` for Production (and
+   Preview when needed).
+4. Redeploy after changing environment variables; Vercel does not apply new values
+   to an existing deployment.
 
 Never place Firebase Admin credentials in a `VITE_` variable or commit them to Git.
 With `ADMIN_EMAIL`, create the account at `/admin/setup`, verify the email, and sign
