@@ -21,6 +21,19 @@ const localDateKey = (date = new Date()) => {
 
 const isErrorMessage = (message) => /failed|incorrect|invalid|must|please|unavailable|could not/i.test(message)
 
+const profileTabs = new Set(['dashboard', 'courses', 'payments', 'settings', 'course'])
+
+const dashboardLoadMessage = (result, label) => {
+  if (result.status !== 'rejected') return ''
+  if (result.reason?.status === 401) {
+    return 'We could not verify your account session. Please refresh the page or sign in again.'
+  }
+  if (result.reason?.status === 403) {
+    return `You do not have permission to load your ${label.toLowerCase()}.`
+  }
+  return `${label} could not be loaded. Please check your connection and retry.`
+}
+
 const TIME_SLOTS = [
   { id: 'slot1', label: 'Morning 1', time: '9:00 AM - 11:00 AM', hours: 2 },
   { id: 'slot2', label: 'Morning 2', time: '11:00 AM - 1:00 PM', hours: 2 },
@@ -55,7 +68,7 @@ export default function DashboardPage() {
   const [courseType, setCourseType] = useState('')
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState('')
+  const [loadErrors, setLoadErrors] = useState({ profile: '', bookings: '' })
   const [loadVersion, setLoadVersion] = useState(0)
   const [activeTab, setActiveTab] = useState('dashboard')
   const [bookings, setBookings] = useState([])
@@ -95,7 +108,7 @@ export default function DashboardPage() {
     let active = true
     const load = async () => {
       setLoading(true)
-      setLoadError('')
+      setLoadErrors({ profile: '', bookings: '' })
       try {
         const [profileResult, bookingsResult] = await Promise.allSettled([api.getUser(user.uid), api.getBookings(user.uid)])
         if (!active) return
@@ -134,12 +147,20 @@ export default function DashboardPage() {
             }
           }
         }
-        setBookings(bookingsResult.status === 'fulfilled' && Array.isArray(bookingsResult.value) ? bookingsResult.value : [])
-        if (profileResult.status === 'rejected' || bookingsResult.status === 'rejected') {
-          setLoadError('Some dashboard information could not be loaded. Please retry.')
+        if (bookingsResult.status === 'fulfilled' && Array.isArray(bookingsResult.value)) {
+          setBookings(bookingsResult.value)
         }
+        setLoadErrors({
+          profile: dashboardLoadMessage(profileResult, 'Account information'),
+          bookings: dashboardLoadMessage(bookingsResult, 'Lesson bookings'),
+        })
       } catch {
-        if (active) setLoadError('Dashboard information could not be loaded. Check your connection and retry.')
+        if (active) {
+          setLoadErrors({
+            profile: 'Account information could not be loaded. Please check your connection and retry.',
+            bookings: 'Lesson bookings could not be loaded. Please check your connection and retry.',
+          })
+        }
       } finally {
         if (active) setLoading(false)
       }
@@ -411,6 +432,9 @@ export default function DashboardPage() {
     { id: 'settings', label: 'Settings', sublabel: 'Account', icon: I.shield },
     { id: 'support', label: 'Support', sublabel: 'AI assistant', icon: I.profile },
   ]
+  const visibleLoadError = activeTab === 'bookings'
+    ? loadErrors.bookings
+    : profileTabs.has(activeTab) ? loadErrors.profile : ''
   const switchTab = (tab) => { setActiveTab(tab); setSidebarOpen(false); setActiveModule(null); setModuleStep(0); setCourseDetail(null); setCancelConfirm(null); setRefundConfirm(null); setBookingCancelConfirm(null) }
 
   return (
@@ -655,9 +679,9 @@ export default function DashboardPage() {
               </div>
             )}
             <div style={{ padding:'clamp(1rem,3vw,2.5rem)' }}>
-              {loadError && (
+              {visibleLoadError && (
                 <div role="alert" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'1rem', flexWrap:'wrap', padding:'0.9rem 1rem', marginBottom:'1rem', border:'1px solid #FECACA', borderRadius:'12px', background:'#FEF2F2', color:'#B91C1C', fontFamily:'var(--font-body)' }}>
-                  <span>{loadError}</span>
+                  <span>{visibleLoadError}</span>
                   <button type="button" onClick={() => setLoadVersion(version => version + 1)} disabled={loading} style={{ padding:'0.45rem 0.8rem', border:'1px solid #FCA5A5', borderRadius:'8px', background:'#fff', color:'#B91C1C', fontWeight:800, cursor:loading ? 'wait' : 'pointer' }}>{loading ? 'Retrying...' : 'Retry'}</button>
                 </div>
               )}

@@ -1,12 +1,20 @@
-import 'dotenv/config'
+import dotenv from 'dotenv'
 import express from 'express'
 import cors from 'cors'
 import dns from 'node:dns'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { MongoClient, ObjectId } from 'mongodb'
 import Groq from 'groq-sdk'
 import { randomUUID } from 'node:crypto'
 import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
+
+const serverDirectory = path.dirname(fileURLToPath(import.meta.url))
+// Resolve configuration relative to this file so local authentication works
+// whether the API is started from the repository root or from /server.
+dotenv.config({ path: path.join(serverDirectory, '.env') })
+dotenv.config({ path: path.join(serverDirectory, '..', '.env') })
 
 
 const configuredDnsServers = String(process.env.DNS_SERVERS || '')
@@ -291,6 +299,7 @@ const normalizeBookingTime = (value) => {
 const bookingSlotKey = (date, timeSlot) => `${date}|${normalizeBookingTime(timeSlot)}`
 
 let firebaseAuth
+let canCheckFirebaseTokenRevocation = false
 function getFirebaseAdminAuth() {
   if (firebaseAuth) return firebaseAuth
 
@@ -330,6 +339,11 @@ function getFirebaseAdminAuth() {
     options.credential = applicationDefault()
   }
 
+  // Signature, issuer and audience validation only need the Firebase project id.
+  // Revocation lookup additionally needs an Admin credential, which local
+  // development may intentionally omit.
+  canCheckFirebaseTokenRevocation = Boolean(options.credential)
+
   const firebaseApp = getApps()[0] || initializeApp(options)
   firebaseAuth = getAuth(firebaseApp)
   return firebaseAuth
@@ -341,7 +355,11 @@ async function requireAuth(req, res, next) {
   if (!match) return res.status(401).json({ error: 'Authentication required.' })
 
   try {
-    req.auth = await getFirebaseAdminAuth().verifyIdToken(match[1], true)
+    const adminAuth = getFirebaseAdminAuth()
+    if (isProduction && !canCheckFirebaseTokenRevocation) {
+      throw new Error('Firebase Admin credentials are required in production.')
+    }
+    req.auth = await adminAuth.verifyIdToken(match[1], canCheckFirebaseTokenRevocation)
     return next()
   } catch (error) {
     console.warn('Authentication rejected:', error.code || error.message)
