@@ -51,25 +51,87 @@ app.set('trust proxy', Math.max(0, Math.min(2, Number(process.env.TRUST_PROXY_HO
 
 const normalizeOrigin = (value) => {
   try {
-    return new URL(String(value).trim()).origin
+    const url = new URL(String(value).trim())
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return ''
+    return url.origin
   } catch {
     return ''
   }
 }
-const allowedOrigins = String(process.env.CLIENT_URL || '')
+
+const normalizeDeploymentOrigin = (value) => {
+  const candidate = String(value || '').trim()
+  if (!candidate) return ''
+  return normalizeOrigin(/^https?:\/\//i.test(candidate) ? candidate : `https://${candidate}`)
+}
+
+const configuredClientOrigins = String(process.env.CLIENT_URL || '')
   .split(',')
   .map(normalizeOrigin)
   .filter(Boolean)
+const vercelSystemOrigins = [
+  process.env.VERCEL_URL,
+  process.env.VERCEL_PROJECT_PRODUCTION_URL,
+  process.env.VERCEL_BRANCH_URL,
+]
+  .map(normalizeDeploymentOrigin)
+  .filter(Boolean)
+const allowedOrigins = new Set([...configuredClientOrigins, ...vercelSystemOrigins])
 const isProduction = process.env.NODE_ENV === 'production'
-app.use(cors({
-  origin(origin, callback) {
-    const normalized = origin ? normalizeOrigin(origin) : ''
-    if (!origin || allowedOrigins.includes(normalized) || (!isProduction && allowedOrigins.length === 0)) return callback(null, true)
-    return callback(new Error('Origin not allowed by CORS'))
-  },
+const isVercelRuntime = process.env.VERCEL === '1' || Boolean(process.env.VERCEL_ENV)
+const localDevelopmentHosts = new Set(['localhost', '127.0.0.1', '::1'])
+
+const isLocalDevelopmentOrigin = (origin) => {
+  if (isProduction) return false
+  try {
+    return localDevelopmentHosts.has(new URL(origin).hostname)
+  } catch {
+    return false
+  }
+}
+
+const requestOrigins = (req) => {
+  const hosts = [
+    req.get('host'),
+    String(req.get('x-forwarded-host') || '').split(',')[0].trim(),
+  ].filter(Boolean)
+  const protocols = new Set([
+    req.protocol,
+    String(req.get('x-forwarded-proto') || '').split(',')[0].trim(),
+  ].filter(protocol => protocol === 'http' || protocol === 'https'))
+
+  const origins = new Set()
+  for (const host of hosts) {
+    for (const protocol of protocols) {
+      const origin = normalizeOrigin(`${protocol}://${host}`)
+      if (origin) origins.add(origin)
+    }
+  }
+  return origins
+}
+
+const corsPolicy = {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Authorization', 'Content-Type'],
   maxAge: 86_400,
+}
+
+app.use(cors((req, callback) => {
+  const requestOrigin = req.get('origin')
+
+  // Requests without an Origin header (server-to-server, health checks, curl)
+  // are not cross-origin browser requests and do not need CORS headers.
+  if (!requestOrigin) return callback(null, { ...corsPolicy, origin: false })
+
+  const normalized = normalizeOrigin(requestOrigin)
+  const isAllowed = Boolean(normalized) && (
+    allowedOrigins.has(normalized)
+    || isLocalDevelopmentOrigin(normalized)
+    || (isVercelRuntime && requestOrigins(req).has(normalized))
+  )
+
+  if (isAllowed) return callback(null, { ...corsPolicy, origin: normalized })
+  return callback(new Error('Origin not allowed by CORS'))
 }))
 app.use(express.json({ limit: '100kb' }))
 app.use((_req, res, next) => {
