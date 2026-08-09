@@ -36,8 +36,12 @@ const priceNumber = (value) => {
 }
 
 const slotLimitForPlan = (tier) => {
+  const id = String(tier?.id || '')
   const name = String(tier?.planName || '').toUpperCase()
-  if (String(tier?.id) === '2') return 1
+  if (id === '2') return 1
+  if (id === '5') return 5
+  if (id === '3' || id === '4') return 3
+  if (id === '6' || id === '7' || id === '8') return 1
   if (name.includes('PREMIER')) return 5
   if (name.includes('ESSENTIAL')) return 3
   if (name.includes('IDEAL FOR STUDENTS')) return 3
@@ -49,8 +53,9 @@ const slotLimitForPlan = (tier) => {
 
 const slotInstruction = (tier) => {
   const limit = slotLimitForPlan(tier)
-  const dateAndTime = String(tier?.planName || '').toUpperCase().includes('DMV DRIVE TEST CAR RENTAL')
-  return `Select ${limit} slot ${dateAndTime ? 'date & time' : 'date'}`
+  return limit === 1
+    ? 'Select 1 date & time slot'
+    : `Select 1 to ${limit} date & time slots`
 }
 
 function BookingSteps({ current }) {
@@ -157,8 +162,8 @@ export default function PricingPage() {
   }
 
   const handleBooking = async () => {
-    if (!selectedPlans.length || selectedPlans.some(plan => plan.slots.length !== slotLimitForPlan(plan.tier))) {
-      setError('Please select the required number of date and time slots for every plan.')
+    if (!selectedPlans.length || selectedPlans.some(plan => plan.slots.length < 1 || plan.slots.length > slotLimitForPlan(plan.tier))) {
+      setError("Please select at least 1 available slot for every plan. You may choose up to each plan's displayed maximum.")
       return
     }
     setStep('loading')
@@ -371,7 +376,8 @@ export default function PricingPage() {
             <div style={{ padding: '1rem 0.75rem 0.75rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '9px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                 <div>
-                  <div style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.75rem' }}>Select Your Preferred Dates</div>
+                  <div style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.75rem' }}>Select Your Preferred Slots</div>
+                  <div style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.68rem', marginTop: '0.15rem' }}>Choose at least 1 slot for each plan, up to its displayed maximum.</div>
                   <strong style={{ color: '#0755ae', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>{calendarMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' })}</strong>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -400,13 +406,13 @@ export default function PricingPage() {
                 })}
               </div>
 
-              <div style={{ marginTop: '0.9rem', fontFamily: 'var(--font-body)', fontSize: '0.75rem', fontWeight: 700, color: DARK }}>Selected Dates:</div>
+              <div style={{ marginTop: '0.9rem', fontFamily: 'var(--font-body)', fontSize: '0.75rem', fontWeight: 700, color: DARK }}>Selected Slots:</div>
               {selectedPlans.filter(plan => plan.tier.id !== selectedTier.id).map(plan => (
                 <div key={plan.tier.id} onClick={() => activatePlan(plan)} style={{ marginTop: '0.35rem', padding: '0.65rem', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
                     <div>
                       <strong style={{ color: '#586576', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>{plan.tier.planName}</strong>
-                      <span style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> ({slotInstruction(plan.tier)} · {plan.slots.length}/{slotLimitForPlan(plan.tier)})</span>
+                      <span style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> ({slotInstruction(plan.tier)} · {plan.slots.length} selected / {slotLimitForPlan(plan.tier)} max)</span>
                       <div style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>{plan.city}</div>
                       <button onClick={(e) => { e.stopPropagation(); removePlan(plan.tier.id) }} style={{ marginTop: '0.4rem', padding: '0.32rem 0.5rem', border: 0, borderRadius: '4px', background: '#e93647', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.65rem', cursor: 'pointer' }}>Remove plan</button>
                     </div>
@@ -425,7 +431,7 @@ export default function PricingPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
                   <div>
                     <strong style={{ color: '#586576', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>{selectedTier.planName}</strong>
-                    <span style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> ({slotInstruction(selectedTier)})</span>
+                    <span style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> ({slotInstruction(selectedTier)} · {selectedSlots.length} selected / {slotLimitForPlan(selectedTier)} max)</span>
                     <div style={{ marginTop: '0.2rem', color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>{selectedCity}</div>
                     <button onClick={() => removePlan(selectedTier.id)} style={{ marginTop: '0.45rem', padding: '0.35rem 0.55rem', border: 0, borderRadius: '4px', background: '#e93647', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer' }}>Remove plan</button>
                   </div>

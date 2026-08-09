@@ -531,6 +531,16 @@ function slotLimitForTier(tier) {
   return 3
 }
 
+function validateSlotCountForTier(slots, tier, status = 400, planLabel = 'This plan') {
+  const maximumSlots = slotLimitForTier(tier)
+  if (slots.length < 1) {
+    throw new HttpError(status, `${planLabel} must include at least 1 booking slot.`)
+  }
+  if (slots.length > maximumSlots) {
+    throw new HttpError(status, `${planLabel} allows up to ${maximumSlots} booking slot${maximumSlots === 1 ? '' : 's'}.`)
+  }
+}
+
 async function pricingTierById(courseId, session) {
   const candidates = [String(courseId)]
   if (/^\d+$/.test(String(courseId))) candidates.push(Number(courseId))
@@ -1319,10 +1329,7 @@ app.post('/api/users/:uid/cart', async (req, res) => {
       if ((user?.courses || []).some(course => String(course.id) === courseId)) {
         throw new HttpError(409, 'You are already enrolled in this plan. Please choose a different plan.')
       }
-      const requiredSlots = slotLimitForTier(tier)
-      if (slots.length !== requiredSlots) {
-        throw new HttpError(400, `This plan requires exactly ${requiredSlots} booking slot${requiredSlots === 1 ? '' : 's'}.`)
-      }
+      validateSlotCountForTier(slots, tier)
 
       const cart = await cartsCol.findOne({ uid }, { session })
       const oldItems = cart?.items || []
@@ -1415,10 +1422,7 @@ app.post('/api/users/:uid/cart/checkout', async (req, res) => {
         const slots = pickupSlotsFromCourse(item)
         const tier = await pricingTierById(courseId, session)
         if (!tier) throw new HttpError(400, 'A pricing plan in your cart is no longer available.')
-        const requiredSlots = slotLimitForTier(tier)
-        if (slots.length !== requiredSlots) {
-          throw new HttpError(409, `The ${tier.planName} selection must contain exactly ${requiredSlots} booking slot${requiredSlots === 1 ? '' : 's'}.`)
-        }
+        validateSlotCountForTier(slots, tier, 409, `The ${tier.planName} selection`)
         verifiedItems.push({
           ...item,
           id: courseId,
@@ -1621,7 +1625,7 @@ async function supportSystemPrompt() {
       const name = cleanText(tier.planName, 160) || `Plan ${index + 1}`
       const price = cleanText(tier.planPrice, 40)
       const slots = slotLimitForTier(tier)
-      return `${index + 1}. ${name}${price ? ` (${price})` : ''} - requires ${slots} lesson slot${slots === 1 ? '' : 's'}`
+      return `${index + 1}. ${name}${price ? ` (${price})` : ''} - booking requires at least 1 lesson slot; maximum ${slots} lesson slot${slots === 1 ? '' : 's'}`
     }).join('\n')
     : 'Current packages and prices are available on the website Pricing page.'
 
@@ -1636,7 +1640,7 @@ CURRENT WEBSITE PACKAGES:
 ${courseLines}
 
 WEBSITE WORKFLOWS:
-- Students choose a package, city, required dates and time slots from the Pricing page, then continue through the cart.
+- Students choose a package, city, and at least 1 date and time slot from the Pricing page, up to the package maximum, then continue through the cart.
 - Students can view invoices, cancel future bookings, cancel a course, or submit a refund request from their dashboard.
 - A submitted refund remains Refund Pending until an administrator approves or denies it.
 - Payment-provider and bank instructions are not yet configured. Never request or invent card, bank, routing, or payment credentials; direct payment questions to the school using the contact details above.

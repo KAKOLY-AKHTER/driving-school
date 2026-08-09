@@ -135,9 +135,14 @@ export default function Nav() {
             {/* Auth - Desktop */}
             {user ? (
               <>
-                <Link to="/cart" className={`hidden lg:flex nav-premium-action nav-cart-action ${isOnlineCourse ? 'on-light' : ''}`} aria-label="My cart">
+                <Link
+                  to="/cart"
+                  className={`hidden lg:flex nav-premium-action nav-cart-action ${isOnlineCourse ? 'on-light' : ''}`}
+                  aria-label={cartCount > 0 ? `My cart, ${cartCount} ${cartCount === 1 ? 'course' : 'courses'}` : 'My cart, empty'}
+                  title={cartCount > 0 ? `${cartCount} ${cartCount === 1 ? 'course' : 'courses'} in cart` : 'Cart is empty'}
+                >
                   <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" /></svg>
-                  {cartCount > 0 && <span style={{ position: 'absolute', top: '-6px', right: '-6px', minWidth: '18px', height: '18px', padding: '0 4px', borderRadius: '999px', background: '#DC2626', color: '#fff', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(220,38,38,0.4)' }}>{cartCount}</span>}
+                  {cartCount > 0 && <span className="nav-cart-badge" aria-hidden="true">{cartCount}</span>}
                 </Link>
                 <div style={{ position: 'relative' }} className="hidden lg:block">
                 <button
@@ -307,7 +312,7 @@ export default function Nav() {
                 <Link to="/dashboard" onClick={() => setOpen(false)} className="nav-mobile-link" style={{ color: '#FDBC01' }}>My Dashboard</Link>
                 <Link to="/cart" onClick={() => setOpen(false)} className="nav-mobile-link" style={{ color: '#FDBC01', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span>My Cart</span>
-                  {cartCount > 0 && <span style={{ background: '#DC2626', color: '#fff', borderRadius: '999px', minWidth: '20px', height: '20px', padding: '0 6px', fontSize: '0.75rem', fontFamily: 'var(--font-mono)', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{cartCount}</span>}
+                  {cartCount > 0 && <span style={{ background: 'linear-gradient(135deg,#F43F5E,#C8102E)', color: '#fff', border: '2px solid #fff', borderRadius: '999px', minWidth: '26px', height: '26px', padding: '0 7px', fontSize: '0.8rem', lineHeight: 1, fontFamily: 'var(--font-mono)', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(153,27,27,0.42)' }}>{cartCount}</span>}
                 </Link>
                 <button onClick={async () => { setOpen(false); await signOut(auth); }} className="nav-mobile-link" style={{ color: '#DC2626', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', width: '100%' }}>Sign Out</button>
               </>
@@ -377,11 +382,36 @@ export default function Nav() {
           justify-content: center;
           flex-shrink: 0;
           border-radius: 14px;
+          overflow: visible;
         }
         .nav-cart-action svg {
           position: relative;
           z-index: 1;
           filter: drop-shadow(0 2px 4px rgba(0,0,0,0.22));
+        }
+        .nav-cart-badge {
+          position: absolute;
+          z-index: 3;
+          top: -10px;
+          right: -10px;
+          min-width: 26px;
+          height: 26px;
+          padding: 0 7px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #ffffff;
+          background: linear-gradient(135deg, #f43f5e, #c8102e);
+          border: 2px solid #ffffff;
+          border-radius: 999px;
+          box-shadow: 0 5px 14px rgba(127, 16, 35, 0.5), 0 0 0 1px rgba(220, 38, 38, 0.12);
+          font-family: var(--font-mono);
+          font-size: 0.78rem;
+          font-weight: 800;
+          line-height: 1;
+          letter-spacing: 0;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+          pointer-events: none;
         }
         .nav-profile-action {
           min-height: 48px;

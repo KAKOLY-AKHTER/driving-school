@@ -23,6 +23,16 @@ const localDateKey = (date = new Date()) => new Intl.DateTimeFormat('en-CA', {
 
 const isErrorMessage = (message) => /failed|incorrect|invalid|must|please|unavailable|could not/i.test(message)
 
+const formatUSD = (value) => {
+  const amount = typeof value === 'number'
+    ? value
+    : Number.parseFloat(String(value ?? '').replace(/[^0-9.-]/g, ''))
+
+  return Number.isFinite(amount)
+    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
+    : '$0.00'
+}
+
 const profileTabs = new Set(['dashboard', 'courses', 'payments', 'settings', 'course'])
 
 const dashboardLoadMessage = (result, label) => {
@@ -489,7 +499,7 @@ export default function DashboardPage() {
         ['Reference', payment.ref],
         ['Email', payment.email],
         ['Item', payment.item],
-        ['Amount', payment.amount],
+        ['Amount', formatUSD(payment.amount)],
         ['Status', payment.status],
       ],
       autoPrint: true,
@@ -668,9 +678,9 @@ export default function DashboardPage() {
               </div>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:'1rem' }}>
-              <Link to="/cart" aria-label="My cart" style={{ width:'42px', height:'42px', background:'linear-gradient(135deg,rgba(253,188,1,0.18),rgba(253,188,1,0.08))', border:'1px solid rgba(253,188,1,0.28)', borderRadius:'12px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)', boxShadow:'0 2px 10px rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.15)', textDecoration:'none', color:'#FDBC01' }}>
+              <Link to="/cart" aria-label={cartCount > 0 ? `My cart, ${cartCount} ${cartCount === 1 ? 'course' : 'courses'}` : 'My cart, empty'} title={cartCount > 0 ? `${cartCount} ${cartCount === 1 ? 'course' : 'courses'} in cart` : 'Cart is empty'} style={{ width:'42px', height:'42px', background:'linear-gradient(135deg,rgba(253,188,1,0.18),rgba(253,188,1,0.08))', border:'1px solid rgba(253,188,1,0.28)', borderRadius:'12px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)', boxShadow:'0 2px 10px rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.15)', textDecoration:'none', color:'#FDBC01' }}>
                 <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" /></svg>
-                {cartCount > 0 && <div style={{ position:'absolute', top:'-6px', right:'-6px', minWidth:'18px', height:'18px', padding:'0 4px', borderRadius:'999px', background:'#DC2626', color:'#fff', fontFamily:'var(--font-mono)', fontSize:'0.65rem', fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 6px rgba(220,38,38,0.4)' }}>{cartCount}</div>}
+                {cartCount > 0 && <div aria-hidden="true" style={{ position:'absolute', zIndex:2, top:'-9px', right:'-9px', minWidth:'25px', height:'25px', padding:'0 7px', border:'2px solid #fff', borderRadius:'999px', background:'linear-gradient(135deg,#F43F5E,#C8102E)', color:'#fff', fontFamily:'var(--font-mono)', fontSize:'0.76rem', lineHeight:1, fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center', textShadow:'0 1px 2px rgba(0,0,0,0.25)', boxShadow:'0 5px 14px rgba(127,16,35,0.5)' }}>{cartCount}</div>}
               </Link>
               <div className="dash-header-divider" style={{ width:'1px', height:'28px', background:'linear-gradient(180deg,transparent,rgba(253,188,1,0.2),transparent)' }} />
               <div style={{ position:'relative' }} onClick={() => setProfileMenuOpen(!profileMenuOpen)} onMouseEnter={() => setProfileMenuOpen(true)} onMouseLeave={() => setProfileMenuOpen(false)}>
@@ -1077,7 +1087,7 @@ export default function DashboardPage() {
                             <td style={{ padding:'1rem', fontFamily:'var(--font-mono)', fontSize:'1.05rem', color:'#475569', fontWeight:600 }}>{p.ref}</td>
                             <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569' }}>{p.email}</td>
                             <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', fontWeight:600 }}>{p.item}</td>
-                            <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#0F172A', fontWeight:700 }}>{p.amount}</td>
+                            <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#0F172A', fontWeight:700 }}>{formatUSD(p.amount)}</td>
                             <td style={{ padding:'1rem' }}><span style={{ padding:'0.25rem 0.7rem', background:p.status==='Paid' ? 'rgba(5,150,105,0.06)' : 'rgba(220,38,38,0.04)', color:p.status==='Paid' ? '#059669' : '#DC2626', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:700 }}>{p.status}</span></td>
                             <td style={{ padding:'1rem', textAlign:'center' }}><button type="button" aria-label={`Print invoice ${p.ref || ''}`} title="Print invoice" onClick={() => handlePrintPayment(p)} style={{ background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.35rem', borderRadius:'8px', display:'inline-flex' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg></button></td>
                           </tr>
@@ -1268,7 +1278,7 @@ export default function DashboardPage() {
                       <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(253,188,1,0.1),rgba(253,188,1,0.04))', display:'flex', alignItems:'center', justifyContent:'center' }}>{I.calendar}</div>
                       Book More Lessons
                     </h3>
-                    <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', lineHeight:1.7, color:'#475569', margin:'0 0 1rem' }}>Lesson dates and times are reserved while you select a package. This keeps availability and the required number of slots accurate for every plan.</p>
+                    <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', lineHeight:1.7, color:'#475569', margin:'0 0 1rem' }}>Lesson dates and times are reserved while you select a package. You may book from one lesson up to the package's maximum slot allowance.</p>
                     <div style={{ padding:'1rem', marginBottom:'1.25rem', border:'1px solid #DBEAFE', borderRadius:'12px', background:'#EFF6FF', color:'#1E3A8A', fontFamily:'var(--font-body)', fontSize:'0.92rem', lineHeight:1.6 }}>
                       To add or replace lessons, choose a package and complete its date and time selection. Existing confirmed bookings appear beside this panel.
                     </div>
