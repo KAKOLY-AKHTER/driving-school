@@ -30,6 +30,11 @@ const writeStorage = (key, value) => {
 
 const cleanText = (value, maxLength = 160) => String(value ?? '').trim().slice(0, maxLength)
 
+const cleanCount = (value) => {
+  const count = Number.parseInt(value, 10)
+  return Number.isFinite(count) && count >= 0 ? count : 0
+}
+
 export const normalizeCartItem = (item) => {
   if (!item || typeof item !== 'object') return null
 
@@ -49,10 +54,27 @@ export const normalizeCartItem = (item) => {
 
   const preferredDateValue = cleanText(item.preferredDate || pickupSlots[0]?.date, 10)
 
+  const slotAllowance = item.slotAllowance && typeof item.slotAllowance === 'object'
+    ? {
+        maximum: cleanCount(item.slotAllowance.maximum),
+        used: cleanCount(item.slotAllowance.used),
+        selected: cleanCount(item.slotAllowance.selected ?? pickupSlots.length),
+        remaining: cleanCount(item.slotAllowance.remaining),
+        remainingAfterSelection: cleanCount(item.slotAllowance.remainingAfterSelection),
+      }
+    : null
+
+  const chargeAmount = Number(item.chargeAmount)
+
   return {
     id,
     title,
     price: cleanText(item.price, 40),
+    chargeAmount: Number.isFinite(chargeAmount) && chargeAmount >= 0 ? chargeAmount : undefined,
+    continuation: item.continuation === true,
+    enrollmentId: cleanText(item.enrollmentId, 160),
+    holdExpired: item.holdExpired === true,
+    slotAllowance,
     city: cleanText(item.city, 100),
     preferredDate: /^\d{4}-\d{2}-\d{2}$/.test(preferredDateValue) ? preferredDateValue : '',
     pickupTime: cleanText(item.pickupTime || pickupSlots[0]?.time, 40),

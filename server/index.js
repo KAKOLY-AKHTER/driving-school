@@ -368,8 +368,17 @@ const BOOKING_TIMES = new Set([
   '07:00 AM - 09:00 AM', '09:00 AM - 11:00 AM', '11:00 AM - 01:00 PM', '12:00 PM - 02:00 PM', '02:00 PM - 04:00 PM', '04:00 PM - 06:00 PM',
   '9:00 AM - 11:00 AM', '11:00 AM - 1:00 PM', '2:00 PM - 4:00 PM', '4:00 PM - 6:00 PM',
 ])
+const BOOKING_TIME_ORDER = new Map([
+  '07:00 AM - 09:00 AM',
+  '09:00 AM - 11:00 AM',
+  '11:00 AM - 01:00 PM',
+  '12:00 PM - 02:00 PM',
+  '02:00 PM - 04:00 PM',
+  '04:00 PM - 06:00 PM',
+].map((time, index) => [time, index]))
 const BOOKING_HOLD_MINUTES = Math.max(5, Math.min(60, Number(process.env.BOOKING_HOLD_MINUTES) || 15))
 const ACTIVE_BOOKING_STATUSES = ['held', 'scheduled', 'confirmed', 'booked']
+const COUNTED_PACKAGE_BOOKING_STATUSES = new Set(['scheduled', 'confirmed', 'booked', 'completed'])
 
 const normalizeEmail = (value) => cleanText(value, 320).toLowerCase()
 const normalizeBookingTime = (value) => {
@@ -541,6 +550,122 @@ function validateSlotCountForTier(slots, tier, status = 400, planLabel = 'This p
   }
 }
 
+const normalizedBookingStatus = (value) => cleanText(value, 40).toLowerCase()
+const normalizedCourseStatus = (value) => cleanText(value || 'Enrolled', 40).toLowerCase()
+const courseCanAcceptMoreBookings = (course) => {
+  const status = normalizedCourseStatus(course?.status)
+  return !['cancelled', 'refunded', 'refund pending'].includes(status)
+}
+const courseEnrollmentFingerprint = (course) => cleanText(
+  course?.enrolledAt || course?.createdAt || course?.paymentRef || 'legacy-current-enrollment',
+  160
+)
+const findCourseEnrollmentIndex = (courses, courseId, fingerprint = '', { activeOnly = false } = {}) => {
+  const candidates = []
+  for (let index = 0; index < courses.length; index += 1) {
+    const course = courses[index]
+    if (String(course?.id) !== String(courseId)) continue
+    if (activeOnly && !courseCanAcceptMoreBookings(course)) continue
+    if (fingerprint && courseEnrollmentFingerprint(course) !== fingerprint) continue
+    candidates.push(index)
+  }
+  return candidates.length ? candidates[candidates.length - 1] : -1
+}
+
+const safeStoredPickupSlot = (slot) => {
+  const date = cleanText(slot?.date, 10)
+  const timeSlot = normalizeBookingTime(slot?.time || slot?.timeSlot)
+  if (!isDateKey(date) || !BOOKING_TIMES.has(timeSlot)) return null
+  return { date, time: timeSlot }
+}
+
+function packageSlotAllowance(course, tier, linkedBookings = [], selected = 0) {
+  const maximum = slotLimitForTier(tier || course)
+  const bookingBySlot = new Map()
+  for (const booking of linkedBookings) {
+    if (!isDateKey(booking?.date)) continue
+    const time = normalizeBookingTime(booking?.timeSlot || booking?.time)
+    if (!BOOKING_TIMES.has(time)) continue
+    bookingBySlot.set(bookingSlotKey(booking.date, time), normalizedBookingStatus(booking.status))
+  }
+
+  // pickupSlots is retained as a legacy fallback. A linked booking document is
+  // authoritative, so a cancelled slot is not counted even if an old course
+  // record still contains that slot.
+  const effectiveSlots = new Map()
+  for (const rawSlot of Array.isArray(course?.pickupSlots) ? course.pickupSlots : []) {
+    const slot = safeStoredPickupSlot(rawSlot)
+    if (!slot) continue
+    const key = bookingSlotKey(slot.date, slot.time)
+    if (normalizedBookingStatus(bookingBySlot.get(key)) === 'cancelled') continue
+    effectiveSlots.set(key, slot)
+  }
+  for (const booking of linkedBookings) {
+    const status = normalizedBookingStatus(booking?.status)
+    if (!COUNTED_PACKAGE_BOOKING_STATUSES.has(status)) continue
+    const slot = safeStoredPickupSlot({ date: booking.date, time: booking.timeSlot })
+    if (slot) effectiveSlots.set(bookingSlotKey(slot.date, slot.time), slot)
+  }
+
+  const pickupSlots = [...effectiveSlots.values()].sort((a, b) =>
+    a.date.localeCompare(b.date) || a.time.localeCompare(b.time)
+  )
+  const used = pickupSlots.length
+  const remaining = Math.max(0, maximum - used)
+  return {
+    maximum,
+    used,
+    selected: Math.max(0, Number(selected) || 0),
+    remaining,
+    remainingAfterSelection: Math.max(0, remaining - Math.max(0, Number(selected) || 0)),
+    pickupSlots,
+  }
+}
+
+const splitCheckoutItems = (items) => ({
+  newItems: items.filter(item => !item.continuation),
+  continuationItems: items.filter(item => item.continuation),
+})
+
+function validateContinuationSlotCount(selected, allowance, planLabel, status = 409) {
+  if (selected < 1) {
+    throw new HttpError(status, `${planLabel} must include at least 1 booking slot.`)
+  }
+  if (allowance.remaining === 0) {
+    throw new HttpError(status, `You have already used all ${allowance.maximum} booking slots included with ${planLabel}.`)
+  }
+  if (selected > allowance.remaining) {
+    throw new HttpError(status, `${planLabel} has ${allowance.remaining} booking slot${allowance.remaining === 1 ? '' : 's'} remaining.`)
+  }
+}
+
+function bookingsForEnrollment(course, linkedBookings, nextEnrollmentAt = '') {
+  const enrolledAt = Date.parse(course?.enrolledAt || course?.createdAt || '')
+  if (!Number.isFinite(enrolledAt)) return linkedBookings
+  // Holds are created shortly before checkout writes enrolledAt. Include that
+  // small reservation window, while excluding bookings from an older purchase
+  // of the same plan.
+  const lowerBound = enrolledAt - (BOOKING_HOLD_MINUTES + 1) * 60_000
+  const nextAt = Date.parse(nextEnrollmentAt || '')
+  return linkedBookings.filter(booking => {
+    const createdAt = Date.parse(booking?.createdAt || booking?.confirmedAt || '')
+    if (!Number.isFinite(createdAt)) return true
+    return createdAt >= lowerBound && (!Number.isFinite(nextAt) || createdAt < nextAt)
+  })
+}
+
+async function linkedCourseBookings(uid, courseId, session, course) {
+  const linked = await bookingsCol.find(
+    {
+      userId: uid,
+      courseId: { $in: courseIdCandidates(courseId) },
+      ...(course?.enrollmentId ? { enrollmentId: cleanText(course.enrollmentId, 160) } : {}),
+    },
+    { session }
+  ).toArray()
+  return course ? bookingsForEnrollment(course, linked) : linked
+}
+
 async function pricingTierById(courseId, session) {
   const candidates = [String(courseId)]
   if (/^\d+$/.test(String(courseId))) candidates.push(Number(courseId))
@@ -573,11 +698,19 @@ async function cleanupExpiredHolds(force = false) {
     }
     await bookingsCol.deleteMany({ status: 'held', holdExpiresAt: { $lte: now } })
     if (cartsCol) {
+      // Keep the expired cart selection visible so checkout can fail as a
+      // whole. Removing only the expired item here could silently turn a mixed
+      // cart into a partial checkout.
       await cartsCol.updateMany(
         { 'items.holdExpiresAt': { $lte: now.toISOString() } },
-        { $pull: { items: { holdExpiresAt: { $lte: now.toISOString() } } }, $set: { updatedAt: now.toISOString() } }
+        {
+          $set: {
+            'items.$[expired].holdExpired': true,
+            updatedAt: now.toISOString(),
+          },
+        },
+        { arrayFilters: [{ 'expired.holdExpiresAt': { $lte: now.toISOString() } }] }
       )
-      await cartsCol.deleteMany({ items: { $size: 0 } })
     }
   })().finally(() => {
     holdCleanupPromise = null
@@ -600,6 +733,7 @@ async function backfillBookingSlotLocks() {
       timeSlot,
       userId: booking.userId,
       courseId: String(booking.courseId || ''),
+      enrollmentId: cleanText(booking.enrollmentId, 160),
       bookingId: booking._id,
       status: held ? 'held' : 'confirmed',
       createdAt: new Date(),
@@ -636,11 +770,13 @@ async function countUnassignedActiveBookings(uid, session) {
   }, { session })
 }
 
-async function cancelCourseBookings(uid, courseId, reason, session, { includeUnassigned = false } = {}) {
+async function cancelCourseBookings(uid, courseId, reason, session, { includeUnassigned = false, enrollmentId = '' } = {}) {
   const courseIds = courseIdCandidates(courseId)
+  const enrollmentFilter = enrollmentId ? { enrollmentId: cleanText(enrollmentId, 160) } : {}
   const activeFilter = {
     userId: uid,
     status: { $in: ACTIVE_BOOKING_STATUSES },
+    ...enrollmentFilter,
     ...(includeUnassigned
       ? { $or: [{ courseId: { $in: courseIds } }, ...unassignedBookingCourseFilter] }
       : { courseId: { $in: courseIds } }),
@@ -661,6 +797,7 @@ async function cancelCourseBookings(uid, courseId, reason, session, { includeUna
     {
       userId: uid,
       status: { $in: ['held', 'confirmed'] },
+      ...enrollmentFilter,
       ...(includeUnassigned
         ? { $or: [{ courseId: { $in: courseIds } }, ...unassignedBookingCourseFilter] }
         : { courseId: { $in: courseIds } }),
@@ -700,6 +837,17 @@ async function applyRefundDecisionToCourse(refund, status, session) {
   const courseId = cleanText(refund?.Course_ID, 120)
   if (!uid || !courseId) return 0
 
+  const user = await usersCol.findOne({ uid }, { session, projection: { courses: 1 } })
+  const courses = user?.courses || []
+  const enrollmentId = cleanText(refund?.Enrollment_ID, 160)
+  const fingerprint = cleanText(refund?.Enrollment_Date, 160)
+  let courseIndex = enrollmentId
+    ? courses.findLastIndex(course => String(course?.id) === courseId && String(course?.enrollmentId) === enrollmentId)
+    : -1
+  if (courseIndex < 0) courseIndex = findCourseEnrollmentIndex(courses, courseId, fingerprint)
+  if (courseIndex < 0) return 0
+  const course = courses[courseIndex]
+
   const normalizedStatus = cleanText(status, 20).toLowerCase()
   const courseStatus = normalizedStatus === 'refunded'
     ? 'Refunded'
@@ -707,30 +855,32 @@ async function applyRefundDecisionToCourse(refund, status, session) {
       ? 'Enrolled'
       : 'Refund Pending'
   if (normalizedStatus === 'refunded') {
-    await cancelCourseBookings(uid, courseId, 'refund_approved', session)
+    await cancelCourseBookings(uid, courseId, 'refund_approved', session, {
+      enrollmentId: cleanText(course?.enrollmentId, 160),
+    })
   }
 
   const decisionAt = new Date().toISOString()
   const update = {
     $set: {
-      'courses.$[course].status': courseStatus,
-      'courses.$[course].refundStatus': normalizedStatus,
+      [`courses.${courseIndex}.status`]: courseStatus,
+      [`courses.${courseIndex}.refundStatus`]: normalizedStatus,
     },
   }
   if (normalizedStatus === 'pending') {
-    update.$unset = { 'courses.$[course].refundDecisionAt': '' }
+    update.$unset = { [`courses.${courseIndex}.refundDecisionAt`]: '' }
   } else {
-    update.$set['courses.$[course].refundDecisionAt'] = decisionAt
+    update.$set[`courses.${courseIndex}.refundDecisionAt`] = decisionAt
   }
   const result = await usersCol.updateOne(
     { uid },
     update,
-    { session, arrayFilters: [{ 'course.id': { $in: courseIdCandidates(courseId) } }] }
+    { session }
   )
   return result.modifiedCount
 }
 
-async function createSlotHold({ uid, courseId, date, timeSlot, session, expiresAt }) {
+async function createSlotHold({ uid, courseId, enrollmentId, date, timeSlot, session, expiresAt }) {
   const key = bookingSlotKey(date, timeSlot)
   await bookingSlotsCol.deleteOne(
     { _id: key, status: 'held', expiresAt: { $lte: new Date() } },
@@ -747,6 +897,7 @@ async function createSlotHold({ uid, courseId, date, timeSlot, session, expiresA
       timeSlot,
       userId: uid,
       courseId: String(courseId),
+      enrollmentId: cleanText(enrollmentId, 160),
       bookingId,
       holdToken,
       status: 'held',
@@ -764,6 +915,7 @@ async function createSlotHold({ uid, courseId, date, timeSlot, session, expiresA
     date,
     timeSlot,
     courseId: String(courseId),
+    enrollmentId: cleanText(enrollmentId, 160),
     hours: 2,
     status: 'held',
     holdToken,
@@ -889,7 +1041,47 @@ app.post('/api/contact', rateLimit({ windowMs: 10 * 60_000, max: 5 }), async (re
 app.get('/api/users/:uid', async (req, res) => {
   try {
     const user = await usersCol.findOne({ uid: req.params.uid })
-    res.json(user || { uid: req.params.uid })
+    if (!user) return res.json({ uid: req.params.uid })
+
+    const allCourseBookings = await bookingsCol.find({
+      userId: req.params.uid,
+      courseId: { $exists: true, $nin: [null, ''] },
+    }).toArray()
+    const bookingsByCourse = new Map()
+    for (const booking of allCourseBookings) {
+      const key = String(booking.courseId)
+      if (!bookingsByCourse.has(key)) bookingsByCourse.set(key, [])
+      bookingsByCourse.get(key).push(booking)
+    }
+    const storedCourses = user.courses || []
+    const courses = storedCourses.map((course, courseIndex) => {
+      const samePlanBookings = bookingsByCourse.get(String(course?.id)) || []
+      const nextEnrollment = storedCourses
+        .slice(courseIndex + 1)
+        .find(candidate => String(candidate?.id) === String(course?.id))
+      const linked = course?.enrollmentId
+        ? samePlanBookings.filter(booking => String(booking?.enrollmentId) === String(course.enrollmentId))
+        : bookingsForEnrollment(course, samePlanBookings, nextEnrollment?.enrolledAt || nextEnrollment?.createdAt)
+      const allowance = packageSlotAllowance(course, course, linked)
+      const refundStatus = cleanText(course?.refundStatus, 20).toLowerCase()
+      return {
+        ...course,
+        pickupSlots: allowance.pickupSlots,
+        slotAllowance: {
+          maximum: allowance.maximum,
+          used: allowance.used,
+          remaining: allowance.remaining,
+        },
+        slotUsage: {
+          maximum: allowance.maximum,
+          used: allowance.used,
+          remaining: allowance.remaining,
+        },
+        canBookMore: courseCanAcceptMoreBookings(course) && allowance.remaining > 0,
+        canRequestRefund: courseCanAcceptMoreBookings(course) && !['pending', 'denied', 'refunded'].includes(refundStatus),
+      }
+    })
+    res.json({ ...user, courses })
   } catch (e) {
     sendServerError(res, e, 'Profile lookup failed')
   }
@@ -984,9 +1176,24 @@ app.get('/api/bookings/:uid', requireAuth, requireSelf, async (req, res) => {
   try {
     const bookings = await bookingsCol
       .find({ userId: req.auth.uid, status: { $ne: 'held' } })
-      .sort({ date: -1 })
+      .sort({ date: -1, createdAt: -1 })
       .toArray()
-    res.json(bookings)
+    bookings.sort((a, b) => {
+      const dateOrder = String(b.date || '').localeCompare(String(a.date || ''))
+      if (dateOrder) return dateOrder
+      const aTime = BOOKING_TIME_ORDER.get(normalizeBookingTime(a.timeSlot)) ?? -1
+      const bTime = BOOKING_TIME_ORDER.get(normalizeBookingTime(b.timeSlot)) ?? -1
+      return bTime - aTime
+    })
+    const today = californiaDateKey()
+    res.json(bookings.map(booking => {
+      const status = normalizedBookingStatus(booking.status)
+      return {
+        ...booking,
+        normalizedStatus: status,
+        isUpcoming: booking.date >= today && !['cancelled', 'completed'].includes(status),
+      }
+    }))
   } catch (e) {
     sendServerError(res, e, 'Booking history lookup failed')
   }
@@ -1060,12 +1267,13 @@ app.delete('/api/bookings/:id', requireAuth, async (req, res) => {
     const result = await withMongoTransaction(async (session) => {
       const booking = await bookingsCol.findOne({ _id: bookingId, userId: req.auth.uid }, { session })
       if (!booking) return { found: false }
-      if (booking.status === 'cancelled') return { found: true, duplicate: true, booking }
-      if (booking.status === 'completed') {
+      const bookingStatus = normalizedBookingStatus(booking.status)
+      if (bookingStatus === 'cancelled') return { found: true, duplicate: true, booking }
+      if (bookingStatus === 'completed') {
         throw new HttpError(409, 'A completed lesson cannot be cancelled.')
       }
       await bookingSlotsCol.deleteOne({ bookingId, userId: req.auth.uid }, { session })
-      if (booking.status === 'held') {
+      if (bookingStatus === 'held') {
         await bookingsCol.deleteOne({ _id: bookingId, userId: req.auth.uid, status: 'held' }, { session })
         return { found: true, removedHold: true, booking: { ...booking, status: 'cancelled' } }
       }
@@ -1078,6 +1286,37 @@ app.delete('/api/bookings/:id', requireAuth, async (req, res) => {
         },
         { session }
       )
+      if (booking.courseId) {
+        const user = await usersCol.findOne({ uid: req.auth.uid }, { session, projection: { courses: 1 } })
+        const courses = user?.courses || []
+        let targetCourseIndex = booking.enrollmentId
+          ? courses.findLastIndex(course =>
+              String(course?.id) === String(booking.courseId)
+              && String(course?.enrollmentId) === String(booking.enrollmentId)
+            )
+          : -1
+        if (targetCourseIndex < 0) {
+          targetCourseIndex = findCourseEnrollmentIndex(courses, booking.courseId, '', { activeOnly: true })
+        }
+        const nextCourses = courses.map((course, index) => {
+          if (index !== targetCourseIndex) return course
+          const nextSlots = (Array.isArray(course.pickupSlots) ? course.pickupSlots : []).filter(slot => {
+            const parsed = safeStoredPickupSlot(slot)
+            return !parsed || bookingSlotKey(parsed.date, parsed.time) !== bookingSlotKey(booking.date, booking.timeSlot)
+          })
+          return {
+            ...course,
+            pickupSlots: nextSlots,
+            slotUsed: nextSlots.length,
+            slotMaximum: slotLimitForTier(course),
+          }
+        })
+        await usersCol.updateOne(
+          { uid: req.auth.uid },
+          { $set: { courses: nextCourses } },
+          { session }
+        )
+      }
       return { found: true, booking: { ...booking, status: 'cancelled', cancelledAt } }
     })
     if (!result.found) return res.status(404).json({ error: 'Booking not found.' })
@@ -1094,8 +1333,12 @@ app.post('/api/users/:uid/courses', requireAdmin, async (req, res) => {
     const courseId = cleanText(course?.id, 120)
     if (!courseId) return res.status(400).json({ error: 'Course id required' })
     course.id = courseId
+    course.enrollmentId = cleanText(course.enrollmentId, 160) || randomUUID()
     const user = await usersCol.findOne({ uid })
-    const existing = (user?.courses || []).find(c => String(c.id) === courseId)
+    const existing = (user?.courses || []).find(c =>
+      String(c.id) === courseId
+      && (String(c.enrollmentId) === String(course.enrollmentId) || courseCanAcceptMoreBookings(c))
+    )
     if (existing) {
       return res.json({ ok: true, courses: user.courses, duplicate: true })
     }
@@ -1111,20 +1354,99 @@ app.post('/api/users/:uid/courses', requireAdmin, async (req, res) => {
   }
 })
 
+app.put('/api/users/:uid/courses/:enrollmentId/progress', async (req, res) => {
+  try {
+    const uid = req.auth.uid
+    const enrollmentKey = cleanText(req.params.enrollmentId, 160)
+    const allowedModules = new Set(['mod1', 'mod2', 'mod3'])
+    if (!Array.isArray(req.body?.completedModules)) {
+      return res.status(400).json({ error: 'Completed modules must be provided as a list.' })
+    }
+    const completedModules = [...new Set(req.body.completedModules.map(moduleId => cleanText(moduleId, 20)))]
+    if (completedModules.some(moduleId => !allowedModules.has(moduleId))) {
+      return res.status(400).json({ error: 'One or more course modules are not valid.' })
+    }
+
+    const result = await withMongoTransaction(async (session) => {
+      const user = await usersCol.findOne({ uid }, { session, projection: { courses: 1 } })
+      const courses = user?.courses || []
+      let courseIndex = courses.findLastIndex(course =>
+        String(course?.enrollmentId) === enrollmentKey && courseCanAcceptMoreBookings(course)
+      )
+      // Legacy clients used the pricing course id because enrollment ids did
+      // not exist yet. Resolve only the latest active online-course purchase.
+      if (courseIndex < 0) {
+        courseIndex = courses.findLastIndex(course =>
+          String(course?.id) === enrollmentKey && courseCanAcceptMoreBookings(course)
+        )
+      }
+      if (courseIndex < 0) return { found: false }
+      const course = courses[courseIndex]
+      const title = String(course?.title || course?.planName || '').toUpperCase()
+      if (String(course?.id) !== '1' && !title.includes('ONLINE DRIVER')) {
+        throw new HttpError(409, 'Study progress is only available for the online driver education course.')
+      }
+
+      const enrollmentId = cleanText(course.enrollmentId, 160) || randomUUID()
+      const progress = Math.round((completedModules.length / allowedModules.size) * 100)
+      const updatedAt = new Date().toISOString()
+      const updatedCourse = {
+        ...course,
+        enrollmentId,
+        completedModules,
+        progress,
+        progressUpdatedAt: updatedAt,
+      }
+      await usersCol.updateOne(
+        { uid },
+        {
+          $set: {
+            [`courses.${courseIndex}`]: updatedCourse,
+            // Retained for older dashboard builds; the enrollment record above
+            // is the authoritative source.
+            completedModules,
+          },
+        },
+        { session }
+      )
+      return { found: true, course: updatedCourse }
+    })
+    if (!result.found) return res.status(404).json({ error: 'Online course enrollment not found.' })
+    res.json({
+      ok: true,
+      enrollmentId: result.course.enrollmentId,
+      completedModules: result.course.completedModules,
+      progress: result.course.progress,
+      course: result.course,
+    })
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ error: e.message })
+    sendServerError(res, e, 'Course progress update failed')
+  }
+})
+
 app.delete('/api/users/:uid/courses/:courseId', async (req, res) => {
   try {
     const uid = req.auth.uid
     const courseId = cleanText(req.params.courseId, 120)
+    const requestedEnrollmentId = cleanText(req.query?.enrollmentId, 160)
     if (!courseId) return res.status(400).json({ error: 'Course id required.' })
     const result = await withMongoTransaction(async (session) => {
       const user = await usersCol.findOne({ uid }, { session })
-      const course = (user?.courses || []).find(item => String(item?.id) === courseId)
-      if (!course) return { found: false }
+      const courses = user?.courses || []
+      let courseIndex = requestedEnrollmentId
+        ? courses.findLastIndex(item =>
+            String(item?.id) === courseId && String(item?.enrollmentId) === requestedEnrollmentId
+          )
+        : -1
+      if (courseIndex < 0) courseIndex = findCourseEnrollmentIndex(courses, courseId, '', { activeOnly: true })
+      if (courseIndex < 0) return { found: false }
+      const course = courses[courseIndex]
       if (String(course.status || '').toLowerCase() === 'refund pending') {
         throw new HttpError(409, 'This course already has a pending refund request.')
       }
 
-      const activeCourseCount = (user?.courses || []).filter(item => {
+      const activeCourseCount = courses.filter(item => {
         const status = String(item?.status || 'enrolled').toLowerCase()
         return !['cancelled', 'refunded'].includes(status)
       }).length
@@ -1135,13 +1457,17 @@ app.delete('/api/users/:uid/courses/:courseId', async (req, res) => {
         courseId,
         'course_cancelled',
         session,
-        { includeUnassigned: activeCourseCount === 1 }
+        {
+          includeUnassigned: activeCourseCount === 1 && !course.enrollmentId,
+          enrollmentId: cleanText(course.enrollmentId, 160),
+        }
       )
       const unlinkedBookings = await countUnassignedActiveBookings(uid, session)
       const ids = courseIdCandidates(courseId)
+      const nextCourses = courses.filter((_item, index) => index !== courseIndex)
       await usersCol.updateOne(
         { uid },
-        { $pull: { courses: { id: { $in: ids } } } },
+        { $set: { courses: nextCourses } },
         { session }
       )
       await cartsCol.updateOne(
@@ -1150,8 +1476,7 @@ app.delete('/api/users/:uid/courses/:courseId', async (req, res) => {
         { session }
       )
       await cartsCol.deleteOne({ uid, items: { $size: 0 } }, { session })
-      const updated = await usersCol.findOne({ uid }, { session, projection: { courses: 1 } })
-      return { found: true, course, releasedBookings, unlinkedBookings, courses: updated?.courses || [] }
+      return { found: true, course, releasedBookings, unlinkedBookings, courses: nextCourses }
     })
     if (!result.found) return res.status(404).json({ error: 'Course not found.' })
     res.json({
@@ -1171,14 +1496,21 @@ app.post('/api/users/:uid/courses/:courseId/refund', rateLimit({ windowMs: 10 * 
   try {
     const uid = req.auth.uid
     const courseId = cleanText(req.params.courseId, 120)
+    const requestedEnrollmentId = cleanText(req.body?.enrollmentId, 160)
     const reason = cleanText(req.body?.reason, 1000) || 'Requested by student from the dashboard.'
     if (!courseId) return res.status(400).json({ error: 'Course id required.' })
 
     const result = await withMongoTransaction(async (session) => {
       const user = await usersCol.findOne({ uid }, { session })
       const courses = user?.courses || []
-      const course = courses.find(item => String(item?.id) === courseId)
-      if (!course) return { found: false }
+      let courseIndex = requestedEnrollmentId
+        ? courses.findLastIndex(item =>
+            String(item?.id) === courseId && String(item?.enrollmentId) === requestedEnrollmentId
+          )
+        : -1
+      if (courseIndex < 0) courseIndex = findCourseEnrollmentIndex(courses, courseId, '', { activeOnly: true })
+      if (courseIndex < 0) return { found: false }
+      const course = courses[courseIndex]
 
       const enrollmentFingerprint = cleanText(
         course.enrolledAt || course.createdAt || course.paymentRef || 'legacy-current-enrollment',
@@ -1210,6 +1542,7 @@ app.post('/api/users/:uid/courses/:courseId/refund', rateLimit({ windowMs: 10 * 
         uid,
         User_UID: uid,
         Course_ID: courseId,
+        Enrollment_ID: cleanText(course.enrollmentId, 160),
         Enrollment_Date: enrollmentFingerprint,
         Full_Name: fullName,
         Email: normalizeEmail(req.auth.email || user.email),
@@ -1232,7 +1565,10 @@ app.post('/api/users/:uid/courses/:courseId/refund', rateLimit({ windowMs: 10 * 
         courseId,
         'refund_requested',
         session,
-        { includeUnassigned: activeCourseCount === 1 }
+        {
+          includeUnassigned: activeCourseCount === 1 && !course.enrollmentId,
+          enrollmentId: cleanText(course.enrollmentId, 160),
+        }
       )
       const unlinkedBookings = await countUnassignedActiveBookings(uid, session)
       const ids = courseIdCandidates(courseId)
@@ -1240,13 +1576,13 @@ app.post('/api/users/:uid/courses/:courseId/refund', rateLimit({ windowMs: 10 * 
         { uid },
         {
           $set: {
-            'courses.$[course].status': 'Refund Pending',
-            'courses.$[course].refundStatus': 'pending',
-            'courses.$[course].refundRequestId': refundId.toString(),
-            'courses.$[course].refundRequestedAt': requestedAt.toISOString(),
+            [`courses.${courseIndex}.status`]: 'Refund Pending',
+            [`courses.${courseIndex}.refundStatus`]: 'pending',
+            [`courses.${courseIndex}.refundRequestId`]: refundId.toString(),
+            [`courses.${courseIndex}.refundRequestedAt`]: requestedAt.toISOString(),
           },
         },
-        { session, arrayFilters: [{ 'course.id': { $in: ids } }] }
+        { session }
       )
       await cartsCol.updateOne(
         { uid },
@@ -1326,10 +1662,14 @@ app.post('/api/users/:uid/cart', async (req, res) => {
       const tier = await pricingTierById(courseId, session)
       if (!tier) throw new HttpError(400, 'The selected pricing plan is not available.')
       const user = await usersCol.findOne({ uid }, { session, projection: { courses: 1 } })
-      if ((user?.courses || []).some(course => String(course.id) === courseId)) {
-        throw new HttpError(409, 'You are already enrolled in this plan. Please choose a different plan.')
+      const courses = user?.courses || []
+      const matchingCourses = courses.filter(course => String(course.id) === courseId)
+      if (matchingCourses.some(course => normalizedCourseStatus(course.status) === 'refund pending')) {
+        throw new HttpError(409, `A refund request for ${tier.planName} is still pending. Additional slots cannot be booked yet.`)
       }
-      validateSlotCountForTier(slots, tier)
+      const activeCourseIndex = findCourseEnrollmentIndex(courses, courseId, '', { activeOnly: true })
+      let activeCourse = activeCourseIndex >= 0 ? courses[activeCourseIndex] : null
+      const enrollmentId = cleanText(activeCourse?.enrollmentId, 160) || randomUUID()
 
       const cart = await cartsCol.findOne({ uid }, { session })
       const oldItems = cart?.items || []
@@ -1337,16 +1677,56 @@ app.post('/api/users/:uid/cart', async (req, res) => {
       const duplicate = existingIndex >= 0
 
       if (duplicate) await releaseCourseHolds(uid, courseId, session)
+      let allowance
+      if (activeCourse) {
+        const linked = await linkedCourseBookings(uid, courseId, session, activeCourse)
+        allowance = packageSlotAllowance(activeCourse, tier, linked, slots.length)
+        validateContinuationSlotCount(slots.length, allowance, tier.planName)
+        if (!activeCourse.enrollmentId) {
+          const bookingIds = linked.map(booking => booking._id).filter(Boolean)
+          await usersCol.updateOne(
+            { uid },
+            { $set: { [`courses.${activeCourseIndex}.enrollmentId`]: enrollmentId } },
+            { session }
+          )
+          if (bookingIds.length) {
+            await bookingsCol.updateMany(
+              { _id: { $in: bookingIds }, userId: uid },
+              { $set: { enrollmentId } },
+              { session }
+            )
+            await bookingSlotsCol.updateMany(
+              { bookingId: { $in: bookingIds }, userId: uid },
+              { $set: { enrollmentId } },
+              { session }
+            )
+          }
+          activeCourse = { ...activeCourse, enrollmentId }
+        }
+      } else {
+        validateSlotCountForTier(slots, tier)
+        allowance = packageSlotAllowance({}, tier, [], slots.length)
+      }
       for (const slot of slots) {
-        await createSlotHold({ uid, courseId, ...slot, session, expiresAt })
+        await createSlotHold({ uid, courseId, enrollmentId, ...slot, session, expiresAt })
       }
 
       const course = {
         id: courseId,
         title: cleanText(tier.planName, 160),
         price: cleanText(tier.planPrice, 40),
+        originalPlanPrice: cleanText(tier.planPrice, 40),
+        chargeAmount: activeCourse ? 0 : Number.parseFloat(String(tier.planPrice).replace(/[^0-9.]/g, '')) || 0,
         city: cleanText(req.body?.city, 120),
         pickupSlots: slots.map(slot => ({ date: slot.date, time: slot.timeSlot })),
+        continuation: Boolean(activeCourse),
+        enrollmentId,
+        slotAllowance: {
+          maximum: allowance.maximum,
+          used: allowance.used,
+          selected: slots.length,
+          remainingAfterSelection: allowance.remainingAfterSelection,
+        },
       }
       if (slots.length) {
         course.preferredDate = slots[0].date
@@ -1364,9 +1744,15 @@ app.post('/api/users/:uid/cart', async (req, res) => {
         { $set: { uid, items, updatedAt: new Date().toISOString() } },
         { upsert: true, session }
       )
-      return { items, duplicate }
+      return { items, duplicate, continuation: Boolean(activeCourse), slotAllowance: course.slotAllowance }
     })
-    res.json({ ok: true, items: result.items, duplicate: result.duplicate })
+    res.json({
+      ok: true,
+      items: result.items,
+      duplicate: result.duplicate,
+      continuation: result.continuation,
+      slotAllowance: result.slotAllowance,
+    })
   } catch (e) {
     const status = e.status || (isDuplicateKey(e) ? 409 : 500)
     res.status(status).json({
@@ -1412,29 +1798,97 @@ app.post('/api/users/:uid/cart/checkout', async (req, res) => {
     const checkout = await withMongoTransaction(async (session) => {
       const cart = await cartsCol.findOne({ uid }, { session })
       const items = cart?.items || []
-      if (items.length === 0) return { enrolled: 0, payment: null }
+      if (items.length === 0) {
+        return { enrolled: 0, continued: 0, newBookings: 0, payment: null, courses: [] }
+      }
 
       const now = new Date()
       const holds = []
       const verifiedItems = []
+      const user = await usersCol.findOne({ uid }, { session })
+      const existingCourses = user?.courses || []
+      const seenCourseIds = new Set()
       for (const item of items) {
         const courseId = String(item.id)
+        if (seenCourseIds.has(courseId)) throw new HttpError(409, 'The same pricing plan cannot appear in the cart twice.')
+        seenCourseIds.add(courseId)
         const slots = pickupSlotsFromCourse(item)
         const tier = await pricingTierById(courseId, session)
         if (!tier) throw new HttpError(400, 'A pricing plan in your cart is no longer available.')
-        validateSlotCountForTier(slots, tier, 409, `The ${tier.planName} selection`)
+        const requestedEnrollmentId = cleanText(item.enrollmentId, 160)
+        let activeCourseIndex = requestedEnrollmentId
+          ? existingCourses.findLastIndex(course =>
+              String(course?.id) === courseId
+              && String(course?.enrollmentId) === requestedEnrollmentId
+              && courseCanAcceptMoreBookings(course)
+            )
+          : -1
+        if (activeCourseIndex < 0) {
+          activeCourseIndex = findCourseEnrollmentIndex(existingCourses, courseId, '', { activeOnly: true })
+        }
+        const continuation = activeCourseIndex >= 0
+        const activeCourse = continuation ? existingCourses[activeCourseIndex] : null
+        const enrollmentId = cleanText(activeCourse?.enrollmentId, 160) || requestedEnrollmentId || randomUUID()
+        if (existingCourses.some(course =>
+          String(course?.id) === courseId && normalizedCourseStatus(course.status) === 'refund pending'
+        )) {
+          throw new HttpError(409, `A refund request for ${tier.planName} is still pending. Additional slots cannot be booked yet.`)
+        }
+        if (item.continuation === true && !continuation) {
+          throw new HttpError(409, `${tier.planName} is no longer available for additional lesson bookings. Please refresh your cart.`)
+        }
+        if (continuation && requestedEnrollmentId && activeCourse?.enrollmentId && requestedEnrollmentId !== activeCourse.enrollmentId) {
+          throw new HttpError(409, `${tier.planName} changed after it was added to your cart. Please select the lessons again.`)
+        }
+        let allowance
+        if (continuation) {
+          const linked = await linkedCourseBookings(uid, courseId, session, activeCourse)
+          allowance = packageSlotAllowance(activeCourse, tier, linked, slots.length)
+          validateContinuationSlotCount(slots.length, allowance, tier.planName)
+          if (!activeCourse.enrollmentId) {
+            const legacyBookingIds = linked.map(booking => booking._id).filter(Boolean)
+            if (legacyBookingIds.length) {
+              await bookingsCol.updateMany(
+                { _id: { $in: legacyBookingIds }, userId: uid },
+                { $set: { enrollmentId } },
+                { session }
+              )
+              await bookingSlotsCol.updateMany(
+                { bookingId: { $in: legacyBookingIds }, userId: uid },
+                { $set: { enrollmentId } },
+                { session }
+              )
+            }
+          }
+        } else {
+          validateSlotCountForTier(slots, tier, 409, `The ${tier.planName} selection`)
+          allowance = packageSlotAllowance({}, tier, [], slots.length)
+        }
         verifiedItems.push({
           ...item,
           id: courseId,
           title: tier.planName,
           price: tier.planPrice,
+          originalPlanPrice: tier.planPrice,
+          chargeAmount: continuation ? 0 : Number.parseFloat(String(tier.planPrice).replace(/[^0-9.]/g, '')) || 0,
+          continuation,
+          activeCourseIndex,
+          enrollmentId,
+          slotAllowance: {
+            maximum: allowance.maximum,
+            used: allowance.used,
+            selected: slots.length,
+            remainingAfterSelection: allowance.remainingAfterSelection,
+          },
           pickupSlots: slots.map(slot => ({ date: slot.date, time: slot.timeSlot })),
         })
         for (const slot of slots) {
+          const enrollmentScope = requestedEnrollmentId || cleanText(activeCourse?.enrollmentId, 160)
           const lock = await bookingSlotsCol.findOne({
             _id: bookingSlotKey(slot.date, slot.timeSlot),
             userId: uid,
             courseId,
+            ...(enrollmentScope ? { enrollmentId: enrollmentScope } : {}),
             status: 'held',
             expiresAt: { $gt: now },
           }, { session })
@@ -1445,23 +1899,16 @@ app.post('/api/users/:uid/cart/checkout', async (req, res) => {
             _id: lock.bookingId,
             userId: uid,
             courseId,
+            ...(enrollmentScope ? { enrollmentId: enrollmentScope } : {}),
             status: 'held',
           }, { session })
           if (!heldBooking) throw new HttpError(409, 'A reserved time slot is no longer available. Please select it again.')
-          holds.push({ lock, booking: heldBooking })
+          holds.push({ lock, booking: heldBooking, enrollmentId })
         }
       }
-
-      const user = await usersCol.findOne({ uid }, { session })
-      const existingCourses = user?.courses || []
-      const duplicateCourse = verifiedItems.find(item =>
-        existingCourses.some(course => String(course.id) === String(item.id))
-      )
-      if (duplicateCourse) {
-        throw new HttpError(409, `You are already enrolled in ${duplicateCourse.title}. Please remove it from the cart.`)
-      }
       const enrolledAt = new Date().toISOString()
-      const toAdd = verifiedItems
+      const { newItems, continuationItems: continuedItems } = splitCheckoutItems(verifiedItems)
+      const toAdd = newItems
         .map(item => ({
           id: item.id,
           title: item.title,
@@ -1472,36 +1919,69 @@ app.post('/api/users/:uid/cart/checkout', async (req, res) => {
           pickupSlots: item.pickupSlots || [],
           status: 'Enrolled',
           progress: 0,
+          slotMaximum: item.slotAllowance.maximum,
+          slotUsed: item.pickupSlots.length,
+          enrollmentId: item.enrollmentId,
           enrolledAt,
           email: normalizeEmail(req.auth.email) || user?.email || '',
         }))
 
-      const payment = {
+      const nextCourses = [...existingCourses, ...toAdd]
+      for (const item of continuedItems) {
+        const current = nextCourses[item.activeCourseIndex]
+        if (!current || !courseCanAcceptMoreBookings(current) || String(current.id) !== item.id) {
+          throw new HttpError(409, `${item.title} is no longer available for additional lesson bookings.`)
+        }
+        const mergedSlots = new Map()
+        for (const rawSlot of Array.isArray(current.pickupSlots) ? current.pickupSlots : []) {
+          const slot = safeStoredPickupSlot(rawSlot)
+          if (slot) mergedSlots.set(bookingSlotKey(slot.date, slot.time), slot)
+        }
+        for (const rawSlot of item.pickupSlots) {
+          const slot = safeStoredPickupSlot(rawSlot)
+          if (slot) mergedSlots.set(bookingSlotKey(slot.date, slot.time), slot)
+        }
+        const pickupSlots = [...mergedSlots.values()].sort((a, b) =>
+          a.date.localeCompare(b.date) || a.time.localeCompare(b.time)
+        )
+        nextCourses[item.activeCourseIndex] = {
+          ...current,
+          enrollmentId: item.enrollmentId,
+          pickupSlots,
+          slotMaximum: item.slotAllowance.maximum,
+          slotUsed: item.slotAllowance.used + item.pickupSlots.length,
+          lastBookingAt: enrolledAt,
+        }
+      }
+
+      const payment = toAdd.length ? {
         date: enrolledAt.split('T')[0],
         ref: `INV-${Date.now().toString(36).toUpperCase()}`,
         email: normalizeEmail(req.auth.email) || user?.email || '',
         item: toAdd.map(course => course.title).join(' + '),
         amount: toAdd.reduce((sum, course) => sum + (parseFloat(String(course.price).replace(/[^0-9.]/g, '')) || 0), 0),
         status: 'Pending',
+      } : null
+      const userUpdate = {
+        $set: { courses: nextCourses },
+        $setOnInsert: { uid },
       }
-
-      const push = { payments: { $each: [payment], $position: 0 } }
-      if (toAdd.length) push.courses = { $each: toAdd }
+      if (payment) userUpdate.$push = { payments: { $each: [payment], $position: 0 } }
       await usersCol.updateOne(
         { uid },
-        { $push: push, $setOnInsert: { uid } },
+        userUpdate,
         { upsert: true, session }
       )
 
-      for (const { lock, booking } of holds) {
+      for (const { lock, booking, enrollmentId } of holds) {
         const lockResult = await bookingSlotsCol.updateOne(
           { _id: lock._id, userId: uid, status: 'held', holdToken: lock.holdToken },
-          { $set: { status: 'confirmed', confirmedAt: now }, $unset: { expiresAt: '', holdToken: '' } },
+          { $set: { status: 'confirmed', confirmedAt: now, enrollmentId }, $unset: { expiresAt: '', holdToken: '' } },
           { session }
         )
         const bookingResult = await bookingsCol.updateOne(
           { _id: booking._id, userId: uid, status: 'held', holdToken: booking.holdToken },
-          { $set: { status: 'confirmed', confirmedAt: now.toISOString() }, $unset: { holdExpiresAt: '', holdToken: '' } },
+          { $set: { status: 'confirmed', confirmedAt: now.toISOString(), enrollmentId }, $unset: { holdExpiresAt: '', holdToken: '' } },
           { session }
         )
         if (lockResult.matchedCount !== 1 || bookingResult.matchedCount !== 1) {
@@ -1510,9 +1990,22 @@ app.post('/api/users/:uid/cart/checkout', async (req, res) => {
       }
 
       await cartsCol.deleteOne({ uid }, { session })
-      return { enrolled: toAdd.length, payment }
+      return {
+        enrolled: toAdd.length,
+        continued: continuedItems.length,
+        newBookings: holds.length,
+        payment,
+        courses: nextCourses,
+      }
     })
-    res.json({ ok: true, enrolled: checkout.enrolled, payment: checkout.payment })
+    res.json({
+      ok: true,
+      enrolled: checkout.enrolled,
+      continued: checkout.continued,
+      newBookings: checkout.newBookings,
+      payment: checkout.payment,
+      courses: checkout.courses,
+    })
   } catch (e) {
     res.status(e.status || 500).json({
       ok: false,
@@ -1528,12 +2021,20 @@ app.post('/api/users/:uid/dedup-courses', async (req, res) => {
     if (!user || !user.courses || user.courses.length === 0) {
       return res.json({ ok: true, courses: [] })
     }
-    const seen = new Map()
+    const seenEnrollmentIds = new Set()
+    const deduped = []
     for (const c of user.courses) {
-      const key = String(c?.id ?? '')
-      if (key && !seen.has(key)) seen.set(key, c)
+      const enrollmentId = cleanText(c?.enrollmentId, 160)
+      // Legacy entries without an enrollment id may represent distinct
+      // purchases, so preserving them is safer than deleting history.
+      if (!enrollmentId) {
+        deduped.push(c)
+        continue
+      }
+      if (seenEnrollmentIds.has(enrollmentId)) continue
+      seenEnrollmentIds.add(enrollmentId)
+      deduped.push(c)
     }
-    const deduped = Array.from(seen.values())
     await usersCol.updateOne({ uid }, { $set: { courses: deduped } })
     res.json({ ok: true, courses: deduped })
   } catch (e) {
@@ -2254,19 +2755,32 @@ app.delete('/api/admin/refunds/:id', async (req, res) => {
         const uid = cleanText(existing.uid || existing.User_UID, 160)
         const courseId = cleanText(existing.Course_ID, 120)
         if (uid && courseId) {
-          await usersCol.updateOne(
-            { uid },
-            {
-              $set: { 'courses.$[course].status': 'Enrolled' },
-              $unset: {
-                'courses.$[course].refundRequestId': '',
-                'courses.$[course].refundRequestedAt': '',
-                'courses.$[course].refundStatus': '',
-                'courses.$[course].refundDecisionAt': '',
+          const user = await usersCol.findOne({ uid }, { session, projection: { courses: 1 } })
+          const courses = user?.courses || []
+          const enrollmentId = cleanText(existing.Enrollment_ID, 160)
+          let courseIndex = enrollmentId
+            ? courses.findLastIndex(course =>
+                String(course?.id) === courseId && String(course?.enrollmentId) === enrollmentId
+              )
+            : -1
+          if (courseIndex < 0) {
+            courseIndex = findCourseEnrollmentIndex(courses, courseId, cleanText(existing.Enrollment_Date, 160))
+          }
+          if (courseIndex >= 0) {
+            await usersCol.updateOne(
+              { uid },
+              {
+                $set: { [`courses.${courseIndex}.status`]: 'Enrolled' },
+                $unset: {
+                  [`courses.${courseIndex}.refundRequestId`]: '',
+                  [`courses.${courseIndex}.refundRequestedAt`]: '',
+                  [`courses.${courseIndex}.refundStatus`]: '',
+                  [`courses.${courseIndex}.refundDecisionAt`]: '',
+                },
               },
-            },
-            { session, arrayFilters: [{ 'course.id': { $in: courseIdCandidates(courseId) } }] }
-          )
+              { session }
+            )
+          }
         }
       }
       await refundsCol.deleteOne({ _id: refundId }, { session })
@@ -2343,4 +2857,11 @@ if (process.env.VERCEL !== '1') {
     })
 }
 
+export {
+  bookingsForEnrollment,
+  packageSlotAllowance,
+  splitCheckoutItems,
+  validateContinuationSlotCount,
+  slotLimitForTier,
+}
 export default app

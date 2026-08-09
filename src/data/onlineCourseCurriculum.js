@@ -1,0 +1,17 @@
+export const ONLINE_COURSE_CURRICULUM = [
+  'Driving Is Your Responsibility',
+  'The Driver',
+  'Natural Forces Affecting the Driver',
+  'Signs, Signals and Highway Markings',
+  'California Vehicle Code and Rules of the Road',
+  'Causes and Costs of Accidents',
+  'Differences in Urban and Rural Driving',
+  'Critical Vehicle Systems and Subsystems',
+  'Pedestrian Safety',
+  'Effects of Alcohol and Drugs',
+  'Motorcycle Safety',
+  'Risk Taking and Risk Perception of Teenagers',
+  'Substance Abuse',
+  'Driving Experience',
+  'Road Rage',
+]

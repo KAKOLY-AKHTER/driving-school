@@ -29,7 +29,14 @@ export default function CartPage() {
   const [error, setError] = useState('')
   const [done, setDone] = useState(null)
 
-  const subtotal = items.reduce((sum, it) => sum + priceNumber(it.price), 0)
+  const subtotal = items.reduce((sum, item) => {
+    const charge = Number(item.chargeAmount)
+    return sum + (Number.isFinite(charge) ? charge : priceNumber(item.price))
+  }, 0)
+  const continuationCount = items.filter(item => item.continuation).length
+  const newPackageCount = items.length - continuationCount
+  const expiredSelectionCount = items.filter(item => item.holdExpired).length
+  const checkoutBlocked = busy || cartLoading || Boolean(syncError) || expiredSelectionCount > 0
 
   const handleRemove = async (id) => {
     setRemoving(id)
@@ -44,6 +51,10 @@ export default function CartPage() {
 
   const handleEnrollAll = async () => {
     if (cartLoading || syncError) return
+    if (expiredSelectionCount > 0) {
+      setError('One or more time-slot reservations expired. Please remove those selections and choose the times again.')
+      return
+    }
     if (!user) {
       saveBookingReturn('/cart')
       navigate('/login', { state: { from: '/cart' } })
@@ -54,7 +65,7 @@ export default function CartPage() {
     try {
       const result = await enrollAll()
       if (result.ok) {
-        setDone(result.enrolled)
+        setDone(result)
       } else {
         setError(result.error || 'Checkout failed. Please try again.')
       }
@@ -93,7 +104,7 @@ export default function CartPage() {
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: GOLD_DEEP, fontWeight: 700, margin: '0 0 0.5rem' }}>Your Selection</p>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem,4vw,2.8rem)', color: DARK, fontWeight: 800, margin: '0 0 0.5rem' }}>Shopping Cart</h1>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#475569', margin: 0 }}>Review the packages you selected, then enroll in all of them at once.</p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#475569', margin: 0 }}>Review new packages and any remaining lessons, then confirm them together.</p>
         </div>
 
         {syncError && (
@@ -121,9 +132,20 @@ export default function CartPage() {
                 <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: 'linear-gradient(135deg,rgba(1,69,168,0.08),rgba(1,69,168,0.03))', color: SKY_BLUE, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '1.05rem', fontWeight: 800, flexShrink: 0, border: '1px solid rgba(1,69,168,0.08)' }}>{it.id}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', color: DARK, fontWeight: 800, margin: '0 0 0.2rem', textTransform: 'uppercase' }}>{it.title}</h3>
-                  <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#0755ae', fontWeight: 800, margin: '0 0 0.65rem' }}>{it.price}</p>
+                  {it.continuation ? (
+                    <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', flexWrap:'wrap', margin:'0 0 0.65rem' }}>
+                      <span style={{ padding:'0.25rem 0.6rem', borderRadius:'999px', background:'#ECFDF5', border:'1px solid #BBF7D0', color:'#15803D', fontFamily:'var(--font-body)', fontSize:'0.76rem', fontWeight:800 }}>Included with your package</span>
+                      <span style={{ color:'#64748B', fontFamily:'var(--font-body)', fontSize:'0.78rem' }}>No additional charge</span>
+                    </div>
+                  ) : (
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#0755ae', fontWeight: 800, margin: '0 0 0.65rem' }}>{it.price}</p>
+                  )}
+                  {it.holdExpired && <div role="alert" style={{ margin:'0 0 0.65rem', padding:'0.55rem 0.7rem', borderRadius:'8px', background:'#FEF2F2', border:'1px solid #FECACA', color:'#B91C1C', fontFamily:'var(--font-body)', fontSize:'0.78rem', fontWeight:800 }}>This time-slot reservation expired. Remove it and select the lesson times again.</div>}
                   <div style={{ display: 'grid', gap: '0.4rem', color: '#475569', fontFamily: 'var(--font-body)', fontSize: '0.82rem', lineHeight: 1.45 }}>
                     {it.city && <div><strong style={{ color: DARK }}>City:</strong> {it.city}</div>}
+                    {it.slotAllowance && (
+                      <div><strong style={{ color: DARK }}>Package slots:</strong> {it.slotAllowance.used} used + {it.slotAllowance.selected || it.pickupSlots?.length || 0} selected / {it.slotAllowance.maximum} maximum</div>
+                    )}
                     {(Array.isArray(it.pickupSlots) && it.pickupSlots.length ? it.pickupSlots : [{ date: it.preferredDate, time: it.pickupTime }]).filter(slot => slot?.date || slot?.time).map((slot, index) => (
                       <div key={`${slot.date || 'date'}-${slot.time || 'time'}-${index}`} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
                         <span style={{ color: DARK, fontWeight: 800 }}>Slot {index + 1}:</span>
@@ -144,10 +166,10 @@ export default function CartPage() {
             <div style={{ background: '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-xl)', padding: '1.75rem 2rem', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
                 <div>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#475569', fontWeight: 700, margin: 0 }}>Subtotal ({items.length} {items.length === 1 ? 'package' : 'packages'})</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#475569', fontWeight: 700, margin: 0 }}>Amount due ({newPackageCount} new, {continuationCount} continuation)</p>
                   <p style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: GOLD, fontWeight: 800, margin: '0.25rem 0 0', lineHeight: 1 }}>${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                 </div>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: '#8899aa', margin: 0, maxWidth: '300px', lineHeight: 1.5 }}>Your booking creates a pending invoice. Our team will provide payment instructions; no card details are collected here.</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: '#64748B', margin: 0, maxWidth: '320px', lineHeight: 1.5 }}>{newPackageCount > 0 ? 'Only new packages create a pending invoice. Remaining lessons from an existing package have no additional charge.' : 'These lessons are already included in your package. Confirming them will not create another invoice.'}</p>
               </div>
 
               {error && (
@@ -155,8 +177,8 @@ export default function CartPage() {
               )}
 
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-                <button onClick={handleEnrollAll} disabled={busy || cartLoading || Boolean(syncError)} style={{ flex: 2, minWidth: '220px', padding: '0.95rem 1.5rem', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, color: DARK, background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, border: 'none', borderRadius: 'var(--radius-sm)', cursor: busy || cartLoading || syncError ? 'not-allowed' : 'pointer', opacity: syncError ? 0.6 : 1, transition: 'all 0.3s', boxShadow: busy || cartLoading || syncError ? 'none' : '0 4px 16px rgba(253,188,1,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { if (!busy && !cartLoading && !syncError) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(253,188,1,0.4)' } }} onMouseLeave={(e) => { if (!busy && !cartLoading && !syncError) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(253,188,1,0.25)' } }}>
-                  {cartLoading ? 'Restoring Cart...' : busy ? 'Enrolling...' : user ? 'Enroll All' : 'Sign In to Continue'}
+                <button onClick={handleEnrollAll} disabled={checkoutBlocked} style={{ flex: 2, minWidth: '220px', padding: '0.95rem 1.5rem', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, color: DARK, background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, border: 'none', borderRadius: 'var(--radius-sm)', cursor: checkoutBlocked ? 'not-allowed' : 'pointer', opacity: checkoutBlocked ? 0.6 : 1, transition: 'all 0.3s', boxShadow: checkoutBlocked ? 'none' : '0 4px 16px rgba(253,188,1,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { if (!checkoutBlocked) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(253,188,1,0.4)' } }} onMouseLeave={(e) => { if (!checkoutBlocked) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(253,188,1,0.25)' } }}>
+                  {cartLoading ? 'Restoring Cart...' : busy ? 'Confirming...' : expiredSelectionCount > 0 ? 'Reservation Expired' : user ? (newPackageCount > 0 ? 'Complete Booking' : 'Confirm Lessons') : 'Sign In to Continue'}
                 </button>
                 <button onClick={() => navigate('/pricing')} style={{ flex: 1, minWidth: '160px', padding: '0.95rem 1.5rem', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, color: SKY_BLUE, background: 'transparent', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.borderColor = SKY_BLUE }} onMouseLeave={(e) => { e.currentTarget.borderColor = '#E2EBF5' }}>
                   Keep Shopping
@@ -171,8 +193,8 @@ export default function CartPage() {
         <div style={backdropStyle}>
           <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', maxWidth: '360px', padding: '3rem 2rem', textAlign: 'center', boxShadow: '0 24px 80px rgba(0,0,0,0.25)' }}>
             <div style={{ width: '56px', height: '56px', border: '3px solid #E2EBF5', borderTopColor: SKY_BLUE, borderRadius: '50%', animation: 'spinLoader 0.8s linear infinite', margin: '0 auto 1.5rem' }} />
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: DARK, fontWeight: 700, margin: '0 0 0.4rem' }}>Processing Enrollment</h3>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#8899aa', margin: 0 }}>Enrolling all packages in your cart...</p>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: DARK, fontWeight: 700, margin: '0 0 0.4rem' }}>Confirming Your Booking</h3>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#8899aa', margin: 0 }}>Securing your selected lesson times...</p>
           </div>
         </div>
       )}
@@ -190,9 +212,11 @@ export default function CartPage() {
                 </svg>
               </div>
 
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: DARK, fontWeight: 800, margin: '0 0 0.4rem' }}>Enrolled Successfully!</h2>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: DARK, fontWeight: 800, margin: '0 0 0.4rem' }}>Booking Confirmed!</h2>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: '#8899aa', margin: '0 0 1.5rem' }}>
-                {done > 0 ? `You've been enrolled in ${done} package${done > 1 ? 's' : ''}.` : 'All selected packages were already enrolled.'}
+                {done?.enrolled > 0 && `${done.enrolled} new package${done.enrolled === 1 ? '' : 's'} added. `}
+                {done?.continued > 0 && `${done.continued} existing package${done.continued === 1 ? '' : 's'} updated with the selected lesson${done.newBookings === 1 ? '' : 's'}.`}
+                {!done?.enrolled && !done?.continued && 'Your booking was completed successfully.'}
               </p>
 
               <div style={{ width: '100%', height: '1px', background: '#E2EBF5', marginBottom: '1.5rem' }} />

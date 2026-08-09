@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useCallback } from 'react'
 import { signOut, updateProfile, reauthenticateWithCredential, EmailAuthProvider, updatePassword } from 'firebase/auth'
 import { auth } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
@@ -7,6 +8,7 @@ import { useCart } from '../contexts/CartContext'
 import { api } from '../api'
 import { usePageMeta } from '../usePageMeta'
 import { openPrintableDocument } from '../utils/printDocument'
+import { ONLINE_COURSE_CURRICULUM } from '../data/onlineCourseCurriculum'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -21,8 +23,6 @@ const localDateKey = (date = new Date()) => new Intl.DateTimeFormat('en-CA', {
   day: '2-digit',
 }).format(date)
 
-const isErrorMessage = (message) => /failed|incorrect|invalid|must|please|unavailable|could not/i.test(message)
-
 const formatUSD = (value) => {
   const amount = typeof value === 'number'
     ? value
@@ -31,6 +31,39 @@ const formatUSD = (value) => {
   return Number.isFinite(amount)
     ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
     : '$0.00'
+}
+
+const normalizeStatus = (status) => String(status || '').trim().toLowerCase().replace(/[\s_-]+/g, ' ')
+
+const slotLimitForCourse = (course) => {
+  const id = String(course?.id || '')
+  const name = String(course?.title || course?.planName || '').toUpperCase()
+  if (id === '2' || name.includes('BASIC PLAN')) return 1
+  if (id === '5' || name.includes('PREMIER')) return 5
+  if (id === '3' || name.includes('ESSENTIAL')) return 3
+  if (id === '4' || name.includes('IDEAL FOR STUDENTS')) return 3
+  if (['6', '7', '8'].includes(id) || name.includes('DMV DRIVE TEST CAR RENTAL') || name.includes('FREEWAY FOCUSED COURSE')) return 1
+  return 3
+}
+
+const courseSlotUsage = (course) => {
+  const maximum = Number(course?.slotAllowance?.maximum ?? course?.slotUsage?.maximum ?? course?.slotLimit) || slotLimitForCourse(course)
+  const selected = Array.isArray(course?.pickupSlots) ? course.pickupSlots.length : 0
+  const used = Math.min(maximum, Number(course?.slotAllowance?.used ?? course?.slotUsage?.used ?? selected) || 0)
+  const remaining = Math.max(0, Number(course?.slotAllowance?.remaining ?? (maximum - used)) || 0)
+  return { used, maximum, remaining }
+}
+
+const bookingSortValue = (booking) => {
+  const date = String(booking?.date || '')
+  const time = String(booking?.timeSlot || booking?.time || '').match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
+  let minutes = 0
+  if (time) {
+    let hour = Number(time[1]) % 12
+    if (time[3].toUpperCase() === 'PM') hour += 12
+    minutes = hour * 60 + Number(time[2])
+  }
+  return `${date}T${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
 }
 
 const profileTabs = new Set(['dashboard', 'courses', 'payments', 'settings', 'course'])
@@ -78,7 +111,7 @@ export default function DashboardPage() {
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
   const [courseType, setCourseType] = useState('')
-  const [msg, setMsg] = useState('')
+  const [notice, setNotice] = useState({ text: '', type: 'success' })
   const [loading, setLoading] = useState(true)
   const [loadErrors, setLoadErrors] = useState({ profile: '', bookings: '' })
   const [loadVersion, setLoadVersion] = useState(0)
@@ -92,6 +125,7 @@ export default function DashboardPage() {
   const [quizScore, setQuizScore] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [showAllHistory, setShowAllHistory] = useState(false)
   const [medications, setMedications] = useState('')
   const [permit, setPermit] = useState('')
   const [notes, setNotes] = useState('')
@@ -113,7 +147,40 @@ export default function DashboardPage() {
   const [sCurrentPass, setSCurrentPass] = useState('')
   const [sNewPass, setSNewPass] = useState('')
   const [sConfirmPass, setSConfirmPass] = useState('')
+  const [savedSettings, setSavedSettings] = useState(null)
   const showCourse = courseType === '1' || courses.some(c => c.id === '1')
+  const currentSettings = {
+    username: sUsername, phone: sPhone, address: sAddress, permit: sPermit,
+    medications: sMedications, notes: sNotes, submittedAt: sSubmittedAt,
+    issueDate: sIssueDate, expiryDate: sExpiryDate,
+  }
+  const settingsDirty = Boolean(savedSettings) && (
+    JSON.stringify(currentSettings) !== JSON.stringify(savedSettings)
+    || Boolean(sCurrentPass || sNewPass || sConfirmPass)
+  )
+
+  const noticeTimerRef = useRef(null)
+  const modalRef = useRef(null)
+  const profileMenuRef = useRef(null)
+  const showNotice = (text, type = 'success', duration = 3000) => {
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current)
+    setNotice({ text, type })
+    noticeTimerRef.current = setTimeout(() => setNotice({ text: '', type: 'success' }), duration)
+  }
+
+  useEffect(() => () => {
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current)
+  }, [])
+
+  useEffect(() => {
+    const warnBeforeLeaving = (event) => {
+      if (!settingsDirty) return
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warnBeforeLeaving)
+    return () => window.removeEventListener('beforeunload', warnBeforeLeaving)
+  }, [settingsDirty])
 
   useEffect(() => {
     if (!user) return
@@ -147,17 +214,12 @@ export default function DashboardPage() {
           setSSubmittedAt(profile.submittedAt || '')
           setSIssueDate(profile.issueDate || '')
           setSExpiryDate(profile.expiryDate || '')
-          if (Array.isArray(profile.courses) && profile.courses.length > 0) {
-            const seen = new Map()
-            for (const c of profile.courses) {
-              if (!seen.has(c.id)) seen.set(c.id, c)
-            }
-            const deduped = Array.from(seen.values())
-            if (deduped.length !== profile.courses.length) {
-              setCourses(deduped)
-              api.dedupCourses(user.uid).catch(() => {})
-            }
-          }
+          setSavedSettings({
+            username: profile.username || profile.displayName || '', phone: profile.phone || '',
+            address: profile.address || '', permit: profile.permit || '', medications: profile.medications || '',
+            notes: profile.notes || '', submittedAt: profile.submittedAt || '', issueDate: profile.issueDate || '',
+            expiryDate: profile.expiryDate || '',
+          })
         }
         if (bookingsResult.status === 'fulfilled' && Array.isArray(bookingsResult.value)) {
           setBookings(bookingsResult.value)
@@ -183,13 +245,13 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     if (logoutLoading) return
+    if (settingsDirty && !window.confirm('You have unsaved settings. Sign out without saving them?')) return
     setLogoutLoading(true)
     try {
       await signOut(auth)
       navigate('/', { replace: true })
     } catch {
-      setMsg('Sign out failed. Please check your connection and try again.')
-      setTimeout(() => setMsg(''), 3000)
+      showNotice('Sign out failed. Please check your connection and try again.', 'error')
       setLogoutLoading(false)
     }
   }
@@ -216,20 +278,83 @@ export default function DashboardPage() {
   const [conversations, setConversations] = useState([])
   const [activeConvId, setActiveConvId] = useState(null)
   const [conversationActionId, setConversationActionId] = useState('')
+  const [conversationDeleteConfirm, setConversationDeleteConfirm] = useState(null)
+  const [conversationError, setConversationError] = useState('')
+  const [conversationVersion, setConversationVersion] = useState(0)
+
+  const openModalKey = courseDetail ? 'course-detail'
+    : cancelConfirm ? 'cancel-course'
+      : refundConfirm ? 'refund-course'
+        : bookingCancelConfirm ? 'cancel-booking'
+          : conversationDeleteConfirm ? 'delete-conversation'
+            : ''
+
+  const closeActiveModal = useCallback(() => {
+    if (courseActionLoading || bookingCancelLoading || conversationActionId) return
+    setCourseDetail(null)
+    setCancelConfirm(null)
+    setRefundConfirm(null)
+    setRefundReason('')
+    setCourseActionError('')
+    setBookingCancelConfirm(null)
+    setBookingCancelError('')
+    setConversationDeleteConfirm(null)
+  }, [courseActionLoading, bookingCancelLoading, conversationActionId])
+
+  useEffect(() => {
+    if (!openModalKey || !modalRef.current) return undefined
+    const previouslyFocused = document.activeElement
+    const modal = modalRef.current
+    const selector = 'button:not([disabled]),a[href],input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])'
+    const focusable = () => Array.from(modal.querySelectorAll(selector)).filter(element => !element.hasAttribute('hidden'))
+    focusable()[0]?.focus()
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        closeActiveModal()
+        return
+      }
+      if (event.key !== 'Tab') return
+      const items = focusable()
+      if (!items.length) return
+      const first = items[0]
+      const last = items[items.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault(); last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first.focus()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      previouslyFocused?.focus?.()
+    }
+  }, [openModalKey, closeActiveModal])
+
+  useEffect(() => {
+    const closeMenus = (event) => {
+      if (event.key === 'Escape') {
+        setProfileMenuOpen(false)
+        setSidebarOpen(false)
+      }
+    }
+    document.addEventListener('keydown', closeMenus)
+    return () => document.removeEventListener('keydown', closeMenus)
+  }, [])
 
   useEffect(() => {
     if (!user || activeTab !== 'support') return
     let active = true
     const loadConversations = async () => {
       setConversationLoading(true)
+      setConversationError('')
       try {
         const data = await api.getConversations(user.uid)
         if (active) setConversations(Array.isArray(data) ? data : [])
       } catch {
         if (active) {
-          setConversations([])
-          setMsg('Support history could not be loaded. You can still start a new conversation.')
-          setTimeout(() => setMsg(''), 3000)
+          setConversationError('Support history could not be loaded. You can still start a new conversation or retry.')
         }
       } finally {
         if (active) setConversationLoading(false)
@@ -237,7 +362,7 @@ export default function DashboardPage() {
     }
     loadConversations()
     return () => { active = false }
-  }, [activeTab, user])
+  }, [activeTab, user, conversationVersion])
   const handleCancelBooking = (id) => {
     setBookingCancelError('')
     setBookingCancelConfirm(id)
@@ -252,8 +377,7 @@ export default function DashboardPage() {
         ? prev.map(booking => booking._id === bookingCancelConfirm ? result.booking : booking)
         : prev.map(booking => booking._id === bookingCancelConfirm ? { ...booking, status: 'cancelled' } : booking))
       setBookingCancelConfirm(null)
-      setMsg('Booking cancelled successfully.')
-      setTimeout(() => setMsg(''), 2200)
+      showNotice('Booking cancelled successfully.')
     } catch (error) {
       setBookingCancelError(error.message || 'The booking could not be cancelled. Please try again.')
     } finally {
@@ -266,11 +390,21 @@ export default function DashboardPage() {
       const updated = [...completedModules, moduleId]
       setQuizSaving(true)
       try {
-        await api.saveUser(user.uid, { completedModules: updated })
-        setCompletedModules(updated)
+        const onlineCourse = [...courses].reverse().find(course => String(course.id) === '1' && !['refund pending', 'refunded', 'cancelled', 'canceled'].includes(normalizeStatus(course.status)))
+        const result = onlineCourse
+          ? await api.saveCourseProgress(user.uid, onlineCourse.enrollmentId || onlineCourse.id, updated)
+          : await api.saveUser(user.uid, { completedModules: updated })
+        const savedModules = Array.isArray(result?.completedModules) ? result.completedModules : updated
+        setCompletedModules(savedModules)
+        if (result?.course) {
+          setCourses(previous => previous.map(course => {
+            const sameEnrollment = result.course.enrollmentId && course.enrollmentId === result.course.enrollmentId
+            const legacyMatch = !result.course.enrollmentId && course === onlineCourse
+            return sameEnrollment || legacyMatch ? result.course : course
+          }))
+        }
       } catch (error) {
-        setMsg(error.message || 'Your quiz result could not be saved. Please try again.')
-        setTimeout(() => setMsg(''), 3000)
+        showNotice(error.message || 'Your quiz result could not be saved. Please try again.', 'error')
       } finally {
         setQuizSaving(false)
       }
@@ -278,21 +412,28 @@ export default function DashboardPage() {
   }
   const openModule = (moduleId) => { setActiveModule(moduleId); setModuleStep(0); setQuizAnswers({}); setQuizSubmitted(false); setQuizScore(0) }
 
-  const handleCancelCourse = async (courseId) => {
+  const handleCancelCourse = async (courseRef) => {
     if (courseActionLoading) return
+    const courseId = courseRef?.courseId || courseRef
+    const enrollmentId = courseRef?.enrollmentId || ''
     setCourseActionLoading('cancel')
     setCourseActionError('')
     try {
-      const result = await api.removeCourse(user.uid, courseId)
+      const result = await api.removeCourse(user.uid, courseId, enrollmentId)
       if (!result?.ok) throw new Error('The course could not be cancelled.')
       setCourses(Array.isArray(result.courses)
         ? result.courses
-        : prev => prev.filter(course => String(course.id) !== String(courseId)))
+        : prev => prev.filter(course => enrollmentId ? String(course.enrollmentId) !== String(enrollmentId) : String(course.id) !== String(courseId)))
+      try {
+        const refreshedBookings = await api.getBookings(user.uid)
+        if (Array.isArray(refreshedBookings)) setBookings(refreshedBookings)
+      } catch {
+        setLoadErrors(prev => ({ ...prev, bookings: 'Lesson bookings changed, but the latest list could not be loaded. Please retry.' }))
+      }
       setCancelConfirm(null)
-      setMsg(result.unlinkedBookings > 0
+      showNotice(result.unlinkedBookings > 0
         ? `Course cancelled. Please review ${result.unlinkedBookings} older unlinked lesson booking${result.unlinkedBookings === 1 ? '' : 's'} on the Lessons page.`
-        : 'Course and its linked lesson bookings were cancelled successfully.')
-      setTimeout(() => setMsg(''), result.unlinkedBookings > 0 ? 5000 : 2500)
+        : 'Course and its linked lesson bookings were cancelled successfully.', 'success', result.unlinkedBookings > 0 ? 5000 : 3000)
     } catch (error) {
       setCourseActionError(error.message || 'The course could not be cancelled. Please try again.')
     } finally {
@@ -300,24 +441,31 @@ export default function DashboardPage() {
     }
   }
 
-  const handleRefundCourse = async (courseId) => {
+  const handleRefundCourse = async (courseRef) => {
     if (courseActionLoading) return
+    const courseId = courseRef?.courseId || courseRef
+    const enrollmentId = courseRef?.enrollmentId || ''
     setCourseActionLoading('refund')
     setCourseActionError('')
     try {
-      const result = await api.requestCourseRefund(user.uid, courseId, refundReason.trim())
+      const result = await api.requestCourseRefund(user.uid, courseId, refundReason.trim(), enrollmentId)
       if (!result?.ok) throw new Error('The refund request could not be submitted.')
       setCourses(Array.isArray(result.courses)
         ? result.courses
-        : prev => prev.map(course => String(course.id) === String(courseId) ? { ...course, status: 'Refund Pending' } : course))
+        : prev => prev.map(course => (enrollmentId ? String(course.enrollmentId) === String(enrollmentId) : String(course.id) === String(courseId)) ? { ...course, status: 'Refund Pending' } : course))
+      try {
+        const refreshedBookings = await api.getBookings(user.uid)
+        if (Array.isArray(refreshedBookings)) setBookings(refreshedBookings)
+      } catch {
+        setLoadErrors(prev => ({ ...prev, bookings: 'Lesson bookings changed, but the latest list could not be loaded. Please retry.' }))
+      }
       setRefundConfirm(null)
       setRefundReason('')
-      setMsg(result.duplicate
+      showNotice(result.duplicate
         ? 'Your refund request is already pending.'
         : result.unlinkedBookings > 0
           ? `Refund request submitted. Please review ${result.unlinkedBookings} older unlinked lesson booking${result.unlinkedBookings === 1 ? '' : 's'} on the Lessons page.`
-          : 'Refund request submitted for review. Linked future lessons were cancelled.')
-      setTimeout(() => setMsg(''), result.unlinkedBookings > 0 ? 5000 : 3000)
+          : 'Refund request submitted for review. Linked future lessons were cancelled.', 'success', result.unlinkedBookings > 0 ? 5000 : 3000)
     } catch (error) {
       setCourseActionError(error.message || 'The refund request could not be submitted. Please try again.')
     } finally {
@@ -327,29 +475,32 @@ export default function DashboardPage() {
 
   const handleSaveSettings = async () => {
     if (!sUsername.trim()) {
-      setMsg('Please enter your name before saving.')
-      setTimeout(() => setMsg(''), 2500)
+      showNotice('Please enter your name before saving.', 'error')
       return
     }
     if (sPhone && !/^[+()\d\s.-]{7,30}$/.test(sPhone)) {
-      setMsg('Please enter a valid phone number.')
-      setTimeout(() => setMsg(''), 2500)
+      showNotice('Please enter a valid phone number.', 'error')
+      return
+    }
+    if (sSubmittedAt && sSubmittedAt > localDateKey()) {
+      showNotice('Submitted date cannot be in the future.', 'error')
+      return
+    }
+    if (sIssueDate && sExpiryDate && sExpiryDate <= sIssueDate) {
+      showNotice('Expiry date must be later than the issue date.', 'error')
       return
     }
     const changingPassword = hasPasswordProvider && (sNewPass || sConfirmPass || sCurrentPass)
     if (changingPassword && (!sCurrentPass || !sNewPass || !sConfirmPass)) {
-      setMsg('Please complete all password fields.')
-      setTimeout(() => setMsg(''), 2500)
+      showNotice('Please complete all password fields.', 'error')
       return
     }
     if (changingPassword && sNewPass.length < 8) {
-      setMsg('New password must contain at least 8 characters.')
-      setTimeout(() => setMsg(''), 2500)
+      showNotice('New password must contain at least 8 characters.', 'error')
       return
     }
     if (changingPassword && sNewPass !== sConfirmPass) {
-      setMsg('New passwords do not match.')
-      setTimeout(() => setMsg(''), 2500)
+      showNotice('New passwords do not match.', 'error')
       return
     }
     setSSaving(true)
@@ -393,8 +544,8 @@ export default function DashboardPage() {
       setSubmittedAt(sSubmittedAt)
       setIssueDate(sIssueDate)
       setExpiryDate(sExpiryDate)
-      setMsg(passwordUpdated ? 'Settings and password updated successfully.' : 'Settings saved successfully!')
-      setTimeout(() => setMsg(''), 2500)
+      setSavedSettings(data)
+      showNotice(passwordUpdated ? 'Settings and password updated successfully.' : 'Settings saved successfully!')
     } catch (e) {
       const authCode = String(e.code || '')
       const message = ['auth/wrong-password', 'auth/invalid-credential', 'auth/invalid-login-credentials'].includes(authCode)
@@ -406,8 +557,7 @@ export default function DashboardPage() {
             : passwordUpdated
               ? 'Your password was updated, but the profile changes could not be saved. Please retry.'
               : e.message || 'Failed to save settings.'
-      setMsg(message)
-      setTimeout(() => setMsg(''), 2500)
+      showNotice(message, 'error')
     } finally {
       setSSaving(false)
     }
@@ -436,8 +586,7 @@ export default function DashboardPage() {
         const allConvs = await api.getConversations(user.uid)
         setConversations(Array.isArray(allConvs) ? allConvs : [])
       } catch {
-        setMsg('Your answer is visible, but the conversation history could not be saved.')
-        setTimeout(() => setMsg(''), 3500)
+        showNotice('Your answer is visible, but the conversation history could not be saved.', 'error', 3500)
       }
     } catch (error) {
       setChatMessages([...newMessages, { role: 'assistant', content: error.message || 'Sorry, I am temporarily unavailable. Please try again later or contact us at +1 925 329 1736.' }])
@@ -463,16 +612,21 @@ export default function DashboardPage() {
         setActiveConvId(convId)
       }
     } catch {
-      setMsg('The conversation could not be loaded. Please try again.')
-      setTimeout(() => setMsg(''), 3000)
+      showNotice('The conversation could not be loaded. Please try again.', 'error')
     } finally {
       setConversationLoading(false)
     }
   }
 
-  const handleDeleteConv = async (e, convId) => {
+  const handleDeleteConv = (e, convId) => {
     e.stopPropagation()
     if (chatLoading || conversationLoading || conversationActionId) return
+    setConversationDeleteConfirm(convId)
+  }
+
+  const confirmDeleteConversation = async () => {
+    const convId = conversationDeleteConfirm
+    if (!convId || chatLoading || conversationLoading || conversationActionId) return
     setConversationActionId(convId)
     try {
       await api.deleteConversation(user.uid, convId)
@@ -481,9 +635,10 @@ export default function DashboardPage() {
         setChatMessages([])
         setActiveConvId(null)
       }
+      setConversationDeleteConfirm(null)
+      showNotice('Conversation deleted.')
     } catch {
-      setMsg('The conversation could not be deleted. Please try again.')
-      setTimeout(() => setMsg(''), 3000)
+      showNotice('The conversation could not be deleted. Please try again.', 'error')
     } finally {
       setConversationActionId('')
     }
@@ -505,18 +660,34 @@ export default function DashboardPage() {
       autoPrint: true,
     })
     if (!opened) {
-      setMsg('Please allow pop-ups to print this invoice.')
-      setTimeout(() => setMsg(''), 3000)
+      showNotice('Please allow pop-ups to print this invoice.', 'error')
     }
   }
 
   const todayStr = localDateKey()
-  const upcomingBookings = bookings.filter(b => b.date >= todayStr && ['scheduled', 'confirmed'].includes(b.status))
-  const pastBookings = bookings.filter(b => b.date < todayStr || ['completed', 'cancelled'].includes(b.status))
+  const terminalBookingStatuses = new Set(['completed', 'cancelled', 'canceled', 'refunded', 'no show'])
+  const upcomingBookingStatuses = new Set(['scheduled', 'confirmed', 'booked'])
+  const upcomingBookings = bookings
+    .filter(booking => String(booking?.date || '') >= todayStr && upcomingBookingStatuses.has(normalizeStatus(booking?.status)))
+    .sort((a, b) => bookingSortValue(a).localeCompare(bookingSortValue(b)))
+  const pastBookings = bookings
+    .filter(booking => String(booking?.date || '') < todayStr || terminalBookingStatuses.has(normalizeStatus(booking?.status)))
+    .sort((a, b) => bookingSortValue(b).localeCompare(bookingSortValue(a)))
+  const nextBooking = upcomingBookings[0] || null
+  const totalPaid = payments
+    .filter(payment => normalizeStatus(payment.status) === 'paid')
+    .reduce((sum, payment) => sum + (Number.parseFloat(String(payment.amount ?? '').replace(/[^0-9.-]/g, '')) || 0), 0)
+  const pendingRefunds = courses.filter(course => normalizeStatus(course.status) === 'refund pending').length
+  const activeCourses = courses.filter(course => !['refund pending', 'refunded', 'cancelled', 'canceled'].includes(normalizeStatus(course.status)))
+  const totalSlotUsage = activeCourses.reduce((summary, course) => {
+    const usage = courseSlotUsage(course)
+    return { used: summary.used + usage.used, maximum: summary.maximum + usage.maximum, remaining: summary.remaining + usage.remaining }
+  }, { used: 0, maximum: 0, remaining: 0 })
   const initials = user?.displayName ? user.displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : user?.email?.[0]?.toUpperCase() || '?'
   const activeMod = COURSE_MODULES.find(m => m.id === activeModule)
   const hasPasswordProvider = (user?.providerData || []).some(p => p.providerId === 'password')
   const supportBusy = chatLoading || conversationLoading || Boolean(conversationActionId)
+  const interactiveProgress = Math.round((completedModules.filter(id => COURSE_MODULES.some(module => module.id === id)).length / COURSE_MODULES.length) * 100)
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', sublabel: 'Profile & summary', icon: I.dashboard },
@@ -531,6 +702,7 @@ export default function DashboardPage() {
     ? loadErrors.bookings
     : profileTabs.has(activeTab) ? loadErrors.profile : ''
   const switchTab = (tab) => {
+    if (activeTab === 'settings' && tab !== 'settings' && settingsDirty && !window.confirm('You have unsaved settings. Leave without saving them?')) return
     setActiveTab(tab)
     setSidebarOpen(false)
     setActiveModule(null)
@@ -542,6 +714,7 @@ export default function DashboardPage() {
     setCourseActionError('')
     setBookingCancelConfirm(null)
     setBookingCancelError('')
+    setShowAllHistory(false)
   }
 
   return (
@@ -645,6 +818,13 @@ export default function DashboardPage() {
           .dash-chat-sugg { grid-template-columns:1fr !important; }
           .dash-course-card { flex-wrap:wrap !important; padding:1rem !important; gap:1rem !important; }
           .dash-course-card .dash-course-icon { width:44px !important; height:44px !important; font-size:0.8rem !important; }
+          .dash-header-inner { padding-inline:.55rem !important; }
+          .dash-header-left,.dash-header-actions { gap:.45rem !important; min-width:0; }
+          .dash-brand-copy { display:none !important; }
+          .dash-header-logo { height:42px !important; max-width:72px; }
+          .dash-profile-trigger { padding:.3rem !important; gap:.3rem !important; }
+          .dash-profile-trigger svg { display:none; }
+          .dash-cart-link { width:38px !important; height:38px !important; }
         }
         .dash-course-card { display:flex; align-items:center; background:#ffffff; padding:1.25rem 1.5rem; border-radius:16px; border:1px solid #E8EDF4; gap:1.5rem; transition:all 0.4s cubic-bezier(0.22,1,0.36,1); position:relative; overflow:hidden; }
         .dash-course-card::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(1,69,168,0.02),rgba(253,188,1,0.02)); opacity:0; transition:opacity 0.4s; border-radius:16px; pointer-events:none; }
@@ -662,29 +842,29 @@ export default function DashboardPage() {
 
         <header style={{ position:'sticky', top:0, zIndex:100, background:'#0145A8', borderBottom:'1px solid rgba(253,188,1,0.2)', boxShadow:'0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(253,188,1,0.08)' }}>
           <div style={{ height:'2.5px', background:`linear-gradient(90deg,transparent 5%,${GOLD} 20%,${GOLD_BRIGHT} 35%,#fff 50%,${GOLD_BRIGHT} 65%,${GOLD} 80%,transparent 95%)` }} />
-          <div style={{ padding:'0 clamp(0.75rem,3vw,2rem)', display:'flex', alignItems:'center', justifyContent:'space-between', height:'72px' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:'1.25rem' }}>
-              <button onClick={() => setSidebarOpen(!sidebarOpen)} className="dash-hamburger" style={{ width:'40px', height:'40px', background:'rgba(253,188,1,0.08)', border:'1px solid rgba(253,188,1,0.15)', borderRadius:'10px', cursor:'pointer', alignItems:'center', justifyContent:'center', transition:'all 0.2s', flexShrink:0 }}>
+          <div className="dash-header-inner" style={{ padding:'0 clamp(0.75rem,3vw,2rem)', display:'flex', alignItems:'center', justifyContent:'space-between', height:'72px' }}>
+            <div className="dash-header-left" style={{ display:'flex', alignItems:'center', gap:'1.25rem' }}>
+              <button type="button" aria-label={sidebarOpen ? 'Close dashboard navigation' : 'Open dashboard navigation'} aria-expanded={sidebarOpen} aria-controls="dashboard-sidebar" onClick={() => setSidebarOpen(!sidebarOpen)} className="dash-hamburger" style={{ width:'40px', height:'40px', background:'rgba(253,188,1,0.08)', border:'1px solid rgba(253,188,1,0.15)', borderRadius:'10px', cursor:'pointer', alignItems:'center', justifyContent:'center', transition:'all 0.2s', flexShrink:0 }}>
                 {sidebarOpen ? I.close : I.menu}
               </button>
               <div style={{ display:'flex', alignItems:'center', gap:'0.85rem' }}>
                 <Link to="/" style={{ display:'flex', alignItems:'center', flexShrink:0 }}>
-                  <img src="/driving-logo.png" alt="A Precision Driving School Logo" style={{ height:'52px', width:'auto', objectFit:'contain', filter:'drop-shadow(0 0 18px rgba(255,255,255,0.95)) drop-shadow(0 0 6px rgba(255,255,255,0.8))' }} />
+                  <img className="dash-header-logo" src="/driving-logo.png" alt="A Precision Driving School Logo" style={{ height:'52px', width:'auto', objectFit:'contain', filter:'drop-shadow(0 0 18px rgba(255,255,255,0.95)) drop-shadow(0 0 6px rgba(255,255,255,0.8))' }} />
                 </Link>
-                <div>
+                <div className="dash-brand-copy">
                   <p style={{ fontFamily:'var(--font-display)', fontSize:'1.05rem', color:'#fff', margin:0, fontWeight:800, lineHeight:1.2, textShadow:'0 1px 2px rgba(0,0,0,0.2)' }}>Dashboard</p>
                   <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.65rem', letterSpacing:'0.15em', textTransform:'uppercase', color:GOLD_BRIGHT, margin:0, fontWeight:700, textShadow:'0 0 8px rgba(253,188,1,0.3)' }}>A Precision Driving School</p>
                 </div>
               </div>
             </div>
-            <div style={{ display:'flex', alignItems:'center', gap:'1rem' }}>
-              <Link to="/cart" aria-label={cartCount > 0 ? `My cart, ${cartCount} ${cartCount === 1 ? 'course' : 'courses'}` : 'My cart, empty'} title={cartCount > 0 ? `${cartCount} ${cartCount === 1 ? 'course' : 'courses'} in cart` : 'Cart is empty'} style={{ width:'42px', height:'42px', background:'linear-gradient(135deg,rgba(253,188,1,0.18),rgba(253,188,1,0.08))', border:'1px solid rgba(253,188,1,0.28)', borderRadius:'12px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)', boxShadow:'0 2px 10px rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.15)', textDecoration:'none', color:'#FDBC01' }}>
+            <div className="dash-header-actions" style={{ display:'flex', alignItems:'center', gap:'1rem' }}>
+              <Link className="dash-cart-link" to="/cart" aria-label={cartCount > 0 ? `My cart, ${cartCount} ${cartCount === 1 ? 'course' : 'courses'}` : 'My cart, empty'} title={cartCount > 0 ? `${cartCount} ${cartCount === 1 ? 'course' : 'courses'} in cart` : 'Cart is empty'} style={{ width:'42px', height:'42px', background:'linear-gradient(135deg,rgba(253,188,1,0.18),rgba(253,188,1,0.08))', border:'1px solid rgba(253,188,1,0.28)', borderRadius:'12px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)', boxShadow:'0 2px 10px rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.15)', textDecoration:'none', color:'#FDBC01' }}>
                 <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" /></svg>
                 {cartCount > 0 && <div aria-hidden="true" style={{ position:'absolute', zIndex:2, top:'-9px', right:'-9px', minWidth:'25px', height:'25px', padding:'0 7px', border:'2px solid #fff', borderRadius:'999px', background:'linear-gradient(135deg,#F43F5E,#C8102E)', color:'#fff', fontFamily:'var(--font-mono)', fontSize:'0.76rem', lineHeight:1, fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center', textShadow:'0 1px 2px rgba(0,0,0,0.25)', boxShadow:'0 5px 14px rgba(127,16,35,0.5)' }}>{cartCount}</div>}
               </Link>
               <div className="dash-header-divider" style={{ width:'1px', height:'28px', background:'linear-gradient(180deg,transparent,rgba(253,188,1,0.2),transparent)' }} />
-              <div style={{ position:'relative' }} onClick={() => setProfileMenuOpen(!profileMenuOpen)} onMouseEnter={() => setProfileMenuOpen(true)} onMouseLeave={() => setProfileMenuOpen(false)}>
-                <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'0.45rem 0.85rem 0.45rem 0.55rem', background:profileMenuOpen ? 'linear-gradient(135deg,rgba(253,188,1,0.18),rgba(253,188,1,0.08))' : 'linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.08))', border:`1px solid ${profileMenuOpen ? 'rgba(253,188,1,0.35)' : 'rgba(255,255,255,0.28)'}`, borderRadius:'14px', cursor:'pointer', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)', boxShadow:profileMenuOpen ? '0 2px 12px rgba(253,188,1,0.2)' : '0 2px 10px rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.15)' }}>
+              <div ref={profileMenuRef} style={{ position:'relative' }} onMouseEnter={() => setProfileMenuOpen(true)} onMouseLeave={() => setProfileMenuOpen(false)}>
+                <button type="button" className="dash-profile-trigger" aria-label="Open account menu" aria-haspopup="menu" aria-expanded={profileMenuOpen} onClick={() => setProfileMenuOpen(open => !open)} style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'0.45rem 0.85rem 0.45rem 0.55rem', background:profileMenuOpen ? 'linear-gradient(135deg,rgba(253,188,1,0.18),rgba(253,188,1,0.08))' : 'linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.08))', border:`1px solid ${profileMenuOpen ? 'rgba(253,188,1,0.35)' : 'rgba(255,255,255,0.28)'}`, borderRadius:'14px', cursor:'pointer', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)', boxShadow:profileMenuOpen ? '0 2px 12px rgba(253,188,1,0.2)' : '0 2px 10px rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.15)' }}>
                   <div className="dash-profile-text" style={{ textAlign:'right' }}>
                     <p style={{ fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#fff', margin:0, fontWeight:600, lineHeight:1.2 }}>{user?.displayName || 'Student'}</p>
                     <p style={{ fontFamily:'var(--font-body)', fontSize:'0.8rem', color:'rgba(255,255,255,0.65)', margin:'0.1rem 0 0', maxWidth:'160px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
@@ -694,9 +874,9 @@ export default function DashboardPage() {
                     <div style={{ position:'absolute', bottom:0, right:0, width:'11px', height:'11px', borderRadius:'50%', background:'linear-gradient(135deg,#22C55E,#16A34A)', border:'2.5px solid #0145A8', boxShadow:'0 0 6px rgba(34,197,94,0.4)' }} />
                   </div>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="2.5" style={{ transition:'transform 0.25s', transform:profileMenuOpen ? 'rotate(180deg)' : 'rotate(0)' }}><path d="M6 9l6 6 6-6" /></svg>
-                </div>
+                </button>
                 {profileMenuOpen && (
-                  <div style={{ position:'absolute', top:'100%', right:0, width:'280px', background:'#FFFFFF', border:'2px solid #0145A8', borderRadius:'18px', boxShadow:'0 24px 64px rgba(1,69,168,0.25),0 0 0 1px rgba(1,69,168,0.08)', overflow:'hidden', zIndex:200, animation:'dashFadeIn 0.25s cubic-bezier(0.22,1,0.36,1) both' }}>
+                  <div role="menu" aria-label="Account options" style={{ position:'absolute', top:'100%', right:0, width:'280px', background:'#FFFFFF', border:'2px solid #0145A8', borderRadius:'18px', boxShadow:'0 24px 64px rgba(1,69,168,0.25),0 0 0 1px rgba(1,69,168,0.08)', overflow:'hidden', zIndex:200, animation:'dashFadeIn 0.25s cubic-bezier(0.22,1,0.36,1) both' }}>
                     <div style={{ padding:'1.25rem', borderBottom:'1px solid rgba(1,69,168,0.15)', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(253,188,1,0.04))' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
                         {user?.photoURL ? <img src={user.photoURL} alt="" style={{ width:'50px', height:'50px', borderRadius:'50%', objectFit:'cover', border:`2.5px solid ${GOLD}`, boxShadow:'0 0 16px rgba(253,188,1,0.25)' }} /> : <div style={{ width:'50px', height:'50px', borderRadius:'50%', background:`linear-gradient(135deg,${GOLD},${GOLD_BRIGHT})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.1rem', fontWeight:800, color:DARK, border:`2.5px solid ${GOLD}`, boxShadow:'0 0 16px rgba(253,188,1,0.25)' }}>{initials}</div>}
@@ -712,7 +892,7 @@ export default function DashboardPage() {
                         { label:'Book Lessons', icon:I.calendar, action:() => { setProfileMenuOpen(false); switchTab('bookings') } },
                         { label:'My Courses', icon:I.book, action:() => { setProfileMenuOpen(false); switchTab('courses') } },
                       ].map(item => (
-                        <button key={item.label} onClick={item.action} style={{ display:'flex', alignItems:'center', gap:'0.7rem', padding:'0.65rem 0.8rem', width:'100%', fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#334155', background:'none', border:'none', borderRadius:'10px', cursor:'pointer', textAlign:'left', transition:'all 0.2s' }}>
+                        <button type="button" role="menuitem" key={item.label} onClick={item.action} style={{ display:'flex', alignItems:'center', gap:'0.7rem', padding:'0.65rem 0.8rem', width:'100%', fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#334155', background:'none', border:'none', borderRadius:'10px', cursor:'pointer', textAlign:'left', transition:'all 0.2s' }}>
                           {item.icon} {item.label}
                         </button>
                       ))}
@@ -730,7 +910,7 @@ export default function DashboardPage() {
         </header>
 
         <div style={{ display:'flex', flex:1 }}>
-          <div className={`dash-sidebar ${sidebarOpen ? 'dash-sidebar-open' : ''}`} style={{ width:'260px', background:'linear-gradient(180deg,#0c2a5e 0%,#0145A8 50%,#082048 100%)', padding:0, position:'sticky', top:'76px', height:'calc(100vh - 76px)', overflowY:'auto', flexShrink:0, transition:'left 0.4s', borderRight:'1px solid rgba(253,188,1,0.12)', display:'flex', flexDirection:'column', boxShadow:'inset -1px 0 0 rgba(253,188,1,0.05)' }}>
+          <div id="dashboard-sidebar" className={`dash-sidebar ${sidebarOpen ? 'dash-sidebar-open' : ''}`} style={{ width:'260px', background:'linear-gradient(180deg,#0c2a5e 0%,#0145A8 50%,#082048 100%)', padding:0, position:'sticky', top:'76px', height:'calc(100vh - 76px)', overflowY:'auto', flexShrink:0, transition:'left 0.4s', borderRight:'1px solid rgba(253,188,1,0.12)', display:'flex', flexDirection:'column', boxShadow:'inset -1px 0 0 rgba(253,188,1,0.05)' }}>
             <div style={{ padding:'1.5rem 1rem 1.1rem', borderBottom:'1px solid rgba(253,188,1,0.12)', background:'linear-gradient(135deg,rgba(253,188,1,0.07),transparent 65%)' }}>
               <div style={{ display:'flex', alignItems:'center', gap:'0.85rem' }}>
                 <div style={{ position:'relative', flexShrink:0 }}>
@@ -762,7 +942,7 @@ export default function DashboardPage() {
             </nav>
             <div style={{ padding:'0.75rem', marginTop:'auto' }}>
               <div className="dash-gold-line" />
-              <button onClick={() => navigate('/')} className="dash-nav-item" style={{ marginBottom:'4px', marginTop:'0.5rem' }}>
+              <button onClick={() => { if (!settingsDirty || window.confirm('You have unsaved settings. Leave without saving them?')) navigate('/') }} className="dash-nav-item" style={{ marginBottom:'4px', marginTop:'0.5rem' }}>
                 <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:'linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))', display:'flex', alignItems:'center', justifyContent:'center' }}>{I.home}</div>
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}><span>Back to Home</span></div>
               </button>
@@ -779,7 +959,7 @@ export default function DashboardPage() {
 
           <div className={`dash-sidebar-overlay ${sidebarOpen ? 'dash-sidebar-overlay-show' : ''}`} onClick={() => setSidebarOpen(false)} />
 
-          <main className="dash-main" style={{ flex:1, marginLeft:0, minWidth:0 }}>
+          <div className="dash-main" style={{ flex:1, marginLeft:0, minWidth:0 }}>
             {activeTab !== 'dashboard' && (
               <div style={{ padding:'clamp(1.5rem,4vw,2.5rem) clamp(1rem,3vw,2rem) 0' }}>
                 <h1 style={{ fontFamily:'var(--font-display)', fontSize:'clamp(1.5rem,3vw,2.2rem)', color:'#0F172A', lineHeight:1.15, fontWeight:800, margin:0, animation:'dashFadeIn 0.4s ease both' }}>{navItems.find(n => n.id === activeTab)?.label || 'Dashboard'}</h1>
@@ -792,15 +972,16 @@ export default function DashboardPage() {
                   <button type="button" onClick={() => setLoadVersion(version => version + 1)} disabled={loading} style={{ padding:'0.45rem 0.8rem', border:'1px solid #FCA5A5', borderRadius:'8px', background:'#fff', color:'#B91C1C', fontWeight:800, cursor:loading ? 'wait' : 'pointer' }}>{loading ? 'Retrying...' : 'Retry'}</button>
                 </div>
               )}
-              {msg && (
-                <div className="dash-toast" role={isErrorMessage(msg) ? 'alert' : 'status'} aria-live={isErrorMessage(msg) ? 'assertive' : 'polite'} style={{ padding:'0.95rem 1.2rem', background:isErrorMessage(msg) ? '#FFF7F7' : '#F3FFF7', border:`1px solid ${isErrorMessage(msg) ? 'rgba(220,38,38,0.22)' : 'rgba(34,197,94,0.22)'}`, borderRadius:'14px', fontFamily:'var(--font-body)', fontSize:'1rem', color:isErrorMessage(msg) ? '#B91C1C' : '#15803D', boxShadow:'0 18px 50px rgba(15,23,42,.18)', display:'flex', alignItems:'center', gap:'0.65rem' }}>
-                  {isErrorMessage(msg) ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>}
-                  {msg}
+              {notice.text && (
+                <div className="dash-toast" role={notice.type === 'error' ? 'alert' : 'status'} aria-live={notice.type === 'error' ? 'assertive' : 'polite'} style={{ padding:'0.95rem 1.2rem', background:notice.type === 'error' ? '#FFF7F7' : '#F3FFF7', border:`1px solid ${notice.type === 'error' ? 'rgba(220,38,38,0.22)' : 'rgba(34,197,94,0.22)'}`, borderRadius:'14px', fontFamily:'var(--font-body)', fontSize:'1rem', color:notice.type === 'error' ? '#B91C1C' : '#15803D', boxShadow:'0 18px 50px rgba(15,23,42,.18)', display:'flex', alignItems:'center', gap:'0.65rem' }}>
+                  {notice.type === 'error' ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>}
+                  {notice.text}
                 </div>
               )}
 
               {loading && <div className="dash-skeleton-wrap" role="status" aria-label="Loading dashboard"><div className="dash-skeleton" /><div className="dash-skeleton" /><div className="dash-skeleton" /></div>}
 
+              {!loading && <>
               {activeTab === 'dashboard' && (
                 <div>
                   <div style={{ marginBottom:'2.5rem' }}>
@@ -822,6 +1003,25 @@ export default function DashboardPage() {
                         <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:'0 0 0.25rem', display:'flex', alignItems:'center', gap:'0.4rem' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" /></svg> {phone || '—'}</p>
                         <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:0, display:'flex', alignItems:'center', gap:'0.4rem' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg> {address || '—'}</p>
                       </div>
+                    </div>
+
+                    {/* Actionable summary */}
+                    <div className="dash-anim dash-d1 dash-card-premium" style={{ gridColumn:'span 4' }}>
+                      <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${SKY_BLUE},#3B82F6)` }} />
+                      <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.82rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:'0 0 .55rem', fontWeight:700 }}>Next Lesson</p>
+                      {nextBooking ? <><p style={{ fontFamily:'var(--font-display)', fontSize:'1.05rem', color:DARK, margin:'0 0 .25rem', fontWeight:800 }}>{nextBooking.date}</p><p style={{ margin:0, color:'#475569', fontFamily:'var(--font-body)' }}>{nextBooking.timeSlot || nextBooking.time || 'Time to be confirmed'}</p></> : <p style={{ margin:0, color:'#475569', fontFamily:'var(--font-body)' }}>No upcoming lesson</p>}
+                    </div>
+                    <div className="dash-anim dash-d2 dash-card-premium" style={{ gridColumn:'span 4' }}>
+                      <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT})` }} />
+                      <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.82rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:'0 0 .55rem', fontWeight:700 }}>Lesson Slots</p>
+                      <p style={{ fontFamily:'var(--font-display)', fontSize:'1.25rem', color:DARK, margin:'0 0 .25rem', fontWeight:800 }}>{totalSlotUsage.used} used · {totalSlotUsage.remaining} remaining</p>
+                      <button type="button" onClick={() => switchTab('courses')} style={{ border:0, padding:0, background:'none', color:SKY_BLUE, fontWeight:800, cursor:'pointer' }}>View plan limits</button>
+                    </div>
+                    <div className="dash-anim dash-d3 dash-card-premium" style={{ gridColumn:'span 4' }}>
+                      <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:'linear-gradient(90deg,#CA8A04,#F59E0B)' }} />
+                      <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.82rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:'0 0 .55rem', fontWeight:700 }}>Refund Review</p>
+                      <p style={{ fontFamily:'var(--font-display)', fontSize:'1.25rem', color:DARK, margin:'0 0 .25rem', fontWeight:800 }}>{pendingRefunds}</p>
+                      <p style={{ margin:0, color:'#475569', fontFamily:'var(--font-body)' }}>{pendingRefunds === 1 ? 'request pending' : 'requests pending'}</p>
                     </div>
 
                     {/* Medications */}
@@ -896,10 +1096,10 @@ export default function DashboardPage() {
                         <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600, animation:'dashTextReveal 0.8s ease both' }}>COURSES</p>
                         <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'#0F172A', margin:0, fontWeight:800, textTransform:'uppercase' }}>YOUR ENROLLED COURSES</h2>
                       </div>
-                      {courses.length > 0 && (
+                      {activeCourses.length > 0 && (
                         <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', padding:'0.5rem 1rem', borderRadius:'12px', border:'1px solid rgba(1,69,168,0.08)' }}>
-                          <span style={{ fontFamily:'var(--font-display)', fontSize:'1.3rem', fontWeight:800, color:SKY_BLUE }}>{courses.length}</span>
-                          <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', fontWeight:600 }}>enrolled</span>
+                          <span style={{ fontFamily:'var(--font-display)', fontSize:'1.3rem', fontWeight:800, color:SKY_BLUE }}>{activeCourses.length}</span>
+                          <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', fontWeight:600 }}>active</span>
                         </div>
                       )}
                     </div>
@@ -918,10 +1118,13 @@ export default function DashboardPage() {
                         return (order[a.status] ?? 1) - (order[b.status] ?? 1)
                       }).map((course, i) => {
                         const status = String(course.status || 'Enrolled')
-                        const normalizedStatus = status.toLowerCase()
+                        const normalizedStatus = normalizeStatus(status)
                         const canRequestAction = !['refund pending', 'refunded', 'cancelled'].includes(normalizedStatus)
+                        const usage = courseSlotUsage(course)
+                        const courseProgress = String(course.id) === '1' ? Math.max(Number(course.progress) || 0, interactiveProgress) : Number(course.progress) || 0
+                        const enrollmentKey = course.enrollmentId || course._id || `${course.id}-${course.enrolledAt || course.date || i}`
                         return (
-                        <div key={course.id || i} className="dash-course-card" style={{ animationDelay:`${i * 0.06}s` }}>
+                        <div key={enrollmentKey} className="dash-course-card" style={{ animationDelay:`${i * 0.06}s` }}>
                           <div className="dash-course-icon" style={{ width:'52px', height:'52px', borderRadius:'14px', background:'linear-gradient(135deg,rgba(1,69,168,0.08),rgba(1,69,168,0.03))', color:SKY_BLUE, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-display)', fontSize:'1.05rem', fontWeight:800, flexShrink:0, border:'1px solid rgba(1,69,168,0.08)' }}>{course.id}</div>
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', flexWrap:'wrap', marginBottom:'0.25rem' }}>
@@ -930,20 +1133,21 @@ export default function DashboardPage() {
                             </div>
                             <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', margin:'0 0 0.5rem' }}>{course.price}</p>
                             <div style={{ height:'6px', background:'#E8EDF4', borderRadius:'3px', overflow:'hidden', marginBottom:'0.4rem', maxWidth:'300px' }}>
-                              <div style={{ width:`${course.progress || 0}%`, height:'100%', background:`linear-gradient(90deg,${SKY_BLUE},#3B82F6)`, borderRadius:'3px', transition:'width 0.8s cubic-bezier(0.22,1,0.36,1)' }} />
+                              <div style={{ width:`${courseProgress}%`, height:'100%', background:`linear-gradient(90deg,${SKY_BLUE},#3B82F6)`, borderRadius:'3px', transition:'width 0.8s cubic-bezier(0.22,1,0.36,1)' }} />
                             </div>
-                            <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:0 }}>{course.progress || 0}% complete</p>
+                            <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', margin:0 }}>{courseProgress}% study progress · {usage.used}/{usage.maximum} lesson slots used</p>
                           </div>
                           <div style={{ display:'flex', gap:'0.5rem', flexShrink:0, flexWrap:'wrap', justifyContent:'flex-end', alignItems:'center' }}>
+                            {canRequestAction && course.canBookMore !== false && usage.remaining > 0 && <button type="button" onClick={() => navigate(`/pricing?plan=${encodeURIComponent(course.id)}&continue=1${course.enrollmentId ? `&enrollmentId=${encodeURIComponent(course.enrollmentId)}` : ''}`)} style={{ padding:'0.5rem 1rem', background:'linear-gradient(135deg,rgba(253,188,1,.16),rgba(253,188,1,.06))', color:'#7A5600', border:'1px solid rgba(253,188,1,.35)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:800, cursor:'pointer' }}>Book {usage.remaining} Remaining</button>}
                             <button type="button" onClick={() => setCourseDetail(course)} style={{ padding:'0.5rem 1rem', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', color:SKY_BLUE, border:'1px solid rgba(1,69,168,0.1)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:'0.4rem', transition:'all 0.2s' }}>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></svg> Details
                             </button>
                             {canRequestAction && (
                               <>
-                                <button type="button" onClick={() => { setCourseActionError(''); setCancelConfirm(course.id) }} style={{ padding:'0.5rem 1rem', background:'none', color:'#DC2626', border:'1px solid rgba(220,38,38,0.15)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:700, cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background='rgba(220,38,38,0.04)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.3)' }} onMouseLeave={(e) => { e.currentTarget.style.background='none'; e.currentTarget.style.borderColor='rgba(220,38,38,0.15)' }}>
+                                <button type="button" onClick={() => { setCourseActionError(''); setCancelConfirm({ courseId: course.id, enrollmentId: course.enrollmentId || '' }) }} style={{ padding:'0.5rem 1rem', background:'none', color:'#DC2626', border:'1px solid rgba(220,38,38,0.15)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:700, cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background='rgba(220,38,38,0.04)'; e.currentTarget.style.borderColor='rgba(220,38,38,0.3)' }} onMouseLeave={(e) => { e.currentTarget.style.background='none'; e.currentTarget.style.borderColor='rgba(220,38,38,0.15)' }}>
                                   Cancel
                                 </button>
-                                <button type="button" onClick={() => { setCourseActionError(''); setRefundReason(''); setRefundConfirm(course.id) }} style={{ padding:'0.5rem 1rem', background:'none', color:'#CA8A04', border:'1px solid rgba(202,138,4,0.15)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:700, cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background='rgba(202,138,4,0.04)'; e.currentTarget.style.borderColor='rgba(202,138,4,0.3)' }} onMouseLeave={(e) => { e.currentTarget.style.background='none'; e.currentTarget.style.borderColor='rgba(202,138,4,0.15)' }}>
+                                <button type="button" onClick={() => { setCourseActionError(''); setRefundReason(''); setRefundConfirm({ courseId: course.id, enrollmentId: course.enrollmentId || '' }) }} style={{ padding:'0.5rem 1rem', background:'none', color:'#CA8A04', border:'1px solid rgba(202,138,4,0.15)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:700, cursor:'pointer', transition:'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background='rgba(202,138,4,0.04)'; e.currentTarget.style.borderColor='rgba(202,138,4,0.3)' }} onMouseLeave={(e) => { e.currentTarget.style.background='none'; e.currentTarget.style.borderColor='rgba(202,138,4,0.15)' }}>
                                   Refund
                                 </button>
                               </>
@@ -959,7 +1163,7 @@ export default function DashboardPage() {
 
               {courseDetail && (
                 <div style={{ position:'fixed', inset:0, background:'rgba(10,22,40,0.6)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem', animation:'dashFadeIn 0.3s ease' }} onClick={(e) => { if (e.target === e.currentTarget) setCourseDetail(null) }}>
-                  <div style={{ background:'#fff', borderRadius:'var(--radius-xl)', width:'100%', maxWidth:'440px', boxShadow:'0 24px 80px rgba(0,0,0,0.25)', animation:'dashSlideUp 0.4s cubic-bezier(0.22,1,0.36,1)', overflow:'hidden' }}>
+                  <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="course-details-title" style={{ background:'#fff', borderRadius:'var(--radius-xl)', width:'100%', maxWidth:'440px', boxShadow:'0 24px 80px rgba(0,0,0,0.25)', animation:'dashSlideUp 0.4s cubic-bezier(0.22,1,0.36,1)', overflow:'hidden' }}>
                     <div style={{ background:`linear-gradient(135deg,#0145A8 0%,#0a2a5e 50%,#0145A8 100%)`, padding:'2rem', position:'relative', overflow:'hidden' }}>
                       <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(253,188,1,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(253,188,1,0.04) 1px, transparent 1px)', backgroundSize:'24px 24px', pointerEvents:'none' }} />
                       <button onClick={() => setCourseDetail(null)} style={{ position:'absolute', top:'1rem', right:'1rem', background:'rgba(255,255,255,0.1)', border:'none', borderRadius:'50%', width:'32px', height:'32px', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#fff', fontSize:'1.1rem', zIndex:2 }}>&times;</button>
@@ -968,7 +1172,7 @@ export default function DashboardPage() {
                           <span style={{ width:'16px', height:'2px', background:`linear-gradient(90deg, transparent, ${GOLD})` }} />
                           <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.2em', textTransform:'uppercase', color:GOLD_DEEP, fontWeight:700 }}>Course Details</span>
                         </div>
-                        <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.3rem', color:'#fff', fontWeight:800, margin:0 }}>{courseDetail.title}</h2>
+                        <h2 id="course-details-title" style={{ fontFamily:'var(--font-display)', fontSize:'1.3rem', color:'#fff', fontWeight:800, margin:0 }}>{courseDetail.title}</h2>
                       </div>
                     </div>
                     <div style={{ padding:'1.5rem 2rem 2rem' }}>
@@ -1004,7 +1208,7 @@ export default function DashboardPage() {
 
               {cancelConfirm !== null && (
                 <div style={{ position:'fixed', inset:0, background:'rgba(10,22,40,0.6)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem', animation:'dashFadeIn 0.3s ease' }} onClick={(e) => { if (e.target === e.currentTarget && !courseActionLoading) { setCancelConfirm(null); setCourseActionError('') } }}>
-                  <div role="alertdialog" aria-modal="true" aria-labelledby="cancel-course-title" aria-describedby="cancel-course-copy" style={{ background:'#fff', borderRadius:'var(--radius-xl)', width:'100%', maxWidth:'400px', boxShadow:'0 24px 80px rgba(0,0,0,0.25)', animation:'dashSlideUp 0.4s cubic-bezier(0.22,1,0.36,1)', overflow:'hidden' }}>
+                  <div ref={modalRef} role="alertdialog" aria-modal="true" aria-labelledby="cancel-course-title" aria-describedby="cancel-course-copy" style={{ background:'#fff', borderRadius:'var(--radius-xl)', width:'100%', maxWidth:'400px', boxShadow:'0 24px 80px rgba(0,0,0,0.25)', animation:'dashSlideUp 0.4s cubic-bezier(0.22,1,0.36,1)', overflow:'hidden' }}>
                     <div style={{ padding:'2rem 2rem 1.5rem', textAlign:'center' }}>
                       <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'rgba(220,38,38,0.06)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}>
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
@@ -1023,7 +1227,7 @@ export default function DashboardPage() {
 
               {refundConfirm !== null && (
                 <div style={{ position:'fixed', inset:0, background:'rgba(10,22,40,0.6)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem', animation:'dashFadeIn 0.3s ease' }} onClick={(e) => { if (e.target === e.currentTarget && !courseActionLoading) { setRefundConfirm(null); setRefundReason(''); setCourseActionError('') } }}>
-                  <div role="dialog" aria-modal="true" aria-labelledby="refund-course-title" aria-describedby="refund-course-copy" style={{ background:'#fff', borderRadius:'var(--radius-xl)', width:'100%', maxWidth:'440px', boxShadow:'0 24px 80px rgba(0,0,0,0.25)', animation:'dashSlideUp 0.4s cubic-bezier(0.22,1,0.36,1)', overflow:'hidden' }}>
+                  <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="refund-course-title" aria-describedby="refund-course-copy" style={{ background:'#fff', borderRadius:'var(--radius-xl)', width:'100%', maxWidth:'440px', boxShadow:'0 24px 80px rgba(0,0,0,0.25)', animation:'dashSlideUp 0.4s cubic-bezier(0.22,1,0.36,1)', overflow:'hidden' }}>
                     <div style={{ padding:'2rem 2rem 1.5rem', textAlign:'center' }}>
                       <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'rgba(202,138,4,0.06)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}>
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#CA8A04" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" /></svg>
@@ -1051,11 +1255,11 @@ export default function DashboardPage() {
                     <div className="dash-stat-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1rem', marginBottom:'2rem' }}>
                       <div style={{ background:'linear-gradient(135deg,rgba(5,150,105,0.04),rgba(5,150,105,0.01))', border:'1px solid rgba(5,150,105,0.1)', borderRadius:'var(--radius-md)', padding:'1.25rem' }}>
                         <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#059669', margin:'0 0 0.25rem', fontWeight:600 }}>Total Paid</p>
-                        <p style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', color:'#059669', margin:0, fontWeight:800 }}>{payments.filter(p => p.status === 'Paid').length}</p>
+                        <p style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', color:'#059669', margin:0, fontWeight:800 }}>{formatUSD(totalPaid)}</p>
                       </div>
                       <div style={{ background:'linear-gradient(135deg,rgba(234,179,8,0.04),rgba(234,179,8,0.01))', border:'1px solid rgba(234,179,8,0.1)', borderRadius:'var(--radius-md)', padding:'1.25rem' }}>
                         <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#CA8A04', margin:'0 0 0.25rem', fontWeight:600 }}>Pending</p>
-                        <p style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', color:'#CA8A04', margin:0, fontWeight:800 }}>{payments.filter(p => p.status !== 'Paid').length}</p>
+                        <p style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', color:'#CA8A04', margin:0, fontWeight:800 }}>{payments.filter(payment => normalizeStatus(payment.status) === 'pending').length}</p>
                       </div>
                       <div style={{ background:'linear-gradient(135deg,rgba(1,69,168,0.04),rgba(1,69,168,0.01))', border:'1px solid rgba(1,69,168,0.1)', borderRadius:'var(--radius-md)', padding:'1.25rem' }}>
                         <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:SKY_BLUE, margin:'0 0 0.25rem', fontWeight:600 }}>Transactions</p>
@@ -1082,7 +1286,7 @@ export default function DashboardPage() {
                           </tr>
                         )}
                         {payments.map((p, i) => (
-                          <tr key={i} className="dash-table-row" style={{ borderBottom:'1px solid #F1F5F9' }}>
+                          <tr key={p.ref || p._id || `${p.date}-${p.item}-${i}`} className="dash-table-row" style={{ borderBottom:'1px solid #F1F5F9' }}>
                             <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569' }}>{p.date}</td>
                             <td style={{ padding:'1rem', fontFamily:'var(--font-mono)', fontSize:'1.05rem', color:'#475569', fontWeight:600 }}>{p.ref}</td>
                             <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569' }}>{p.email}</td>
@@ -1108,44 +1312,44 @@ export default function DashboardPage() {
                     <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:'0 0 2rem' }}>Quick access to profile and security settings.</p>
                     <div className="dash-form-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'1rem' }}>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Username</label>
-                        <input type="text" value={sUsername} onChange={e => setSUsername(e.target.value)} className="dash-input" />
+                        <label htmlFor="settings-name" style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Full Name</label>
+                        <input id="settings-name" name="name" type="text" autoComplete="name" maxLength="120" value={sUsername} onChange={e => setSUsername(e.target.value)} className="dash-input" />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Email</label>
-                        <input type="email" value={user?.email || ''} readOnly className="dash-input" style={{ color:'#475569', background:'linear-gradient(145deg,#F0F0F0,#e8e8e8)', cursor:'not-allowed' }} />
+                        <label htmlFor="settings-email" style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Email</label>
+                        <input id="settings-email" name="email" type="email" autoComplete="email" value={user?.email || ''} readOnly className="dash-input" style={{ color:'#475569', background:'linear-gradient(145deg,#F0F0F0,#e8e8e8)', cursor:'not-allowed' }} />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Phone</label>
-                        <input type="tel" value={sPhone} onChange={e => setSPhone(e.target.value)} className="dash-input" />
+                        <label htmlFor="settings-phone" style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Phone</label>
+                        <input id="settings-phone" name="tel" type="tel" autoComplete="tel" maxLength="30" value={sPhone} onChange={e => setSPhone(e.target.value)} className="dash-input" />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Permit</label>
-                        <input type="text" value={sPermit} onChange={e => setSPermit(e.target.value)} className="dash-input" />
+                        <label htmlFor="settings-permit" style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Permit Number</label>
+                        <input id="settings-permit" type="text" maxLength="80" value={sPermit} onChange={e => setSPermit(e.target.value)} className="dash-input" />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Medications</label>
-                        <input type="text" value={sMedications} onChange={e => setSMedications(e.target.value)} className="dash-input" />
+                        <label htmlFor="settings-medications" style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Medications</label>
+                        <input id="settings-medications" type="text" maxLength="500" value={sMedications} onChange={e => setSMedications(e.target.value)} className="dash-input" />
                       </div>
                       <div style={{ gridColumn:'1 / -1' }}>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Address</label>
-                        <textarea value={sAddress} onChange={e => setSAddress(e.target.value)} rows="3" className="dash-input" style={{ resize:'vertical' }} />
+                        <label htmlFor="settings-address" style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Address</label>
+                        <textarea id="settings-address" name="street-address" autoComplete="street-address" maxLength="500" value={sAddress} onChange={e => setSAddress(e.target.value)} rows="3" className="dash-input" style={{ resize:'vertical' }} />
                       </div>
                       <div style={{ gridColumn:'1 / -1' }}>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Notes</label>
-                        <textarea value={sNotes} onChange={e => setSNotes(e.target.value)} rows="3" className="dash-input" style={{ resize:'vertical' }} />
+                        <label htmlFor="settings-notes" style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Notes</label>
+                        <textarea id="settings-notes" maxLength="2000" value={sNotes} onChange={e => setSNotes(e.target.value)} rows="3" className="dash-input" style={{ resize:'vertical' }} />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Submitted Date</label>
-                        <input type="date" value={sSubmittedAt} onChange={e => setSSubmittedAt(e.target.value)} className="dash-input" />
+                        <label htmlFor="settings-submitted" style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Submitted Date</label>
+                        <input id="settings-submitted" type="date" max={localDateKey()} value={sSubmittedAt} onChange={e => setSSubmittedAt(e.target.value)} className="dash-input" />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Issue Date</label>
-                        <input type="date" value={sIssueDate} onChange={e => setSIssueDate(e.target.value)} className="dash-input" />
+                        <label htmlFor="settings-issued" style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Issue Date</label>
+                        <input id="settings-issued" type="date" value={sIssueDate} onChange={e => setSIssueDate(e.target.value)} className="dash-input" />
                       </div>
                       <div>
-                        <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Expiry Date</label>
-                        <input type="date" value={sExpiryDate} onChange={e => setSExpiryDate(e.target.value)} className="dash-input" />
+                        <label htmlFor="settings-expiry" style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Expiry Date</label>
+                        <input id="settings-expiry" type="date" min={sIssueDate || undefined} value={sExpiryDate} onChange={e => setSExpiryDate(e.target.value)} className="dash-input" />
                       </div>
                     </div>
                     {hasPasswordProvider ? (
@@ -1154,16 +1358,16 @@ export default function DashboardPage() {
                         <p id="password-help" style={{ fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#64748B', margin:'0 0 1.5rem' }}>Use at least 8 characters. Complete all three fields only when changing your password.</p>
                         <div className="dash-form-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'1.5rem' }}>
                           <div>
-                            <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Current password</label>
-                            <input type="password" autoComplete="current-password" aria-describedby="password-help" placeholder="Enter current password" value={sCurrentPass} onChange={e => setSCurrentPass(e.target.value)} className="dash-input" />
+                            <label htmlFor="settings-current-password" style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Current password</label>
+                            <input id="settings-current-password" type="password" autoComplete="current-password" maxLength="128" aria-describedby="password-help" placeholder="Enter current password" value={sCurrentPass} onChange={e => setSCurrentPass(e.target.value)} className="dash-input" />
                           </div>
                           <div>
-                            <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>New password</label>
-                            <input type="password" autoComplete="new-password" minLength="8" aria-describedby="password-help" placeholder="Min 8 characters" value={sNewPass} onChange={e => setSNewPass(e.target.value)} className="dash-input" />
+                            <label htmlFor="settings-new-password" style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>New password</label>
+                            <input id="settings-new-password" type="password" autoComplete="new-password" minLength="8" maxLength="128" aria-describedby="password-help" placeholder="Min 8 characters" value={sNewPass} onChange={e => setSNewPass(e.target.value)} className="dash-input" />
                           </div>
                           <div>
-                            <label style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Confirm new password</label>
-                            <input type="password" autoComplete="new-password" minLength="8" aria-describedby="password-help" placeholder="Repeat new password" value={sConfirmPass} onChange={e => setSConfirmPass(e.target.value)} className="dash-input" />
+                            <label htmlFor="settings-confirm-password" style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Confirm new password</label>
+                            <input id="settings-confirm-password" type="password" autoComplete="new-password" minLength="8" maxLength="128" aria-describedby="password-help" placeholder="Repeat new password" value={sConfirmPass} onChange={e => setSConfirmPass(e.target.value)} className="dash-input" />
                           </div>
                         </div>
                       </>
@@ -1194,6 +1398,11 @@ export default function DashboardPage() {
                     <div style={{ flex:1, overflowY:'auto', padding:'0.5rem' }}>
                       {conversationLoading ? (
                         <div role="status" aria-live="polite" style={{ textAlign:'center', padding:'2rem 1rem', color:'#64748b', fontFamily:'var(--font-body)' }}>Loading conversations...</div>
+                      ) : conversationError ? (
+                        <div role="alert" style={{ textAlign:'center', padding:'1.25rem .75rem', color:'#B91C1C', fontFamily:'var(--font-body)' }}>
+                          <p style={{ margin:'0 0 .8rem', lineHeight:1.5 }}>{conversationError}</p>
+                          <button type="button" onClick={() => setConversationVersion(version => version + 1)} style={{ padding:'.5rem .75rem', border:'1px solid #FCA5A5', borderRadius:'8px', background:'#fff', color:'#B91C1C', fontWeight:800, cursor:'pointer' }}>Retry</button>
+                        </div>
                       ) : conversations.length === 0 ? (
                         <div style={{ textAlign:'center', padding:'2rem 1rem' }}>
                           <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#B0B8C4', margin:0 }}>No conversations yet.</p>
@@ -1290,7 +1499,7 @@ export default function DashboardPage() {
                       <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(1,69,168,0.08),rgba(1,69,168,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}>{I.book}</div>
                       My Bookings
                     </h3>
-                    {bookings.length === 0 ? (
+                    {upcomingBookings.length === 0 && pastBookings.length === 0 ? (
                       <div style={{ textAlign:'center', padding:'2.5rem 1rem' }}>
                         <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg></div>
                         <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569' }}>No bookings yet. Choose a package to reserve your lesson times.</p>
@@ -1302,13 +1511,13 @@ export default function DashboardPage() {
                           {upcomingBookings.map(b => {
                             const slot = TIME_SLOTS.find(s => s.id === b.timeSlot)
                             return (
-                              <div key={b._id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.85rem 1rem', background:'linear-gradient(135deg,rgba(34,197,94,0.04),rgba(34,197,94,0.01))', borderRadius:'14px', border:'1px solid rgba(34,197,94,0.1)' }}>
+                              <div key={b._id || `${b.date}-${b.timeSlot || b.time}-${b.enrollmentId || ''}`} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.85rem 1rem', background:'linear-gradient(135deg,rgba(34,197,94,0.04),rgba(34,197,94,0.01))', borderRadius:'14px', border:'1px solid rgba(34,197,94,0.1)' }}>
                                 <div>
                                   <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:DARK, fontWeight:600, margin:0 }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })}</p>
                                   <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', margin:'0.15rem 0 0' }}>{slot?.time || b.timeSlot}</p>
                                 </div>
                                 <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                                  <span style={{ padding:'0.25rem 0.7rem', background:b.status === 'confirmed' ? 'rgba(1,69,168,.10)' : 'rgba(34,197,94,.10)', color:b.status === 'confirmed' ? SKY_BLUE : '#15803D', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700 }}>{b.status === 'confirmed' ? 'Confirmed' : 'Scheduled'}</span>
+                                  <span style={{ padding:'0.25rem 0.7rem', background:normalizeStatus(b.status) === 'confirmed' ? 'rgba(1,69,168,.10)' : 'rgba(34,197,94,.10)', color:normalizeStatus(b.status) === 'confirmed' ? SKY_BLUE : '#15803D', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700 }}>{normalizeStatus(b.status) === 'booked' ? 'Booked' : normalizeStatus(b.status) === 'confirmed' ? 'Confirmed' : 'Scheduled'}</span>
                                   <button type="button" aria-label="Cancel booking" title="Cancel booking" onClick={() => handleCancelBooking(b._id)} style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', padding:'0.35rem', borderRadius:'6px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
                                 </div>
                               </div>
@@ -1317,18 +1526,22 @@ export default function DashboardPage() {
                         </>}
                         {pastBookings.length > 0 && <>
                           <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', fontWeight:600, margin:'0.5rem 0 0.25rem' }}>Past</p>
-                          {pastBookings.slice(0, 10).map(b => {
+                          {pastBookings.slice(0, showAllHistory ? pastBookings.length : 10).map(b => {
                             const slot = TIME_SLOTS.find(s => s.id === b.timeSlot)
+                            const pastStatus = normalizeStatus(b.status)
+                            const pastStatusLabel = pastStatus === 'canceled' || pastStatus === 'cancelled' ? 'Cancelled' : pastStatus === 'no show' ? 'No Show' : pastStatus === 'refunded' ? 'Refunded' : 'Completed'
+                            const pastStatusIsNegative = ['canceled', 'cancelled', 'no show', 'refunded'].includes(pastStatus)
                             return (
-                              <div key={b._id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.85rem 1rem', background:'#FAFBFD', borderRadius:'14px', border:'1px solid #F1F5F9', opacity:0.7 }}>
+                              <div key={b._id || `${b.date}-${b.timeSlot || b.time}-${b.enrollmentId || ''}`} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.85rem 1rem', background:'#FAFBFD', borderRadius:'14px', border:'1px solid #F1F5F9', opacity:0.7 }}>
                                 <div>
                                   <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#666', fontWeight:500, margin:0 }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })}</p>
                                   <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#999', margin:'0.15rem 0 0' }}>{slot?.time || b.timeSlot}</p>
                                 </div>
-                                <span style={{ padding:'0.25rem 0.7rem', background:b.status === 'cancelled' ? 'rgba(220,38,38,.08)' : 'rgba(136,153,170,0.08)', color:b.status === 'cancelled' ? '#B91C1C' : '#475569', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:600 }}>{b.status === 'cancelled' ? 'Cancelled' : 'Completed'}</span>
+                                <span style={{ padding:'0.25rem 0.7rem', background:pastStatusIsNegative ? 'rgba(220,38,38,.08)' : 'rgba(136,153,170,0.08)', color:pastStatusIsNegative ? '#B91C1C' : '#475569', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:600 }}>{pastStatusLabel}</span>
                               </div>
                             )
                           })}
+                          {pastBookings.length > 10 && <button type="button" onClick={() => setShowAllHistory(show => !show)} style={{ alignSelf:'center', padding:'.55rem 1rem', border:'1px solid #CBD5E1', borderRadius:'9px', background:'#fff', color:SKY_BLUE, fontWeight:800, cursor:'pointer' }}>{showAllHistory ? 'Show Recent 10' : `View All ${pastBookings.length}`}</button>}
                         </>}
                       </div>
                     )}
@@ -1390,17 +1603,24 @@ export default function DashboardPage() {
                     <div>
                       <div style={{ marginBottom:'1.5rem' }}>
                         <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.15rem', color:DARK, fontWeight:700, marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.6rem' }}>{I.book} Online Driver Education</h3>
-                        <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:0 }}>Complete all 3 modules to finish your course.</p>
+                        <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:0 }}>Work through the 3 interactive study modules below. Your enrolled course includes the 15-topic curriculum overview shown here.</p>
                         <div style={{ marginTop:'0.75rem', background:'#E8EDF4', borderRadius:'999px', height:'8px', overflow:'hidden' }}>
                           <div style={{ width:`${Math.round((completedModules.length/3)*100)}%`, height:'100%', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT})`, borderRadius:'999px', transition:'width 0.5s' }} />
                         </div>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', fontWeight:600, marginTop:'0.35rem' }}>{completedModules.length} of 3 modules completed</p>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', fontWeight:600, marginTop:'0.35rem' }}>{completedModules.filter(id => COURSE_MODULES.some(module => module.id === id)).length} of 3 interactive modules completed</p>
                       </div>
+                      <section aria-labelledby="dashboard-curriculum-title" style={{ marginBottom:'1.75rem' }}>
+                        <h4 id="dashboard-curriculum-title" style={{ fontFamily:'var(--font-display)', fontSize:'1.05rem', color:DARK, margin:'0 0 .8rem' }}>15-topic curriculum overview</h4>
+                        <ol style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:'.55rem', margin:0, padding:0, listStyle:'none' }}>
+                          {ONLINE_COURSE_CURRICULUM.map((lesson, index) => <li key={lesson} style={{ display:'flex', gap:'.65rem', alignItems:'flex-start', padding:'.7rem .8rem', border:'1px solid #E2E8F0', borderRadius:'10px', background:'#F8FAFC', color:'#334155', fontFamily:'var(--font-body)', lineHeight:1.4 }}><span aria-hidden="true" style={{ color:SKY_BLUE, fontFamily:'var(--font-mono)', fontWeight:800 }}>{String(index + 1).padStart(2, '0')}</span><span>{lesson}</span></li>)}
+                        </ol>
+                      </section>
+                      <h4 style={{ fontFamily:'var(--font-display)', fontSize:'1.05rem', color:DARK, margin:'0 0 .8rem' }}>Interactive study modules</h4>
                       <div className="dash-mod-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1.25rem' }}>
                         {COURSE_MODULES.map((mod, i) => {
                           const done = completedModules.includes(mod.id)
                           return (
-                            <div key={mod.id} className="dash-mod" onClick={() => openModule(mod.id)}>
+                            <button type="button" key={mod.id} className="dash-mod" onClick={() => openModule(mod.id)} style={{ textAlign:'left' }}>
                               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1rem' }}>
                                 <div style={{ width:'44px', height:'44px', borderRadius:'12px', background:done ? 'linear-gradient(135deg,rgba(34,197,94,0.1),rgba(34,197,94,0.2))' : `linear-gradient(135deg,rgba(1,69,168,0.08),rgba(253,188,1,0.08))`, border:`1.5px solid ${done ? '#22C55E' : '#E8EDF4'}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
                                   {done ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg> : <span style={{ fontFamily:'var(--font-display)', fontSize:'1.1rem', fontWeight:800, color:SKY_BLUE }}>{i+1}</span>}
@@ -1413,7 +1633,7 @@ export default function DashboardPage() {
                                 {done ? 'Review Module' : 'Start Module'}
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                               </div>
-                            </div>
+                            </button>
                           )
                         })}
                       </div>
@@ -1421,12 +1641,27 @@ export default function DashboardPage() {
                   )}
                 </div>
               )}
+              </>}
 
             </div>
 
+            {conversationDeleteConfirm && (
+              <div className="dash-modal-backdrop" role="presentation" style={{ position:'fixed', inset:0, background:'rgba(10,22,40,.68)', backdropFilter:'blur(10px)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }} onClick={(event) => { if (event.target === event.currentTarget && !conversationActionId) setConversationDeleteConfirm(null) }}>
+                <div ref={modalRef} className="dash-confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="delete-conversation-title" aria-describedby="delete-conversation-copy" style={{ width:'100%', maxWidth:'410px', background:'#fff', borderRadius:'22px', boxShadow:'0 28px 90px rgba(2,12,27,.35)', padding:'2rem' }}>
+                  <div style={{ width:'58px', height:'58px', borderRadius:'18px', background:'rgba(220,38,38,.08)', color:'#DC2626', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'1.2rem' }}><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 6h18M8 6V4h8v2m-9 0 1 15h8l1-15M10 10v7m4-7v7" /></svg></div>
+                  <h2 id="delete-conversation-title" style={{ fontFamily:'var(--font-display)', fontSize:'1.35rem', color:DARK, margin:'0 0 .55rem' }}>Delete conversation?</h2>
+                  <p id="delete-conversation-copy" style={{ fontFamily:'var(--font-body)', fontSize:'1rem', lineHeight:1.65, color:'#475569', margin:'0 0 1.5rem' }}>This support conversation will be permanently removed. This action cannot be undone.</p>
+                  <div style={{ display:'flex', gap:'.75rem', justifyContent:'flex-end', flexWrap:'wrap' }}>
+                    <button type="button" disabled={Boolean(conversationActionId)} onClick={() => setConversationDeleteConfirm(null)} style={{ padding:'.8rem 1.15rem', border:'1px solid #CBD5E1', borderRadius:'11px', background:'#fff', color:'#334155', fontWeight:700, cursor:conversationActionId ? 'wait' : 'pointer' }}>Keep Conversation</button>
+                    <button type="button" disabled={Boolean(conversationActionId)} onClick={confirmDeleteConversation} style={{ padding:'.8rem 1.15rem', border:0, borderRadius:'11px', background:'linear-gradient(135deg,#DC2626,#B91C1C)', color:'#fff', fontWeight:700, cursor:conversationActionId ? 'wait' : 'pointer', opacity:conversationActionId ? .72 : 1 }}>{conversationActionId ? 'Deleting…' : 'Yes, Delete'}</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {bookingCancelConfirm && (
               <div className="dash-modal-backdrop" role="presentation" style={{ position:'fixed', inset:0, background:'rgba(10,22,40,.68)', backdropFilter:'blur(10px)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }} onClick={(e) => { if (e.target === e.currentTarget && !bookingCancelLoading) { setBookingCancelConfirm(null); setBookingCancelError('') } }}>
-                <div className="dash-confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="cancel-booking-title" aria-describedby="cancel-booking-copy" style={{ width:'100%', maxWidth:'420px', background:'#fff', borderRadius:'22px', boxShadow:'0 28px 90px rgba(2,12,27,.35)', padding:'2rem' }}>
+                <div ref={modalRef} className="dash-confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="cancel-booking-title" aria-describedby="cancel-booking-copy" style={{ width:'100%', maxWidth:'420px', background:'#fff', borderRadius:'22px', boxShadow:'0 28px 90px rgba(2,12,27,.35)', padding:'2rem' }}>
                   <div style={{ width:'58px', height:'58px', borderRadius:'18px', background:'rgba(220,38,38,.08)', color:'#DC2626', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'1.2rem' }}><svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M9 15l6 0"/></svg></div>
                   <h2 id="cancel-booking-title" style={{ fontFamily:'var(--font-display)', fontSize:'1.35rem', color:DARK, margin:'0 0 .55rem' }}>Cancel this booking?</h2>
                   <p id="cancel-booking-copy" style={{ fontFamily:'var(--font-body)', fontSize:'1rem', lineHeight:1.65, color:'#475569', margin:'0 0 1.5rem' }}>The selected lesson will be removed from your upcoming bookings. This action cannot be undone.</p>
@@ -1438,7 +1673,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             )}
-          </main>
+          </div>
         </div>
       </div>
     </>

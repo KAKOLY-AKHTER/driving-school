@@ -1,14 +1,6 @@
 import { Link } from 'react-router-dom'
 import { usePageMeta } from '../usePageMeta'
-
-const lessons = [
-  'Driving Is Your Responsibility', 'The Driver', 'Natural Forces Affecting the Driver',
-  'Signs, Signals and Highway Markings', 'California Vehicle Code and Rules of the Road',
-  'Causes and Costs of Accidents', 'Differences in Urban and Rural Driving',
-  'Critical Vehicle Systems and Subsystems', 'Pedestrian Safety', 'Effects of Alcohol and Drugs',
-  'Motorcycle Safety', 'Risk Taking and Risk Perception of Teenagers', 'Substance Abuse',
-  'Driving Experience', 'Road Rage',
-]
+import { ONLINE_COURSE_CURRICULUM } from '../data/onlineCourseCurriculum'
 
 export default function OnlineCourseDetailsPage() {
   usePageMeta('Online Driver Education Course Details', 'Review the complete California DMV-approved online driver education curriculum and enrollment information.')
@@ -30,7 +22,7 @@ export default function OnlineCourseDetailsPage() {
         <Link to="/online-drivers-ed">Home</Link><Link className="active" aria-current="page" to="/online-drivers-ed/details">Course Details</Link><Link to="/online-drivers-ed/pricing">Pricing</Link><Link to="/online-drivers-ed/permit">Permit</Link><Link to="/online-drivers-ed/driver-license">Driver License</Link><Link to="/">Behind the Wheel</Link>
       </div></nav>
       <section className="cd-intro"><p>Fifteen structured lessons walk you from basic responsibility through advanced topics—at your own pace, on any device—so you are prepared for your permit and supervised driving.</p><div className="cd-pills"><span className="cd-pill"><strong>15</strong> lessons</span><span className="cd-pill"><strong>100%</strong> online</span><span className="cd-pill"><strong>Certificate</strong> included</span></div></section>
-      <section className="cd-section"><div className="cd-wrap"><h1 className="cd-title">Course Details</h1><div className="cd-grid"><div><h2 style={{fontSize:'1.25rem'}}>Curriculum Overview</h2><div className="cd-lessons">{lessons.map((lesson,i)=><div className="cd-lesson" key={lesson}><span>{String(i+1).padStart(2,'0')}</span><div>{lesson}</div></div>)}</div><div style={{textAlign:'center',marginTop:'1.5rem'}}><Link to="/register" className="cd-btn">Get Started</Link></div></div><aside className="cd-side"><div className="cd-info"><h3>Help When You Need It</h3><p>Our support team answers questions by live chat and email, whether you are a student or parent.</p></div><div className="cd-info"><h3>Quick, Secure Enrollment</h3><p>Complete the brief sign-up form and start your course immediately. Certificate delivery is straightforward.</p></div><div className="cd-info"><h3>Questions from Parents or Students?</h3><p>Get course guidance, technical assistance and answers to common topics from our team.</p></div></aside></div><div className="cd-cta"><div className="cd-price"><div><small>ONLY</small><br/><strong>$39.99</strong></div></div><div className="cd-buy"><h2>California DMV-Approved Teen Driver Education</h2><p style={{color:'#64748b'}}>100% online, self-paced lessons with your official completion certificate included.</p><Link to="/register" className="cd-btn">Sign Up Now</Link></div></div></div></section>
+      <section className="cd-section"><div className="cd-wrap"><h1 className="cd-title">Course Details</h1><div className="cd-grid"><div><h2 style={{fontSize:'1.25rem'}}>Curriculum Overview</h2><div className="cd-lessons">{ONLINE_COURSE_CURRICULUM.map((lesson,i)=><div className="cd-lesson" key={lesson}><span>{String(i+1).padStart(2,'0')}</span><div>{lesson}</div></div>)}</div><div style={{textAlign:'center',marginTop:'1.5rem'}}><Link to="/register" className="cd-btn">Get Started</Link></div></div><aside className="cd-side"><div className="cd-info"><h3>Help When You Need It</h3><p>Our support team answers questions by live chat and email, whether you are a student or parent.</p></div><div className="cd-info"><h3>Quick, Secure Enrollment</h3><p>Complete the brief sign-up form and start your course immediately. Certificate delivery is straightforward.</p></div><div className="cd-info"><h3>Questions from Parents or Students?</h3><p>Get course guidance, technical assistance and answers to common topics from our team.</p></div></aside></div><div className="cd-cta"><div className="cd-price"><div><small>ONLY</small><br/><strong>$39.99</strong></div></div><div className="cd-buy"><h2>California DMV-Approved Teen Driver Education</h2><p style={{color:'#64748b'}}>100% online, self-paced lessons with your official completion certificate included.</p><Link to="/register" className="cd-btn">Sign Up Now</Link></div></div></div></section>
     </div>
   )
 }

@@ -58,6 +58,18 @@ const slotInstruction = (tier) => {
     : `Select 1 to ${limit} date & time slots`
 }
 
+const activeEnrollmentFor = (courses, tier) => [...(Array.isArray(courses) ? courses : [])].reverse().find(course => {
+  const status = String(course?.status || 'Enrolled').trim().toLowerCase()
+  return String(course?.id) === String(tier?.id)
+    && !['cancelled', 'refunded', 'refund pending'].includes(status)
+}) || null
+
+const enrollmentUsedSlots = (enrollment) => {
+  const serverCount = Number(enrollment?.slotAllowance?.used)
+  if (Number.isFinite(serverCount) && serverCount >= 0) return serverCount
+  return Array.isArray(enrollment?.pickupSlots) ? enrollment.pickupSlots.length : 0
+}
+
 function BookingSteps({ current }) {
   const items = ['Plan', 'City', 'Schedule', 'Cart']
   return (
@@ -101,10 +113,68 @@ export default function PricingPage() {
   const [availabilityLoading, setAvailabilityLoading] = useState(false)
   const [error, setError] = useState('')
   const [tiers, setTiers] = useState(null)
+  const [enrolledCourses, setEnrolledCourses] = useState([])
+  const [enrollmentLoading, setEnrollmentLoading] = useState(false)
+  const [enrollmentLoadError, setEnrollmentLoadError] = useState('')
+  const [enrollmentLoadVersion, setEnrollmentLoadVersion] = useState(0)
 
   useEffect(() => {
     api.getPricing().then(d => { if (Array.isArray(d) && d.length) setTiers(d) }).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!user) {
+      setEnrolledCourses([])
+      setEnrollmentLoading(false)
+      setEnrollmentLoadError('')
+      return
+    }
+    let active = true
+    setEnrollmentLoading(true)
+    setEnrollmentLoadError('')
+    api.getUser(user.uid)
+      .then(profile => {
+        if (active) setEnrolledCourses(Array.isArray(profile?.courses) ? profile.courses : [])
+      })
+      .catch(() => {
+        if (active) {
+          setEnrolledCourses([])
+          setEnrollmentLoadError('We could not check your current package allowance. Please retry before selecting lesson times.')
+        }
+      })
+      .finally(() => {
+        if (active) setEnrollmentLoading(false)
+      })
+    return () => { active = false }
+  }, [user, enrollmentLoadVersion])
+
+  const enrollmentForPlan = (tier) => activeEnrollmentFor(enrolledCourses, tier)
+  const selectionLimitForPlan = (tier) => {
+    const maximum = slotLimitForPlan(tier)
+    const enrollment = enrollmentForPlan(tier)
+    if (!enrollment) return maximum
+    const serverRemaining = Number(enrollment?.slotAllowance?.remaining)
+    const remaining = Number.isFinite(serverRemaining)
+      ? serverRemaining
+      : maximum - enrollmentUsedSlots(enrollment)
+    return Math.max(0, Math.min(maximum, remaining))
+  }
+  const planIsContinuation = (tier) => Boolean(enrollmentForPlan(tier))
+  const planCharge = (tier) => planIsContinuation(tier) ? 0 : priceNumber(tier?.planPrice)
+  const planPriceLabel = (tier) => planIsContinuation(tier) ? 'Included' : tier?.planPrice
+  const selectionInstruction = (tier) => {
+    const limit = selectionLimitForPlan(tier)
+    if (planIsContinuation(tier)) {
+      const used = enrollmentUsedSlots(enrollmentForPlan(tier))
+      const maximum = slotLimitForPlan(tier)
+      return limit > 0
+        ? `${used}/${maximum} used · select 1 to ${limit} remaining`
+        : `${maximum}/${maximum} slots already used`
+    }
+    return slotInstruction(tier)
+  }
+  const selectedEnrollment = enrollmentForPlan(selectedTier)
+  const selectedPlanSelectionLimit = selectedTier ? selectionLimitForPlan(selectedTier) : 0
 
   useEffect(() => {
     if (!tiers?.length) return
@@ -123,6 +193,16 @@ export default function PricingPage() {
   }, [tiers, location.search])
 
   useEffect(() => {
+    if (!selectedTier || enrollmentLoading || !selectedEnrollment) return
+    if (selectedPlanSelectionLimit === 0 && (step === 'city' || step === 'calendar')) {
+      setSelectedPlans(prev => prev.filter(plan => String(plan.tier.id) !== String(selectedTier.id)))
+      setSelectedSlots([])
+      setError(`All ${slotLimitForPlan(selectedTier)} included slots for ${selectedTier.planName} have already been used.`)
+      setStep('full')
+    }
+  }, [selectedTier, selectedEnrollment, selectedPlanSelectionLimit, enrollmentLoading, step])
+
+  useEffect(() => {
     if (!pendingDate) return
     let active = true
     setBookedTimes([])
@@ -135,6 +215,12 @@ export default function PricingPage() {
   }, [pendingDate])
 
   const handleChoose = (tier) => {
+    if (!enrollmentLoading && planIsContinuation(tier) && selectionLimitForPlan(tier) === 0) {
+      setSelectedTier(tier)
+      setError(`All ${slotLimitForPlan(tier)} included slots for ${tier.planName} have already been used.`)
+      setStep('full')
+      return
+    }
     const existing = selectedPlans.find(plan => plan.tier.id === tier.id)
     setSelectedTier(tier)
     setSelectedCity(existing?.city || '')
@@ -148,6 +234,18 @@ export default function PricingPage() {
   }
 
   const handleCityNext = () => {
+    if (user && enrollmentLoading) {
+      setError('Checking your current package allowance. Please wait a moment.')
+      return
+    }
+    if (user && enrollmentLoadError) {
+      setError(enrollmentLoadError)
+      return
+    }
+    if (selectionLimitForPlan(selectedTier) < 1) {
+      setError(`This package has no remaining lesson slots.`)
+      return
+    }
     if (!selectedCity) {
       setError('Please select your city.')
       return
@@ -162,7 +260,15 @@ export default function PricingPage() {
   }
 
   const handleBooking = async () => {
-    if (!selectedPlans.length || selectedPlans.some(plan => plan.slots.length < 1 || plan.slots.length > slotLimitForPlan(plan.tier))) {
+    if (user && enrollmentLoading) {
+      setError('Checking your current package allowance. Please wait a moment.')
+      return
+    }
+    if (user && enrollmentLoadError) {
+      setError(enrollmentLoadError)
+      return
+    }
+    if (!selectedPlans.length || selectedPlans.some(plan => plan.slots.length < 1 || plan.slots.length > selectionLimitForPlan(plan.tier))) {
       setError("Please select at least 1 available slot for every plan. You may choose up to each plan's displayed maximum.")
       return
     }
@@ -177,6 +283,7 @@ export default function PricingPage() {
           preferredDate: plan.slots[0]?.date || '',
           pickupTime: plan.slots[0]?.time || '',
           pickupSlots: plan.slots,
+          continuation: planIsContinuation(plan.tier),
         })
         if (!result?.ok) throw new Error(result?.error || 'Unable to save this package.')
       }
@@ -264,7 +371,7 @@ export default function PricingPage() {
     setError('')
   }
 
-  const plansTotal = selectedPlans.reduce((sum, plan) => sum + priceNumber(plan.tier.planPrice), 0)
+  const plansTotal = selectedPlans.reduce((sum, plan) => sum + planCharge(plan.tier), 0)
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -320,6 +427,18 @@ export default function PricingPage() {
 
       <Pricing light onEnroll={handleChoose} tiers={tiers} />
 
+      {step === 'full' && selectedTier && (
+        <div style={backdropStyle} onClick={(event) => { if (event.target === event.currentTarget) handleClose() }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="full-package-title" style={{ ...modalStyle, maxWidth:'480px', padding:'2rem', textAlign:'center' }}>
+            <button type="button" onClick={handleClose} aria-label="Close" style={{ position:'absolute', top:'0.8rem', right:'1rem', border:0, background:'transparent', color:'#64748B', fontSize:'1.8rem', cursor:'pointer' }}>&times;</button>
+            <div aria-hidden="true" style={{ width:'58px', height:'58px', margin:'0 auto 1rem', display:'grid', placeItems:'center', borderRadius:'50%', background:'#EFF6FF', color:'#0755AE', fontSize:'1.6rem', fontWeight:900 }}>&#10003;</div>
+            <h2 id="full-package-title" style={{ margin:'0 0 0.6rem', color:DARK, fontFamily:'var(--font-display)', fontSize:'1.45rem' }}>All Included Slots Are Booked</h2>
+            <p style={{ margin:'0 0 1.3rem', color:'#64748B', fontFamily:'var(--font-body)', lineHeight:1.65 }}>{error}</p>
+            <button type="button" onClick={() => navigate('/dashboard')} style={{ minHeight:'44px', padding:'0 1.2rem', border:0, borderRadius:'10px', background:'#0755AE', color:'#fff', fontFamily:'var(--font-body)', fontWeight:800, cursor:'pointer' }}>View My Lessons</button>
+          </div>
+        </div>
+      )}
+
       {step === 'city' && selectedTier && (
         <div style={{ ...backdropStyle, alignItems: 'flex-start', paddingTop: '1.25rem' }} onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}>
           <div role="dialog" aria-modal="true" aria-labelledby="city-modal-title" style={{ ...modalStyle, maxWidth: '800px', borderRadius: '14px', padding: '1.35rem 1.8rem 1.8rem' }}>
@@ -337,7 +456,8 @@ export default function PricingPage() {
 
             <div style={{ fontFamily: 'var(--font-body)', color: DARK, fontSize: '1rem', lineHeight: 1.6, marginBottom: '0.25rem' }}>
               <div>Plan Name: <strong>{selectedTier.planName}</strong></div>
-              <div>Price: <strong>{selectedTier.planPrice}</strong></div>
+              <div>Price: <strong>{user && enrollmentLoading ? 'Checking package status…' : planIsContinuation(selectedTier) ? 'Already paid — no additional charge' : selectedTier.planPrice}</strong></div>
+              {planIsContinuation(selectedTier) && <div style={{ marginTop:'0.25rem', color:'#15803D', fontWeight:800 }}>{selectionInstruction(selectedTier)}</div>}
             </div>
             <p style={{ fontFamily: 'var(--font-body)', color: '#7a8494', fontSize: '0.95rem', margin: '0 0 0.9rem' }}>Please select your city</p>
 
@@ -352,12 +472,13 @@ export default function PricingPage() {
                 <option value="">Select city</option>
                 {CITIES.map(city => <option key={city} value={city}>{city}</option>)}
               </select>
-              <button onClick={handleCityNext} style={{ minHeight: '46px', display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0 1.15rem', border: 0, borderRadius: '10px', background: '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '1rem', fontWeight: 800, cursor: 'pointer', boxShadow: '0 7px 18px rgba(7,85,174,0.18)' }}>
-                Next
+              <button type="button" disabled={Boolean(user && enrollmentLoading)} onClick={handleCityNext} style={{ minHeight: '46px', display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0 1.15rem', border: 0, borderRadius: '10px', background: user && enrollmentLoading ? '#94A3B8' : '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '1rem', fontWeight: 800, cursor: user && enrollmentLoading ? 'wait' : 'pointer', boxShadow: user && enrollmentLoading ? 'none' : '0 7px 18px rgba(7,85,174,0.18)' }}>
+                {user && enrollmentLoading ? 'Checking…' : 'Next'}
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
               </button>
             </div>
-            {error && <p style={{ margin: '0.55rem 0 0', color: '#dc2626', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>{error}</p>}
+            {error && <p role="alert" style={{ margin: '0.55rem 0 0', color: '#dc2626', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>{error}</p>}
+            {user && enrollmentLoadError && <button type="button" onClick={() => setEnrollmentLoadVersion(version => version + 1)} style={{ marginTop:'0.55rem', padding:'0.45rem 0.75rem', border:'1px solid #BFDBFE', borderRadius:'8px', background:'#EFF6FF', color:'#0755AE', fontFamily:'var(--font-body)', fontWeight:800, cursor:'pointer' }}>Retry package check</button>}
           </div>
         </div>
       )}
@@ -377,7 +498,7 @@ export default function PricingPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                 <div>
                   <div style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.75rem' }}>Select Your Preferred Slots</div>
-                  <div style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.68rem', marginTop: '0.15rem' }}>Choose at least 1 slot for each plan, up to its displayed maximum.</div>
+                  <div style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.68rem', marginTop: '0.15rem' }}>Choose at least 1 slot for each plan, up to its available package allowance.</div>
                   <strong style={{ color: '#0755ae', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>{calendarMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' })}</strong>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -412,11 +533,11 @@ export default function PricingPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
                     <div>
                       <strong style={{ color: '#586576', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>{plan.tier.planName}</strong>
-                      <span style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> ({slotInstruction(plan.tier)} · {plan.slots.length} selected / {slotLimitForPlan(plan.tier)} max)</span>
+                      <span style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> ({selectionInstruction(plan.tier)} · {plan.slots.length} selected / {selectionLimitForPlan(plan.tier)} available)</span>
                       <div style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>{plan.city}</div>
                       <button onClick={(e) => { e.stopPropagation(); removePlan(plan.tier.id) }} style={{ marginTop: '0.4rem', padding: '0.32rem 0.5rem', border: 0, borderRadius: '4px', background: '#e93647', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.65rem', cursor: 'pointer' }}>Remove plan</button>
                     </div>
-                    <span style={{ alignSelf: 'flex-start', padding: '0.25rem 0.55rem', borderRadius: '999px', background: '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 800 }}>{plan.tier.planPrice}</span>
+                    <span style={{ alignSelf: 'flex-start', padding: '0.25rem 0.55rem', borderRadius: '999px', background: planIsContinuation(plan.tier) ? '#15803D' : '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 800 }}>{planPriceLabel(plan.tier)}</span>
                   </div>
                   <div style={{ borderTop: '1px solid #e2e8f0', marginTop: '0.55rem', paddingTop: '0.45rem' }}>
                     {plan.slots.length ? plan.slots.map(slot => (
@@ -431,11 +552,11 @@ export default function PricingPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
                   <div>
                     <strong style={{ color: '#586576', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>{selectedTier.planName}</strong>
-                    <span style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> ({slotInstruction(selectedTier)} · {selectedSlots.length} selected / {slotLimitForPlan(selectedTier)} max)</span>
+                    <span style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> ({selectionInstruction(selectedTier)} · {selectedSlots.length} selected / {selectionLimitForPlan(selectedTier)} available)</span>
                     <div style={{ marginTop: '0.2rem', color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>{selectedCity}</div>
                     <button onClick={() => removePlan(selectedTier.id)} style={{ marginTop: '0.45rem', padding: '0.35rem 0.55rem', border: 0, borderRadius: '4px', background: '#e93647', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer' }}>Remove plan</button>
                   </div>
-                  <span style={{ alignSelf: 'flex-start', padding: '0.25rem 0.55rem', borderRadius: '999px', background: '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 800 }}>{selectedTier.planPrice}</span>
+                  <span style={{ alignSelf: 'flex-start', padding: '0.25rem 0.55rem', borderRadius: '999px', background: planIsContinuation(selectedTier) ? '#15803D' : '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 800 }}>{planPriceLabel(selectedTier)}</span>
                 </div>
                 <div style={{ borderTop: '1px solid #cbd5e1', marginTop: '0.65rem', paddingTop: '0.55rem', fontFamily: 'var(--font-body)', fontSize: '0.75rem' }}>
                   {selectedSlots.length ? selectedSlots.map(slot => (
@@ -458,7 +579,8 @@ export default function PricingPage() {
 
               {error && <p style={{ color: '#dc2626', margin: '0.45rem 0 0', fontFamily: 'var(--font-body)', fontSize: '0.75rem' }}>{error}</p>}
               <button onClick={() => { setStep(null); setSelectedTier(null); setPendingDate('') }} style={{ width: '100%', marginTop: '0.6rem', minHeight: '34px', border: 0, borderRadius: '6px', background: '#747f88', color: '#fff', fontFamily: 'var(--font-body)', fontWeight: 700, cursor: 'pointer' }}>+ Add More Plans</button>
-              <div style={{ margin: '0.45rem 0', color: '#08284a', fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: 800 }}>Total: ${plansTotal.toFixed(2)}</div>
+              <div style={{ margin: '0.45rem 0', color: '#08284a', fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: 800 }}>Additional amount due: ${plansTotal.toFixed(2)}</div>
+              {selectedPlans.some(plan => planIsContinuation(plan.tier)) && <div style={{ margin:'-0.2rem 0 0.5rem', color:'#15803D', fontFamily:'var(--font-body)', fontSize:'0.72rem', fontWeight:700 }}>Remaining lessons from an enrolled package are included at no extra charge.</div>}
               <button onClick={handleBooking} style={{ width: '100%', minHeight: '38px', border: 0, borderRadius: '8px', background: '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontWeight: 800, cursor: 'pointer' }}>Proceed to Booking</button>
             </div>
 
@@ -482,7 +604,7 @@ export default function PricingPage() {
                         || selectedSlots.some(slot => slot.date === pendingDate && slot.time === time)
                         || selectedPlans.some(plan => String(plan.tier.id) !== String(selectedTier.id)
                           && plan.slots.some(slot => slot.date === pendingDate && slot.time === time))
-                      const slotLimit = slotLimitForPlan(selectedTier)
+                      const slotLimit = selectionLimitForPlan(selectedTier)
                       const limitReached = selectedSlots.length >= slotLimit
                       return (
                       <div key={time} style={{ minHeight: '56px', padding: '0.7rem 0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', borderRadius: '11px', background: booked ? '#ffe5e5' : '#fff', boxShadow: booked ? 'none' : '0 8px 24px rgba(15,23,42,0.09)' }}>
