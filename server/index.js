@@ -1427,7 +1427,9 @@ app.put('/api/users/:uid/courses/:enrollmentId/progress', async (req, res) => {
 
 app.delete('/api/users/:uid/courses/:courseId', async (req, res) => {
   try {
-    const uid = req.auth.uid
+    // requireSelf permits either the account owner or a verified database admin;
+    // use the requested profile id so admin course management targets that user.
+    const uid = cleanText(req.params.uid, 160)
     const courseId = cleanText(req.params.courseId, 120)
     const requestedEnrollmentId = cleanText(req.query?.enrollmentId, 160)
     if (!courseId) return res.status(400).json({ error: 'Course id required.' })
@@ -2254,14 +2256,44 @@ app.delete('/api/users/:uid/conversations/:convId', async (req, res) => {
 
 app.get('/api/admin/stats', async (req, res) => {
   try {
-    const [totalUsers, totalBookings, activeEnrollments] = await Promise.all([
+    const today = californiaDateKey()
+    const inactiveCourseStatuses = ['refund pending', 'refunded', 'cancelled', 'canceled']
+    const [totalUsers, totalBookings, activeEnrollmentRows, upcomingBookings, pendingContacts, pendingRefunds] = await Promise.all([
       usersCol.countDocuments(),
       bookingsCol.countDocuments({ status: { $ne: 'held' } }),
-      usersCol.countDocuments({ courseType: { $exists: true, $ne: '' } }),
+      usersCol.aggregate([
+        { $unwind: '$courses' },
+        {
+          $match: {
+            $expr: {
+              $not: [{
+                $in: [
+                  { $toLower: { $ifNull: ['$courses.status', 'enrolled'] } },
+                  inactiveCourseStatuses,
+                ],
+              }],
+            },
+          },
+        },
+        { $count: 'count' },
+      ]).toArray(),
+      bookingsCol.countDocuments({
+        date: { $gte: today },
+        $expr: { $in: [{ $toLower: { $ifNull: ['$status', 'scheduled'] } }, ['scheduled', 'confirmed', 'booked']] },
+      }),
+      contactCol.countDocuments({ $or: [{ status: { $exists: false } }, { status: null }, { status: '' }, { status: { $regex: /^new$/i } }] }),
+      refundsCol.countDocuments({ Status: { $regex: /^pending$/i } }),
     ])
-    res.json({ totalUsers, totalBookings, activeEnrollments })
+    res.json({
+      totalUsers,
+      totalBookings,
+      activeEnrollments: Number(activeEnrollmentRows[0]?.count || 0),
+      upcomingBookings,
+      pendingContacts,
+      pendingRefunds,
+    })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Admin statistics lookup failed')
   }
 })
 
@@ -2306,13 +2338,43 @@ app.delete('/api/admin/bookings/:id', async (req, res) => {
   try {
     if (!ObjectId.isValid(req.params.id)) return res.status(400).json({ error: 'Invalid booking id.' })
     const bookingId = new ObjectId(req.params.id)
-    await withMongoTransaction(async (session) => {
-      await bookingSlotsCol.deleteOne({ bookingId }, { session })
+    const deletedBooking = await withMongoTransaction(async (session) => {
+      const booking = await bookingsCol.findOne({ _id: bookingId }, { session })
+      if (!booking) throw new HttpError(404, 'Booking not found.')
+
+      // Match by bookingId so deleting an old history record can never release a
+      // newer student's lock that happens to use the same date and time.
+      await bookingSlotsCol.deleteMany({ bookingId }, { session })
       await bookingsCol.deleteOne({ _id: bookingId }, { session })
+
+      if (booking.userId && booking.courseId !== undefined && booking.courseId !== null && booking.courseId !== '') {
+        const profile = await usersCol.findOne({ uid: booking.userId }, { session, projection: { courses: 1 } })
+        const courses = Array.isArray(profile?.courses) ? profile.courses : []
+        let courseIndex = -1
+        if (booking.enrollmentId) {
+          courseIndex = courses.findIndex(course => String(course?.enrollmentId || '') === String(booking.enrollmentId))
+        }
+        if (courseIndex < 0) courseIndex = findCourseEnrollmentIndex(courses, booking.courseId)
+
+        if (courseIndex >= 0) {
+          const targetSlotKey = bookingSlotKey(booking.date, booking.timeSlot)
+          const nextCourses = courses.map((course, index) => {
+            if (index !== courseIndex) return course
+            const pickupSlots = (Array.isArray(course?.pickupSlots) ? course.pickupSlots : []).filter(slot => {
+              const safeSlot = safeStoredPickupSlot(slot)
+              return !safeSlot || bookingSlotKey(safeSlot.date, safeSlot.time) !== targetSlotKey
+            })
+            return { ...course, pickupSlots }
+          })
+          await usersCol.updateOne({ uid: booking.userId }, { $set: { courses: nextCourses } }, { session })
+        }
+      }
+      return booking
     })
-    res.json({ ok: true })
+    res.json({ ok: true, booking: deletedBooking })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    if (e instanceof HttpError) return res.status(e.status).json({ error: e.message })
+    sendServerError(res, e, 'Admin booking deletion failed')
   }
 })
 
