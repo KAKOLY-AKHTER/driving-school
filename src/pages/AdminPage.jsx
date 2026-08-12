@@ -25,6 +25,20 @@ const localDateKey = (date = new Date()) => new Intl.DateTimeFormat('en-CA', {
 
 const normalizeStatus = (value) => String(value || '').trim().toLowerCase().replace(/[\s_-]+/g, ' ')
 
+const adminUserName = (account) => {
+  const fullName = [account?.firstName, account?.middleName, account?.lastName]
+    .map(value => String(value || '').trim())
+    .filter(Boolean)
+    .join(' ')
+  return String(
+    account?.displayName
+      || account?.name
+      || account?.username
+      || fullName
+      || (account?.isAdmin ? 'Site Administrator' : 'Student')
+  ).trim()
+}
+
 const formatUSD = (value) => {
   const amount = typeof value === 'number'
     ? value
@@ -133,7 +147,7 @@ const SVG = {
 
 export default function AdminPage() {
   usePageMeta('Admin Panel — A Precision Driving School', 'A Precision Driving School admin panel.')
-  const { user } = useAuth()
+  const { user, refreshProfile, refreshAuthUser, authRevision } = useAuth()
   const navigate = useNavigate()
   const hasPasswordProvider = Boolean(user?.providerData?.some(provider => provider.providerId === 'password'))
 
@@ -287,7 +301,7 @@ export default function AdminPage() {
       setAccPhotoFilePreview('')
       setAccEmail(user.email || '')
     }
-  }, [user])
+  }, [user, authRevision])
 
   const handleSaveProfile = async () => {
     setAccErr(''); setAccMsg(''); setAccLoading(true)
@@ -299,20 +313,34 @@ export default function AdminPage() {
       let photoURL = ''
       if (accPhotoFile) {
         const avatarRef = ref(storage, `avatars/${user.uid}`)
+        const uploadVersion = Date.now()
         await uploadBytes(avatarRef, accPhotoFile, {
           contentType: accPhotoFile.type,
-          cacheControl: 'public,max-age=3600',
+          cacheControl: 'no-store,max-age=0,must-revalidate',
         })
-        photoURL = await getDownloadURL(avatarRef)
+        const downloadURL = await getDownloadURL(avatarRef)
+        const versionedURL = new URL(downloadURL)
+        versionedURL.searchParams.set('v', String(uploadVersion))
+        photoURL = versionedURL.toString()
       } else {
         const photoResult = validateHttpsUrl(accPhoto, { required: false })
         if (photoResult.error) throw new Error(`Profile photo: ${photoResult.error}`)
         photoURL = photoResult.value
       }
       await updateProfile(cur, { displayName, photoURL })
-      await api.saveUser(user.uid, { name: displayName, email: accEmail.trim(), photoURL })
+      await api.saveUser(user.uid, {
+        displayName,
+        name: displayName,
+        email: cur.email || accEmail.trim(),
+        photoURL,
+      })
+      const refreshedUser = await refreshAuthUser()
+      await refreshProfile(refreshedUser)
       setAccName(displayName)
       setAccPhoto(photoURL)
+      setUsers(previous => previous.map(account => account.uid === user.uid
+        ? { ...account, displayName, name: displayName, photoURL }
+        : account))
       setAccPhotoFile(null)
       setAccPhotoFilePreview('')
       setAccMsg('Profile updated.')
@@ -332,14 +360,18 @@ export default function AdminPage() {
       const cur = auth.currentUser
       if (!cur || !user?.email) throw new Error('Your session has expired. Please sign in again.')
       if (accNewPass.length < 6) throw new Error('New password must be at least 6 characters.')
-      await reauthenticateWithCredential(cur, EmailAuthProvider.credential(user.email, accPass))
+      await reauthenticateWithCredential(cur, EmailAuthProvider.credential(cur.email, accPass))
       await updatePassword(cur, accNewPass)
+      await reauthenticateWithCredential(cur, EmailAuthProvider.credential(cur.email, accNewPass))
+      await refreshAuthUser()
       setAccPass(''); setAccNewPass('')
-      setAccMsg('Password changed.')
+      setAccMsg('Password changed securely. Use the new password the next time you sign in.')
       setTimeout(() => setAccMsg(''), 2500)
     } catch (e) {
-      if (e.code === 'auth/wrong-password') setAccErr('Incorrect current password.')
+      if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') setAccErr('Incorrect current password.')
       else if (e.code === 'auth/weak-password') setAccErr('New password must be at least 6 characters.')
+      else if (e.code === 'auth/requires-recent-login') setAccErr('For security, please sign out, sign in again, and retry the password change.')
+      else if (e.code === 'auth/too-many-requests') setAccErr('Too many attempts. Please wait a few minutes and try again.')
       else setAccErr(e.message || 'Failed to change password.')
     } finally {
       setAccLoading(false)
@@ -353,17 +385,27 @@ export default function AdminPage() {
       const nextEmail = accEmail.trim().toLowerCase()
       if (!cur || !user?.email) throw new Error('Your session has expired. Please sign in again.')
       if (!/^\S+@\S+\.\S+$/.test(nextEmail)) throw new Error('Please enter a valid email address.')
-      await reauthenticateWithCredential(cur, EmailAuthProvider.credential(user.email, accPass))
+      if (nextEmail === String(cur.email || '').toLowerCase()) throw new Error('Enter a different email address to make a change.')
+      await reauthenticateWithCredential(cur, EmailAuthProvider.credential(cur.email, accPass))
       await updateEmail(cur, nextEmail)
+      await cur.getIdToken(true)
       await api.saveUser(user.uid, { email: nextEmail })
+      const refreshedUser = await refreshAuthUser()
+      await refreshProfile(refreshedUser)
+      setUsers(previous => previous.map(account => account.uid === user.uid
+        ? { ...account, email: nextEmail }
+        : account))
       setAccEmail(nextEmail)
       setAccPass('')
       setAccMsg('Email updated.')
       setTimeout(() => setAccMsg(''), 2500)
     } catch (e) {
-      if (e.code === 'auth/wrong-password') setAccErr('Incorrect current password.')
+      if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') setAccErr('Incorrect current password.')
       else if (e.code === 'auth/email-already-in-use') setAccErr('This email is already in use.')
       else if (e.code === 'auth/invalid-email') setAccErr('Invalid email address.')
+      else if (e.code === 'auth/requires-recent-login') setAccErr('For security, please sign out, sign in again, and retry the email change.')
+      else if (e.code === 'auth/operation-not-allowed') setAccErr('Email changes are currently restricted by Firebase Authentication settings.')
+      else if (e.code === 'auth/too-many-requests') setAccErr('Too many attempts. Please wait a few minutes and try again.')
       else setAccErr(e.message || 'Failed to change email.')
     } finally {
       setAccLoading(false)
@@ -733,7 +775,7 @@ export default function AdminPage() {
 
   const filteredUsers = users.filter(u => {
     const q = userSearch.toLowerCase()
-    const matchesSearch = !q || (u.displayName || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q) || (u.phone || '').includes(q)
+    const matchesSearch = !q || adminUserName(u).toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q) || (u.phone || '').includes(q)
     const matchesRole = userRoleFilter === 'all' || (userRoleFilter === 'admin' ? u.isAdmin === true : u.isAdmin !== true)
     return matchesSearch && matchesRole
   })
@@ -741,7 +783,7 @@ export default function AdminPage() {
   const filteredBookings = bookings.filter(b => {
     const q = bookingSearch.toLowerCase()
     const u = users.find(ux => ux.uid === b.userId)
-    const name = (u?.displayName || '').toLowerCase()
+    const name = adminUserName(u).toLowerCase()
     const email = (u?.email || '').toLowerCase()
     const course = String(COURSE_MAP[b.courseId] || b.courseTitle || b.courseId || '').toLowerCase()
     const matchesSearch = !q || name.includes(q) || email.includes(q) || course.includes(q) || String(b.date || '').toLowerCase().includes(q) || String(TIME_SLOT_MAP[b.timeSlot] || b.timeSlot || '').toLowerCase().includes(q)
@@ -998,10 +1040,10 @@ export default function AdminPage() {
                           <div key={u.uid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 0.8rem', background: '#f8fafd', borderRadius: 'var(--radius-sm)', border: '1px solid #f0f2f5' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                               <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', fontWeight: 800, color: '#fff', flexShrink: 0 }}>
-                                {(u.displayName || u.email || '?')[0].toUpperCase()}
+                                {(adminUserName(u) || u.email || '?')[0].toUpperCase()}
                               </div>
                               <div>
-                                <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: DARK, fontWeight: 600, margin: 0 }}>{u.displayName || 'Unnamed'}</p>
+                                <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: DARK, fontWeight: 600, margin: 0 }}>{adminUserName(u)}</p>
                                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: '#64748b', margin: '0.1rem 0 0' }}>{u.email || 'No email'}</p>
                               </div>
                             </div>
@@ -1023,7 +1065,7 @@ export default function AdminPage() {
                           return (
                             <div key={b._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 0.8rem', background: '#f8fafd', borderRadius: 'var(--radius-sm)', border: '1px solid #f0f2f5' }}>
                               <div>
-                                <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: DARK, fontWeight: 600, margin: 0 }}>{u?.displayName || 'Unknown'}</p>
+                                <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: DARK, fontWeight: 600, margin: 0 }}>{adminUserName(u)}</p>
                                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: '#64748b', margin: '0.1rem 0 0' }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} &middot; {TIME_SLOT_MAP[b.timeSlot] || b.timeSlot}</p>
                               </div>
                               <span style={{ padding: '0.2rem 0.5rem', background: statusMeta.background, color: statusMeta.color, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>{statusMeta.label}</span>
@@ -1069,9 +1111,9 @@ export default function AdminPage() {
                             <td style={tdStyle}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                 <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 800, color: '#fff', flexShrink: 0 }}>
-                                  {(u.displayName || u.email || '?')[0].toUpperCase()}
+                                  {(adminUserName(u) || u.email || '?')[0].toUpperCase()}
                                 </div>
-                                <span style={{ fontWeight: 600 }}>{u.displayName || 'Unnamed'}</span>
+                                <span style={{ fontWeight: 600 }}>{adminUserName(u)}</span>
                               </div>
                             </td>
                             <td style={tdStyle}>{u.email || '—'}</td>
@@ -1088,7 +1130,7 @@ export default function AdminPage() {
                                         <span title={`${courseMeta.label}${Number.isFinite(used) && Number.isFinite(maximum) ? ` · ${used}/${maximum} slots used` : ''}`} style={{ padding: '0.15rem 0.4rem', background: courseMeta.background, color: courseMeta.color, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 700, whiteSpace: 'nowrap' }}>
                                           {c.title || COURSE_MAP[c.id] || `Course ${c.id}`}{Number.isFinite(used) && Number.isFinite(maximum) ? ` · ${used}/${maximum}` : ''}
                                         </span>
-                                        <button type="button" aria-label={`Remove ${c.title || COURSE_MAP[c.id] || 'course'} from ${u.displayName || u.email || 'user'}`} onClick={() => handleRemoveCourse(u, c)} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', padding: '0 0.2rem', fontSize: '0.95rem', lineHeight: 1 }} title="Remove course enrollment">&times;</button>
+                                        <button type="button" aria-label={`Remove ${c.title || COURSE_MAP[c.id] || 'course'} from ${adminUserName(u) || u.email || 'user'}`} onClick={() => handleRemoveCourse(u, c)} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', padding: '0 0.2rem', fontSize: '0.95rem', lineHeight: 1 }} title="Remove course enrollment">&times;</button>
                                       </div>
                                     )
                                   })}
@@ -1096,7 +1138,7 @@ export default function AdminPage() {
                               ) : <span style={{ color: '#64748b' }}>—</span>}
                               {courseModal === u.uid ? (
                                 <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
-                                  <select aria-label={`Select a course for ${u.displayName || u.email || 'user'}`} value={selectedCourseId} onChange={(e) => setSelectedCourseId(e.target.value)} style={{ ...inputStyle, width: 'auto', flex: 1, padding: '0.3rem 0.5rem', fontSize: '1.05rem' }}>
+                                  <select aria-label={`Select a course for ${adminUserName(u) || u.email || 'user'}`} value={selectedCourseId} onChange={(e) => setSelectedCourseId(e.target.value)} style={{ ...inputStyle, width: 'auto', flex: 1, padding: '0.3rem 0.5rem', fontSize: '1.05rem' }}>
                                     <option value="">Select course...</option>
                                     {Object.entries(COURSE_MAP).map(([id, name]) => (
                                       <option key={id} value={id}>{name}</option>
@@ -1115,7 +1157,7 @@ export default function AdminPage() {
                                 : <span style={{ padding: '0.2rem 0.5rem', background: 'rgba(136,153,170,0.1)', color: '#64748b', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>User</span>}
                             </td>
                             <td style={tdStyle}>
-                              <button aria-label={`${u.isAdmin ? 'Remove administrator access from' : 'Grant administrator access to'} ${u.displayName || u.email || 'user'}`} onClick={() => handleToggleAdmin(u.uid, u.isAdmin)} style={{ background: 'none', border: `1.5px solid ${u.isAdmin ? '#DC2626' : SKY_BLUE}`, color: u.isAdmin ? '#DC2626' : SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.7rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
+                              <button aria-label={`${u.isAdmin ? 'Remove administrator access from' : 'Grant administrator access to'} ${adminUserName(u) || u.email || 'user'}`} onClick={() => handleToggleAdmin(u.uid, u.isAdmin)} style={{ background: 'none', border: `1.5px solid ${u.isAdmin ? '#DC2626' : SKY_BLUE}`, color: u.isAdmin ? '#DC2626' : SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.7rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
                                 {u.isAdmin ? 'Remove Admin' : 'Make Admin'}
                               </button>
                             </td>
@@ -1164,7 +1206,7 @@ export default function AdminPage() {
                             <tr key={b._id}>
                               <td style={tdStyle}>
                                 <div>
-                                  <p style={{ fontWeight: 600, margin: 0 }}>{u?.displayName || 'Unknown'}</p>
+                                  <p style={{ fontWeight: 600, margin: 0 }}>{adminUserName(u)}</p>
                                   <p style={{ fontSize: '0.95rem', color: '#64748b', margin: '0.1rem 0 0' }}>{u?.email || b.userId}</p>
                                   <p style={{ fontSize: '0.85rem', color: SKY_BLUE, margin: '0.16rem 0 0', fontWeight: 700 }}>{COURSE_MAP[b.courseId] || b.courseTitle || `Plan ${b.courseId || '—'}`}</p>
                                 </div>
@@ -1175,7 +1217,7 @@ export default function AdminPage() {
                                 <span style={{ padding: '0.2rem 0.5rem', background: statusMeta.background, color: statusMeta.color, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>{statusMeta.label}</span>
                               </td>
                               <td style={tdStyle}>
-                                <button type="button" aria-label={`Delete ${b.date || ''} booking for ${u?.displayName || u?.email || 'student'}`} onClick={() => handleDeleteBooking(b)} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.7rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
+                                <button type="button" aria-label={`Delete ${b.date || ''} booking for ${adminUserName(u) || u?.email || 'student'}`} onClick={() => handleDeleteBooking(b)} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.7rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
                                   Delete
                                 </button>
                               </td>
@@ -1745,6 +1787,7 @@ export default function AdminPage() {
                             <input id="admin-new-password" type={showAccNewPass ? 'text' : 'password'} value={accNewPass} onChange={e => setAccNewPass(e.target.value)} style={{ ...inputStyle, paddingRight: '3rem' }} autoComplete="new-password" placeholder="At least 6 characters" />
                             <button type="button" onClick={() => setShowAccNewPass(!showAccNewPass)} aria-label={showAccNewPass ? 'Hide new password' : 'Show new password'} style={{ position: 'absolute', right: '0.4rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.4rem', color: '#64748B' }}>{showAccNewPass ? 'Hide' : 'Show'}</button>
                           </div>
+                          <p style={{ margin: '.5rem 0 0', color: '#64748B', fontSize: '.78rem', lineHeight: 1.5 }}>For security, your saved password is never displayed and this field will be empty after a reload.</p>
                         </div>
                         <button type="button" onClick={handleChangePassword} disabled={accLoading || !accPass || !accNewPass} style={{ padding: '0.75rem 2rem', background: 'linear-gradient(135deg,#FDBC01,#FFD54F)', color: DARK, border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(253,188,1,0.25)', opacity: accLoading || !accPass || !accNewPass ? 0.6 : 1 }}>Change Password</button>
                       </>
