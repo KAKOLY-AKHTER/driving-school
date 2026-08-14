@@ -2,8 +2,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useRef, useCallback } from 'react'
 import { signOut, updateProfile, updateEmail, reauthenticateWithCredential, EmailAuthProvider, updatePassword } from 'firebase/auth'
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
-import { auth, storage } from '../firebase'
+import { auth } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
 import { api, makeEmbedCode } from '../api'
 import { DEFAULT_SOCIALS, SOCIAL_PLATFORMS, socialIcon, socialPlatformLabel } from '../socials'
@@ -15,6 +14,7 @@ const GOLD_DEEP = '#C8960C'
 const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
+const DEFAULT_ADMIN_PHOTO_URL = 'https://driving-school-dun-kappa.vercel.app/admin-img.png'
 
 const localDateKey = (date = new Date()) => new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Los_Angeles',
@@ -217,8 +217,6 @@ export default function AdminPage() {
   const [refundForm, setRefundForm] = useState({ Full_Name: '', Email: '', Phone: '', Course_Name: '', Amount: '', Reason: '', Status: 'pending' })
   const [accName, setAccName] = useState('')
   const [accPhoto, setAccPhoto] = useState('')
-  const [accPhotoFile, setAccPhotoFile] = useState(null)
-  const [accPhotoFilePreview, setAccPhotoFilePreview] = useState('')
   const [accEmail, setAccEmail] = useState('')
   const [accPass, setAccPass] = useState('')
   const [accNewPass, setAccNewPass] = useState('')
@@ -296,9 +294,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (user) {
       setAccName(user.displayName || '')
-      setAccPhoto(user.photoURL || '')
-      setAccPhotoFile(null)
-      setAccPhotoFilePreview('')
+      setAccPhoto(user.photoURL || DEFAULT_ADMIN_PHOTO_URL)
       setAccEmail(user.email || '')
     }
   }, [user, authRevision])
@@ -310,23 +306,9 @@ export default function AdminPage() {
       const displayName = accName.trim()
       if (!cur || !user?.uid) throw new Error('Your session has expired. Please sign in again.')
       if (!displayName) throw new Error('Display name is required.')
-      let photoURL = ''
-      if (accPhotoFile) {
-        const avatarRef = ref(storage, `avatars/${user.uid}`)
-        const uploadVersion = Date.now()
-        await uploadBytes(avatarRef, accPhotoFile, {
-          contentType: accPhotoFile.type,
-          cacheControl: 'no-store,max-age=0,must-revalidate',
-        })
-        const downloadURL = await getDownloadURL(avatarRef)
-        const versionedURL = new URL(downloadURL)
-        versionedURL.searchParams.set('v', String(uploadVersion))
-        photoURL = versionedURL.toString()
-      } else {
-        const photoResult = validateHttpsUrl(accPhoto, { required: false })
-        if (photoResult.error) throw new Error(`Profile photo: ${photoResult.error}`)
-        photoURL = photoResult.value
-      }
+      const photoResult = validateHttpsUrl(accPhoto, { required: false })
+      if (photoResult.error) throw new Error(`Profile photo: ${photoResult.error}`)
+      const photoURL = photoResult.value || DEFAULT_ADMIN_PHOTO_URL
       await updateProfile(cur, { displayName, photoURL })
       await api.saveUser(user.uid, {
         displayName,
@@ -341,14 +323,10 @@ export default function AdminPage() {
       setUsers(previous => previous.map(account => account.uid === user.uid
         ? { ...account, displayName, name: displayName, photoURL }
         : account))
-      setAccPhotoFile(null)
-      setAccPhotoFilePreview('')
       setAccMsg('Profile updated.')
       setTimeout(() => setAccMsg(''), 2500)
     } catch (e) {
-      if (e?.code === 'storage/unauthorized') setAccErr('Photo upload permission is not enabled. Please deploy the Firebase Storage rules and try again.')
-      else if (e?.code === 'storage/quota-exceeded') setAccErr('Photo storage is temporarily unavailable because its quota has been reached.')
-      else setAccErr(e.message || 'Failed to update profile.')
+      setAccErr(e.message || 'Failed to update profile.')
     } finally {
       setAccLoading(false)
     }
@@ -422,30 +400,6 @@ export default function AdminPage() {
       setMsg('Failed to update role.')
       setTimeout(() => setMsg(''), 2000)
     }
-  }
-
-  const handleProfilePhotoSelection = (event) => {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-    if (!file) return
-    const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
-    if (!allowedTypes.has(file.type)) {
-      setAccErr('Please choose a JPG, PNG, or WebP image.')
-      return
-    }
-    if (file.size > 4 * 1024 * 1024) {
-      setAccErr('The profile photo must be 4 MB or smaller.')
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = () => {
-      setAccPhotoFile(file)
-      setAccPhotoFilePreview(String(reader.result || ''))
-      setAccErr('')
-      setAccMsg('Photo selected. Choose Save Profile to apply it.')
-    }
-    reader.onerror = () => setAccErr('The selected photo could not be previewed. Please choose another image.')
-    reader.readAsDataURL(file)
   }
 
   const handleToggleAdmin = (uid, currentIsAdmin) => {
@@ -711,7 +665,7 @@ export default function AdminPage() {
 
   const todayStr = localDateKey()
   const initials = user?.displayName ? user.displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : user?.email?.[0]?.toUpperCase() || '?'
-  const profilePhotoPreview = accPhotoFilePreview || validateHttpsUrl(accPhoto, { required: false }).value
+  const profilePhotoPreview = validateHttpsUrl(accPhoto, { required: false }).value || DEFAULT_ADMIN_PHOTO_URL
   const msgIsError = /failed|could not|cannot|required|invalid|blocked|only secure|please (enter|use)/i.test(msg)
   const settingsMsgIsError = /failed|could not|cannot|required|invalid|please (enter|use)/i.test(settingsMsg)
 
@@ -1742,27 +1696,19 @@ export default function AdminPage() {
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>{SVG.shield} Profile</h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                       {profilePhotoPreview ? <img src={profilePhotoPreview} alt="Profile preview" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.35)', flexShrink: 0 }} /> : <div aria-label="Profile preview" style={{ width: '72px', height: '72px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', fontWeight: 800, color: DARK, border: '2.5px solid #FDBC01', flexShrink: 0 }}>{initials}</div>}
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#64748b', margin: 0, lineHeight: 1.5 }}>Choose a clear profile photo from your device. It will appear in both the navbar and sidebar after saving.</p>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#64748b', margin: 0, lineHeight: 1.5 }}>Use a direct HTTPS image URL. The saved photo will appear in both the navbar and sidebar.</p>
                     </div>
                     <div style={{ marginBottom: '1.25rem' }}>
                       <label style={labelStyle}>Display Name</label>
                       <input aria-label="Administrator display name" type="text" autoComplete="name" value={accName} onChange={e => setAccName(e.target.value)} style={inputStyle} />
                     </div>
-                    <div style={{ marginBottom: '1.25rem' }}>
-                      <span style={labelStyle}>Profile Photo</span>
-                      <label htmlFor="admin-profile-photo-file" style={{ minHeight: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '.55rem', padding: '.7rem 1rem', border: `1.5px dashed ${accPhotoFile ? '#16A34A' : '#93B4DE'}`, borderRadius: '10px', background: accPhotoFile ? '#F0FDF4' : '#F8FAFC', color: accPhotoFile ? '#15803D' : SKY_BLUE, fontWeight: 800, cursor: 'pointer', textAlign: 'center' }}>
-                        {accPhotoFile ? `Selected: ${accPhotoFile.name}` : 'Choose Photo From Device'}
-                      </label>
-                      <input id="admin-profile-photo-file" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleProfilePhotoSelection} style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }} />
-                      <p style={{ margin: '.45rem 0 0', color: '#64748B', fontSize: '.78rem', lineHeight: 1.5 }}>JPG, PNG, or WebP · Maximum 4 MB · Square photos look best.</p>
-                      {accPhotoFile && <button type="button" onClick={() => { setAccPhotoFile(null); setAccPhotoFilePreview(''); setAccMsg('') }} style={{ marginTop: '.55rem', border: 0, background: 'none', color: '#DC2626', fontWeight: 800, cursor: 'pointer', padding: 0 }}>Remove selected photo</button>}
-                    </div>
                     <div style={{ marginBottom: '1.5rem' }}>
-                      <label htmlFor="admin-profile-photo-url" style={labelStyle}>Or use a secure image URL</label>
-                      <input id="admin-profile-photo-url" type="url" inputMode="url" autoComplete="url" value={accPhoto} onChange={e => { setAccPhoto(e.target.value); setAccPhotoFile(null); setAccPhotoFilePreview('') }} style={inputStyle} placeholder="https://example.com/photo.jpg" />
+                      <label htmlFor="admin-profile-photo-url" style={labelStyle}>Secure Profile Image URL</label>
+                      <input id="admin-profile-photo-url" type="url" inputMode="url" autoComplete="url" value={accPhoto} onChange={e => setAccPhoto(e.target.value)} style={inputStyle} placeholder={DEFAULT_ADMIN_PHOTO_URL} />
+                      <p style={{ margin: '.45rem 0 0', color: '#64748B', fontSize: '.78rem', lineHeight: 1.5 }}>Leave this blank to use the default administrator image. Only HTTPS links are accepted.</p>
                     </div>
                     <button type="button" onClick={handleSaveProfile} disabled={accLoading} style={{ padding: '0.75rem 2rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: accLoading ? 'wait' : 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)', opacity: accLoading ? 0.6 : 1 }}>
-                      {accLoading ? 'Uploading…' : 'Save Profile'}
+                      {accLoading ? 'Saving…' : 'Save Profile'}
                     </button>
                   </div>
 
