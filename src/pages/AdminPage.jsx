@@ -8,6 +8,7 @@ import { api, makeEmbedCode } from '../api'
 import { DEFAULT_SOCIALS, SOCIAL_PLATFORMS, socialIcon, socialPlatformLabel } from '../socials'
 import { usePageMeta } from '../usePageMeta'
 import { openPrintableDocument } from '../utils/printDocument'
+import { DEFAULT_BOOKING_LOCATIONS, locationDistanceLabel } from '../locations'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -177,6 +178,11 @@ export default function AdminPage() {
   const [pricing, setPricing] = useState([])
   const [pricingEdit, setPricingEdit] = useState(null)
   const [pricingForm, setPricingForm] = useState({ planName: '', id: '', planPrice: '', planPriceTwo: '', option1: '', perm1: 'Select', option2: '', perm2: 'Select', option3: '', perm3: 'Select', option4: '', perm4: 'Select', option5: '', perm5: 'Select' })
+  const [locations, setLocations] = useState(DEFAULT_BOOKING_LOCATIONS)
+  const [locationEdit, setLocationEdit] = useState(null)
+  const [locationForm, setLocationForm] = useState({ name: '', distance: 'Near', order: 1 })
+  const [locationSearch, setLocationSearch] = useState('')
+  const [locationDistanceFilter, setLocationDistanceFilter] = useState('all')
   const [areas, setAreas] = useState([])
   const [areasEdit, setAreasEdit] = useState(null)
   const [areasForm, setAreasForm] = useState({ name: '', map: '', icon: '', order: 0 })
@@ -251,13 +257,14 @@ export default function AdminPage() {
       setLoading(true)
       setLoadError('')
       try {
-        const [s, u, b, c, st, p, a, so] = await Promise.all([
+        const [s, u, b, c, st, p, l, a, so] = await Promise.all([
           api.adminStats(),
           api.adminUsers(),
           api.adminBookings(),
           api.adminContacts(),
           api.getSettings().catch(() => ({})),
           api.getPricing().catch(() => []),
+          api.getLocations().catch(() => []),
           api.getAreas().catch(() => []),
           api.getSocials().catch(() => DEFAULT_SOCIALS),
         ])
@@ -268,6 +275,7 @@ export default function AdminPage() {
         setContacts(Array.isArray(c) ? c : [])
         setSettings(prev => ({ ...prev, ...st }))
         setPricing(Array.isArray(p) ? p : [])
+        setLocations(Array.isArray(l) ? l : [])
         setAreas(Array.isArray(a) ? a : [])
         setSocials(Array.isArray(so) ? so : [])
       } catch (error) {
@@ -545,13 +553,24 @@ export default function AdminPage() {
     setTimeout(() => setMsg(''), 2500)
   }
 
+  const deleteLocation = async (id) => {
+    try {
+      await api.adminDeleteLocation(id)
+      setLocations(previous => previous.filter(item => item._id !== id))
+      setMsg('Booking location deleted.')
+    } catch (error) {
+      setMsg(error?.message || 'Failed to delete booking location.')
+    }
+    setTimeout(() => setMsg(''), 2500)
+  }
+
   const deleteArea = async (id) => {
     try {
       await api.adminDeleteArea(id)
       setAreas(prev => prev.filter(item => item._id !== id))
-      setMsg('Location deleted.')
+      setMsg('Service area map deleted.')
     } catch {
-      setMsg('Failed to delete location.')
+      setMsg('Failed to delete service area map.')
     }
     setTimeout(() => setMsg(''), 2500)
   }
@@ -602,12 +621,13 @@ export default function AdminPage() {
 
   const activeDialogKey = contactEdit ? 'contact'
     : pricingEdit ? 'pricing'
-      : areasEdit ? 'area'
-        : socialsEdit ? 'social'
-          : refundEdit ? 'refund'
-            : enrollEdit ? 'enrollment'
-              : confirmDialog ? 'confirmation'
-                : ''
+      : locationEdit ? 'location'
+        : areasEdit ? 'area'
+          : socialsEdit ? 'social'
+            : refundEdit ? 'refund'
+              : enrollEdit ? 'enrollment'
+                : confirmDialog ? 'confirmation'
+                  : ''
 
   const closeActiveDialog = useCallback(() => {
     if (confirmDialog?.busy) return
@@ -616,9 +636,10 @@ export default function AdminPage() {
     else if (refundEdit) setRefundEdit(null)
     else if (socialsEdit) setSocialsEdit(null)
     else if (areasEdit) setAreasEdit(null)
+    else if (locationEdit) setLocationEdit(null)
     else if (pricingEdit) setPricingEdit(null)
     else if (contactEdit) setContactEdit(null)
-  }, [areasEdit, confirmDialog, contactEdit, enrollEdit, pricingEdit, refundEdit, socialsEdit])
+  }, [areasEdit, confirmDialog, contactEdit, enrollEdit, locationEdit, pricingEdit, refundEdit, socialsEdit])
 
   useEffect(() => {
     const dialogOpen = Boolean(activeDialogKey)
@@ -755,6 +776,18 @@ export default function AdminPage() {
     return matchesSearch && matchesStatus
   })
 
+  const filteredLocations = [...locations]
+    .filter(location => {
+      const query = locationSearch.trim().toLowerCase()
+      const distance = locationDistanceLabel(location.distance)
+      return (!query || String(location.name || '').toLowerCase().includes(query))
+        && (locationDistanceFilter === 'all' || distance.toLowerCase() === locationDistanceFilter)
+    })
+    .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || String(a.name || '').localeCompare(String(b.name || '')))
+
+  const nearLocationCount = locations.filter(location => locationDistanceLabel(location.distance) === 'Near').length
+  const longLocationCount = locations.filter(location => locationDistanceLabel(location.distance) === 'Long').length
+
   const recentBookings = [...bookings]
     .sort((a, b) => bookingSortValue(b).localeCompare(bookingSortValue(a)))
     .slice(0, 5)
@@ -774,6 +807,7 @@ export default function AdminPage() {
     { id: 'enrolled', label: 'Enrolled Courses', icon: SVG.book },
     { id: 'refunds', label: 'Refunds', icon: SVG.refund },
     { id: 'pricing', label: 'Pricing', icon: SVG.dollar },
+    { id: 'locations', label: 'Locations', icon: SVG.map },
     { id: 'maps', label: 'Maps', icon: SVG.map },
     { id: 'socials', label: 'Social Links', icon: SVG.share },
     { id: 'settings', label: 'Site Settings', icon: SVG.settings },
@@ -1249,14 +1283,17 @@ export default function AdminPage() {
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.dollar} Pricing Plan ({pricing.length})</h3>
                     <button onClick={() => { setPricingForm({ planName: '', id: '', planPrice: '', planPriceTwo: '', option1: '', perm1: 'Select', option2: '', perm2: 'Select', option3: '', perm3: 'Select', option4: '', perm4: 'Select', option5: '', perm5: 'Select' }); setPricingEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Pricing Plan</button>
                   </div>
+                  <div role="note" style={{ marginBottom: '1.25rem', padding: '0.9rem 1rem', border: '1px solid #BFDBFE', background: '#EFF6FF', borderRadius: '12px', color: '#1E3A5F', lineHeight: 1.55 }}>
+                    <strong>Location pricing:</strong> Near cities use the Near Price; Long cities use the Long Price. The server verifies the selected city and applies the matching price to the cart and invoice.
+                  </div>
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr>
                           <th style={thStyle}>ID</th>
                           <th style={thStyle}>Plan Name</th>
-                          <th style={thStyle}>Price</th>
-                          <th style={thStyle}>Original Price</th>
+                          <th style={thStyle}>Near Price</th>
+                          <th style={thStyle}>Long Price</th>
                           <th style={thStyle}>Option 1</th>
                           <th style={thStyle}>Option 2</th>
                           <th style={thStyle}>Option 3</th>
@@ -1512,11 +1549,93 @@ export default function AdminPage() {
                 </div>
               )}
 
+              {!loading && !loadError && activeTab === 'locations' && (
+                <div style={{ display: 'grid', gap: '1rem' }}>
+                  <div className="admin-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: '1rem' }}>
+                    {[
+                      { label: 'Total Locations', value: locations.length, color: SKY_BLUE, background: '#EFF6FF' },
+                      { label: 'Near Locations', value: nearLocationCount, color: '#15803D', background: '#F0FDF4' },
+                      { label: 'Long Locations', value: longLocationCount, color: '#B45309', background: '#FFF7ED' },
+                    ].map(item => (
+                      <div key={item.label} className="admin-stat" style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.25rem' }}>
+                        <div style={{ width: '48px', height: '48px', borderRadius: '14px', display: 'grid', placeItems: 'center', color: item.color, background: item.background }}>{SVG.map}</div>
+                        <div>
+                          <strong style={{ display: 'block', color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.6rem', lineHeight: 1 }}>{item.value}</strong>
+                          <span style={{ color: '#64748B', fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 700 }}>{item.label}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={cardStyle}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+                      <div>
+                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0 0 .35rem' }}>{SVG.map} Booking Locations <span style={{ color: '#64748B', fontSize: '.9rem', fontFamily: 'var(--font-body)' }}>({filteredLocations.length} of {locations.length})</span></h3>
+                        <p style={{ margin: 0, color: '#64748B', lineHeight: 1.6 }}>These cities appear in the booking city selector. Near/Long controls the location pricing group.</p>
+                      </div>
+                      <button type="button" onClick={() => { setLocationForm({ name: '', distance: 'Near', order: locations.length + 1 }); setLocationEdit('new') }} style={{ padding: '0.65rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Location</button>
+                    </div>
+
+                    <div role="note" style={{ marginBottom: '1rem', padding: '.85rem 1rem', border: '1px solid #BFDBFE', background: '#EFF6FF', borderRadius: '12px', color: '#1E3A5F', lineHeight: 1.55 }}>
+                      Location groups are ready. No extra dollar charge is applied until the client provides the Near and Long pricing amounts.
+                    </div>
+
+                    <div className="admin-toolbar" style={{ display: 'flex', gap: '.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                      <input className="admin-toolbar-input" type="search" aria-label="Search booking locations" placeholder="Search city..." value={locationSearch} onChange={event => setLocationSearch(event.target.value)} style={inputStyle} />
+                      <select aria-label="Filter booking locations by distance" value={locationDistanceFilter} onChange={event => setLocationDistanceFilter(event.target.value)} style={{ ...inputStyle, width: 'auto', minWidth: '170px' }}>
+                        <option value="all">All distances</option>
+                        <option value="near">Near</option>
+                        <option value="long">Long</option>
+                      </select>
+                    </div>
+
+                    <div className="admin-table-wrap">
+                      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '680px' }}>
+                        <thead>
+                          <tr>
+                            <th style={thStyle}>Order</th>
+                            <th style={thStyle}>City</th>
+                            <th style={thStyle}>Package Distance</th>
+                            <th style={thStyle}>Pricing Group</th>
+                            <th style={thStyle}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredLocations.map((location, index) => {
+                            const distance = locationDistanceLabel(location.distance)
+                            const isNear = distance === 'Near'
+                            return (
+                              <tr key={location._id || `${location.name}-${index}`}>
+                                <td style={{ ...tdStyle, fontVariantNumeric: 'tabular-nums', color: '#64748B' }}>{Number(location.order) || index + 1}</td>
+                                <td style={{ ...tdStyle, fontWeight: 800 }}>{location.name}</td>
+                                <td style={tdStyle}>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', padding: '.35rem .65rem', borderRadius: '999px', background: isNear ? '#DCFCE7' : '#FFEDD5', color: isNear ? '#15803D' : '#B45309', border: `1px solid ${isNear ? '#BBF7D0' : '#FED7AA'}`, fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase' }}>{distance}</span>
+                                </td>
+                                <td style={{ ...tdStyle, color: '#64748B' }}>{distance} pricing</td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
+                                  <div style={{ display: 'flex', gap: '.45rem' }}>
+                                    <button type="button" onClick={() => { setLocationForm({ name: location.name || '', distance, order: Number(location.order) || index + 1 }); setLocationEdit(location._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
+                                    <button type="button" onClick={() => requestConfirmation('Delete booking location?', `${location.name || 'This city'} will no longer appear in new booking selections.`, () => deleteLocation(location._id))} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+                                  </div>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                          {filteredLocations.length === 0 && (
+                            <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2.5rem', color: '#64748B' }}>No booking locations match this filter.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {!loading && !loadError && activeTab === 'maps' && (
                 <div style={cardStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.map} Maps / Locations ({areas.length})</h3>
-                    <button onClick={() => { setAreasForm({ name: '', map: '', icon: '', order: 0 }); setAreasEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Location</button>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.map} Service Area Maps ({areas.length})</h3>
+                    <button onClick={() => { setAreasForm({ name: '', map: '', icon: '', order: 0 }); setAreasEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Map</button>
                   </div>
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1821,12 +1940,12 @@ export default function AdminPage() {
                         <input type="text" value={pricingForm.id} onChange={e => setPricingForm(prev => ({ ...prev, id: e.target.value }))} style={inputStyle} placeholder="e.g. 1, 2, 3..." />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Plan Price *</label>
-                        <input type="text" value={pricingForm.planPrice} onChange={e => setPricingForm(prev => ({ ...prev, planPrice: e.target.value }))} style={inputStyle} placeholder="$24.99" />
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Near Price *</label>
+                        <input aria-label="Near location price" inputMode="decimal" type="text" value={pricingForm.planPrice} onChange={e => setPricingForm(prev => ({ ...prev, planPrice: e.target.value }))} style={inputStyle} placeholder="$210" />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Original Price (strikethrough) *</label>
-                        <input type="text" value={pricingForm.planPriceTwo} onChange={e => setPricingForm(prev => ({ ...prev, planPriceTwo: e.target.value }))} style={inputStyle} placeholder="$24.99" />
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Long Price *</label>
+                        <input aria-label="Long location price" inputMode="decimal" type="text" value={pricingForm.planPriceTwo} onChange={e => setPricingForm(prev => ({ ...prev, planPriceTwo: e.target.value }))} style={inputStyle} placeholder="$290" />
                       </div>
                     </div>
 
@@ -1865,7 +1984,7 @@ export default function AdminPage() {
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
                       <button onClick={() => setPricingEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Cancel</button>
                       <button onClick={async () => {
-                        if (!pricingForm.planName || !pricingForm.id || !pricingForm.planPrice || !pricingForm.planPriceTwo) { setMsg('Plan Name, ID, Plan Price, and Plan Price Two are required.'); setTimeout(() => setMsg(''), 2000); return }
+                        if (!pricingForm.planName || !pricingForm.id || !pricingForm.planPrice || !pricingForm.planPriceTwo) { setMsg('Plan Name, ID, Near Price, and Long Price are required.'); setTimeout(() => setMsg(''), 2000); return }
                         const options = [1,2,3,4,5].map(i => ({
                           text: pricingForm[`option${i}`] || '',
                           permission: pricingForm[`perm${i}`] || 'Select',
@@ -1882,7 +2001,7 @@ export default function AdminPage() {
                           setPricingEdit(null)
                           setMsg(pricingEdit === 'new' ? 'Plan added!' : 'Plan updated!')
                           setTimeout(() => setMsg(''), 2000)
-                        } catch { setMsg('Failed to save plan.'); setTimeout(() => setMsg(''), 2000) }
+                        } catch (error) { setMsg(error?.message || 'Failed to save plan.'); setTimeout(() => setMsg(''), 3000) }
                       }} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
                         {pricingEdit === 'new' ? 'Add Pricing Plan' : 'Save Changes'}
                       </button>
@@ -1891,12 +2010,85 @@ export default function AdminPage() {
                 </div>
               )}
 
+              {locationEdit && (
+                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(event) => { if (event.target === event.currentTarget) setLocationEdit(null) }}>
+                  <form
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="booking-location-dialog-title"
+                    style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '580px', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}
+                    onSubmit={async event => {
+                      event.preventDefault()
+                      const name = locationForm.name.trim().replace(/\s+/g, ' ')
+                      if (!name) {
+                        setMsg('City name is required.')
+                        setTimeout(() => setMsg(''), 2500)
+                        return
+                      }
+                      const doc = {
+                        name,
+                        distance: locationDistanceLabel(locationForm.distance),
+                        order: Math.max(0, Number(locationForm.order) || 0),
+                      }
+                      try {
+                        if (locationEdit === 'new') {
+                          const result = await api.adminAddLocation(doc)
+                          if (result?.location) setLocations(previous => [...previous, result.location])
+                        } else {
+                          const result = await api.adminUpdateLocation(locationEdit, doc)
+                          setLocations(previous => previous.map(item => item._id === locationEdit ? (result?.location || { ...item, ...doc }) : item))
+                        }
+                        const wasNew = locationEdit === 'new'
+                        setLocationEdit(null)
+                        setMsg(wasNew ? 'Booking location added.' : 'Booking location updated.')
+                        setTimeout(() => setMsg(''), 2500)
+                      } catch (error) {
+                        setMsg(error?.message || 'Failed to save booking location.')
+                        setTimeout(() => setMsg(''), 3500)
+                      }
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', gap: '1rem' }}>
+                      <div>
+                        <h3 id="booking-location-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', color: DARK, fontWeight: 800, margin: '0 0 .25rem' }}>{locationEdit === 'new' ? 'Add Booking Location' : 'Edit Booking Location'}</h3>
+                        <p style={{ margin: 0, color: '#64748B' }}>Assign this city to its Near or Long pricing group.</p>
+                      </div>
+                      <button type="button" aria-label="Close booking location editor" onClick={() => setLocationEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.6rem', color: '#64748B', cursor: 'pointer', lineHeight: 1 }}>&times;</button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.5fr) minmax(150px,.8fr)', gap: '1rem', marginBottom: '1rem' }}>
+                      <div>
+                        <label htmlFor="admin-location-name" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748B', display: 'block', marginBottom: '0.35rem', fontWeight: 700 }}>City Name *</label>
+                        <input id="admin-location-name" autoFocus required type="text" maxLength="120" value={locationForm.name} onChange={event => setLocationForm(previous => ({ ...previous, name: event.target.value }))} style={inputStyle} placeholder="Fremont" />
+                      </div>
+                      <div>
+                        <label htmlFor="admin-location-order" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748B', display: 'block', marginBottom: '0.35rem', fontWeight: 700 }}>Display Order</label>
+                        <input id="admin-location-order" type="number" min="0" max="10000" value={locationForm.order} onChange={event => setLocationForm(previous => ({ ...previous, order: event.target.value }))} style={inputStyle} />
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <label htmlFor="admin-location-distance" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748B', display: 'block', marginBottom: '0.35rem', fontWeight: 700 }}>Package Distance *</label>
+                      <select id="admin-location-distance" required value={locationForm.distance} onChange={event => setLocationForm(previous => ({ ...previous, distance: event.target.value }))} style={inputStyle}>
+                        <option value="Near">Near</option>
+                        <option value="Long">Long</option>
+                      </select>
+                    </div>
+                    <div role="note" style={{ padding: '.8rem 1rem', marginBottom: '1.5rem', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', color: '#475569', lineHeight: 1.55 }}>
+                      The selected group will be stored with future cart and booking records. Dollar adjustments can be connected after the client confirms the Near and Long amounts.
+                    </div>
+                    <div style={{ display: 'flex', gap: '.75rem' }}>
+                      <button type="button" onClick={() => setLocationEdit(null)} style={{ flex: 1, padding: '.8rem', background: '#fff', border: '1.5px solid #CBD5E1', borderRadius: 'var(--radius-sm)', color: '#475569', fontFamily: 'var(--font-mono)', fontSize: '.8rem', letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 800, cursor: 'pointer' }}>Cancel</button>
+                      <button type="submit" style={{ flex: 1, padding: '.8rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, border: 'none', borderRadius: 'var(--radius-sm)', color: '#fff', fontFamily: 'var(--font-mono)', fontSize: '.8rem', letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 800, cursor: 'pointer', boxShadow: '0 8px 20px rgba(1,69,168,.2)' }}>{locationEdit === 'new' ? 'Add Location' : 'Save Changes'}</button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
               {areasEdit && (
                 <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setAreasEdit(null) }}>
                   <div role="dialog" aria-modal="true" aria-labelledby="area-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                      <h3 id="area-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{areasEdit === 'new' ? 'Add Location' : 'Edit Location'}</h3>
-                      <button type="button" aria-label="Close location editor" onClick={() => setAreasEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
+                      <h3 id="area-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{areasEdit === 'new' ? 'Add Service Area Map' : 'Edit Service Area Map'}</h3>
+                      <button type="button" aria-label="Close service area map editor" onClick={() => setAreasEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                       <div>
@@ -1931,11 +2123,11 @@ export default function AdminPage() {
                             setAreas(prev => prev.map(x => x._id === areasEdit ? { ...x, ...doc } : x))
                           }
                           setAreasEdit(null)
-                          setMsg(areasEdit === 'new' ? 'Location added!' : 'Location updated!')
+                          setMsg(areasEdit === 'new' ? 'Service area map added.' : 'Service area map updated.')
                           setTimeout(() => setMsg(''), 2000)
-                        } catch { setMsg('Failed to save location.'); setTimeout(() => setMsg(''), 2000) }
+                        } catch { setMsg('Failed to save service area map.'); setTimeout(() => setMsg(''), 2000) }
                       }} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
-                        {areasEdit === 'new' ? 'Add Location' : 'Save Changes'}
+                        {areasEdit === 'new' ? 'Add Map' : 'Save Changes'}
                       </button>
                     </div>
                   </div>

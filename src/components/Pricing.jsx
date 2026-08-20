@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
+import { locationPlanPrice } from '../pricingUtils'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -63,11 +64,6 @@ const DEFAULT_TIERS = [
     { text: 'Using dual-control vehicles.', permission: 'Included' },
   ], order: 7 },
 ]
-
-const priceNumber = (value) => {
-  const n = parseFloat(String(value || '').replace(/[^0-9.]/g, ''))
-  return Number.isFinite(n) ? n : 0
-}
 
 const CARD_THEMES = [
   { main: '#FDBC01', deep: '#C8960C', glow: 'rgba(253,188,1,0.12)' },
@@ -420,62 +416,13 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                   </div>
 
                   {/* Prices */}
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', marginBottom: '1.5rem' }}>
-                    <div>
-                      <span style={{
-                        fontFamily: 'var(--font-body)',
-                        fontSize: '0.62rem',
-                        letterSpacing: '0.08em',
-                        textTransform: 'uppercase',
-                        color: '#455a74',
-                        fontWeight: 700,
-                        display: 'block',
-                        marginBottom: '0.15rem',
-                      }}>
-                        Today's Price
-                      </span>
-                      <span className="price-value" style={{
-                        fontFamily: 'var(--font-display)',
-                        fontSize: '2.2rem',
-                        color: 'var(--tone)',
-                        fontWeight: 800,
-                        lineHeight: 1,
-                      }}>
-                        {tier.planPrice}
-                      </span>
-                    </div>
-                    {tier.planPriceTwo && tier.planPriceTwo !== tier.planPrice && (
-                      <div style={{ paddingTop: '0.9rem' }}>
-                        <span style={{
-                          fontFamily: 'var(--font-display)',
-                          fontSize: '1rem',
-                          color: '#94A3B8',
-                          fontWeight: 600,
-                          lineHeight: 1,
-                          textDecoration: 'line-through',
-                        }}>
-                          {tier.planPriceTwo}
-                        </span>
-                        {priceNumber(tier.planPriceTwo) > priceNumber(tier.planPrice) && (
-                          <span style={{
-                            fontFamily: 'var(--font-body)',
-                            fontSize: '0.55rem',
-                            fontWeight: 700,
-                            color: '#16A34A',
-                            background: 'rgba(34,197,94,0.1)',
-                            border: '1px solid rgba(34,197,94,0.2)',
-                            borderRadius: '999px',
-                            padding: '0.15rem 0.45rem',
-                            display: 'block',
-                            marginTop: '0.3rem',
-                            width: 'fit-content',
-                            letterSpacing: '0.03em',
-                          }}>
-                            Save ${priceNumber(tier.planPriceTwo) - priceNumber(tier.planPrice)}
-                          </span>
-                        )}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '0.55rem', marginBottom: '1.5rem' }}>
+                    {['Near', 'Long'].map(distance => (
+                      <div key={distance} style={{ padding: '.6rem .65rem', borderRadius: '10px', border: '1px solid #DBE5EF', background: '#F8FAFC' }}>
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.58rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#455A74', fontWeight: 800, display: 'block', marginBottom: '0.15rem' }}>{distance} Price</span>
+                        <span className="price-value" style={{ fontFamily: 'var(--font-display)', fontSize: '1.45rem', color: 'var(--tone)', fontWeight: 800, lineHeight: 1 }}>{locationPlanPrice(tier, distance)}</span>
                       </div>
-                    )}
+                    ))}
                   </div>
 
                   {/* Divider */}

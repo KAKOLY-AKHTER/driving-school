@@ -3,11 +3,73 @@ import test from 'node:test'
 
 process.env.VERCEL = '1'
 const {
+  DEFAULT_LOCATIONS,
   bookingsForEnrollment,
+  pricingForBookingLocation,
+  sanitizeLocation,
+  sanitizePricing,
   packageSlotAllowance,
   splitCheckoutItems,
   validateContinuationSlotCount,
 } = await import('./index.js')
+
+test('booking locations match the approved Near and Long city groups', () => {
+  const nearNames = DEFAULT_LOCATIONS
+    .filter(location => location.distance === 'Near')
+    .map(location => location.name)
+  const longNames = DEFAULT_LOCATIONS
+    .filter(location => location.distance === 'Long')
+    .map(location => location.name)
+
+  assert.deepEqual(nearNames, [
+    'Fremont', 'Newark', 'Hayward', 'Union City', 'San Lorenzo', 'San Leandro',
+    'Castro Valley', 'Ashland', 'Oakland',
+  ])
+  assert.equal(longNames.length, 22)
+  assert.equal(DEFAULT_LOCATIONS.length, 31)
+  assert.equal(new Set(DEFAULT_LOCATIONS.map(location => location.name.toLowerCase())).size, 31)
+})
+
+test('booking location input is normalized and constrained to Near or Long', () => {
+  assert.deepEqual(
+    sanitizeLocation({ name: '  Redwood   CITY ', distance: 'long', order: 10 }),
+    { name: 'Redwood CITY', key: 'redwood city', distance: 'Long', order: 10 }
+  )
+  assert.throws(
+    () => sanitizeLocation({ name: 'Fremont', distance: 'medium' }),
+    error => error.status === 400 && /Near or Long/.test(error.message)
+  )
+})
+
+test('Near and Long locations select the matching server-authoritative plan price', () => {
+  const tier = { planName: 'BASIC PLAN', planPrice: '$210', planPriceTwo: '$275' }
+  assert.deepEqual(pricingForBookingLocation(tier, { distance: 'Near' }), {
+    amount: 210,
+    label: '$210',
+    distance: 'Near',
+  })
+  assert.deepEqual(pricingForBookingLocation(tier, { distance: 'Long' }), {
+    amount: 275,
+    label: '$275',
+    distance: 'Long',
+  })
+})
+
+test('admin pricing accepts dollar values and rejects malformed prices', () => {
+  const plan = sanitizePricing({
+    id: '2',
+    planName: 'BASIC PLAN',
+    planPrice: ' $210.00 ',
+    planPriceTwo: '275.50',
+    options: [],
+  })
+  assert.equal(plan.planPrice, '$210')
+  assert.equal(plan.planPriceTwo, '$275.50')
+  assert.throws(
+    () => sanitizePricing({ id: '2', planName: 'BASIC PLAN', planPrice: 'free', planPriceTwo: '$275' }),
+    error => error.status === 400 && /valid dollar amounts/.test(error.message)
+  )
+})
 
 const premier = { id: '5', planName: 'PREMIER PLAN' }
 const slots = [

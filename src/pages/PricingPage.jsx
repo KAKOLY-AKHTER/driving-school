@@ -6,21 +6,14 @@ import { api } from '../api'
 import Pricing from '../components/Pricing'
 import { usePageMeta } from '../usePageMeta'
 import { saveBookingReturn } from '../utils/bookingStorage'
+import { DEFAULT_BOOKING_LOCATIONS, locationDistanceLabel } from '../locations'
+import { locationPlanPrice, locationPriceSummary, priceNumber } from '../pricingUtils'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
 const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
-
-const CITIES = [
-  'Fremont', 'Newark', 'Hayward', 'Union City', 'San Lorenzo', 'San Leandro',
-  'Castro Valley', 'Ashland', 'Oakland', 'San Jose', 'Santa Clara', 'Sunnyvale',
-  'Palo Alto', 'San Mateo', 'Mountain View', 'Cupertino', 'Menlo Park',
-  'Redwood City', 'San Francisco', 'Millbrae', 'San Bruno', 'Burlingame',
-  'Hillsborough', 'South San Francisco', 'Foster City', 'Brisbane', 'Belmont',
-  'Alameda', 'Pleasanton', 'San Ramon', 'Milpitas',
-]
 
 const PICKUP_TIMES = [
   '07:00 AM - 09:00 AM',
@@ -29,11 +22,6 @@ const PICKUP_TIMES = [
   '02:00 PM - 04:00 PM',
   '04:00 PM - 06:00 PM',
 ]
-
-const priceNumber = (value) => {
-  const n = parseFloat(String(value || '').replace(/[^0-9.]/g, ''))
-  return Number.isFinite(n) ? n : 0
-}
 
 const slotLimitForPlan = (tier) => {
   const id = String(tier?.id || '')
@@ -113,6 +101,7 @@ export default function PricingPage() {
   const [availabilityLoading, setAvailabilityLoading] = useState(false)
   const [error, setError] = useState('')
   const [tiers, setTiers] = useState(null)
+  const [bookingLocations, setBookingLocations] = useState(DEFAULT_BOOKING_LOCATIONS)
   const [enrolledCourses, setEnrolledCourses] = useState([])
   const [enrollmentLoading, setEnrollmentLoading] = useState(false)
   const [enrollmentLoadError, setEnrollmentLoadError] = useState('')
@@ -120,6 +109,19 @@ export default function PricingPage() {
 
   useEffect(() => {
     api.getPricing().then(d => { if (Array.isArray(d) && d.length) setTiers(d) }).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    api.getLocations()
+      .then(data => {
+        if (!active || !Array.isArray(data)) return
+        setBookingLocations([...data].sort((a, b) =>
+          (Number(a.order) || 0) - (Number(b.order) || 0) || String(a.name || '').localeCompare(String(b.name || ''))
+        ))
+      })
+      .catch(() => {})
+    return () => { active = false }
   }, [])
 
   useEffect(() => {
@@ -149,6 +151,10 @@ export default function PricingPage() {
   }, [user, enrollmentLoadVersion])
 
   const enrollmentForPlan = (tier) => activeEnrollmentFor(enrolledCourses, tier)
+  const distanceForCity = (city) => locationDistanceLabel(
+    bookingLocations.find(item => item.name === city)?.distance || 'Near'
+  )
+  const planLocationPrice = (tier, city) => locationPlanPrice(tier, distanceForCity(city))
   const selectionLimitForPlan = (tier) => {
     const maximum = slotLimitForPlan(tier)
     const enrollment = enrollmentForPlan(tier)
@@ -160,8 +166,8 @@ export default function PricingPage() {
     return Math.max(0, Math.min(maximum, remaining))
   }
   const planIsContinuation = (tier) => Boolean(enrollmentForPlan(tier))
-  const planCharge = (tier) => planIsContinuation(tier) ? 0 : priceNumber(tier?.planPrice)
-  const planPriceLabel = (tier) => planIsContinuation(tier) ? 'Included' : tier?.planPrice
+  const planCharge = (tier, city) => planIsContinuation(tier) ? 0 : priceNumber(planLocationPrice(tier, city))
+  const planPriceLabel = (tier, city) => planIsContinuation(tier) ? 'Included' : planLocationPrice(tier, city)
   const selectionInstruction = (tier) => {
     const limit = selectionLimitForPlan(tier)
     if (planIsContinuation(tier)) {
@@ -278,7 +284,11 @@ export default function PricingPage() {
         const result = await addToCart({
           id: plan.tier.id,
           title: plan.tier.planName,
-          price: plan.tier.planPrice,
+          price: planLocationPrice(plan.tier, plan.city),
+          cityDistance: distanceForCity(plan.city),
+          priceBasis: distanceForCity(plan.city),
+          nearPrice: locationPlanPrice(plan.tier, 'Near'),
+          longPrice: locationPlanPrice(plan.tier, 'Long'),
           city: plan.city,
           preferredDate: plan.slots[0]?.date || '',
           pickupTime: plan.slots[0]?.time || '',
@@ -305,7 +315,11 @@ export default function PricingPage() {
       const course = {
         id: selectedTier.id,
         title: selectedTier.planName,
-        price: selectedTier.planPrice,
+        price: planLocationPrice(selectedTier, selectedCity),
+        cityDistance: distanceForCity(selectedCity),
+        priceBasis: distanceForCity(selectedCity),
+        nearPrice: locationPlanPrice(selectedTier, 'Near'),
+        longPrice: locationPlanPrice(selectedTier, 'Long'),
         city: selectedCity,
         preferredDate: selectedDate,
         pickupTime: selectedTime,
@@ -371,7 +385,7 @@ export default function PricingPage() {
     setError('')
   }
 
-  const plansTotal = selectedPlans.reduce((sum, plan) => sum + planCharge(plan.tier), 0)
+  const plansTotal = selectedPlans.reduce((sum, plan) => sum + planCharge(plan.tier, plan.city), 0)
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -456,7 +470,15 @@ export default function PricingPage() {
 
             <div style={{ fontFamily: 'var(--font-body)', color: DARK, fontSize: '1rem', lineHeight: 1.6, marginBottom: '0.25rem' }}>
               <div>Plan Name: <strong>{selectedTier.planName}</strong></div>
-              <div>Price: <strong>{user && enrollmentLoading ? 'Checking package status…' : planIsContinuation(selectedTier) ? 'Already paid — no additional charge' : selectedTier.planPrice}</strong></div>
+              <div>
+                Price: <strong>{user && enrollmentLoading
+                  ? 'Checking package status…'
+                  : planIsContinuation(selectedTier)
+                    ? 'Already paid — no additional charge'
+                    : selectedCity
+                      ? `${planLocationPrice(selectedTier, selectedCity)} (${distanceForCity(selectedCity)} location)`
+                      : `Near ${locationPriceSummary(selectedTier).near} · Long ${locationPriceSummary(selectedTier).long}`}</strong>
+              </div>
               {planIsContinuation(selectedTier) && <div style={{ marginTop:'0.25rem', color:'#15803D', fontWeight:800 }}>{selectionInstruction(selectedTier)}</div>}
             </div>
             <p style={{ fontFamily: 'var(--font-body)', color: '#7a8494', fontSize: '0.95rem', margin: '0 0 0.9rem' }}>Please select your city</p>
@@ -470,7 +492,14 @@ export default function PricingPage() {
                 style={{ width: 'min(100%, 372px)', minHeight: '46px', padding: '0 2.5rem 0 0.75rem', border: `1px solid ${error ? '#ef4444' : '#dce6f2'}`, borderRadius: '10px', background: '#fff', boxShadow: '0 4px 14px rgba(15,23,42,0.04)', color: selectedCity ? DARK : '#4b5563', fontFamily: 'var(--font-body)', fontSize: '1rem', cursor: 'pointer' }}
               >
                 <option value="">Select city</option>
-                {CITIES.map(city => <option key={city} value={city}>{city}</option>)}
+                {['Near', 'Long'].map(distance => {
+                  const group = bookingLocations.filter(item => locationDistanceLabel(item.distance) === distance)
+                  return group.length ? (
+                    <optgroup key={distance} label={`${distance} pickup locations`}>
+                      {group.map(item => <option key={item._id || item.name} value={item.name}>{item.name}</option>)}
+                    </optgroup>
+                  ) : null
+                })}
               </select>
               <button type="button" disabled={Boolean(user && enrollmentLoading)} onClick={handleCityNext} style={{ minHeight: '46px', display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0 1.15rem', border: 0, borderRadius: '10px', background: user && enrollmentLoading ? '#94A3B8' : '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '1rem', fontWeight: 800, cursor: user && enrollmentLoading ? 'wait' : 'pointer', boxShadow: user && enrollmentLoading ? 'none' : '0 7px 18px rgba(7,85,174,0.18)' }}>
                 {user && enrollmentLoading ? 'Checking…' : 'Next'}
@@ -537,7 +566,7 @@ export default function PricingPage() {
                       <div style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>{plan.city}</div>
                       <button onClick={(e) => { e.stopPropagation(); removePlan(plan.tier.id) }} style={{ marginTop: '0.4rem', padding: '0.32rem 0.5rem', border: 0, borderRadius: '4px', background: '#e93647', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.65rem', cursor: 'pointer' }}>Remove plan</button>
                     </div>
-                    <span style={{ alignSelf: 'flex-start', padding: '0.25rem 0.55rem', borderRadius: '999px', background: planIsContinuation(plan.tier) ? '#15803D' : '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 800 }}>{planPriceLabel(plan.tier)}</span>
+                    <span style={{ alignSelf: 'flex-start', padding: '0.25rem 0.55rem', borderRadius: '999px', background: planIsContinuation(plan.tier) ? '#15803D' : '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 800 }}>{planPriceLabel(plan.tier, plan.city)}</span>
                   </div>
                   <div style={{ borderTop: '1px solid #e2e8f0', marginTop: '0.55rem', paddingTop: '0.45rem' }}>
                     {plan.slots.length ? plan.slots.map(slot => (
@@ -556,7 +585,7 @@ export default function PricingPage() {
                     <div style={{ marginTop: '0.2rem', color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>{selectedCity}</div>
                     <button onClick={() => removePlan(selectedTier.id)} style={{ marginTop: '0.45rem', padding: '0.35rem 0.55rem', border: 0, borderRadius: '4px', background: '#e93647', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer' }}>Remove plan</button>
                   </div>
-                  <span style={{ alignSelf: 'flex-start', padding: '0.25rem 0.55rem', borderRadius: '999px', background: planIsContinuation(selectedTier) ? '#15803D' : '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 800 }}>{planPriceLabel(selectedTier)}</span>
+                  <span style={{ alignSelf: 'flex-start', padding: '0.25rem 0.55rem', borderRadius: '999px', background: planIsContinuation(selectedTier) ? '#15803D' : '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 800 }}>{planPriceLabel(selectedTier, selectedCity)}</span>
                 </div>
                 <div style={{ borderTop: '1px solid #cbd5e1', marginTop: '0.65rem', paddingTop: '0.55rem', fontFamily: 'var(--font-body)', fontSize: '0.75rem' }}>
                   {selectedSlots.length ? selectedSlots.map(slot => (
@@ -651,22 +680,18 @@ export default function PricingPage() {
             </div>
 
             <div style={{ padding: '1.5rem 2rem 2rem' }}>
-              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', alignItems: 'flex-start' }}>
-                <div>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#94A3B8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Today's Price</span>
-                  <span style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: GOLD, fontWeight: 800, lineHeight: 1 }}>{selectedTier.planPrice}</span>
-                </div>
-                {selectedTier.planPriceTwo && selectedTier.planPriceTwo !== selectedTier.planPrice && (
-                  <div style={{ paddingTop: '0.55rem' }}>
-                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: '#94A3B8', fontWeight: 600, lineHeight: 1, textDecoration: 'line-through' }}>{selectedTier.planPriceTwo}</span>
-                    {priceNumber(selectedTier.planPriceTwo) > priceNumber(selectedTier.planPrice) && (
-                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.55rem', fontWeight: 700, color: '#16A34A', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '999px', padding: '0.15rem 0.45rem', display: 'block', marginTop: '0.3rem', width: 'fit-content' }}>
-                        Save ${priceNumber(selectedTier.planPriceTwo) - priceNumber(selectedTier.planPrice)}
-                      </span>
-                    )}
-                  </div>
-                )}
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                {(['Near', 'Long']).map(distance => {
+                  const activeDistance = selectedCity ? distanceForCity(selectedCity) : ''
+                  return (
+                    <div key={distance} style={{ minWidth: '118px', padding: '.65rem .8rem', borderRadius: '10px', border: `1px solid ${activeDistance === distance ? '#93C5FD' : '#E2E8F0'}`, background: activeDistance === distance ? '#EFF6FF' : '#F8FAFC' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.52rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: activeDistance === distance ? '#0755AE' : '#64748B', display: 'block', marginBottom: '0.2rem', fontWeight: 800 }}>{distance} Price</span>
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.45rem', color: activeDistance === distance ? GOLD_DEEP : DARK, fontWeight: 800, lineHeight: 1 }}>{locationPlanPrice(selectedTier, distance)}</span>
+                    </div>
+                  )
+                })}
               </div>
+              {selectedCity && <p style={{ margin: '-.75rem 0 1.25rem', color: '#0755AE', fontFamily: 'var(--font-body)', fontSize: '.82rem', fontWeight: 800 }}>{selectedCity} is a {distanceForCity(selectedCity)} location. Your price is {planLocationPrice(selectedTier, selectedCity)}.</p>}
 
               <div style={{ width: '100%', height: '1px', background: '#E2EBF5', marginBottom: '1.25rem' }} />
 
@@ -744,7 +769,7 @@ export default function PricingPage() {
                 Added to your cart:
               </p>
               <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', color: SKY_BLUE, fontWeight: 700, margin: '0 0 1.5rem' }}>
-                {selectedTier.planName} ({selectedTier.planPrice})
+                {selectedTier.planName} ({planLocationPrice(selectedTier, selectedCity)} · {distanceForCity(selectedCity)})
               </p>
 
               <div style={{ width: '100%', height: '1px', background: '#E2EBF5', marginBottom: '1.5rem' }} />

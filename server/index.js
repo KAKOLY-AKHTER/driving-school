@@ -220,6 +220,18 @@ const cleanInteger = (value, fallback = 0, min = -10_000, max = 10_000) => {
   const parsed = Number.parseInt(value, 10)
   return Number.isFinite(parsed) ? Math.max(min, Math.min(max, parsed)) : fallback
 }
+const planPriceAmount = (value) => {
+  const raw = cleanText(value, 40).replace(/[$,\s]/g, '')
+  if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) return null
+  const amount = Number(raw)
+  return Number.isFinite(amount) && amount >= 0 && amount <= 1_000_000 ? amount : null
+}
+const normalizePlanPrice = (value) => {
+  const amount = planPriceAmount(value)
+  if (amount === null) return ''
+  const formatted = Number.isInteger(amount) ? String(amount) : amount.toFixed(2)
+  return `$${formatted}`
+}
 const cleanHttpUrl = (value, maxLength = 2000) => {
   const raw = cleanText(value, maxLength)
   if (!raw) return ''
@@ -286,15 +298,17 @@ function sanitizePricing(value) {
   if (!isPlainObject(value)) throw new HttpError(400, 'A valid pricing plan is required.')
   const id = cleanText(value.id, 120)
   const planName = cleanText(value.planName, 160)
-  const planPrice = cleanText(value.planPrice, 40)
-  const planPriceTwo = cleanText(value.planPriceTwo, 40)
-  if (!id || !planName || !planPrice) throw new HttpError(400, 'Plan id, name, and price are required.')
+  const planPrice = normalizePlanPrice(value.planPrice)
+  const planPriceTwo = normalizePlanPrice(value.planPriceTwo ?? value.planPrice)
+  if (!id || !planName || !planPrice || !planPriceTwo) {
+    throw new HttpError(400, 'Plan id, name, Near price, and Long price are required. Use valid dollar amounts.')
+  }
   const allowedPermissions = new Set(['Select', 'Included', 'Optional', 'Not Included'])
   const options = (Array.isArray(value.options) ? value.options : []).slice(0, 20).map(option => ({
     text: cleanText(option?.text, 500),
     permission: allowedPermissions.has(option?.permission) ? option.permission : 'Select',
   }))
-  return { id, planName, planPrice, planPriceTwo: planPriceTwo || planPrice, options, order: cleanInteger(value.order, 0, 0, 10_000) }
+  return { id, planName, planPrice, planPriceTwo, options, order: cleanInteger(value.order, 0, 0, 10_000) }
 }
 function sanitizeArea(value) {
   if (!isPlainObject(value)) throw new HttpError(400, 'A valid service area is required.')
@@ -314,6 +328,21 @@ function sanitizeArea(value) {
     throw new HttpError(400, 'Area name and a secure Google Maps URL are required.')
   }
   return { name, map, icon: cleanText(value.icon, 4000), order: cleanInteger(value.order, 0, 0, 10_000) }
+}
+const normalizeLocationKey = (value) => cleanText(value, 120)
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim()
+
+function sanitizeLocation(value) {
+  if (!isPlainObject(value)) throw new HttpError(400, 'A valid booking location is required.')
+  const name = cleanText(value.name, 120).replace(/\s+/g, ' ')
+  const key = normalizeLocationKey(name)
+  const rawDistance = cleanText(value.distance, 20).toLowerCase()
+  const distance = rawDistance === 'near' ? 'Near' : rawDistance === 'long' ? 'Long' : ''
+  if (!name || !key) throw new HttpError(400, 'City name is required.')
+  if (!distance) throw new HttpError(400, 'Package distance must be Near or Long.')
+  return { name, key, distance, order: cleanInteger(value.order, 0, 0, 10_000) }
 }
 function sanitizeSocial(value) {
   if (!isPlainObject(value)) throw new HttpError(400, 'A valid social link is required.')
@@ -491,7 +520,7 @@ const PORT = process.env.PORT || 3001
 const MONGO_URI = process.env.MONGO_URI
 const DB_NAME = 'driving_school'
 
-let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, contactCol, settingsCol, pricingCol, enrollmentsCol, areasCol, socialsCol, refundsCol, cartsCol
+let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, contactCol, settingsCol, pricingCol, enrollmentsCol, areasCol, locationsCol, socialsCol, refundsCol, cartsCol
 let connectPromise = null
 
 class HttpError extends Error {
@@ -670,6 +699,30 @@ async function pricingTierById(courseId, session) {
   const candidates = [String(courseId)]
   if (/^\d+$/.test(String(courseId))) candidates.push(Number(courseId))
   return pricingCol.findOne({ id: { $in: candidates } }, { session })
+}
+
+async function bookingLocationByName(name, session) {
+  const key = normalizeLocationKey(name)
+  if (!key) throw new HttpError(400, 'Please select a booking city.')
+  const location = await locationsCol.findOne({ key }, { session })
+  if (!location) throw new HttpError(400, 'The selected booking city is not available.')
+  return location
+}
+
+function pricingForBookingLocation(tier, location) {
+  const distance = location?.distance === 'Long' ? 'Long' : 'Near'
+  const configuredPrice = distance === 'Long'
+    ? (tier?.planPriceTwo || tier?.planPrice)
+    : tier?.planPrice
+  const amount = planPriceAmount(configuredPrice)
+  if (amount === null) {
+    throw new HttpError(409, `${cleanText(tier?.planName, 160) || 'This plan'} does not have a valid ${distance} price. Please contact the school.`)
+  }
+  return {
+    amount,
+    label: normalizePlanPrice(configuredPrice),
+    distance,
+  }
 }
 
 let holdCleanupPromise = null
@@ -961,6 +1014,7 @@ async function connectDB() {
     pricingCol = db.collection('pricing')
     enrollmentsCol = db.collection('enrollments')
     areasCol = db.collection('areas')
+    locationsCol = db.collection('locations')
     socialsCol = db.collection('socials')
     refundsCol = db.collection('refunds')
     cartsCol = db.collection('carts')
@@ -971,10 +1025,12 @@ async function connectDB() {
     await bookingSlotsCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, name: 'expire_slot_holds' })
     await cartsCol.createIndex({ uid: 1 }, { unique: true })
     await refundsCol.createIndex({ requestKey: 1 }, { unique: true, sparse: true, name: 'unique_user_refund_request' })
+    await locationsCol.createIndex({ key: 1 }, { unique: true, sparse: true, name: 'unique_booking_location' })
     await cleanupExpiredHolds(true)
     await backfillBookingSlotLocks()
     await seedPricing()
     await seedAreas()
+    await seedLocations()
     await seedSocials()
     console.log('MongoDB connected')
     return db
@@ -1663,6 +1719,8 @@ app.post('/api/users/:uid/cart', async (req, res) => {
     const result = await withMongoTransaction(async (session) => {
       const tier = await pricingTierById(courseId, session)
       if (!tier) throw new HttpError(400, 'The selected pricing plan is not available.')
+      const bookingLocation = await bookingLocationByName(req.body?.city, session)
+      const locationPrice = pricingForBookingLocation(tier, bookingLocation)
       const user = await usersCol.findOne({ uid }, { session, projection: { courses: 1 } })
       const courses = user?.courses || []
       const matchingCourses = courses.filter(course => String(course.id) === courseId)
@@ -1716,10 +1774,14 @@ app.post('/api/users/:uid/cart', async (req, res) => {
       const course = {
         id: courseId,
         title: cleanText(tier.planName, 160),
-        price: cleanText(tier.planPrice, 40),
-        originalPlanPrice: cleanText(tier.planPrice, 40),
-        chargeAmount: activeCourse ? 0 : Number.parseFloat(String(tier.planPrice).replace(/[^0-9.]/g, '')) || 0,
-        city: cleanText(req.body?.city, 120),
+        price: locationPrice.label,
+        originalPlanPrice: locationPrice.label,
+        nearPrice: normalizePlanPrice(tier.planPrice),
+        longPrice: normalizePlanPrice(tier.planPriceTwo || tier.planPrice),
+        priceBasis: locationPrice.distance,
+        chargeAmount: activeCourse ? 0 : locationPrice.amount,
+        city: bookingLocation.name,
+        cityDistance: bookingLocation.distance,
         pickupSlots: slots.map(slot => ({ date: slot.date, time: slot.timeSlot })),
         continuation: Boolean(activeCourse),
         enrollmentId,
@@ -1817,6 +1879,8 @@ app.post('/api/users/:uid/cart/checkout', async (req, res) => {
         const slots = pickupSlotsFromCourse(item)
         const tier = await pricingTierById(courseId, session)
         if (!tier) throw new HttpError(400, 'A pricing plan in your cart is no longer available.')
+        const bookingLocation = await bookingLocationByName(item.city, session)
+        const locationPrice = pricingForBookingLocation(tier, bookingLocation)
         const requestedEnrollmentId = cleanText(item.enrollmentId, 160)
         let activeCourseIndex = requestedEnrollmentId
           ? existingCourses.findLastIndex(course =>
@@ -1870,9 +1934,14 @@ app.post('/api/users/:uid/cart/checkout', async (req, res) => {
           ...item,
           id: courseId,
           title: tier.planName,
-          price: tier.planPrice,
-          originalPlanPrice: tier.planPrice,
-          chargeAmount: continuation ? 0 : Number.parseFloat(String(tier.planPrice).replace(/[^0-9.]/g, '')) || 0,
+          price: locationPrice.label,
+          originalPlanPrice: locationPrice.label,
+          nearPrice: normalizePlanPrice(tier.planPrice),
+          longPrice: normalizePlanPrice(tier.planPriceTwo || tier.planPrice),
+          priceBasis: locationPrice.distance,
+          chargeAmount: continuation ? 0 : locationPrice.amount,
+          city: bookingLocation.name,
+          cityDistance: bookingLocation.distance,
           continuation,
           activeCourseIndex,
           enrollmentId,
@@ -1916,6 +1985,7 @@ app.post('/api/users/:uid/cart/checkout', async (req, res) => {
           title: item.title,
           price: item.price,
           city: item.city || '',
+          cityDistance: item.cityDistance || '',
           preferredDate: item.preferredDate || '',
           pickupTime: item.pickupTime || '',
           pickupSlots: item.pickupSlots || [],
@@ -2126,9 +2196,11 @@ async function supportSystemPrompt() {
   const courseLines = pricing.length
     ? pricing.map((tier, index) => {
       const name = cleanText(tier.planName, 160) || `Plan ${index + 1}`
-      const price = cleanText(tier.planPrice, 40)
+      const nearPrice = normalizePlanPrice(tier.planPrice)
+      const longPrice = normalizePlanPrice(tier.planPriceTwo || tier.planPrice)
       const slots = slotLimitForTier(tier)
-      return `${index + 1}. ${name}${price ? ` (${price})` : ''} - booking requires at least 1 lesson slot; maximum ${slots} lesson slot${slots === 1 ? '' : 's'}`
+      const prices = nearPrice ? ` (Near ${nearPrice}; Long ${longPrice || nearPrice})` : ''
+      return `${index + 1}. ${name}${prices} - booking requires at least 1 lesson slot; maximum ${slots} lesson slot${slots === 1 ? '' : 's'}`
     }).join('\n')
     : 'Current packages and prices are available on the website Pricing page.'
 
@@ -2499,6 +2571,58 @@ app.delete('/api/admin/areas/:id', async (req, res) => {
   }
 })
 
+app.get('/api/locations', async (_req, res) => {
+  try {
+    const locations = await locationsCol.find().sort({ order: 1, name: 1 }).toArray()
+    res.json(locations)
+  } catch (error) {
+    sendServerError(res, error, 'Booking location lookup failed')
+  }
+})
+
+app.post('/api/admin/locations', async (req, res) => {
+  try {
+    const now = new Date().toISOString()
+    const doc = { ...sanitizeLocation(req.body), createdAt: now, updatedAt: now }
+    const result = await locationsCol.insertOne(doc)
+    res.status(201).json({ ok: true, location: { ...doc, _id: result.insertedId } })
+  } catch (error) {
+    if (isDuplicateKey(error)) return res.status(409).json({ error: 'This city already exists.' })
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Booking location creation failed')
+  }
+})
+
+app.put('/api/admin/locations/:id', async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid location id.')
+    const doc = { ...sanitizeLocation(req.body), updatedAt: new Date().toISOString() }
+    const result = await locationsCol.findOneAndUpdate(
+      { _id: new ObjectId(req.params.id) },
+      { $set: doc },
+      { returnDocument: 'after' }
+    )
+    if (!result) return res.status(404).json({ error: 'Location not found.' })
+    res.json({ ok: true, location: result })
+  } catch (error) {
+    if (isDuplicateKey(error)) return res.status(409).json({ error: 'This city already exists.' })
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Booking location update failed')
+  }
+})
+
+app.delete('/api/admin/locations/:id', async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid location id.')
+    const result = await locationsCol.deleteOne({ _id: new ObjectId(req.params.id) })
+    if (!result.deletedCount) return res.status(404).json({ error: 'Location not found.' })
+    res.json({ ok: true })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Booking location deletion failed')
+  }
+})
+
 app.get('/api/socials', async (req, res) => {
   try {
     const socials = await socialsCol.find().sort({ order: 1, platform: 1 }).toArray()
@@ -2589,6 +2713,17 @@ const DEFAULT_AREAS = [
   { name: 'Pleasanton', map: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d202142.65679680137!2d-122.1723057097092!3d37.66145075852708!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x808fe9a261ba755f%3A0xb3ab6847e1ea7d16!2sPleasanton%2C%20CA%2C%20USA!5e0!3m2!1sen!2sin!4v1714386614013!5m2!1sen!2sin', icon: AREA_ICON, order: 3 },
   { name: 'Dublin', map: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d100989.52971764698!2d-121.99252020662772!3d37.7214898142999!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x808fe65cd6892231%3A0x3b327c848ef64057!2sDublin%2C%20CA%2094568%2C%20USA!5e0!3m2!1sen!2sin!4v1715787261489!5m2!1sen!2sin', icon: AREA_ICON, order: 4 },
 ]
+
+const DEFAULT_LOCATIONS = [
+  'Fremont', 'Newark', 'Hayward', 'Union City', 'San Lorenzo', 'San Leandro',
+  'Castro Valley', 'Ashland', 'Oakland',
+].map((name, index) => ({ name, distance: 'Near', order: index + 1 }))
+  .concat([
+    'San Jose', 'Santa Clara', 'Sunnyvale', 'Palo Alto', 'San Mateo', 'Mountain View',
+    'Cupertino', 'Menlo Park', 'Redwood City', 'San Francisco', 'Millbrae', 'San Bruno',
+    'Burlingame', 'Hillsborough', 'South San Francisco', 'Foster City', 'Brisbane',
+    'Belmont', 'Alameda', 'Pleasanton', 'San Ramon', 'Milpitas',
+  ].map((name, index) => ({ name, distance: 'Long', order: index + 10 })))
 
 const DEFAULT_SOCIALS = [
   { platform: 'facebook', url: 'https://www.facebook.com/people/A-Precision-Driving-School/61561300479300/', order: 0 },
@@ -2881,6 +3016,20 @@ async function seedAreas() {
   }
 }
 
+async function seedLocations() {
+  const createdAt = new Date().toISOString()
+  await locationsCol.bulkWrite(DEFAULT_LOCATIONS.map(location => {
+    const doc = sanitizeLocation(location)
+    return {
+      updateOne: {
+        filter: { key: doc.key },
+        update: { $setOnInsert: { ...doc, createdAt, updatedAt: createdAt } },
+        upsert: true,
+      },
+    }
+  }), { ordered: false })
+}
+
 async function seedSocials() {
   const count = await socialsCol.countDocuments()
   if (count === 0) {
@@ -2920,8 +3069,14 @@ if (process.env.VERCEL !== '1') {
 }
 
 export {
+  DEFAULT_LOCATIONS,
   bookingsForEnrollment,
+  normalizePlanPrice,
+  normalizeLocationKey,
   packageSlotAllowance,
+  pricingForBookingLocation,
+  sanitizeLocation,
+  sanitizePricing,
   splitCheckoutItems,
   validateContinuationSlotCount,
   slotLimitForTier,
