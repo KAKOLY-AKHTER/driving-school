@@ -974,6 +974,7 @@ export default function AdminPage() {
         .admin-sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(10,22,40,0.7); backdrop-filter: blur(12px) saturate(120%); z-index: 998; }
         .admin-hamburger { display: none !important; }
         .admin-main { background:radial-gradient(circle at 90% 0%,rgba(1,69,168,0.045),transparent 28rem),#F8FAFD; }
+        .admin-content-width { width:100%; max-width:1180px; margin-left:auto; margin-right:auto; }
         .admin-table-wrap { overflow:auto; border:1px solid #E2EBF5; border-radius:16px; background:#fff; box-shadow:0 10px 32px rgba(15,23,42,0.055); scrollbar-width:thin; scrollbar-color:#B8C8DC #F1F5F9; }
         .admin-table-wrap table { min-width:760px; }
         .admin-table-wrap thead th { position:sticky; top:0; z-index:3; background:#F7FAFE; box-shadow:inset 0 -1px 0 #E2EBF5; white-space:nowrap; }
@@ -1116,6 +1117,7 @@ export default function AdminPage() {
             </div>
 
             <div style={{ padding: 'clamp(1.5rem, 3vw, 2.5rem)' }}>
+              <div className="admin-content-width">
 
               {msg && (
                 <div role={msgIsError ? 'alert' : 'status'} aria-live="polite" className="admin-toast" style={{ background: msgIsError ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${msgIsError ? '#FECACA' : '#BBF7D0'}`, fontFamily: 'var(--font-body)', fontSize: '0.92rem', fontWeight: 700, color: msgIsError ? '#DC2626' : '#15803D' }}>
@@ -2367,6 +2369,7 @@ export default function AdminPage() {
                 </div>
               )}
 
+              </div>
             </div>
           </div>
         </div>
