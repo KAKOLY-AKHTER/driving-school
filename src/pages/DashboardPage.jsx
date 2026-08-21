@@ -158,7 +158,7 @@ export default function DashboardPage() {
   }
   const settingsDirty = Boolean(savedSettings) && (
     JSON.stringify(currentSettings) !== JSON.stringify(savedSettings)
-    || Boolean(sCurrentPass || sNewPass || sConfirmPass)
+    || Boolean(sNewPass || sConfirmPass)
   )
 
   const noticeTimerRef = useRef(null)
@@ -493,7 +493,7 @@ export default function DashboardPage() {
       showNotice('Expiry date must be later than the issue date.', 'error')
       return
     }
-    const changingPassword = hasPasswordProvider && (sNewPass || sConfirmPass || sCurrentPass)
+    const changingPassword = hasPasswordProvider && Boolean(sNewPass || sConfirmPass)
     if (changingPassword && (!sCurrentPass || !sNewPass || !sConfirmPass)) {
       showNotice('Please complete all password fields.', 'error')
       return
