@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 
 const SITE_URL = 'https://www.aprecisiondrivingschool.com'
 const DEFAULT_IMAGE = `${SITE_URL}/driving-logo.png`
-const PRIVATE_PATH_PREFIXES = ['/dashboard', '/admin', '/cart', '/login', '/register']
+const PRIVATE_PATH_PREFIXES = ['/dashboard', '/admin', '/cart', '/login', '/register', '/booking/register']
 
 function setMeta(selector, attribute, value) {
   let element = document.querySelector(selector)

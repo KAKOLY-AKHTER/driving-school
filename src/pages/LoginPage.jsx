@@ -203,7 +203,7 @@ export default function LoginPage() {
 
             <p style={{ textAlign: 'center', marginTop: '2rem', fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#8899aa' }}>
               Don't have an account?{' '}
-              <Link to="/register" state={requestedReturn ? { from: requestedReturn } : undefined} style={{ color: SKY_BLUE, fontWeight: 600, textDecoration: 'none' }}>Register now</Link>
+              <Link to={requestedReturn ? '/booking/register' : '/register'} state={requestedReturn ? { from: requestedReturn } : undefined} style={{ color: SKY_BLUE, fontWeight: 600, textDecoration: 'none' }}>Register now</Link>
             </p>
           </div>
         </div>

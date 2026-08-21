@@ -265,7 +265,8 @@ const USER_TEXT_FIELDS = new Map([
   ['firstName', 80], ['middleName', 80], ['lastName', 80], ['displayName', 160], ['name', 160],
   ['username', 160], ['dob', 20], ['phone', 30], ['email', 320], ['address', 500], ['city', 100],
   ['state', 80], ['zipCode', 20], ['courseType', 120], ['photoURL', 2000], ['permit', 160],
-  ['medications', 1000], ['notes', 2000], ['submittedAt', 40], ['issueDate', 40], ['expiryDate', 40],
+  ['parentPhone', 30], ['gender', 20], ['pickupAddress', 500],
+  ['medications', 1000], ['notes', 2000], ['termsAcceptedAt', 40], ['submittedAt', 40], ['issueDate', 40], ['expiryDate', 40],
 ])
 function sanitizeUserProfile(value) {
   if (!isPlainObject(value)) throw new HttpError(400, 'A valid profile is required.')
@@ -470,6 +471,7 @@ const ADMIN_AVAILABILITY_TIMES = [
   '04:00 PM - 06:00 PM',
 ]
 const ADMIN_AVAILABILITY_TIME_SET = new Set(ADMIN_AVAILABILITY_TIMES)
+const CUSTOM_APPOINTMENT_TIME_PATTERN = /^(0[1-9]|1[0-2]):(00|15|30|45) (AM|PM)$/
 const BOOKING_HOLD_MINUTES = Math.max(5, Math.min(60, Number(process.env.BOOKING_HOLD_MINUTES) || 15))
 const ACTIVE_BOOKING_STATUSES = ['held', 'scheduled', 'confirmed', 'booked']
 const COUNTED_PACKAGE_BOOKING_STATUSES = new Set(['scheduled', 'confirmed', 'booked', 'completed'])
@@ -484,6 +486,16 @@ const normalizeBookingTime = (value) => {
     '4:00 PM - 6:00 PM': '04:00 PM - 06:00 PM',
   }
   return aliases[compact] || compact
+}
+const isCustomAppointmentTime = value => CUSTOM_APPOINTMENT_TIME_PATTERN.test(normalizeBookingTime(value))
+const isSupportedStoredBookingTime = value => {
+  const normalized = normalizeBookingTime(value)
+  return BOOKING_TIMES.has(normalized) || isCustomAppointmentTime(normalized)
+}
+const isDmvRentalTier = tier => {
+  const id = String(tier?.id || '')
+  const name = cleanText(tier?.planName || tier?.title, 180).toUpperCase()
+  return id === '6' || id === '7' || name.includes('DMV DRIVE TEST CAR RENTAL')
 }
 const bookingSlotKey = (date, timeSlot) => `${date}|${normalizeBookingTime(timeSlot)}`
 const courseIdCandidates = (courseId) => {
@@ -598,16 +610,17 @@ class HttpError extends Error {
 const isDuplicateKey = (error) => error?.code === 11000
 const activeHoldExpiry = () => new Date(Date.now() + BOOKING_HOLD_MINUTES * 60_000)
 
-function validateBookingSlot(date, timeSlot) {
+function validateBookingSlot(date, timeSlot, { allowCustomAppointment = false } = {}) {
   const cleanDate = cleanText(date, 10)
-  const cleanTime = cleanText(timeSlot, 80).replace(/\s+/g, ' ')
-  if (!isDateKey(cleanDate) || !BOOKING_TIMES.has(cleanTime)) {
+  const cleanTime = normalizeBookingTime(timeSlot)
+  const validTime = BOOKING_TIMES.has(cleanTime) || (allowCustomAppointment && isCustomAppointmentTime(cleanTime))
+  if (!isDateKey(cleanDate) || !validTime) {
     throw new HttpError(400, 'Please choose a valid booking date and time.')
   }
   if (cleanDate < californiaDateKey()) {
     throw new HttpError(400, 'Past dates cannot be booked.')
   }
-  return { date: cleanDate, timeSlot: normalizeBookingTime(cleanTime) }
+  return { date: cleanDate, timeSlot: cleanTime }
 }
 
 function validateAvailabilitySlot(date, timeSlot, { allowToday = true } = {}) {
@@ -621,7 +634,17 @@ function validateAvailabilitySlot(date, timeSlot, { allowToday = true } = {}) {
   return slot
 }
 
-async function assertSlotsOpenForBooking(slots, session, status = 409) {
+async function assertSlotsOpenForBooking(slots, session, status = 409, { dateAvailabilityOnly = false } = {}) {
+  if (dateAvailabilityOnly) {
+    const dates = [...new Set(slots.map(slot => slot.date))]
+    if (!dates.length) throw new HttpError(status, 'Please choose at least one available appointment date.')
+    const openDateSlots = await effectiveAvailabilitySlots({ date: { $in: dates } }, session)
+    const availableDateSet = new Set(openDateSlots.filter(slot => slot.status === 'available').map(slot => slot.date))
+    if (dates.some(date => !availableDateSet.has(date))) {
+      throw new HttpError(status, 'One or more selected appointment dates are no longer available. Please choose again.')
+    }
+    return
+  }
   const keys = [...new Set(slots.map(slot => bookingSlotKey(slot.date, slot.timeSlot)))]
   if (!keys.length) throw new HttpError(status, 'Please choose at least one available time slot.')
   const openCount = await availabilityCol.countDocuments(
@@ -661,9 +684,14 @@ async function effectiveAvailabilitySlots(filter, session) {
   })
 }
 
-function pickupSlotsFromCourse(course) {
+function pickupSlotsFromCourse(course, tier = course) {
   const source = Array.isArray(course?.pickupSlots) ? course.pickupSlots : []
-  const slots = source.map(slot => validateBookingSlot(slot?.date, slot?.time || slot?.timeSlot))
+  const allowCustomAppointment = isDmvRentalTier(tier)
+  const slots = source.map(slot => validateBookingSlot(
+    slot?.date,
+    slot?.time || slot?.timeSlot,
+    { allowCustomAppointment }
+  ))
   const seen = new Set()
   for (const slot of slots) {
     const key = bookingSlotKey(slot.date, slot.timeSlot)
@@ -720,7 +748,7 @@ const findCourseEnrollmentIndex = (courses, courseId, fingerprint = '', { active
 const safeStoredPickupSlot = (slot) => {
   const date = cleanText(slot?.date, 10)
   const timeSlot = normalizeBookingTime(slot?.time || slot?.timeSlot)
-  if (!isDateKey(date) || !BOOKING_TIMES.has(timeSlot)) return null
+  if (!isDateKey(date) || !isSupportedStoredBookingTime(timeSlot)) return null
   return { date, time: timeSlot }
 }
 
@@ -730,7 +758,7 @@ function packageSlotAllowance(course, tier, linkedBookings = [], selected = 0) {
   for (const booking of linkedBookings) {
     if (!isDateKey(booking?.date)) continue
     const time = normalizeBookingTime(booking?.timeSlot || booking?.time)
-    if (!BOOKING_TIMES.has(time)) continue
+    if (!isSupportedStoredBookingTime(time)) continue
     bookingBySlot.set(bookingSlotKey(booking.date, time), normalizedBookingStatus(booking.status))
   }
 
@@ -891,7 +919,7 @@ async function backfillBookingSlotLocks() {
   const now = new Date()
   const cursor = bookingsCol.find({ status: { $in: ACTIVE_BOOKING_STATUSES } })
   for await (const booking of cursor) {
-    if (!isDateKey(booking.date) || !BOOKING_TIMES.has(String(booking.timeSlot || '').replace(/\s+/g, ' '))) continue
+    if (!isDateKey(booking.date) || !isSupportedStoredBookingTime(booking.timeSlot)) continue
     if (booking.status === 'held' && (!booking.holdExpiresAt || new Date(booking.holdExpiresAt) <= now)) continue
 
     const timeSlot = normalizeBookingTime(booking.timeSlot)
@@ -1342,6 +1370,11 @@ app.get('/api/bookings/availability', async (req, res) => {
     const slots = await effectiveAvailabilitySlots({ date })
     const availableTimes = slots.filter(slot => slot.status === 'available').map(slot => slot.time)
     const bookedTimes = ADMIN_AVAILABILITY_TIMES.filter(time => !availableTimes.includes(time))
+    const customLocks = await bookingSlotsCol.find({
+      date,
+      status: { $in: ['held', 'confirmed', 'booked', 'scheduled'] },
+      timeSlot: { $regex: CUSTOM_APPOINTMENT_TIME_PATTERN },
+    }, { projection: { timeSlot: 1 } }).toArray()
     res.json({
       date,
       configured: slots.length > 0,
@@ -1351,6 +1384,7 @@ app.get('/api/bookings/availability', async (req, res) => {
       }),
       availableTimes,
       bookedTimes,
+      customBookedTimes: [...new Set(customLocks.map(lock => normalizeBookingTime(lock.timeSlot)))],
     })
   } catch (e) {
     sendServerError(res, e, 'Booking availability lookup failed')
@@ -1865,13 +1899,14 @@ app.post('/api/users/:uid/cart', async (req, res) => {
     const courseId = cleanText(req.body?.id, 120)
     if (!courseId) return res.status(400).json({ ok: false, error: 'Course id required' })
 
-    const slots = pickupSlotsFromCourse(req.body)
     await cleanupExpiredHolds()
     const expiresAt = activeHoldExpiry()
     const result = await withMongoTransaction(async (session) => {
       const tier = await pricingTierById(courseId, session)
       if (!tier) throw new HttpError(400, 'The selected pricing plan is not available.')
-      await assertSlotsOpenForBooking(slots, session)
+      const slots = pickupSlotsFromCourse(req.body, tier)
+      const customDmvAppointment = isDmvRentalTier(tier) && slots.every(slot => isCustomAppointmentTime(slot.timeSlot))
+      await assertSlotsOpenForBooking(slots, session, 409, { dateAvailabilityOnly: customDmvAppointment })
       const bookingLocation = await bookingLocationByName(req.body?.city, session)
       const locationPrice = pricingForBookingLocation(tier, bookingLocation)
       const user = await usersCol.findOne({ uid }, { session, projection: { courses: 1 } })
@@ -2029,9 +2064,10 @@ app.post('/api/users/:uid/cart/checkout', async (req, res) => {
         const courseId = String(item.id)
         if (seenCourseIds.has(courseId)) throw new HttpError(409, 'The same pricing plan cannot appear in the cart twice.')
         seenCourseIds.add(courseId)
-        const slots = pickupSlotsFromCourse(item)
         const tier = await pricingTierById(courseId, session)
         if (!tier) throw new HttpError(400, 'A pricing plan in your cart is no longer available.')
+        const slots = pickupSlotsFromCourse(item, tier)
+        const customDmvAppointment = isDmvRentalTier(tier) && slots.every(slot => isCustomAppointmentTime(slot.timeSlot))
         const bookingLocation = await bookingLocationByName(item.city, session)
         const locationPrice = pricingForBookingLocation(tier, bookingLocation)
         const requestedEnrollmentId = cleanText(item.enrollmentId, 160)
@@ -2083,7 +2119,7 @@ app.post('/api/users/:uid/cart/checkout', async (req, res) => {
           validateSlotCountForTier(slots, tier, 409, `The ${tier.planName} selection`)
           allowance = packageSlotAllowance({}, tier, [], slots.length)
         }
-        await assertSlotsOpenForBooking(slots, session)
+        await assertSlotsOpenForBooking(slots, session, 409, { dateAvailabilityOnly: customDmvAppointment })
         verifiedItems.push({
           ...item,
           id: courseId,
@@ -3722,6 +3758,7 @@ export {
   normalizePlanPrice,
   normalizeLocationKey,
   packageSlotAllowance,
+  pickupSlotsFromCourse,
   pricingForBookingLocation,
   sanitizeLocation,
   sanitizeBlog,

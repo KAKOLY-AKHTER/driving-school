@@ -415,14 +415,11 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                     </h3>
                   </div>
 
-                  {/* Prices */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '0.55rem', marginBottom: '1.5rem' }}>
-                    {['Near', 'Long'].map(distance => (
-                      <div key={distance} style={{ padding: '.6rem .65rem', borderRadius: '10px', border: '1px solid #DBE5EF', background: '#F8FAFC' }}>
-                        <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.58rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#455A74', fontWeight: 800, display: 'block', marginBottom: '0.15rem' }}>{distance} Price</span>
-                        <span className="price-value" style={{ fontFamily: 'var(--font-display)', fontSize: '1.45rem', color: 'var(--tone)', fontWeight: 800, lineHeight: 1 }}>{locationPlanPrice(tier, distance)}</span>
-                      </div>
-                    ))}
+                  {/* Default price. The final price changes after the customer selects a Near or Long location. */}
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '58px', marginBottom: '1.5rem' }}>
+                    <span className="price-value" style={{ fontFamily: 'var(--font-display)', fontSize: '2.15rem', color: 'var(--tone)', fontWeight: 800, lineHeight: 1 }}>
+                      {locationPlanPrice(tier, 'Near')}
+                    </span>
                   </div>
 
                   {/* Divider */}

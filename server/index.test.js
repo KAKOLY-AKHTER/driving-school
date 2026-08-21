@@ -11,6 +11,7 @@ const {
   sanitizeReview,
   sanitizeBlog,
   packageSlotAllowance,
+  pickupSlotsFromCourse,
   splitCheckoutItems,
   validateContinuationSlotCount,
   validateAvailabilitySlot,
@@ -68,6 +69,30 @@ test('admin availability accepts only valid future dates and the five public les
   assert.throws(
     () => validateAvailabilitySlot('2099-12-20', '11:00 AM - 01:00 PM'),
     error => error.status === 400 && /five supported lesson times/i.test(error.message)
+  )
+})
+
+test('only the two DMV rental plans accept exact appointment times', () => {
+  const selection = { pickupSlots: [{ date: '2099-12-20', time: '09:15 AM' }] }
+
+  assert.deepEqual(
+    pickupSlotsFromCourse(selection, { id: '6', planName: 'DMV Drive Test Car Rental' }),
+    [{ date: '2099-12-20', timeSlot: '09:15 AM' }]
+  )
+  assert.deepEqual(
+    pickupSlotsFromCourse(selection, { id: '7', planName: 'DMV Drive Test Car Rental.' }),
+    [{ date: '2099-12-20', timeSlot: '09:15 AM' }]
+  )
+  assert.throws(
+    () => pickupSlotsFromCourse(selection, { id: '2', planName: 'BASIC PLAN' }),
+    error => error.status === 400 && /valid booking date and time/i.test(error.message)
+  )
+  assert.throws(
+    () => pickupSlotsFromCourse(
+      { pickupSlots: [{ date: '2099-12-20', time: '09:10 AM' }] },
+      { id: '6', planName: 'DMV Drive Test Car Rental' }
+    ),
+    error => error.status === 400 && /valid booking date and time/i.test(error.message)
   )
 })
 

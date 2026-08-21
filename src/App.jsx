@@ -11,6 +11,8 @@ const AboutPage = lazy(() => import('./pages/AboutPage'))
 const PricingPage = lazy(() => import('./pages/PricingPage'))
 const ContactPage = lazy(() => import('./pages/ContactPage'))
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
+const BookingRegistrationPage = lazy(() => import('./pages/BookingRegistrationPage'))
+const PaymentPage = lazy(() => import('./pages/PaymentPage'))
 const SchedulePage = lazy(() => import('./pages/SchedulePage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
@@ -151,6 +153,7 @@ function AppRoutes() {
               <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/booking/register" element={<BookingRegistrationPage />} />
               <Route path="/schedule" element={<SchedulePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/dashboard" element={
@@ -161,6 +164,11 @@ function AppRoutes() {
               <Route path="/cart" element={
                 <ProtectedRoute>
                   <CartPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/payment" element={
+                <ProtectedRoute>
+                  <PaymentPage />
                 </ProtectedRoute>
               } />
               <Route path="/admin/setup" element={<AdminSetupPage />} />

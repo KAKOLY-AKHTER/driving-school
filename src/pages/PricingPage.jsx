@@ -7,7 +7,7 @@ import Pricing from '../components/Pricing'
 import { usePageMeta } from '../usePageMeta'
 import { saveBookingReturn } from '../utils/bookingStorage'
 import { DEFAULT_BOOKING_LOCATIONS, locationDistanceLabel } from '../locations'
-import { locationPlanPrice, locationPriceSummary, priceNumber } from '../pricingUtils'
+import { locationPlanPrice, priceNumber } from '../pricingUtils'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -22,6 +22,13 @@ const PICKUP_TIMES = [
   '02:00 PM - 04:00 PM',
   '04:00 PM - 06:00 PM',
 ]
+const DMV_APPOINTMENT_HOURS = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0'))
+const DMV_APPOINTMENT_MINUTES = ['00', '15', '30', '45']
+const isDmvAppointmentPlan = tier => {
+  const id = String(tier?.id || '')
+  const name = String(tier?.planName || '').toUpperCase()
+  return id === '6' || id === '7' || name.includes('DMV DRIVE TEST CAR RENTAL')
+}
 
 const slotLimitForPlan = (tier) => {
   const id = String(tier?.id || '')
@@ -99,6 +106,10 @@ export default function PricingPage() {
   const [pendingDate, setPendingDate] = useState('')
   const [bookedTimes, setBookedTimes] = useState([])
   const [timeAvailability, setTimeAvailability] = useState({})
+  const [customBookedTimes, setCustomBookedTimes] = useState([])
+  const [appointmentHour, setAppointmentHour] = useState('09')
+  const [appointmentMinute, setAppointmentMinute] = useState('00')
+  const [appointmentPeriod, setAppointmentPeriod] = useState('AM')
   const [monthAvailability, setMonthAvailability] = useState({})
   const [monthAvailabilityLoading, setMonthAvailabilityLoading] = useState(false)
   const [availabilityError, setAvailabilityError] = useState('')
@@ -216,6 +227,7 @@ export default function PricingPage() {
     if (!pendingDate) return
     let active = true
     setBookedTimes([])
+    setCustomBookedTimes([])
     setTimeAvailability({})
     setAvailabilityLoading(true)
     api.getBookingAvailability(pendingDate)
@@ -223,6 +235,7 @@ export default function PricingPage() {
         if (!active) return
         const slots = Array.isArray(data?.slots) ? data.slots : []
         setBookedTimes(Array.isArray(data?.bookedTimes) ? data.bookedTimes : [])
+        setCustomBookedTimes(Array.isArray(data?.customBookedTimes) ? data.customBookedTimes : [])
         setTimeAvailability(Object.fromEntries(slots.map(slot => [slot.time, slot.status])))
       })
       .catch(() => {
@@ -232,7 +245,7 @@ export default function PricingPage() {
       })
       .finally(() => { if (active) setAvailabilityLoading(false) })
     return () => { active = false }
-  }, [pendingDate])
+  }, [pendingDate, selectedTier?.id])
 
   useEffect(() => {
     if (step !== 'calendar') return undefined
@@ -269,6 +282,9 @@ export default function PricingPage() {
     setSelectedTime(existing?.slots[0]?.time || '')
     setSelectedSlots(existing?.slots || [])
     setPendingDate('')
+    setAppointmentHour('09')
+    setAppointmentMinute('00')
+    setAppointmentPeriod('AM')
     setCalendarMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
     setStep('city')
     setError('')
@@ -334,7 +350,7 @@ export default function PricingPage() {
       }
       if (!user) {
         saveBookingReturn('/cart')
-        navigate('/login', { state: { from: '/cart' } })
+        navigate('/booking/register', { state: { from: '/cart' } })
         return
       }
       navigate('/cart')
@@ -342,6 +358,29 @@ export default function PricingPage() {
       setError(bookingError.message || 'One or more packages could not be saved. Your other selections remain in the cart.')
       setStep('calendar')
     }
+  }
+
+  const handleDmvAppointmentTime = () => {
+    const time = `${appointmentHour}:${appointmentMinute} ${appointmentPeriod}`
+    const slotLimit = selectionLimitForPlan(selectedTier)
+    if (selectedSlots.length >= slotLimit) {
+      setError(`This plan allows up to ${slotLimit} appointment slot${slotLimit === 1 ? '' : 's'}.`)
+      return
+    }
+    const alreadySelected = selectedSlots.some(slot => slot.date === pendingDate && slot.time === time)
+      || selectedPlans.some(plan => String(plan.tier.id) !== String(selectedTier.id)
+        && plan.slots.some(slot => slot.date === pendingDate && slot.time === time))
+    if (alreadySelected || customBookedTimes.includes(time)) {
+      setError('This DMV appointment time has already been selected or booked. Please choose another time.')
+      return
+    }
+    const nextSlots = [...selectedSlots, { date: pendingDate, time }]
+    setSelectedSlots(nextSlots)
+    setSelectedPlans(previous => previous.map(plan => plan.tier.id === selectedTier.id ? { ...plan, slots: nextSlots } : plan))
+    setSelectedDate(pendingDate)
+    setSelectedTime(time)
+    setPendingDate('')
+    setError('')
   }
 
   const handleConfirm = async (goToCart = false) => {
@@ -393,6 +432,10 @@ export default function PricingPage() {
     setSelectedTime('')
     setSelectedSlots([])
     setPendingDate('')
+    setCustomBookedTimes([])
+    setAppointmentHour('09')
+    setAppointmentMinute('00')
+    setAppointmentPeriod('AM')
     setError('')
   }
 
@@ -512,10 +555,15 @@ export default function PricingPage() {
                     ? 'Already paid — no additional charge'
                     : selectedCity
                       ? `${planLocationPrice(selectedTier, selectedCity)} (${distanceForCity(selectedCity)} location)`
-                      : `Near ${locationPriceSummary(selectedTier).near} · Long ${locationPriceSummary(selectedTier).long}`}</strong>
+                      : locationPlanPrice(selectedTier, 'Near')}</strong>
               </div>
               {planIsContinuation(selectedTier) && <div style={{ marginTop:'0.25rem', color:'#15803D', fontWeight:800 }}>{selectionInstruction(selectedTier)}</div>}
             </div>
+            {!planIsContinuation(selectedTier) && (
+              <p role="note" style={{ fontFamily: 'var(--font-body)', color: '#dc2626', fontSize: '0.98rem', lineHeight: 1.55, fontWeight: 800, margin: '0.55rem 0 1.05rem' }}>
+                Additional charges may apply based on the instructor&apos;s travel distance to your preferred lesson location.
+              </p>
+            )}
             <p style={{ fontFamily: 'var(--font-body)', color: '#7a8494', fontSize: '0.95rem', margin: '0 0 0.9rem' }}>Please select your city</p>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
@@ -665,7 +713,35 @@ export default function PricingPage() {
                   <p style={{ margin: '0 0 0.6rem', color: DARK, fontFamily: 'var(--font-body)', fontSize: '1.05rem', fontWeight: 800 }}>
                     Selected Date: {new Date(`${pendingDate}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
                   </p>
-                  <p style={{ margin: '0 0 1.2rem', color: '#102a46', fontFamily: 'var(--font-body)', fontSize: '1rem' }}>Choose your preferred pickup time:</p>
+                  <p style={{ margin: '0 0 1.2rem', color: '#102a46', fontFamily: 'var(--font-body)', fontSize: '1rem' }}>
+                    {isDmvAppointmentPlan(selectedTier) ? 'Choose your DMV appointment time:' : 'Choose your preferred pickup time:'}
+                  </p>
+                  {isDmvAppointmentPlan(selectedTier) ? (
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap' }}>
+                        <label htmlFor="dmv-hour" style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>Hour</label>
+                        <select id="dmv-hour" value={appointmentHour} onChange={event => { setAppointmentHour(event.target.value); setError('') }} style={{ minHeight: '44px', padding: '0 0.75rem', border: '1px solid #CBD5E1', borderRadius: '7px', background: '#fff', color: DARK, fontFamily: 'var(--font-body)', fontSize: '1rem' }}>
+                          {DMV_APPOINTMENT_HOURS.map(hour => <option key={hour} value={hour}>{hour}</option>)}
+                        </select>
+                        <span aria-hidden="true" style={{ color: '#64748B', fontWeight: 900 }}>:</span>
+                        <label htmlFor="dmv-minute" style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>Minute</label>
+                        <select id="dmv-minute" value={appointmentMinute} onChange={event => { setAppointmentMinute(event.target.value); setError('') }} style={{ minHeight: '44px', padding: '0 0.75rem', border: '1px solid #CBD5E1', borderRadius: '7px', background: '#fff', color: DARK, fontFamily: 'var(--font-body)', fontSize: '1rem' }}>
+                          {DMV_APPOINTMENT_MINUTES.map(minute => <option key={minute} value={minute}>{minute}</option>)}
+                        </select>
+                        <label htmlFor="dmv-period" style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>AM or PM</label>
+                        <select id="dmv-period" value={appointmentPeriod} onChange={event => { setAppointmentPeriod(event.target.value); setError('') }} style={{ minHeight: '44px', padding: '0 0.75rem', border: '1px solid #CBD5E1', borderRadius: '7px', background: '#fff', color: DARK, fontFamily: 'var(--font-body)', fontSize: '1rem' }}>
+                          <option value="AM">AM</option>
+                          <option value="PM">PM</option>
+                        </select>
+                        <button type="button" disabled={availabilityLoading} onClick={handleDmvAppointmentTime} style={{ minHeight: '44px', padding: '0 1rem', border: 0, borderRadius: '7px', background: availabilityLoading ? '#94A3B8' : '#0866ff', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.95rem', fontWeight: 800, cursor: availabilityLoading ? 'wait' : 'pointer' }}>
+                          {availabilityLoading ? 'Checking...' : 'Done'}
+                        </button>
+                      </div>
+                      {customBookedTimes.includes(`${appointmentHour}:${appointmentMinute} ${appointmentPeriod}`) && (
+                        <p role="alert" style={{ margin: '0.75rem 0 0', color: '#DC2626', fontSize: '0.84rem', fontWeight: 750 }}>This appointment time is already booked. Please choose another time.</p>
+                      )}
+                    </div>
+                  ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
                     {PICKUP_TIMES.map(time => {
                       const effectiveStatus = timeAvailability[time] || (availabilityLoading ? 'loading' : 'unavailable')
@@ -694,6 +770,7 @@ export default function PricingPage() {
                       </div>
                     )})}
                   </div>
+                  )}
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '3rem' }}>
                     <button onClick={() => setPendingDate('')} style={{ padding: '0.7rem 1rem', border: '1px solid #d7dee8', borderRadius: '8px', background: '#fff', color: '#1f2937', fontFamily: 'var(--font-body)', fontSize: '0.95rem', cursor: 'pointer' }}>Cancel</button>
                   </div>

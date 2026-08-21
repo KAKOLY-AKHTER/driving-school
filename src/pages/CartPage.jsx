@@ -57,7 +57,11 @@ export default function CartPage() {
     }
     if (!user) {
       saveBookingReturn('/cart')
-      navigate('/login', { state: { from: '/cart' } })
+      navigate('/booking/register', { state: { from: '/cart' } })
+      return
+    }
+    if (newPackageCount > 0) {
+      navigate('/payment')
       return
     }
     setBusy(true)
@@ -179,7 +183,7 @@ export default function CartPage() {
 
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1rem' }}>
                 <button onClick={handleEnrollAll} disabled={checkoutBlocked} style={{ flex: 2, minWidth: '220px', padding: '0.95rem 1.5rem', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, color: DARK, background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, border: 'none', borderRadius: 'var(--radius-sm)', cursor: checkoutBlocked ? 'not-allowed' : 'pointer', opacity: checkoutBlocked ? 0.6 : 1, transition: 'all 0.3s', boxShadow: checkoutBlocked ? 'none' : '0 4px 16px rgba(253,188,1,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { if (!checkoutBlocked) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(253,188,1,0.4)' } }} onMouseLeave={(e) => { if (!checkoutBlocked) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(253,188,1,0.25)' } }}>
-                  {cartLoading ? 'Restoring Cart...' : busy ? 'Confirming...' : expiredSelectionCount > 0 ? 'Reservation Expired' : user ? (newPackageCount > 0 ? 'Complete Booking' : 'Confirm Lessons') : 'Sign In to Continue'}
+                  {cartLoading ? 'Restoring Cart...' : busy ? 'Confirming...' : expiredSelectionCount > 0 ? 'Reservation Expired' : user ? (newPackageCount > 0 ? 'Proceed to Payment' : 'Confirm Lessons') : 'Sign In to Continue'}
                 </button>
                 <button onClick={() => navigate('/pricing')} style={{ flex: 1, minWidth: '160px', padding: '0.95rem 1.5rem', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, color: SKY_BLUE, background: 'transparent', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.borderColor = SKY_BLUE }} onMouseLeave={(e) => { e.currentTarget.borderColor = '#E2EBF5' }}>
                   Keep Shopping
