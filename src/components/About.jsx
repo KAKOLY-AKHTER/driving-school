@@ -223,7 +223,7 @@ export default function About() {
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: '#ffffff', fontWeight: 800, lineHeight: 1 }}>
                     35+ Years
                   </div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginTop: '0.2rem' }}>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.88)', marginTop: '0.2rem' }}>
                     Teaching Experience
                   </div>
                 </div>
@@ -260,7 +260,7 @@ export default function About() {
               <p style={{
                 fontFamily: 'var(--font-body)',
                 fontSize: 'clamp(0.95rem, 1.3vw, 1.05rem)',
-                color: 'rgba(255,255,255,0.6)',
+                color: 'rgba(255,255,255,0.88)',
                 lineHeight: 1.8,
                 marginBottom: '2rem',
                 maxWidth: '44ch',
@@ -295,7 +295,7 @@ export default function About() {
                         <path d={item.icon} />
                       </svg>
                     </div>
-                    <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: 'rgba(255,255,255,0.7)' }}>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: 'rgba(255,255,255,0.88)' }}>
                       {item.text}
                     </span>
                   </div>
@@ -416,7 +416,7 @@ export default function About() {
                 }}>{f.label}</h4>
                 <p style={{
                   fontFamily: 'var(--font-body)',
-                  color: 'rgba(255,255,255,0.55)',
+                  color: 'rgba(255,255,255,0.88)',
                   fontSize: '0.88rem',
                   lineHeight: 1.7,
                   margin: 0,
@@ -484,7 +484,7 @@ export default function About() {
               <p style={{
                 fontFamily: 'var(--font-body)',
                 fontSize: '0.95rem',
-                color: 'rgba(255,255,255,0.55)',
+                color: 'rgba(255,255,255,0.88)',
                 lineHeight: 1.8,
                 marginBottom: '1.5rem',
                 maxWidth: '40ch',
@@ -519,7 +519,7 @@ export default function About() {
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', color: '#ffffff', fontWeight: 700 }}>
                     100% Safety Guaranteed
                   </div>
-                  <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)' }}>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'rgba(255,255,255,0.88)' }}>
                     No other local school has this
                   </div>
                 </div>
@@ -581,7 +581,7 @@ export default function About() {
 
             <p style={{
               fontFamily: 'var(--font-body)',
-              color: 'rgba(255,255,255,0.55)',
+              color: 'rgba(255,255,255,0.88)',
               lineHeight: 1.8,
               marginBottom: '1.5rem',
               fontSize: '0.95rem',
@@ -600,7 +600,7 @@ export default function About() {
                   <div className="ab-step-num">{step.num}</div>
                   <div>
                     <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, color: '#ffffff', fontSize: '0.9rem' }}>{step.title}</span>
-                    <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.65)', fontSize: '0.9rem' }}> — {step.desc}</span>
+                    <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.88)', fontSize: '0.9rem' }}> — {step.desc}</span>
                   </div>
                 </div>
               ))}
@@ -680,7 +680,7 @@ export default function About() {
                 <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', color: '#ffffff', marginBottom: '1rem', fontWeight: 800 }}>
                   6 Hours <span style={{ color: GOLD }}>Required</span>
                 </h4>
-                <p style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.55)', fontSize: '0.9rem', lineHeight: 1.8, marginBottom: '0.75rem' }}>
+                <p style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.88)', fontSize: '0.9rem', lineHeight: 1.8, marginBottom: '0.75rem' }}>
                   Divided into <strong style={{ color: GOLD }}>3 lessons</strong> of 2 hrs each. After taking one 2hr lesson our instructor will sign off the permit and student can legally drive with Parents.
                 </p>
                 <div style={{
@@ -690,7 +690,7 @@ export default function About() {
                   padding: '1rem 1.25rem',
                   marginTop: '1rem',
                 }}>
-                  <p style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', lineHeight: 1.65, margin: 0 }}>
+                  <p style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.88)', fontSize: '0.8rem', lineHeight: 1.65, margin: 0 }}>
                     <strong style={{ color: '#E57373' }}>Please note:</strong> Permit must be carried at every lesson. Otherwise there will be a <strong>$60 charge</strong>.
                   </p>
                 </div>
@@ -775,7 +775,7 @@ export default function About() {
                 <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', color: '#ffffff', marginBottom: '1rem', fontWeight: 800 }}>
                   Own License <span style={{ color: GOLD }}>Required</span>
                 </h4>
-                <p style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.55)', fontSize: '0.9rem', lineHeight: 1.8, marginBottom: '0.75rem' }}>
+                <p style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.88)', fontSize: '0.9rem', lineHeight: 1.8, marginBottom: '0.75rem' }}>
                   Adults can take a driving lesson with their own country License — only if it's valid. They have to bring it to the driving lesson.
                 </p>
                 <div style={{
@@ -785,7 +785,7 @@ export default function About() {
                   padding: '1rem 1.25rem',
                   marginTop: '1rem',
                 }}>
-                  <p style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', lineHeight: 1.65, margin: 0 }}>
+                  <p style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.88)', fontSize: '0.8rem', lineHeight: 1.65, margin: 0 }}>
                     Text us at <strong style={{ color: GOLD }}>{settings.phone}</strong> or email <strong style={{ color: GOLD }}>{settings.email}</strong>
                   </p>
                 </div>

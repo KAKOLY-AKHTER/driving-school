@@ -196,7 +196,7 @@ export default function AdminBlogPanel({
             >
               {editingId ? "Edit Blog Post" : "Create Blog Post"}
             </h2>
-            <p style={{ color: "#64748B", margin: ".35rem 0 0" }}>
+            <p style={{ color: "#334155", margin: ".35rem 0 0" }}>
               Published posts appear automatically on the Blog page and Home
               page.
             </p>
@@ -360,7 +360,7 @@ export default function AdminBlogPanel({
             placeholder="https://example.com/driving-photo.jpg"
           />
           <small
-            style={{ display: "block", marginTop: ".35rem", color: "#64748B" }}
+            style={{ display: "block", marginTop: ".35rem", color: "#334155" }}
           >
             Optional. Use a clear landscape image hosted at an HTTPS address.
           </small>
@@ -409,7 +409,7 @@ export default function AdminBlogPanel({
             style={{
               display: "block",
               marginTop: ".35rem",
-              color: "#64748B",
+              color: "#334155",
               textAlign: "right",
             }}
           >
@@ -445,7 +445,7 @@ export default function AdminBlogPanel({
               style={{
                 display: "block",
                 marginTop: ".35rem",
-                color: "#64748B",
+                color: "#334155",
               }}
             >
               Leave empty to publish immediately.
@@ -571,7 +571,7 @@ export default function AdminBlogPanel({
             >
               Blog Posts
             </h2>
-            <p style={{ color: "#64748B", margin: ".3rem 0 0" }}>
+            <p style={{ color: "#334155", margin: ".3rem 0 0" }}>
               {filtered.length} of {posts.length} posts
             </p>
           </div>
@@ -598,7 +598,7 @@ export default function AdminBlogPanel({
           </div>
         </div>
         {loading ? (
-          <p role="status" style={{ color: "#64748B", padding: "2rem 0" }}>
+          <p role="status" style={{ color: "#334155", padding: "2rem 0" }}>
             Loading blog posts…
           </p>
         ) : error && !posts.length ? (
@@ -640,7 +640,7 @@ export default function AdminBlogPanel({
                       <span
                         style={{
                           display: "block",
-                          color: "#64748B",
+                          color: "#334155",
                           fontSize: ".82rem",
                           marginTop: ".2rem",
                         }}
@@ -753,7 +753,7 @@ export default function AdminBlogPanel({
                       style={{
                         ...tdStyle,
                         textAlign: "center",
-                        color: "#64748B",
+                        color: "#334155",
                         padding: "2.2rem",
                       }}
                     >

@@ -222,7 +222,7 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
     <div style={{ display: 'grid', gap: '1.5rem' }}>
       <form onSubmit={saveReview} style={cardStyle}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
-          <div><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>{editingId ? 'Edit Customer Review' : 'Add Customer Review'}</h2><p style={{ margin: '.35rem 0 0', color: '#64748B' }}>Published reviews appear automatically in the Home page testimonial carousel.</p></div>
+          <div><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>{editingId ? 'Edit Customer Review' : 'Add Customer Review'}</h2><p style={{ margin: '.35rem 0 0', color: '#334155' }}>Published reviews appear automatically in the Home page testimonial carousel.</p></div>
           <span style={{ padding: '.35rem .65rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontSize: '.8rem', fontWeight: 800 }}>{publishedCount} Published</span>
         </div>
         <div className="admin-grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 180px 180px', gap: '1rem' }}>
@@ -230,7 +230,7 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
           <div><label htmlFor="review-rating" style={labelStyle}>Rating</label><select id="review-rating" value={form.rating} onChange={event => setForm(current => ({ ...current, rating: Number(event.target.value) }))} style={inputStyle}>{[5,4,3,2,1].map(rating => <option key={rating} value={rating}>{rating} Star{rating === 1 ? '' : 's'}</option>)}</select></div>
           <div><label htmlFor="review-order" style={labelStyle}>Display Order</label><input id="review-order" type="number" min="0" max="10000" value={form.order} onChange={event => setForm(current => ({ ...current, order: event.target.value }))} style={inputStyle} /></div>
         </div>
-        <div style={{ marginTop: '1rem' }}><label htmlFor="review-text" style={labelStyle}>Review Text</label><textarea id="review-text" required maxLength={1200} rows={5} value={form.text} onChange={event => setForm(current => ({ ...current, text: event.target.value }))} placeholder="Write the customer's testimonial…" style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }} /><div style={{ textAlign: 'right', color: '#94A3B8', fontSize: '.78rem', marginTop: '.25rem' }}>{form.text.length}/1200</div></div>
+        <div style={{ marginTop: '1rem' }}><label htmlFor="review-text" style={labelStyle}>Review Text</label><textarea id="review-text" required maxLength={1200} rows={5} value={form.text} onChange={event => setForm(current => ({ ...current, text: event.target.value }))} placeholder="Write the customer's testimonial…" style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }} /><div style={{ textAlign: 'right', color: '#475569', fontSize: '.78rem', marginTop: '.25rem' }}>{form.text.length}/1200</div></div>
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: '.55rem', marginTop: '.75rem', color: '#334155', fontWeight: 800, cursor: 'pointer' }}><input type="checkbox" checked={form.published} onChange={event => setForm(current => ({ ...current, published: event.target.checked }))} />Publish on Home page</label>
         <div style={{ display: 'flex', gap: '.65rem', marginTop: '1.15rem', flexWrap: 'wrap' }}><button type="submit" disabled={saving} style={{ minHeight: '44px', padding: '.7rem 1.1rem', border: 0, borderRadius: '9px', background: `linear-gradient(135deg,${SKY_BLUE},#0A2A5E)`, color: '#fff', fontWeight: 850, cursor: saving ? 'wait' : 'pointer' }}>{saving ? 'Saving…' : editingId ? 'Save Changes' : 'Add Review'}</button>{editingId && <button type="button" onClick={resetForm} style={{ minHeight: '44px', padding: '.7rem 1.1rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Cancel Edit</button>}</div>
       </form>
@@ -240,8 +240,8 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
         {error && <div role="alert" style={{ padding: '.85rem 1rem', marginBottom: '1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{error} <button type="button" onClick={() => setLoadVersion(value => value + 1)} style={{ marginLeft: '.6rem', border: 0, background: 'transparent', color: '#0755AE', fontWeight: 850, cursor: 'pointer' }}>Retry</button></div>}
         <div className="admin-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr><th style={thStyle}>Order</th><th style={thStyle}>Reviewer</th><th style={thStyle}>Review</th><th style={thStyle}>Rating</th><th style={thStyle}>Visibility</th><th style={thStyle}>Actions</th></tr></thead><tbody>
           {filtered.map(review => <tr key={review._id}><td style={tdStyle}>{review.order ?? 0}</td><td style={{ ...tdStyle, fontWeight: 800, whiteSpace: 'nowrap' }}>{review.name}</td><td style={{ ...tdStyle, minWidth: '280px', maxWidth: '520px', lineHeight: 1.5 }}>{review.text}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap', color: GOLD_DEEP, fontWeight: 900 }}>{'★'.repeat(Number(review.rating) || 5)}<span style={{ color: '#CBD5E1' }}>{'★'.repeat(5 - (Number(review.rating) || 5))}</span></td><td style={tdStyle}><button type="button" onClick={() => togglePublished(review)} style={{ padding: '.3rem .6rem', border: `1px solid ${review.published !== false ? '#BBF7D0' : '#CBD5E1'}`, borderRadius: '999px', background: review.published !== false ? '#F0FDF4' : '#F8FAFC', color: review.published !== false ? '#15803D' : '#64748B', fontWeight: 800, cursor: 'pointer' }}>{review.published !== false ? 'Published' : 'Draft'}</button></td><td style={tdStyle}><div style={{ display: 'flex', gap: '.4rem' }}><button type="button" onClick={() => startEdit(review)} style={{ padding: '.4rem .65rem', border: `1.5px solid ${SKY_BLUE}`, borderRadius: '8px', background: '#fff', color: SKY_BLUE, fontWeight: 800, cursor: 'pointer' }}>Edit</button><button type="button" onClick={() => requestConfirmation('Delete customer review?', `${review.name}'s testimonial will be permanently removed.`, () => deleteReview(review))} style={{ padding: '.4rem .65rem', border: '1.5px solid #DC2626', borderRadius: '8px', background: '#fff', color: '#DC2626', fontWeight: 800, cursor: 'pointer' }}>Delete</button></div></td></tr>)}
-          {!loading && !filtered.length && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748B' }}>{search || visibility !== 'all' ? 'No reviews match the selected filters.' : 'No customer reviews yet.'}</td></tr>}
-          {loading && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748B' }}>Loading reviews…</td></tr>}
+          {!loading && !filtered.length && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{search || visibility !== 'all' ? 'No reviews match the selected filters.' : 'No customer reviews yet.'}</td></tr>}
+          {loading && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>Loading reviews…</td></tr>}
         </tbody></table></div>
       </div>
     </div>
@@ -350,7 +350,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
           <div>
             <h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>Open Lesson Availability</h2>
-            <p style={{ margin: '.35rem 0 0', color: '#64748B', lineHeight: 1.55 }}>Choose one or more future dates, select the lesson times, then save. Each date/time can be booked by one student.</p>
+            <p style={{ margin: '.35rem 0 0', color: '#334155', lineHeight: 1.55 }}>Choose one or more future dates, select the lesson times, then save. Each date/time can be booked by one student.</p>
           </div>
           <span style={{ padding: '.35rem .65rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontWeight: 800, fontSize: '.8rem' }}>Pacific Time (California)</span>
         </div>
@@ -363,7 +363,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.45rem', marginTop: '.75rem', minHeight: '32px' }}>
               {dates.map(date => <button type="button" key={date} onClick={() => setDates(current => current.filter(item => item !== date))} title="Remove date" style={{ border: '1px solid #BFDBFE', borderRadius: '999px', padding: '.35rem .6rem', background: '#EFF6FF', color: '#0755AE', fontWeight: 750, cursor: 'pointer' }}>{new Date(`${date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} ×</button>)}
-              {!dates.length && <span style={{ color: '#94A3B8', fontSize: '.9rem' }}>No dates selected yet.</span>}
+              {!dates.length && <span style={{ color: '#475569', fontSize: '.9rem' }}>No dates selected yet.</span>}
             </div>
           </div>
           <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
@@ -381,7 +381,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
 
       <div style={cardStyle}>
         <div className="admin-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-          <div><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Availability Calendar ({total})</h2><p style={{ margin: '.25rem 0 0', color: '#64748B', fontSize: '.9rem' }}>Held and Booked statuses are protected and managed automatically.</p></div>
+          <div><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Availability Calendar ({total})</h2><p style={{ margin: '.25rem 0 0', color: '#334155', fontSize: '.9rem' }}>Held and Booked statuses are protected and managed automatically.</p></div>
           <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
             <input className="admin-toolbar-input" type="search" aria-label="Search availability" placeholder="Search date or time…" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '220px' }} />
             <select aria-label="Filter availability status" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '145px' }}><option value="all">All statuses</option><option value="available">Available</option><option value="blocked">Blocked</option><option value="held">Held</option><option value="booked">Booked</option></select>
@@ -398,12 +398,12 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
             <thead><tr><th style={thStyle}><input aria-label="Select all visible availability rows" type="checkbox" checked={allSelected} onChange={() => setSelected(allSelected ? [] : rows.map(row => String(row._id)))} /></th><th style={thStyle}>Date</th><th style={thStyle}>Time</th><th style={thStyle}>Status</th><th style={thStyle}>Action</th></tr></thead>
             <tbody>
               {rows.map(row => { const meta = statusStyle(row.status); const protectedSlot = row.status === 'held' || row.status === 'booked'; return <tr key={row._id}><td style={tdStyle}><input aria-label={`Select ${row.date} ${row.time}`} type="checkbox" disabled={protectedSlot} checked={selected.includes(String(row._id))} onChange={() => setSelected(current => current.includes(String(row._id)) ? current.filter(id => id !== String(row._id)) : [...current, String(row._id)])} /></td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{new Date(`${row.date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{row.time}</td><td style={tdStyle}><span style={{ ...meta, display: 'inline-flex', padding: '.25rem .55rem', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 800 }}>{row.status}</span></td><td style={tdStyle}><button type="button" disabled={protectedSlot} onClick={() => requestConfirmation('Delete availability?', `${row.date} at ${row.time} will no longer appear in the student calendar.`, () => deleteSlot(row))} style={{ padding: '.4rem .7rem', border: `1.5px solid ${protectedSlot ? '#CBD5E1' : '#DC2626'}`, borderRadius: '8px', background: '#fff', color: protectedSlot ? '#94A3B8' : '#DC2626', fontWeight: 800, cursor: protectedSlot ? 'not-allowed' : 'pointer' }}>Delete</button></td></tr> })}
-              {!loading && !rows.length && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748B' }}>{search || status !== 'all' ? 'No availability matches the filters.' : 'No lesson availability has been created yet.'}</td></tr>}
-              {loading && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748B' }}>Loading availability…</td></tr>}
+              {!loading && !rows.length && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{search || status !== 'all' ? 'No availability matches the filters.' : 'No lesson availability has been created yet.'}</td></tr>}
+              {loading && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>Loading availability…</td></tr>}
             </tbody>
           </table>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginTop: '1rem' }}><span style={{ color: '#64748B', fontSize: '.9rem' }}>Page {page} of {pages}</span><div style={{ display: 'flex', gap: '.45rem' }}><button type="button" disabled={page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: page <= 1 ? 'not-allowed' : 'pointer' }}>Previous</button><button type="button" disabled={page >= pages} onClick={() => setPage(value => Math.min(pages, value + 1))} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: page >= pages ? 'not-allowed' : 'pointer' }}>Next</button></div></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginTop: '1rem' }}><span style={{ color: '#334155', fontSize: '.9rem' }}>Page {page} of {pages}</span><div style={{ display: 'flex', gap: '.45rem' }}><button type="button" disabled={page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: page <= 1 ? 'not-allowed' : 'pointer' }}>Previous</button><button type="button" disabled={page >= pages} onClick={() => setPage(value => Math.min(pages, value + 1))} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: page >= pages ? 'not-allowed' : 'pointer' }}>Next</button></div></div>
       </div>
     </div>
   )
@@ -926,8 +926,8 @@ export default function AdminPage() {
 
 
   const cardStyle = { background: '#ffffff', borderRadius: 'var(--radius-lg)', border: '1px solid #E2EBF5', padding: '1.75rem', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }
-  const labelStyle = { fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#64748b', fontWeight: 600, display: 'block', marginBottom: '0.3rem' }
-  const thStyle = { fontFamily: 'var(--font-mono)', fontSize: '0.8rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, padding: '0.75rem 1rem', textAlign: 'left', borderBottom: '1px solid #E2EBF5' }
+  const labelStyle = { fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#334155', fontWeight: 600, display: 'block', marginBottom: '0.3rem' }
+  const thStyle = { fontFamily: 'var(--font-mono)', fontSize: '0.8rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#334155', fontWeight: 700, padding: '0.75rem 1rem', textAlign: 'left', borderBottom: '1px solid #E2EBF5' }
   const tdStyle = { fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#1a2332', padding: '0.75rem 1rem', borderBottom: '1px solid #f0f2f5' }
   const inputStyle = { width: '100%', padding: '0.65rem 0.8rem', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#1a2332', outline: 'none', boxSizing: 'border-box' }
 
@@ -1053,7 +1053,7 @@ export default function AdminPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div className="admin-user-copy" style={{ textAlign: 'right' }}>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.92rem', color: '#fff', margin: 0, fontWeight: 600 }}>{user?.displayName || 'Admin'}</p>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'rgba(255,255,255,0.65)', margin: 0 }}>{user?.email}</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'rgba(255,255,255,0.88)', margin: 0 }}>{user?.email}</p>
               </div>
               <div style={{ position: 'relative' }}>
                 {profilePhotoPreview ? <img src={profilePhotoPreview} alt={`${user?.displayName || 'Administrator'} profile`} style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.3)', flexShrink: 0 }} /> : <div aria-label={`${user?.displayName || 'Administrator'} profile`} style={{ width: '42px', height: '42px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', fontWeight: 800, color: DARK, border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.3)', flexShrink: 0 }}>{initials}</div>}
@@ -1135,7 +1135,7 @@ export default function AdminPage() {
                 <div role="alert" style={{ ...cardStyle, maxWidth: '720px', margin: '1rem auto', textAlign: 'center', borderColor: '#FECACA', background: '#FFFBFB' }}>
                   <div aria-hidden="true" style={{ width: '48px', height: '48px', display: 'grid', placeItems: 'center', margin: '0 auto 1rem', borderRadius: '14px', background: '#FEF2F2', color: '#DC2626' }}>{SVG.shield}</div>
                   <h2 style={{ margin: '0 0 .5rem', color: DARK, fontSize: '1.25rem' }}>Dashboard data is unavailable</h2>
-                  <p style={{ margin: '0 auto 1.25rem', maxWidth: '540px', color: '#64748b', lineHeight: 1.6 }}>{loadError}</p>
+                  <p style={{ margin: '0 auto 1.25rem', maxWidth: '540px', color: '#334155', lineHeight: 1.6 }}>{loadError}</p>
                   <button type="button" onClick={() => setLoadAttempt(value => value + 1)} style={{ minHeight: '44px', padding: '.7rem 1.2rem', border: 0, borderRadius: '10px', background: `linear-gradient(135deg,${SKY_BLUE},#0a2a5e)`, color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Try Again</button>
                 </div>
               )}
@@ -1153,7 +1153,7 @@ export default function AdminPage() {
                     ].map(s => (
                       <button type="button" aria-label={`View ${s.label}`} onClick={() => switchTab(s.tab)} key={s.label} className="admin-stat" style={{ background: '#fff', borderRadius: 'var(--radius-lg)', border: '1px solid #E2EBF5', textAlign: 'center', padding: '1.5rem 1rem', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', cursor: 'pointer' }}>
                         <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 800, color: s.color, lineHeight: 1, marginBottom: '0.3rem' }}>{s.num}</div>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#64748b', fontWeight: 600 }}>{s.label}</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#334155', fontWeight: 600 }}>{s.label}</div>
                       </button>
                     ))}
                   </div>
@@ -1172,13 +1172,13 @@ export default function AdminPage() {
                               </div>
                               <div>
                                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: DARK, fontWeight: 600, margin: 0 }}>{adminUserName(u)}</p>
-                                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: '#64748b', margin: '0.1rem 0 0' }}>{u.email || 'No email'}</p>
+                                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: '#334155', margin: '0.1rem 0 0' }}>{u.email || 'No email'}</p>
                               </div>
                             </div>
                             {u.isAdmin && <span style={{ padding: '0.15rem 0.4rem', background: 'rgba(253,188,1,0.15)', color: GOLD_DEEP, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>Admin</span>}
                           </div>
                         ))}
-                        {users.length === 0 && <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#64748b', textAlign: 'center', padding: '1rem' }}>No users yet</p>}
+                        {users.length === 0 && <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#334155', textAlign: 'center', padding: '1rem' }}>No users yet</p>}
                       </div>
                     </div>
 
@@ -1194,13 +1194,13 @@ export default function AdminPage() {
                             <div key={b._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 0.8rem', background: '#f8fafd', borderRadius: 'var(--radius-sm)', border: '1px solid #f0f2f5' }}>
                               <div>
                                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: DARK, fontWeight: 600, margin: 0 }}>{adminUserName(u)}</p>
-                                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: '#64748b', margin: '0.1rem 0 0' }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} &middot; {TIME_SLOT_MAP[b.timeSlot] || b.timeSlot}</p>
+                                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: '#334155', margin: '0.1rem 0 0' }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} &middot; {TIME_SLOT_MAP[b.timeSlot] || b.timeSlot}</p>
                               </div>
                               <span style={{ padding: '0.2rem 0.5rem', background: statusMeta.background, color: statusMeta.color, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>{statusMeta.label}</span>
                             </div>
                           )
                         })}
-                        {bookings.length === 0 && <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#64748b', textAlign: 'center', padding: '1rem' }}>No bookings yet</p>}
+                        {bookings.length === 0 && <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#334155', textAlign: 'center', padding: '1rem' }}>No bookings yet</p>}
                       </div>
                     </div>
                   </div>
@@ -1211,8 +1211,8 @@ export default function AdminPage() {
                 <div style={cardStyle}>
                   <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <div>
-                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.users} Registered Users <span style={{ color: '#64748B', fontSize: '.9rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>({filteredUsers.length} of {websiteUsers.length})</span></h3>
-                      <p style={{ margin: '.35rem 0 0', color: '#64748B', fontSize: '.9rem' }}>Every student account created on the website appears here.</p>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.users} Registered Users <span style={{ color: '#334155', fontSize: '.9rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>({filteredUsers.length} of {websiteUsers.length})</span></h3>
+                      <p style={{ margin: '.35rem 0 0', color: '#334155', fontSize: '.9rem' }}>Every student account created on the website appears here.</p>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       <input className="admin-toolbar-input" aria-label="Search users" type="search" placeholder="Search by name, email, phone…" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} style={{ ...inputStyle, width: '280px' }} />
@@ -1248,7 +1248,7 @@ export default function AdminPage() {
                           </tr>
                         ))}
                         {filteredUsers.length === 0 && (
-                          <tr><td colSpan={4} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>{userSearch ? 'No users match your search.' : 'No registered website users yet.'}</td></tr>
+                          <tr><td colSpan={4} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{userSearch ? 'No users match your search.' : 'No registered website users yet.'}</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -1259,7 +1259,7 @@ export default function AdminPage() {
               {!loading && !loadError && activeTab === 'bookings' && (
                 <div style={cardStyle}>
                   <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.calendar} Bookings <span style={{ color: '#64748B', fontSize: '.9rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>({filteredBookings.length} of {bookings.length})</span></h3>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.calendar} Bookings <span style={{ color: '#334155', fontSize: '.9rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>({filteredBookings.length} of {bookings.length})</span></h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       <input className="admin-toolbar-input" aria-label="Search bookings" type="search" placeholder="Search student, plan, date, time…" value={bookingSearch} onChange={(e) => setBookingSearch(e.target.value)} style={{ ...inputStyle, width: '280px' }} />
                       <select aria-label="Filter bookings by status" value={bookingStatusFilter} onChange={(event) => setBookingStatusFilter(event.target.value)} style={{ ...inputStyle, width: '145px' }}>
@@ -1291,7 +1291,7 @@ export default function AdminPage() {
                               <td style={tdStyle}>
                                 <div>
                                   <p style={{ fontWeight: 600, margin: 0 }}>{adminUserName(u)}</p>
-                                  <p style={{ fontSize: '0.95rem', color: '#64748b', margin: '0.1rem 0 0' }}>{u?.email || b.userId}</p>
+                                  <p style={{ fontSize: '0.95rem', color: '#334155', margin: '0.1rem 0 0' }}>{u?.email || b.userId}</p>
                                   <p style={{ fontSize: '0.85rem', color: SKY_BLUE, margin: '0.16rem 0 0', fontWeight: 700 }}>{COURSE_MAP[b.courseId] || b.courseTitle || `Plan ${b.courseId || '—'}`}</p>
                                 </div>
                               </td>
@@ -1309,7 +1309,7 @@ export default function AdminPage() {
                           )
                         })}
                         {filteredBookings.length === 0 && (
-                          <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>{bookingSearch || bookingStatusFilter !== 'all' ? 'No bookings match the selected filters.' : 'No bookings yet.'}</td></tr>
+                          <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{bookingSearch || bookingStatusFilter !== 'all' ? 'No bookings match the selected filters.' : 'No bookings yet.'}</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -1357,7 +1357,7 @@ export default function AdminPage() {
               {!loading && !loadError && activeTab === 'contacts' && (
                 <div style={cardStyle}>
                   <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.mail} Contact Messages <span style={{ color: '#64748B', fontSize: '.9rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>({filteredContacts.length} of {contacts.length})</span></h3>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.mail} Contact Messages <span style={{ color: '#334155', fontSize: '.9rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>({filteredContacts.length} of {contacts.length})</span></h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       <input className="admin-toolbar-input" aria-label="Search contact messages" type="search" placeholder="Search name, email, message…" value={contactSearch} onChange={(event) => setContactSearch(event.target.value)} style={{ ...inputStyle, width: '280px' }} />
                       <select aria-label="Filter contact messages by status" value={contactStatusFilter} onChange={(event) => setContactStatusFilter(event.target.value)} style={{ ...inputStyle, width: '145px' }}>
@@ -1402,7 +1402,7 @@ export default function AdminPage() {
                           </tr>
                         ))}
                         {filteredContacts.length === 0 && (
-                          <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>{contactSearch || contactStatusFilter !== 'all' ? 'No messages match the selected filters.' : 'No contact messages yet.'}</td></tr>
+                          <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{contactSearch || contactStatusFilter !== 'all' ? 'No messages match the selected filters.' : 'No contact messages yet.'}</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -1470,7 +1470,7 @@ export default function AdminPage() {
                           )
                         })}
                         {pricing.length === 0 && (
-                          <tr><td colSpan={10} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>No pricing packages yet. Click "+ Add Pricing Plan" to create one.</td></tr>
+                          <tr><td colSpan={10} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>No pricing packages yet. Click "+ Add Pricing Plan" to create one.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -1488,7 +1488,7 @@ export default function AdminPage() {
                     ].map(s => (
                       <div key={s.label} className="admin-stat" style={{ background: '#fff', borderRadius: 'var(--radius-lg)', border: '1px solid #E2EBF5', textAlign: 'center', padding: '1.5rem 1rem', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
                         <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 800, color: s.color, lineHeight: 1, marginBottom: '0.3rem' }}>{s.num}</div>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#64748b', fontWeight: 600 }}>{s.label}</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#334155', fontWeight: 600 }}>{s.label}</div>
                       </div>
                     ))}
                   </div>
@@ -1497,7 +1497,7 @@ export default function AdminPage() {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                       <div>
                         <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.book} Enrolled Users ({enrollTotal})</h3>
-                        <p style={{ margin: '.35rem 0 0', color: '#64748B', fontSize: '.9rem' }}>Students appear here automatically after completing a course enrollment.</p>
+                        <p style={{ margin: '.35rem 0 0', color: '#334155', fontSize: '.9rem' }}>Students appear here automatically after completing a course enrollment.</p>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                         <input aria-label="Search enrolled users" type="search" placeholder="Search student, email, plan, city…" value={enrollSearch} onChange={e => { setEnrollSearch(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '280px' }} />
@@ -1511,13 +1511,13 @@ export default function AdminPage() {
                     </div>
 
                     <div className="admin-table-wrap" style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem', minWidth: '1050px' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem', minWidth: '1280px' }}>
                         <thead>
                           <tr>
                             <th style={thStyle}>Student</th>
                             <th style={thStyle}>Email</th>
                             <th style={thStyle}>Phone</th>
-                            <th style={thStyle}>Course</th>
+                            <th style={{ ...thStyle, minWidth: '240px', whiteSpace: 'nowrap' }}>Course</th>
                             <th style={thStyle}>Location</th>
                             <th style={thStyle}>Price</th>
                             <th style={thStyle}>Slots</th>
@@ -1541,8 +1541,8 @@ export default function AdminPage() {
                                 </td>
                                 <td style={tdStyle}>{account.email || '—'}</td>
                                 <td style={tdStyle}>{account.phone || '—'}</td>
-                                <td style={{ ...tdStyle, fontWeight: 700 }}>{course.title || COURSE_MAP[course.id] || `Course ${course.id || ''}`}</td>
-                                <td style={tdStyle}>{course.city || '—'}{course.cityDistance ? <span style={{ display: 'block', color: '#64748B', fontSize: '.78rem' }}>{locationDistanceLabel(course.cityDistance)}</span> : null}</td>
+                                <td style={{ ...tdStyle, minWidth: '240px', whiteSpace: 'nowrap', fontWeight: 700 }}>{course.title || COURSE_MAP[course.id] || `Course ${course.id || ''}`}</td>
+                                <td style={tdStyle}>{course.city || '—'}{course.cityDistance ? <span style={{ display: 'block', color: '#334155', fontSize: '.78rem' }}>{locationDistanceLabel(course.cityDistance)}</span> : null}</td>
                                 <td style={{ ...tdStyle, fontWeight: 800 }}>{course.price || '—'}</td>
                                 <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{Number.isFinite(used) && Number.isFinite(maximum) ? `${used} / ${maximum}` : Number.isFinite(used) ? used : '—'}</td>
                                 <td style={tdStyle}><span style={{ display: 'inline-flex', padding: '.25rem .55rem', borderRadius: '999px', background: statusMeta.background, color: statusMeta.color, fontFamily: 'var(--font-mono)', fontSize: '.7rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 800, whiteSpace: 'nowrap' }}>{statusMeta.label}</span></td>
@@ -1550,7 +1550,7 @@ export default function AdminPage() {
                               </tr>
                             )
                           })}
-                          {!visibleEnrollmentRows.length && <tr><td colSpan={9} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748B' }}>{enrollSearch ? 'No enrolled users match your search.' : 'No website users have enrolled in a course yet.'}</td></tr>}
+                          {!visibleEnrollmentRows.length && <tr><td colSpan={9} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{enrollSearch ? 'No enrolled users match your search.' : 'No website users have enrolled in a course yet.'}</td></tr>}
                         </tbody>
                       </table>
                     </div>
@@ -1582,7 +1582,7 @@ export default function AdminPage() {
                     ].map(s => (
                       <div key={s.label} className="admin-stat" style={{ background: '#fff', borderRadius: 'var(--radius-lg)', border: '1px solid #E2EBF5', textAlign: 'center', padding: '1.5rem 1rem', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
                         <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 800, color: s.color, lineHeight: 1, marginBottom: '0.3rem' }}>{s.num}</div>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#64748b', fontWeight: 600 }}>{s.label}</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#334155', fontWeight: 600 }}>{s.label}</div>
                       </div>
                     ))}
                   </div>
@@ -1622,14 +1622,14 @@ export default function AdminPage() {
                         </thead>
                         <tbody>
                           {refundLoading ? (
-                            <tr><td role="status" aria-live="polite" colSpan={9} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>Loading refund records…</td></tr>
+                            <tr><td role="status" aria-live="polite" colSpan={9} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>Loading refund records…</td></tr>
                           ) : refundError ? (
                             <tr><td role="alert" colSpan={9} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#B91C1C' }}>
                               <p style={{ margin: '0 0 .75rem' }}>{refundError}</p>
                               <button type="button" onClick={() => setRefundAttempt(value => value + 1)} style={{ padding: '.55rem .9rem', border: '1px solid #FCA5A5', borderRadius: '9px', background: '#fff', color: '#B91C1C', fontWeight: 800, cursor: 'pointer' }}>Try Again</button>
                             </td></tr>
                           ) : refunds.length === 0 ? (
-                            <tr><td colSpan={9} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>No refunds found. Click "+ Add Refund" to create one.</td></tr>
+                            <tr><td colSpan={9} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>No refunds found. Click "+ Add Refund" to create one.</td></tr>
                           ) : refunds.map(r => (
                             <tr key={r._id}>
                               <td style={{ ...tdStyle, fontWeight: 600 }}>{r.Full_Name || '—'}</td>
@@ -1657,7 +1657,7 @@ export default function AdminPage() {
                     {refundPages > 1 && (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
                         <button disabled={refundPage <= 1} onClick={() => setRefundPage(prev => Math.max(1, prev - 1))} style={{ padding: '0.4rem 0.8rem', background: refundPage <= 1 ? '#f0f2f5' : '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, color: refundPage <= 1 ? '#ccc' : DARK, cursor: refundPage <= 1 ? 'not-allowed' : 'pointer' }}>Prev</button>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: '#64748b' }}>Page {refundPage} of {refundPages}</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: '#334155' }}>Page {refundPage} of {refundPages}</span>
                         <button disabled={refundPage >= refundPages} onClick={() => setRefundPage(prev => Math.min(refundPages, prev + 1))} style={{ padding: '0.4rem 0.8rem', background: refundPage >= refundPages ? '#f0f2f5' : '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, color: refundPage >= refundPages ? '#ccc' : DARK, cursor: refundPage >= refundPages ? 'not-allowed' : 'pointer' }}>Next</button>
                       </div>
                     )}
@@ -1677,7 +1677,7 @@ export default function AdminPage() {
                         <div style={{ width: '48px', height: '48px', borderRadius: '14px', display: 'grid', placeItems: 'center', color: item.color, background: item.background }}>{SVG.map}</div>
                         <div>
                           <strong style={{ display: 'block', color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.6rem', lineHeight: 1 }}>{item.value}</strong>
-                          <span style={{ color: '#64748B', fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 700 }}>{item.label}</span>
+                          <span style={{ color: '#334155', fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 700 }}>{item.label}</span>
                         </div>
                       </div>
                     ))}
@@ -1686,8 +1686,8 @@ export default function AdminPage() {
                   <div style={cardStyle}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
                       <div>
-                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0 0 .35rem' }}>{SVG.map} Booking Locations <span style={{ color: '#64748B', fontSize: '.9rem', fontFamily: 'var(--font-body)' }}>({filteredLocations.length} of {locations.length})</span></h3>
-                        <p style={{ margin: 0, color: '#64748B', lineHeight: 1.6 }}>These cities appear in the booking city selector. Near/Long controls the location pricing group.</p>
+                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0 0 .35rem' }}>{SVG.map} Booking Locations <span style={{ color: '#334155', fontSize: '.9rem', fontFamily: 'var(--font-body)' }}>({filteredLocations.length} of {locations.length})</span></h3>
+                        <p style={{ margin: 0, color: '#334155', lineHeight: 1.6 }}>These cities appear in the booking city selector. Near/Long controls the location pricing group.</p>
                       </div>
                       <button type="button" onClick={() => { setLocationForm({ name: '', distance: 'Near', order: locations.length + 1 }); setLocationEdit('new') }} style={{ padding: '0.65rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Location</button>
                     </div>
@@ -1722,12 +1722,12 @@ export default function AdminPage() {
                             const isNear = distance === 'Near'
                             return (
                               <tr key={location._id || `${location.name}-${index}`}>
-                                <td style={{ ...tdStyle, fontVariantNumeric: 'tabular-nums', color: '#64748B' }}>{Number(location.order) || index + 1}</td>
+                                <td style={{ ...tdStyle, fontVariantNumeric: 'tabular-nums', color: '#334155' }}>{Number(location.order) || index + 1}</td>
                                 <td style={{ ...tdStyle, fontWeight: 800 }}>{location.name}</td>
                                 <td style={tdStyle}>
                                   <span style={{ display: 'inline-flex', alignItems: 'center', padding: '.35rem .65rem', borderRadius: '999px', background: isNear ? '#DCFCE7' : '#FFEDD5', color: isNear ? '#15803D' : '#B45309', border: `1px solid ${isNear ? '#BBF7D0' : '#FED7AA'}`, fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase' }}>{distance}</span>
                                 </td>
-                                <td style={{ ...tdStyle, color: '#64748B' }}>{distance} pricing</td>
+                                <td style={{ ...tdStyle, color: '#334155' }}>{distance} pricing</td>
                                 <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
                                   <div style={{ display: 'flex', gap: '.45rem' }}>
                                     <button type="button" onClick={() => { setLocationForm({ name: location.name || '', distance, order: Number(location.order) || index + 1 }); setLocationEdit(location._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
@@ -1738,7 +1738,7 @@ export default function AdminPage() {
                             )
                           })}
                           {filteredLocations.length === 0 && (
-                            <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2.5rem', color: '#64748B' }}>No booking locations match this filter.</td></tr>
+                            <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2.5rem', color: '#334155' }}>No booking locations match this filter.</td></tr>
                           )}
                         </tbody>
                       </table>
@@ -1767,7 +1767,7 @@ export default function AdminPage() {
                         {areas.map(a => (
                           <tr key={a._id}>
                             <td style={{ ...tdStyle, fontWeight: 600 }}>{a.name}</td>
-                            <td style={{ ...tdStyle, maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#64748b' }} title={a.map}>{a.map}</td>
+                            <td style={{ ...tdStyle, maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#334155' }} title={a.map}>{a.map}</td>
                             <td style={tdStyle}>
                               <button
                                 onClick={async () => {
@@ -1805,7 +1805,7 @@ export default function AdminPage() {
                           </tr>
                         ))}
                         {areas.length === 0 && (
-                          <tr><td colSpan={4} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>No locations yet. Click "+ Add Location" to create one.</td></tr>
+                          <tr><td colSpan={4} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>No locations yet. Click "+ Add Location" to create one.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -1838,7 +1838,7 @@ export default function AdminPage() {
                                 {socialPlatformLabel(s.platform)}
                               </span>
                             </td>
-                            <td style={{ ...tdStyle, maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#64748b' }} title={s.url}>{s.url || '—'}</td>
+                            <td style={{ ...tdStyle, maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#334155' }} title={s.url}>{s.url || '—'}</td>
                             <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>{s.order ?? 0}</td>
                             <td style={tdStyle}>
                               <div style={{ display: 'flex', gap: '0.4rem' }}>
@@ -1849,7 +1849,7 @@ export default function AdminPage() {
                           </tr>
                         ))}
                         {socials.length === 0 && (
-                          <tr><td colSpan={4} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>No social links yet. Click "+ Add Social Link" to create one.</td></tr>
+                          <tr><td colSpan={4} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>No social links yet. Click "+ Add Social Link" to create one.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -1867,27 +1867,27 @@ export default function AdminPage() {
                   )}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', maxWidth: '800px' }}>
                     <div>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Phone</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Phone</label>
                       <input aria-label="Business phone" type="tel" autoComplete="tel" value={settings.phone} onChange={e => setSettings(prev => ({ ...prev, phone: e.target.value }))} style={inputStyle} />
                     </div>
                     <div>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Email</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Email</label>
                       <input aria-label="Business email" type="email" autoComplete="email" value={settings.email} onChange={e => setSettings(prev => ({ ...prev, email: e.target.value }))} style={inputStyle} />
                     </div>
                     <div>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Address</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Address</label>
                       <input aria-label="Street address" type="text" autoComplete="street-address" value={settings.address} onChange={e => setSettings(prev => ({ ...prev, address: e.target.value }))} style={inputStyle} />
                     </div>
                     <div>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>City / State / ZIP</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>City / State / ZIP</label>
                       <input aria-label="City, state, and ZIP code" type="text" value={settings.subaddress} onChange={e => setSettings(prev => ({ ...prev, subaddress: e.target.value }))} style={inputStyle} />
                     </div>
                     <div>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Schedule Label</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Schedule Label</label>
                       <input aria-label="Schedule link label" type="text" value={settings.scheduleLabel} onChange={e => setSettings(prev => ({ ...prev, scheduleLabel: e.target.value }))} style={inputStyle} />
                     </div>
                     <div>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Schedule Link</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Schedule Link</label>
                       <input aria-label="Schedule HTTPS URL" type="url" inputMode="url" autoComplete="url" value={settings.scheduleLink} onChange={e => setSettings(prev => ({ ...prev, scheduleLink: e.target.value }))} style={inputStyle} placeholder="https://example.com/schedule" />
                     </div>
                   </div>
@@ -1931,7 +1931,7 @@ export default function AdminPage() {
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>{SVG.shield} Profile</h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                       {profilePhotoPreview ? <img src={profilePhotoPreview} alt="Profile preview" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.35)', flexShrink: 0 }} /> : <div aria-label="Profile preview" style={{ width: '72px', height: '72px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', fontWeight: 800, color: DARK, border: '2.5px solid #FDBC01', flexShrink: 0 }}>{initials}</div>}
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#64748b', margin: 0, lineHeight: 1.5 }}>Use a direct HTTPS image URL. The saved photo will appear in both the navbar and sidebar.</p>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#334155', margin: 0, lineHeight: 1.5 }}>Use a direct HTTPS image URL. The saved photo will appear in both the navbar and sidebar.</p>
                     </div>
                     <div style={{ marginBottom: '1.25rem' }}>
                       <label style={labelStyle}>Display Name</label>
@@ -1940,7 +1940,7 @@ export default function AdminPage() {
                     <div style={{ marginBottom: '1.5rem' }}>
                       <label htmlFor="admin-profile-photo-url" style={labelStyle}>Secure Profile Image URL</label>
                       <input id="admin-profile-photo-url" type="url" inputMode="url" autoComplete="url" value={accPhoto} onChange={e => setAccPhoto(e.target.value)} style={inputStyle} placeholder={DEFAULT_ADMIN_PHOTO_URL} />
-                      <p style={{ margin: '.45rem 0 0', color: '#64748B', fontSize: '.78rem', lineHeight: 1.5 }}>Leave this blank to use the default administrator image. Only HTTPS links are accepted.</p>
+                      <p style={{ margin: '.45rem 0 0', color: '#334155', fontSize: '.78rem', lineHeight: 1.5 }}>Leave this blank to use the default administrator image. Only HTTPS links are accepted.</p>
                     </div>
                     <button type="button" onClick={handleSaveProfile} disabled={accLoading} style={{ padding: '0.75rem 2rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: accLoading ? 'wait' : 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)', opacity: accLoading ? 0.6 : 1 }}>
                       {accLoading ? 'Saving…' : 'Save Profile'}
@@ -1951,13 +1951,13 @@ export default function AdminPage() {
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>{SVG.settings} Email & Password</h3>
                     {hasPasswordProvider ? (
                       <>
-                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#64748b', margin: '0 0 1.25rem', lineHeight: 1.5 }}>Changing email or password requires your current password.</p>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#334155', margin: '0 0 1.25rem', lineHeight: 1.5 }}>Changing email or password requires your current password.</p>
                         <div style={{ marginBottom: '1.25rem' }}><label htmlFor="admin-account-email" style={labelStyle}>Admin Email</label><input id="admin-account-email" type="email" autoComplete="email" value={accEmail} onChange={e => setAccEmail(e.target.value)} style={inputStyle} /></div>
                         <div style={{ marginBottom: '1.5rem' }}>
                           <label htmlFor="admin-current-password" style={labelStyle}>Current Password</label>
                           <div style={{ position: 'relative' }}>
                             <input id="admin-current-password" type={showAccPass ? 'text' : 'password'} value={accPass} onChange={e => setAccPass(e.target.value)} style={{ ...inputStyle, paddingRight: '3rem' }} autoComplete="current-password" />
-                            <button type="button" onClick={() => setShowAccPass(!showAccPass)} aria-label={showAccPass ? 'Hide current password' : 'Show current password'} style={{ position: 'absolute', right: '0.4rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.4rem', color: '#64748B' }}>{showAccPass ? 'Hide' : 'Show'}</button>
+                            <button type="button" onClick={() => setShowAccPass(!showAccPass)} aria-label={showAccPass ? 'Hide current password' : 'Show current password'} style={{ position: 'absolute', right: '0.4rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.4rem', color: '#334155' }}>{showAccPass ? 'Hide' : 'Show'}</button>
                           </div>
                         </div>
                         <button type="button" onClick={handleChangeEmail} disabled={accLoading || !accPass} style={{ padding: '0.75rem 2rem', background: 'linear-gradient(135deg,#FDBC01,#FFD54F)', color: DARK, border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(253,188,1,0.25)', opacity: accLoading || !accPass ? 0.6 : 1 }}>Save Email</button>
@@ -1966,9 +1966,9 @@ export default function AdminPage() {
                           <label htmlFor="admin-new-password" style={labelStyle}>New Password</label>
                           <div style={{ position: 'relative' }}>
                             <input id="admin-new-password" type={showAccNewPass ? 'text' : 'password'} value={accNewPass} onChange={e => setAccNewPass(e.target.value)} style={{ ...inputStyle, paddingRight: '3rem' }} autoComplete="new-password" placeholder="At least 6 characters" />
-                            <button type="button" onClick={() => setShowAccNewPass(!showAccNewPass)} aria-label={showAccNewPass ? 'Hide new password' : 'Show new password'} style={{ position: 'absolute', right: '0.4rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.4rem', color: '#64748B' }}>{showAccNewPass ? 'Hide' : 'Show'}</button>
+                            <button type="button" onClick={() => setShowAccNewPass(!showAccNewPass)} aria-label={showAccNewPass ? 'Hide new password' : 'Show new password'} style={{ position: 'absolute', right: '0.4rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.4rem', color: '#334155' }}>{showAccNewPass ? 'Hide' : 'Show'}</button>
                           </div>
-                          <p style={{ margin: '.5rem 0 0', color: '#64748B', fontSize: '.78rem', lineHeight: 1.5 }}>For security, your saved password is never displayed and this field will be empty after a reload.</p>
+                          <p style={{ margin: '.5rem 0 0', color: '#334155', fontSize: '.78rem', lineHeight: 1.5 }}>For security, your saved password is never displayed and this field will be empty after a reload.</p>
                         </div>
                         <button type="button" onClick={handleChangePassword} disabled={accLoading || !accPass || !accNewPass} style={{ padding: '0.75rem 2rem', background: 'linear-gradient(135deg,#FDBC01,#FFD54F)', color: DARK, border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(253,188,1,0.25)', opacity: accLoading || !accPass || !accNewPass ? 0.6 : 1 }}>Change Password</button>
                       </>
@@ -1995,34 +1995,34 @@ export default function AdminPage() {
                   <div role="dialog" aria-modal="true" aria-labelledby="contact-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '500px', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                       <h3 id="contact-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>Edit Contact</h3>
-                      <button type="button" aria-label="Close contact editor" onClick={() => setContactEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
+                      <button type="button" aria-label="Close contact editor" onClick={() => setContactEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#334155', cursor: 'pointer' }}>&times;</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>First Name</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>First Name</label>
                         <input autoFocus aria-label="Contact first name" type="text" value={contactForm.firstName} onChange={e => setContactForm(prev => ({ ...prev, firstName: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Last Name</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Last Name</label>
                         <input aria-label="Contact last name" type="text" value={contactForm.lastName} onChange={e => setContactForm(prev => ({ ...prev, lastName: e.target.value }))} style={inputStyle} />
                       </div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Phone</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Phone</label>
                         <input aria-label="Contact phone" type="tel" value={contactForm.phone} onChange={e => setContactForm(prev => ({ ...prev, phone: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Email</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Email</label>
                         <input aria-label="Contact email" type="email" value={contactForm.email} onChange={e => setContactForm(prev => ({ ...prev, email: e.target.value }))} style={inputStyle} />
                       </div>
                     </div>
                     <div style={{ marginBottom: '1rem' }}>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Comments</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Comments</label>
                       <textarea aria-label="Contact comments" rows="4" value={contactForm.comments} onChange={e => setContactForm(prev => ({ ...prev, comments: e.target.value }))} style={{ ...inputStyle, resize: 'vertical' }} />
                     </div>
                     <div style={{ marginBottom: '1.5rem' }}>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Status</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Status</label>
                       <select aria-label="Contact status" value={contactForm.status} onChange={e => setContactForm(prev => ({ ...prev, status: e.target.value }))} style={inputStyle}>
                         <option value="new">New</option>
                         <option value="read">Read</option>
@@ -2030,7 +2030,7 @@ export default function AdminPage() {
                       </select>
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
-                      <button onClick={() => setContactEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={() => setContactEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#334155', cursor: 'pointer' }}>Cancel</button>
                       <button onClick={handleSaveContact} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>Save</button>
                     </div>
                   </div>
@@ -2044,23 +2044,23 @@ export default function AdminPage() {
                       <h3 id="pricing-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>
                         {pricingEdit === 'new' ? 'Add Pricing Plan' : 'Edit Pricing Plan'}
                       </h3>
-                      <button type="button" aria-label="Close pricing editor" onClick={() => setPricingEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
+                      <button type="button" aria-label="Close pricing editor" onClick={() => setPricingEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#334155', cursor: 'pointer' }}>&times;</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Plan Name *</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Plan Name *</label>
                         <input autoFocus aria-label="Plan name" type="text" value={pricingForm.planName} onChange={e => setPricingForm(prev => ({ ...prev, planName: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>ID *</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>ID *</label>
                         <input type="text" value={pricingForm.id} onChange={e => setPricingForm(prev => ({ ...prev, id: e.target.value }))} style={inputStyle} placeholder="e.g. 1, 2, 3..." />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Near Price *</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Near Price *</label>
                         <input aria-label="Near location price" inputMode="decimal" type="text" value={pricingForm.planPrice} onChange={e => setPricingForm(prev => ({ ...prev, planPrice: e.target.value }))} style={inputStyle} placeholder="$210" />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Long Price *</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Long Price *</label>
                         <input aria-label="Long location price" inputMode="decimal" type="text" value={pricingForm.planPriceTwo} onChange={e => setPricingForm(prev => ({ ...prev, planPriceTwo: e.target.value }))} style={inputStyle} placeholder="$290" />
                       </div>
                     </div>
@@ -2070,7 +2070,7 @@ export default function AdminPage() {
                       const permKey = `perm${i}`
                       return (
                         <div key={i} style={{ marginBottom: '1rem', padding: '1rem', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)' }}>
-                          <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>
+                          <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>
                             Package Option {i}
                           </label>
                           <input
@@ -2080,7 +2080,7 @@ export default function AdminPage() {
                             style={{ ...inputStyle, marginBottom: '0.5rem' }}
                             placeholder={`Option ${i} text`}
                           />
-                          <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>
+                          <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>
                             Package Permission
                           </label>
                           <select
@@ -2098,7 +2098,7 @@ export default function AdminPage() {
                     })}
 
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
-                      <button onClick={() => setPricingEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={() => setPricingEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#334155', cursor: 'pointer' }}>Cancel</button>
                       <button onClick={async () => {
                         if (!pricingForm.planName || !pricingForm.id || !pricingForm.planPrice || !pricingForm.planPriceTwo) { setMsg('Plan Name, ID, Near Price, and Long Price are required.'); setTimeout(() => setMsg(''), 2000); return }
                         const options = [1,2,3,4,5].map(i => ({
@@ -2167,22 +2167,22 @@ export default function AdminPage() {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', gap: '1rem' }}>
                       <div>
                         <h3 id="booking-location-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', color: DARK, fontWeight: 800, margin: '0 0 .25rem' }}>{locationEdit === 'new' ? 'Add Booking Location' : 'Edit Booking Location'}</h3>
-                        <p style={{ margin: 0, color: '#64748B' }}>Assign this city to its Near or Long pricing group.</p>
+                        <p style={{ margin: 0, color: '#334155' }}>Assign this city to its Near or Long pricing group.</p>
                       </div>
-                      <button type="button" aria-label="Close booking location editor" onClick={() => setLocationEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.6rem', color: '#64748B', cursor: 'pointer', lineHeight: 1 }}>&times;</button>
+                      <button type="button" aria-label="Close booking location editor" onClick={() => setLocationEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.6rem', color: '#334155', cursor: 'pointer', lineHeight: 1 }}>&times;</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.5fr) minmax(150px,.8fr)', gap: '1rem', marginBottom: '1rem' }}>
                       <div>
-                        <label htmlFor="admin-location-name" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748B', display: 'block', marginBottom: '0.35rem', fontWeight: 700 }}>City Name *</label>
+                        <label htmlFor="admin-location-name" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.35rem', fontWeight: 700 }}>City Name *</label>
                         <input id="admin-location-name" autoFocus required type="text" maxLength="120" value={locationForm.name} onChange={event => setLocationForm(previous => ({ ...previous, name: event.target.value }))} style={inputStyle} placeholder="Fremont" />
                       </div>
                       <div>
-                        <label htmlFor="admin-location-order" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748B', display: 'block', marginBottom: '0.35rem', fontWeight: 700 }}>Display Order</label>
+                        <label htmlFor="admin-location-order" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.35rem', fontWeight: 700 }}>Display Order</label>
                         <input id="admin-location-order" type="number" min="0" max="10000" value={locationForm.order} onChange={event => setLocationForm(previous => ({ ...previous, order: event.target.value }))} style={inputStyle} />
                       </div>
                     </div>
                     <div style={{ marginBottom: '1.5rem' }}>
-                      <label htmlFor="admin-location-distance" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748B', display: 'block', marginBottom: '0.35rem', fontWeight: 700 }}>Package Distance *</label>
+                      <label htmlFor="admin-location-distance" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.35rem', fontWeight: 700 }}>Package Distance *</label>
                       <select id="admin-location-distance" required value={locationForm.distance} onChange={event => setLocationForm(previous => ({ ...previous, distance: event.target.value }))} style={inputStyle}>
                         <option value="Near">Near</option>
                         <option value="Long">Long</option>
@@ -2204,27 +2204,27 @@ export default function AdminPage() {
                   <div role="dialog" aria-modal="true" aria-labelledby="area-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                       <h3 id="area-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{areasEdit === 'new' ? 'Add Service Area Map' : 'Edit Service Area Map'}</h3>
-                      <button type="button" aria-label="Close service area map editor" onClick={() => setAreasEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
+                      <button type="button" aria-label="Close service area map editor" onClick={() => setAreasEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#334155', cursor: 'pointer' }}>&times;</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Name *</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Name *</label>
                         <input autoFocus aria-label="Location name" type="text" value={areasForm.name} onChange={e => setAreasForm(prev => ({ ...prev, name: e.target.value }))} style={inputStyle} placeholder="San Ramon" />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Order</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Order</label>
                         <input type="number" value={areasForm.order} onChange={e => setAreasForm(prev => ({ ...prev, order: Number(e.target.value) }))} style={inputStyle} />
                       </div>
                     </div>
                     <div style={{ marginBottom: '1.5rem' }}>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Google Maps Embed URL *</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Google Maps Embed URL *</label>
                       <textarea aria-label="Google Maps secure embed URL" rows="4" value={areasForm.map} onChange={e => setAreasForm(prev => ({ ...prev, map: e.target.value }))} style={{ ...inputStyle, resize: 'vertical', fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }} placeholder="https://www.google.com/maps/embed?pb=..." />
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: '#64748b', margin: '0.4rem 0 0', lineHeight: 1.5 }}>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: '#334155', margin: '0.4rem 0 0', lineHeight: 1.5 }}>
                         In Google Maps, choose Share → Embed a map, then paste only the secure <code>src="https://…"</code> URL here.
                       </p>
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
-                      <button onClick={() => setAreasEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={() => setAreasEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#334155', cursor: 'pointer' }}>Cancel</button>
                       <button onClick={async () => {
                         if (!areasForm.name || !areasForm.map) { setMsg('Name and Map URL are required.'); setTimeout(() => setMsg(''), 2000); return }
                         const mapResult = validateHttpsUrl(areasForm.map, { googleMapsOnly: true })
@@ -2255,29 +2255,29 @@ export default function AdminPage() {
                   <div role="dialog" aria-modal="true" aria-labelledby="social-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '500px', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                       <h3 id="social-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{socialsEdit === 'new' ? 'Add Social Link' : 'Edit Social Link'}</h3>
-                      <button type="button" aria-label="Close social link editor" onClick={() => setSocialsEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
+                      <button type="button" aria-label="Close social link editor" onClick={() => setSocialsEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#334155', cursor: 'pointer' }}>&times;</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Platform *</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Platform *</label>
                         <select autoFocus aria-label="Social platform" value={socialsForm.platform} onChange={e => setSocialsForm(prev => ({ ...prev, platform: e.target.value }))} style={inputStyle}>
                           {SOCIAL_PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                         </select>
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Order</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Order</label>
                         <input type="number" value={socialsForm.order} onChange={e => setSocialsForm(prev => ({ ...prev, order: Number(e.target.value) }))} style={inputStyle} />
                       </div>
                     </div>
                     <div style={{ marginBottom: '1.5rem' }}>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>URL *</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>URL *</label>
                       <input aria-label="Social profile HTTPS URL" type="url" inputMode="url" autoComplete="url" value={socialsForm.url} onChange={e => setSocialsForm(prev => ({ ...prev, url: e.target.value }))} style={inputStyle} placeholder="https://facebook.com/yourpage" />
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: '#64748b', margin: '0.4rem 0 0', lineHeight: 1.5 }}>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: '#334155', margin: '0.4rem 0 0', lineHeight: 1.5 }}>
                         Use the complete HTTPS address for this profile. Saving updates the website footer.
                       </p>
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
-                      <button onClick={() => setSocialsEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={() => setSocialsEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#334155', cursor: 'pointer' }}>Cancel</button>
                       <button onClick={async () => {
                         if (!socialsForm.url) { setMsg('URL is required.'); setTimeout(() => setMsg(''), 2000); return }
                         const urlResult = validateHttpsUrl(socialsForm.url)
@@ -2308,31 +2308,31 @@ export default function AdminPage() {
                   <div role="dialog" aria-modal="true" aria-labelledby="refund-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                       <h3 id="refund-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{refundEdit === 'new' ? 'Add Refund Record' : 'Edit Refund Record'}</h3>
-                      <button type="button" aria-label="Close refund editor" onClick={() => setRefundEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
+                      <button type="button" aria-label="Close refund editor" onClick={() => setRefundEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#334155', cursor: 'pointer' }}>&times;</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Student Name *</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Student Name *</label>
                         <input autoFocus aria-label="Refund record student name" type="text" value={refundForm.Full_Name} onChange={e => setRefundForm(prev => ({ ...prev, Full_Name: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Amount *</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Amount *</label>
                         <input aria-label="Refund record amount" type="text" inputMode="decimal" value={refundForm.Amount} onChange={e => setRefundForm(prev => ({ ...prev, Amount: e.target.value }))} style={inputStyle} placeholder="$210" />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Email</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Email</label>
                         <input aria-label="Refund record email" type="email" value={refundForm.Email} onChange={e => setRefundForm(prev => ({ ...prev, Email: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Phone</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Phone</label>
                         <input aria-label="Refund record phone" type="tel" value={refundForm.Phone} onChange={e => setRefundForm(prev => ({ ...prev, Phone: e.target.value }))} style={inputStyle} />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Course</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Course</label>
                         <input type="text" value={refundForm.Course_Name} onChange={e => setRefundForm(prev => ({ ...prev, Course_Name: e.target.value }))} style={inputStyle} placeholder="IDEAL FOR STUDENTS" />
                       </div>
                       <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Status</label>
+                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Status</label>
                         <select value={refundForm.Status} onChange={e => setRefundForm(prev => ({ ...prev, Status: e.target.value }))} style={inputStyle}>
                           <option value="pending">Pending</option>
                           <option value="refunded">Refunded</option>
@@ -2341,11 +2341,11 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <div style={{ marginBottom: '1.5rem' }}>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Reason</label>
+                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Reason</label>
                       <textarea rows="3" value={refundForm.Reason} onChange={e => setRefundForm(prev => ({ ...prev, Reason: e.target.value }))} style={{ ...inputStyle, resize: 'vertical' }} placeholder="Why is this being refunded?" />
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
-                      <button onClick={() => setRefundEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={() => setRefundEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#334155', cursor: 'pointer' }}>Cancel</button>
                       <button onClick={async () => {
                         if (!refundForm.Full_Name || !refundForm.Amount) { setMsg('Student Name and Amount are required.'); setTimeout(() => setMsg(''), 2000); return }
                         const doc = { ...refundForm }
@@ -2382,7 +2382,7 @@ export default function AdminPage() {
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.7 2.4 17.4A2 2 0 0 0 4.1 20h15.8a2 2 0 0 0 1.7-2.6L13.7 3.7a2 2 0 0 0-3.4 0Z"/></svg>
             </div>
             <h2 id="admin-confirm-title" style={{ margin: '0 0 0.5rem', color: DARK, fontSize: '1.35rem', fontWeight: 800 }}>{confirmDialog.title}</h2>
-            <p id="admin-confirm-description" style={{ margin: '0 0 1.4rem', color: '#64748b', fontSize: '0.92rem' }}>{confirmDialog.message}</p>
+            <p id="admin-confirm-description" style={{ margin: '0 0 1.4rem', color: '#334155', fontSize: '0.92rem' }}>{confirmDialog.message}</p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', flexWrap: 'wrap' }}>
               <button autoFocus disabled={confirmDialog.busy} onClick={() => setConfirmDialog(null)} style={{ minHeight: '44px', padding: '0.65rem 1rem', border: '1px solid #CBD5E1', borderRadius: '10px', color: '#475569', background: '#fff', fontWeight: 800 }}>Cancel</button>
               <button disabled={confirmDialog.busy} onClick={runConfirmedAction} style={{ minWidth: '126px', minHeight: '44px', padding: '0.65rem 1rem', borderRadius: '10px', color: '#fff', background: '#DC2626', fontWeight: 800, boxShadow: '0 8px 20px rgba(220,38,38,0.2)' }}>{confirmDialog.busy ? 'Processing…' : 'Confirm'}</button>

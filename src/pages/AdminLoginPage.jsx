@@ -147,7 +147,7 @@ export default function AdminLoginPage() {
           </div>
 
           <div style={{ textAlign: 'center', marginTop: '1.75rem', display: 'flex', justifyContent: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-            <Link to="/" style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'rgba(255,255,255,0.75)', textDecoration: 'none', fontWeight: 600 }}>
+            <Link to="/" style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'rgba(255,255,255,0.88)', textDecoration: 'none', fontWeight: 600 }}>
               ← Back to website
             </Link>
             <Link to="/login" style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: GOLD_BRIGHT, textDecoration: 'none', fontWeight: 600 }}>
@@ -155,7 +155,7 @@ export default function AdminLoginPage() {
             </Link>
           </div>
 
-          <p style={{ textAlign: 'center', marginTop: '1.25rem', fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)' }}>
+          <p style={{ textAlign: 'center', marginTop: '1.25rem', fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'rgba(255,255,255,0.88)' }}>
             First time?{' '}
             <Link to="/admin/setup" style={{ color: '#fff', fontWeight: 700, textDecoration: 'none', borderBottom: '1px solid rgba(253,188,1,0.5)' }}>
               Create admin account

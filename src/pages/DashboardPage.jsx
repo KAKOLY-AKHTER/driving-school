@@ -872,7 +872,7 @@ export default function DashboardPage() {
                 <button type="button" className="dash-profile-trigger" aria-label="Open account menu" aria-haspopup="menu" aria-expanded={profileMenuOpen} onClick={() => setProfileMenuOpen(open => !open)} style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'0.45rem 0.85rem 0.45rem 0.55rem', background:profileMenuOpen ? 'linear-gradient(135deg,rgba(253,188,1,0.18),rgba(253,188,1,0.08))' : 'linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.08))', border:`1px solid ${profileMenuOpen ? 'rgba(253,188,1,0.35)' : 'rgba(255,255,255,0.28)'}`, borderRadius:'14px', cursor:'pointer', transition:'all 0.35s cubic-bezier(0.22,1,0.36,1)', backdropFilter:'blur(8px)', boxShadow:profileMenuOpen ? '0 2px 12px rgba(253,188,1,0.2)' : '0 2px 10px rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.15)' }}>
                   <div className="dash-profile-text" style={{ textAlign:'right' }}>
                     <p style={{ fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#fff', margin:0, fontWeight:600, lineHeight:1.2 }}>{user?.displayName || 'Student'}</p>
-                    <p style={{ fontFamily:'var(--font-body)', fontSize:'0.8rem', color:'rgba(255,255,255,0.65)', margin:'0.1rem 0 0', maxWidth:'160px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
+                    <p style={{ fontFamily:'var(--font-body)', fontSize:'0.8rem', color:'rgba(255,255,255,0.88)', margin:'0.1rem 0 0', maxWidth:'160px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
                   </div>
                   <div style={{ position:'relative' }}>
                     {user?.photoURL ? <img src={user.photoURL} alt="" style={{ width:'42px', height:'42px', borderRadius:'50%', objectFit:'cover', border:`2.5px solid ${GOLD}`, boxShadow:'0 0 20px rgba(253,188,1,0.3)' }} /> : <div style={{ width:'42px', height:'42px', borderRadius:'50%', background:`linear-gradient(135deg,${GOLD},${GOLD_BRIGHT})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.95rem', fontWeight:800, color:DARK, border:`2.5px solid ${GOLD}`, boxShadow:'0 0 20px rgba(253,188,1,0.3)' }}>{initials}</div>}
@@ -924,7 +924,7 @@ export default function DashboardPage() {
                 </div>
                 <div style={{ minWidth:0 }}>
                   <p style={{ fontFamily:'var(--font-display)', fontSize:'0.95rem', color:'#fff', margin:0, fontWeight:700, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{user?.displayName || 'Student'}</p>
-                  <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'rgba(255,255,255,0.6)', margin:'0.2rem 0 0', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{user?.email}</p>
+                  <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'rgba(255,255,255,0.88)', margin:'0.2rem 0 0', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{user?.email}</p>
                 </div>
               </div>
             </div>
@@ -936,12 +936,12 @@ export default function DashboardPage() {
               {navItems.map(item => item.link ? (
                 <a key={item.id} href={item.link} onClick={() => setSidebarOpen(false)} className="dash-nav-item" style={{ textDecoration:'none', marginBottom:'4px' }}>
                   <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:'linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))', display:'flex', alignItems:'center', justifyContent:'center' }}>{item.icon}</div>
-                  <div style={{ display:'flex', flexDirection:'column' }}><span>{item.label}</span>{item.sublabel && <span style={{ fontSize:'0.75rem', fontWeight:400, color:'rgba(255,255,255,0.55)', marginTop:'2px' }}>{item.sublabel}</span>}</div>
+                  <div style={{ display:'flex', flexDirection:'column' }}><span>{item.label}</span>{item.sublabel && <span style={{ fontSize:'0.75rem', fontWeight:400, color:'rgba(255,255,255,0.88)', marginTop:'2px' }}>{item.sublabel}</span>}</div>
                 </a>
               ) : (
                 <button key={item.id} onClick={() => switchTab(item.id)} className={`dash-nav-item ${activeTab === item.id ? 'dash-nav-active' : ''}`} style={{ marginBottom:'4px' }}>
                   <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:activeTab === item.id ? 'linear-gradient(135deg,rgba(253,188,1,0.25),rgba(253,188,1,0.10))' : 'linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.3s' }}>{item.icon}</div>
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', minWidth:0 }}><span style={{ display:'flex', alignItems:'center', gap:'.45rem' }}>{item.label}{item.badge > 0 && <span aria-label={`${item.badge} unread support ${item.badge === 1 ? 'reply' : 'replies'}`} style={{ minWidth:'20px', height:'20px', padding:'0 5px', display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:'999px', background:'#DC2626', color:'#fff', fontSize:'.68rem', fontWeight:900 }}>{item.badge}</span>}</span>{item.sublabel && <span style={{ fontSize:'0.85rem', fontWeight:400, color:activeTab === item.id ? 'rgba(253,188,1,0.85)' : 'rgba(255,255,255,0.55)', marginTop:'2px' }}>{item.sublabel}</span>}</div>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', minWidth:0 }}><span style={{ display:'flex', alignItems:'center', gap:'.45rem' }}>{item.label}{item.badge > 0 && <span aria-label={`${item.badge} unread support ${item.badge === 1 ? 'reply' : 'replies'}`} style={{ minWidth:'20px', height:'20px', padding:'0 5px', display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:'999px', background:'#DC2626', color:'#fff', fontSize:'.68rem', fontWeight:900 }}>{item.badge}</span>}</span>{item.sublabel && <span style={{ fontSize:'0.85rem', fontWeight:500, color:activeTab === item.id ? 'rgba(255,213,79,0.96)' : 'rgba(255,255,255,0.88)', marginTop:'2px' }}>{item.sublabel}</span>}</div>
                 </button>
               ))}
             </nav>
@@ -1360,7 +1360,7 @@ export default function DashboardPage() {
                     {hasPasswordProvider ? (
                       <>
                         <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.1rem', color:'#475569', margin:'0 0 0.35rem', fontWeight:700 }}>Change password (optional)</h3>
-                        <p id="password-help" style={{ fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#64748B', margin:'0 0 1.5rem' }}>Use at least 8 characters. Complete all three fields only when changing your password.</p>
+                        <p id="password-help" style={{ fontFamily:'var(--font-body)', fontSize:'0.95rem', color:'#334155', margin:'0 0 1.5rem' }}>Use at least 8 characters. Complete all three fields only when changing your password.</p>
                         <div className="dash-form-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'1.5rem' }}>
                           <div>
                             <label htmlFor="settings-current-password" style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Current password</label>
@@ -1404,7 +1404,7 @@ export default function DashboardPage() {
                     </div>
                     <div style={{ flex:1, overflowY:'auto', padding:'0.5rem' }}>
                       {conversationLoading ? (
-                        <div role="status" aria-live="polite" style={{ textAlign:'center', padding:'2rem 1rem', color:'#64748b', fontFamily:'var(--font-body)' }}>Loading conversations...</div>
+                        <div role="status" aria-live="polite" style={{ textAlign:'center', padding:'2rem 1rem', color:'#334155', fontFamily:'var(--font-body)' }}>Loading conversations...</div>
                       ) : conversationError ? (
                         <div role="alert" style={{ textAlign:'center', padding:'1.25rem .75rem', color:'#B91C1C', fontFamily:'var(--font-body)' }}>
                           <p style={{ margin:'0 0 .8rem', lineHeight:1.5 }}>{conversationError}</p>

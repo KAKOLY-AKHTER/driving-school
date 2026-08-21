@@ -71,7 +71,7 @@ export default function PaymentPage() {
       <style>{`
         .payment-page{padding:clamp(9.5rem,13vw,12rem) 1rem 5rem;min-height:100vh;background:radial-gradient(circle at 12% 18%,rgba(1,69,168,.09),transparent 30rem),#F4F7FB;color:${DARK}}
         .payment-shell{width:min(1120px,100%);margin:0 auto}
-        .payment-heading{text-align:center;margin:0 0 2.2rem}.payment-heading p{margin:.45rem 0 0;color:#64748B}
+        .payment-heading{text-align:center;margin:0 0 2.2rem}.payment-heading p{margin:.45rem 0 0;color:#334155}
         .payment-heading h1{margin:0;font-family:var(--font-display);font-size:clamp(2.1rem,5vw,3.35rem);font-weight:900;color:${DARK}}
         .payment-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(360px,1.1fr);gap:1.5rem;align-items:stretch}
         .payment-security,.payment-card{border:1px solid #D9E4F0;border-radius:20px;background:#fff;box-shadow:0 24px 70px rgba(15,35,65,.1);overflow:hidden}
@@ -82,15 +82,15 @@ export default function PaymentPage() {
         .payment-assurances{display:grid;gap:1rem;margin:2rem 0 0;position:relative}.payment-assurance{display:flex;gap:.8rem;align-items:flex-start}.payment-assurance b{display:block;margin-bottom:.18rem}.payment-assurance span{color:#B8CBE2;font-size:.87rem;line-height:1.5}.payment-check{width:25px;height:25px;display:grid;place-items:center;border-radius:50%;background:rgba(253,188,1,.16);color:${GOLD};font-weight:900;flex:0 0 auto}
         .payment-card{border-top:6px solid ${BLUE};padding:clamp(1.35rem,4vw,2.5rem)}
         .payment-card h2{margin:0 0 1.7rem;font-family:var(--font-display);font-size:clamp(1.65rem,3vw,2.25rem);color:${BLUE};text-align:center}
-        .payment-reference{padding:1rem;border-radius:12px;background:#F7FAFE;border:1px solid #E0E9F3;margin-bottom:1.2rem}.payment-reference span{display:block;color:#64748B;font-size:.76rem;text-transform:uppercase;letter-spacing:.12em;font-weight:800}.payment-reference strong{display:block;margin-top:.25rem;overflow-wrap:anywhere;color:${DARK}}
-        .payment-items{display:grid;gap:.75rem;margin:0 0 1.2rem}.payment-item{padding:.9rem 0;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between;gap:1rem}.payment-item:last-child{border-bottom:0}.payment-item strong{display:block}.payment-item small{display:block;margin-top:.25rem;color:#64748B;line-height:1.45}.payment-item-price{font-weight:900;color:${BLUE};white-space:nowrap}
+        .payment-reference{padding:1rem;border-radius:12px;background:#F7FAFE;border:1px solid #E0E9F3;margin-bottom:1.2rem}.payment-reference span{display:block;color:#334155;font-size:.76rem;text-transform:uppercase;letter-spacing:.12em;font-weight:800}.payment-reference strong{display:block;margin-top:.25rem;overflow-wrap:anywhere;color:${DARK}}
+        .payment-items{display:grid;gap:.75rem;margin:0 0 1.2rem}.payment-item{padding:.9rem 0;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between;gap:1rem}.payment-item:last-child{border-bottom:0}.payment-item strong{display:block}.payment-item small{display:block;margin-top:.25rem;color:#334155;line-height:1.45}.payment-item-price{font-weight:900;color:${BLUE};white-space:nowrap}
         .payment-slot-list{padding:.8rem 1rem;border-radius:10px;background:#F8FAFC;margin-bottom:1.2rem;color:#475569;font-size:.82rem}.payment-slot-list strong{color:${DARK}}.payment-slot-list div+div{margin-top:.4rem}
         .payment-coupon{display:flex;gap:.65rem;margin-bottom:1rem}.payment-coupon input{min-width:0;flex:1;min-height:48px;padding:.75rem .9rem;border:1.5px solid #D8E2EE;border-radius:10px;font:500 .9rem var(--font-body);outline:none}.payment-coupon input:focus{border-color:${BLUE};box-shadow:0 0 0 4px rgba(1,69,168,.08)}.payment-coupon button{border:0;border-radius:10px;background:${BLUE};color:#fff;font-weight:800;padding:.75rem 1rem;cursor:pointer}
         .payment-total{display:grid;gap:.55rem;padding:1rem 0;border-top:1px solid #DCE5EF;border-bottom:1px solid #DCE5EF;margin-bottom:1.15rem}.payment-total-row{display:flex;justify-content:space-between;gap:1rem;color:#475569}.payment-total-row.final{font-size:1.15rem;color:${DARK};font-weight:900}.payment-total-row.final strong{color:${BLUE}}
         .payment-notice{padding:.8rem .9rem;border:1px solid #FCD34D;border-radius:10px;background:#FFFBEB;color:#92400E;font-size:.82rem;line-height:1.5;margin:0 0 1rem}
-        .payment-methods{display:grid;gap:.75rem}.payment-method{min-height:52px;border:0;border-radius:999px;color:#fff;font-family:var(--font-body);font-size:1rem;font-weight:900;cursor:pointer;transition:transform .2s,box-shadow .2s}.payment-method:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(1,69,168,.2)}.payment-method.paypal{background:#087CC1}.payment-method.later{background:#1669B2}.payment-method.card{background:#252B31}.payment-powered{text-align:center;margin:.85rem 0 0;color:#94A3B8;font-size:.72rem}.payment-powered strong{color:#087CC1}
+        .payment-methods{display:grid;gap:.75rem}.payment-method{min-height:52px;border:0;border-radius:999px;color:#fff;font-family:var(--font-body);font-size:1rem;font-weight:900;cursor:pointer;transition:transform .2s,box-shadow .2s}.payment-method:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(1,69,168,.2)}.payment-method.paypal{background:#087CC1}.payment-method.later{background:#1669B2}.payment-method.card{background:#252B31}.payment-powered{text-align:center;margin:.85rem 0 0;color:#475569;font-size:.72rem}.payment-powered strong{color:#087CC1}
         .payment-actions{display:flex;justify-content:center;gap:.7rem;flex-wrap:wrap;margin-top:1.35rem}.payment-back{border:1px solid #CAD7E5;border-radius:999px;background:#fff;color:${BLUE};padding:.75rem 1.15rem;font-weight:800;cursor:pointer}.payment-contact{color:${BLUE};font-weight:800;text-decoration:none;padding:.75rem 1.15rem}
-        .payment-empty{padding:4rem 1rem;text-align:center;border:1px solid #D9E4F0;border-radius:20px;background:#fff;box-shadow:0 20px 60px rgba(15,35,65,.08)}.payment-empty h2{font-family:var(--font-display);font-size:2rem;margin:0 0 .6rem}.payment-empty p{color:#64748B;margin:0 0 1.5rem}
+        .payment-empty{padding:4rem 1rem;text-align:center;border:1px solid #D9E4F0;border-radius:20px;background:#fff;box-shadow:0 20px 60px rgba(15,35,65,.08)}.payment-empty h2{font-family:var(--font-display);font-size:2rem;margin:0 0 .6rem}.payment-empty p{color:#334155;margin:0 0 1.5rem}
         @media(max-width:860px){.payment-grid{grid-template-columns:1fr}.payment-security{min-height:auto}.payment-security h2{margin-top:1.4rem}}
         @media(max-width:520px){.payment-page{padding-inline:.7rem}.payment-card{padding:1.1rem}.payment-coupon{flex-direction:column}.payment-coupon button{width:100%}.payment-item{flex-direction:column}.payment-security{padding:1.35rem}}
       `}</style>
@@ -178,7 +178,7 @@ export default function PaymentPage() {
                 <button type="button" className="payment-back" onClick={() => navigate('/cart')}>← Back to Cart</button>
                 <Link className="payment-contact" to="/contact">Need help?</Link>
               </div>
-              <p style={{ margin: '.8rem 0 0', textAlign: 'center', color: '#94A3B8', fontSize: '.72rem' }}>Signed in as {user?.email || 'student'}</p>
+              <p style={{ margin: '.8rem 0 0', textAlign: 'center', color: '#475569', fontSize: '.72rem' }}>Signed in as {user?.email || 'student'}</p>
             </div>
           </div>
         )}

@@ -9,7 +9,7 @@
   --color-ink-surface:   #E2EBF5;
   --color-ink-raised:    #D1DFEE;
   --color-ink-line:      #C8D7E6;
-  --color-ink-muted:     #A0B3C6;
+  --color-ink-muted:     #D1DFEE;
 
   --color-paper:         #0145A8;
   --color-paper-muted:   #033680;
@@ -536,7 +536,7 @@ textarea {
 
 input::placeholder,
 textarea::placeholder {
-  color: #64748b;
+  color: #334155;
   opacity: 1;
 }
 

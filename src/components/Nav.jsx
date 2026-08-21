@@ -306,7 +306,7 @@ export default function Nav() {
                   </div>
                   <div style={{ minWidth: 0 }}>
                     <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#ffffff', margin: 0, fontWeight: 600 }}>{user.displayName || 'Student'}</p>
-                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.email}</p>
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.7rem', color: 'rgba(255,255,255,0.88)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.email}</p>
                   </div>
                 </div>
                 <Link to="/dashboard" onClick={() => setOpen(false)} className="nav-mobile-link" style={{ color: '#FDBC01' }}>My Dashboard</Link>

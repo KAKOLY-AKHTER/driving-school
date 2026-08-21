@@ -68,7 +68,7 @@ export default function AdminSetupPage() {
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.2"><polyline points="20 6 9 17 4 12" /></svg>
           </div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', color: DARK, margin: 0, fontWeight: 800 }}>Verify your admin email</h1>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: '#64748b', margin: '0.75rem 0 1.5rem', lineHeight: 1.6 }}>We sent a verification link to <strong>{email}</strong>. Open it, then sign in. Admin access is only granted to the verified address configured on the server.</p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: '#334155', margin: '0.75rem 0 1.5rem', lineHeight: 1.6 }}>We sent a verification link to <strong>{email}</strong>. Open it, then sign in. Admin access is only granted to the verified address configured on the server.</p>
           <Link to="/admin/login" style={{ display: 'inline-flex', padding: '0.8rem 1.15rem', borderRadius: 'var(--radius-sm)', background: SKY_BLUE, color: '#fff', textDecoration: 'none', fontFamily: 'var(--font-mono)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: '0.72rem' }}>Go to Admin Login</Link>
         </div>
       </div>
@@ -108,7 +108,7 @@ export default function AdminSetupPage() {
           <div style={{ background: '#ffffff', borderRadius: 'var(--radius-lg)', border: '1px solid rgba(253,188,1,0.2)', padding: '2.5rem', boxShadow: '0 16px 64px rgba(0,0,0,0.4)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
               {photo ? <img src={photo} alt="Admin" style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.35)', flexShrink: 0 }} /> : <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', fontWeight: 800, color: DARK, border: '2.5px solid #FDBC01', flexShrink: 0 }}>A</div>}
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#64748b', margin: 0, lineHeight: 1.5 }}>This will be the administrator account. You can change name, photo and password anytime from the Admin Panel → Admin Account tab.</p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#334155', margin: 0, lineHeight: 1.5 }}>This will be the administrator account. You can change name, photo and password anytime from the Admin Panel → Admin Account tab.</p>
             </div>
 
             {error && (

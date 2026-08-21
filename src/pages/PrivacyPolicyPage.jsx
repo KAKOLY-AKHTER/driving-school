@@ -130,7 +130,7 @@ export default function PrivacyPolicyPage() {
             <p style={{
               fontFamily: 'var(--font-body)',
               fontSize: 'clamp(0.95rem, 1.5vw, 1.1rem)',
-              color: 'rgba(255,255,255,0.65)',
+              color: 'rgba(255,255,255,0.88)',
               lineHeight: 1.7,
               maxWidth: '60ch',
               margin: '0 auto',
@@ -179,14 +179,14 @@ export default function PrivacyPolicyPage() {
                         style={{
                           fontFamily: 'var(--font-body)',
                           fontSize: '0.82rem',
-                          color: 'rgba(255,255,255,0.6)',
+                          color: 'rgba(255,255,255,0.88)',
                           textDecoration: 'none',
                           transition: 'color 0.3s ease',
                           padding: '0.35rem 0',
                           display: 'block',
                         }}
                         onMouseEnter={(e) => { e.currentTarget.style.color = GOLD }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.88)' }}
                       >
                         {s.title}
                       </a>

@@ -522,10 +522,10 @@ export default function PricingPage() {
       {step === 'full' && selectedTier && (
         <div style={backdropStyle} onClick={(event) => { if (event.target === event.currentTarget) handleClose() }}>
           <div role="dialog" aria-modal="true" aria-labelledby="full-package-title" style={{ ...modalStyle, maxWidth:'480px', padding:'2rem', textAlign:'center' }}>
-            <button type="button" onClick={handleClose} aria-label="Close" style={{ position:'absolute', top:'0.8rem', right:'1rem', border:0, background:'transparent', color:'#64748B', fontSize:'1.8rem', cursor:'pointer' }}>&times;</button>
+            <button type="button" onClick={handleClose} aria-label="Close" style={{ position:'absolute', top:'0.8rem', right:'1rem', border:0, background:'transparent', color:'#334155', fontSize:'1.8rem', cursor:'pointer' }}>&times;</button>
             <div aria-hidden="true" style={{ width:'58px', height:'58px', margin:'0 auto 1rem', display:'grid', placeItems:'center', borderRadius:'50%', background:'#EFF6FF', color:'#0755AE', fontSize:'1.6rem', fontWeight:900 }}>&#10003;</div>
             <h2 id="full-package-title" style={{ margin:'0 0 0.6rem', color:DARK, fontFamily:'var(--font-display)', fontSize:'1.45rem' }}>All Included Slots Are Booked</h2>
-            <p style={{ margin:'0 0 1.3rem', color:'#64748B', fontFamily:'var(--font-body)', lineHeight:1.65 }}>{error}</p>
+            <p style={{ margin:'0 0 1.3rem', color:'#334155', fontFamily:'var(--font-body)', lineHeight:1.65 }}>{error}</p>
             <button type="button" onClick={() => navigate('/dashboard')} style={{ minHeight:'44px', padding:'0 1.2rem', border:0, borderRadius:'10px', background:'#0755AE', color:'#fff', fontFamily:'var(--font-body)', fontWeight:800, cursor:'pointer' }}>View My Lessons</button>
           </div>
         </div>
@@ -598,10 +598,10 @@ export default function PricingPage() {
       {step === 'calendar' && selectedTier && (
         <div style={backdropStyle} onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}>
           <div role="dialog" aria-modal="true" aria-labelledby="calendar-modal-title" style={{ ...modalStyle, maxWidth: '640px', borderRadius: '16px', padding: '1.2rem', background: '#f8fafc' }}>
-            <button onClick={handleClose} aria-label="Close" style={{ position: 'absolute', top: '0.75rem', right: '1rem', zIndex: 2, border: 0, background: 'transparent', color: '#64748b', fontSize: '1.8rem', cursor: 'pointer' }}>&times;</button>
+            <button onClick={handleClose} aria-label="Close" style={{ position: 'absolute', top: '0.75rem', right: '1rem', zIndex: 2, border: 0, background: 'transparent', color: '#334155', fontSize: '1.8rem', cursor: 'pointer' }}>&times;</button>
             <div style={{ textAlign: 'center', marginBottom: '1.2rem' }}>
               <h2 id="calendar-modal-title" style={{ margin: 0, color: '#08284a', fontFamily: 'var(--font-body)', fontSize: '1.7rem', fontWeight: 800 }}>Your Selected Course</h2>
-              <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>You've chosen the perfect driving course for your needs!</p>
+              <p style={{ margin: '0.25rem 0 0', color: '#334155', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>You've chosen the perfect driving course for your needs!</p>
             </div>
 
             <BookingSteps current={3} />
@@ -609,8 +609,8 @@ export default function PricingPage() {
             <div style={{ padding: '1rem 0.75rem 0.75rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '9px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                 <div>
-                  <div style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.75rem' }}>Select Your Preferred Slots</div>
-                  <div style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.68rem', marginTop: '0.15rem' }}>Choose at least 1 slot for each plan, up to its available package allowance.</div>
+                  <div style={{ color: '#334155', fontFamily: 'var(--font-body)', fontSize: '0.75rem' }}>Select Your Preferred Slots</div>
+                  <div style={{ color: '#334155', fontFamily: 'var(--font-body)', fontSize: '0.68rem', marginTop: '0.15rem' }}>Choose at least 1 slot for each plan, up to its available package allowance.</div>
                   <strong style={{ color: '#0755ae', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>{calendarMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' })}</strong>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -619,7 +619,7 @@ export default function PricingPage() {
                 </div>
               </div>
 
-              <div aria-label="Calendar status legend" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', margin: '0 0 0.65rem', color: '#64748b', fontSize: '0.68rem', fontWeight: 700 }}>
+              <div aria-label="Calendar status legend" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', margin: '0 0 0.65rem', color: '#334155', fontSize: '0.68rem', fontWeight: 700 }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><i aria-hidden="true" style={{ width: '11px', height: '11px', borderRadius: '3px', background: '#edf7ef', border: '1px solid #cde7d2' }} />Available</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><i aria-hidden="true" style={{ width: '11px', height: '11px', borderRadius: '3px', background: '#dbeafe', border: '1px solid #0755ae' }} />Selected</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><i aria-hidden="true" style={{ width: '11px', height: '11px', borderRadius: '3px', background: '#fff1f2', border: '1px solid #fee2e2' }} />Unavailable</span>
@@ -649,15 +649,15 @@ export default function PricingPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
                     <div>
                       <strong style={{ color: '#586576', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>{plan.tier.planName}</strong>
-                      <span style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> ({selectionInstruction(plan.tier)} · {plan.slots.length} selected / {selectionLimitForPlan(plan.tier)} available)</span>
-                      <div style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>{plan.city}</div>
+                      <span style={{ color: '#334155', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> ({selectionInstruction(plan.tier)} · {plan.slots.length} selected / {selectionLimitForPlan(plan.tier)} available)</span>
+                      <div style={{ color: '#334155', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>{plan.city}</div>
                       <button onClick={(e) => { e.stopPropagation(); removePlan(plan.tier.id) }} style={{ marginTop: '0.4rem', padding: '0.32rem 0.5rem', border: 0, borderRadius: '4px', background: '#e93647', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.65rem', cursor: 'pointer' }}>Remove plan</button>
                     </div>
                     <span style={{ alignSelf: 'flex-start', padding: '0.25rem 0.55rem', borderRadius: '999px', background: planIsContinuation(plan.tier) ? '#15803D' : '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 800 }}>{planPriceLabel(plan.tier, plan.city)}</span>
                   </div>
                   <div style={{ borderTop: '1px solid #e2e8f0', marginTop: '0.55rem', paddingTop: '0.45rem' }}>
                     {plan.slots.length ? plan.slots.map(slot => (
-                      <div key={`${slot.date}-${slot.time}`} style={{ padding: '0.45rem', marginBottom: '0.3rem', background: '#f8fafc', color: '#53657a', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>
+                      <div key={`${slot.date}-${slot.time}`} style={{ padding: '0.45rem', marginBottom: '0.3rem', background: '#f8fafc', color: '#334155', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>
                         <div>{new Date(`${slot.date}T00:00:00`).toLocaleDateString('en-US')} &nbsp; {slot.time}</div>
                       </div>
                     )) : <span style={{ color: '#ef3340', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>No slot selected</span>}
@@ -668,15 +668,15 @@ export default function PricingPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
                   <div>
                     <strong style={{ color: '#586576', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>{selectedTier.planName}</strong>
-                    <span style={{ color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> ({selectionInstruction(selectedTier)} · {selectedSlots.length} selected / {selectionLimitForPlan(selectedTier)} available)</span>
-                    <div style={{ marginTop: '0.2rem', color: '#64748b', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>{selectedCity}</div>
+                    <span style={{ color: '#334155', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> ({selectionInstruction(selectedTier)} · {selectedSlots.length} selected / {selectionLimitForPlan(selectedTier)} available)</span>
+                    <div style={{ marginTop: '0.2rem', color: '#334155', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>{selectedCity}</div>
                     <button onClick={() => removePlan(selectedTier.id)} style={{ marginTop: '0.45rem', padding: '0.35rem 0.55rem', border: 0, borderRadius: '4px', background: '#e93647', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer' }}>Remove plan</button>
                   </div>
                   <span style={{ alignSelf: 'flex-start', padding: '0.25rem 0.55rem', borderRadius: '999px', background: planIsContinuation(selectedTier) ? '#15803D' : '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 800 }}>{planPriceLabel(selectedTier, selectedCity)}</span>
                 </div>
                 <div style={{ borderTop: '1px solid #cbd5e1', marginTop: '0.65rem', paddingTop: '0.55rem', fontFamily: 'var(--font-body)', fontSize: '0.75rem' }}>
                   {selectedSlots.length ? selectedSlots.map(slot => (
-                    <div key={`${slot.date}-${slot.time}`} style={{ padding: '0.55rem', marginBottom: '0.35rem', background: 'rgba(255,255,255,0.62)', borderRadius: '3px', color: '#53657a' }}>
+                    <div key={`${slot.date}-${slot.time}`} style={{ padding: '0.55rem', marginBottom: '0.35rem', background: 'rgba(255,255,255,0.62)', borderRadius: '3px', color: '#334155' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.3rem' }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
                         {new Date(`${slot.date}T00:00:00`).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
@@ -703,7 +703,7 @@ export default function PricingPage() {
             {pendingDate && (
               <div style={{ position: 'fixed', inset: 0, zIndex: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(15,23,42,0.48)' }}>
                 <div role="dialog" aria-modal="true" aria-labelledby="pickup-time-title" style={{ position: 'relative', width: '100%', maxWidth: '525px', maxHeight: '92vh', overflowY: 'auto', padding: '3rem clamp(1.2rem, 6vw, 3.5rem) 1.4rem', borderRadius: '18px', background: '#fff', boxShadow: '0 24px 70px rgba(15,23,42,0.3)' }}>
-                  <button onClick={() => setPendingDate('')} aria-label="Close pickup time" style={{ position: 'absolute', top: '0.8rem', right: '1.1rem', border: 0, background: 'transparent', color: '#64748b', fontSize: '2rem', cursor: 'pointer' }}>&times;</button>
+                  <button onClick={() => setPendingDate('')} aria-label="Close pickup time" style={{ position: 'absolute', top: '0.8rem', right: '1.1rem', border: 0, background: 'transparent', color: '#334155', fontSize: '2rem', cursor: 'pointer' }}>&times;</button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem', marginBottom: '2.5rem' }}>
                     <div style={{ width: '55px', height: '55px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e0efff', color: '#0755ae' }}>
                       <svg width="25" height="25" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>
@@ -723,7 +723,7 @@ export default function PricingPage() {
                         <select id="dmv-hour" value={appointmentHour} onChange={event => { setAppointmentHour(event.target.value); setError('') }} style={{ minHeight: '44px', padding: '0 0.75rem', border: '1px solid #CBD5E1', borderRadius: '7px', background: '#fff', color: DARK, fontFamily: 'var(--font-body)', fontSize: '1rem' }}>
                           {DMV_APPOINTMENT_HOURS.map(hour => <option key={hour} value={hour}>{hour}</option>)}
                         </select>
-                        <span aria-hidden="true" style={{ color: '#64748B', fontWeight: 900 }}>:</span>
+                        <span aria-hidden="true" style={{ color: '#334155', fontWeight: 900 }}>:</span>
                         <label htmlFor="dmv-minute" style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>Minute</label>
                         <select id="dmv-minute" value={appointmentMinute} onChange={event => { setAppointmentMinute(event.target.value); setError('') }} style={{ minHeight: '44px', padding: '0 0.75rem', border: '1px solid #CBD5E1', borderRadius: '7px', background: '#fff', color: DARK, fontFamily: 'var(--font-body)', fontSize: '1rem' }}>
                           {DMV_APPOINTMENT_MINUTES.map(minute => <option key={minute} value={minute}>{minute}</option>)}

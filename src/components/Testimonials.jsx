@@ -86,7 +86,7 @@ function CoverCard({ review, position, isPaused }) {
           minHeight: '320px',
           boxShadow: '0 8px 30px rgba(1,69,168,0.05)',
           transform: 'scale(0.82)',
-          opacity: 0.55,
+          opacity: 1,
           zIndex: 1,
         }),
   }

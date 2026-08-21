@@ -4,11 +4,11 @@ const PRINT_STYLES = `
   body { margin: 0; padding: 40px; color: #1a2332; background: #fff; font-family: Arial, sans-serif; }
   main { width: min(100%, 820px); margin: 0 auto; }
   h1 { margin: 0; padding-bottom: 10px; border-bottom: 3px solid #0145a8; color: #0a1628; font-size: 22px; }
-  .subtitle { margin: 10px 0 24px; color: #64748b; font-size: 14px; }
+  .subtitle { margin: 10px 0 24px; color: #334155; font-size: 14px; }
   table { width: 100%; border-collapse: collapse; }
   th, td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: top; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
   th { width: 180px; color: #475569; background: #f8fafc; font-weight: 700; }
-  footer { margin-top: 36px; color: #64748b; font-size: 12px; }
+  footer { margin-top: 36px; color: #334155; font-size: 12px; }
   @media print { body { padding: 0; } }
 `
 

@@ -487,7 +487,7 @@ export default function ContactPage() {
 
           <p className="c-hero-sub" style={{
             fontFamily: 'var(--font-body)',
-            color: 'rgba(255,255,255,0.5)',
+            color: 'rgba(255,255,255,0.88)',
             fontSize: 'clamp(0.95rem, 1.5vw, 1.15rem)',
             maxWidth: '38ch',
             marginInline: 'auto',
@@ -519,7 +519,7 @@ export default function ContactPage() {
                   fontSize: '0.55rem',
                   letterSpacing: '0.15em',
                   textTransform: 'uppercase',
-                  color: 'rgba(255,255,255,0.6)',
+                  color: 'rgba(255,255,255,0.88)',
                   fontWeight: 600,
                 }}>{t.label}</div>
               </div>

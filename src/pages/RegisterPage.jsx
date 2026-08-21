@@ -189,7 +189,7 @@ export default function RegisterPage() {
           border-color: ${SKY_BLUE} !important;
           box-shadow: 0 0 0 3px rgba(1,69,168,0.1) !important;
         }
-        .rw-input::placeholder { color: #A0B3C6; }
+        .rw-input::placeholder { color: #64748B; }
         .rw-select {
           appearance: none;
           background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%230145A8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L1 4h14z'/%3E%3C/svg%3E");
@@ -410,7 +410,7 @@ export default function RegisterPage() {
             }}>Drivers Ed</span>
           </h1>
           <p className="rw-hero-sub" style={{
-            fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.65)',
+            fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.88)',
             fontSize: 'clamp(0.85rem, 1.3vw, 1rem)', maxWidth: '36ch',
             marginInline: 'auto', lineHeight: 1.7,
           }}>Create your account and complete your enrollment to get started today.</p>
@@ -439,13 +439,13 @@ export default function RegisterPage() {
                   {i < step ? (
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                   ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={i === step ? DARK : '#A0B3C6'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d={s.icon} /></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={i === step ? DARK : '#64748B'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d={s.icon} /></svg>
                   )}
                 </div>
                 <span style={{
                   fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.12em',
                   textTransform: 'uppercase', fontWeight: 600,
-                  color: i <= step ? SKY_BLUE : '#A0B3C6',
+                  color: i <= step ? SKY_BLUE : '#64748B',
                 }}>{s.label}</span>
               </div>
             ))}

@@ -333,7 +333,7 @@ export default function Programs() {
                     }}><path d="m6 9 6 6 6-6"/></svg>
                   </button>
                   <div className={`prog-policy-body ${openId === prog.id ? 'open' : ''}`}>
-                    <div className="prog-policy-inner"><p style={{ color: '#64748B', fontSize: '0.84rem', margin:'0.85rem 0 0', paddingTop:'.8rem', lineHeight: 1.65, borderTop:'1px solid #e7edf5' }}>{prog.policy}</p></div>
+                    <div className="prog-policy-inner"><p style={{ color: '#334155', fontSize: '0.84rem', margin:'0.85rem 0 0', paddingTop:'.8rem', lineHeight: 1.65, borderTop:'1px solid #e7edf5' }}>{prog.policy}</p></div>
                   </div>
                 </div>
 

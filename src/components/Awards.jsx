@@ -294,7 +294,7 @@ export default function Awards() {
                 style={{
                   fontFamily: 'var(--font-body)',
                   fontSize: 'clamp(0.85rem, 1.3vw, 0.95rem)',
-                  color: 'rgba(255,255,255,0.6)',
+                  color: 'rgba(255,255,255,0.88)',
                   lineHeight: 1.7,
                   textAlign: 'center',
                   maxWidth: '38ch',
@@ -352,7 +352,7 @@ export default function Awards() {
                 style={{
                   fontFamily: 'var(--font-body)',
                   fontSize: 'clamp(0.9rem, 1.3vw, 1rem)',
-                  color: 'rgba(255,255,255,0.6)',
+                  color: 'rgba(255,255,255,0.88)',
                   lineHeight: 1.75,
                   marginBottom: '1rem',
                   maxWidth: '44ch',
@@ -365,7 +365,7 @@ export default function Awards() {
                 style={{
                   fontFamily: 'var(--font-body)',
                   fontSize: 'clamp(0.9rem, 1.3vw, 1rem)',
-                  color: 'rgba(255,255,255,0.6)',
+                  color: 'rgba(255,255,255,0.88)',
                   lineHeight: 1.75,
                   marginBottom: '2rem',
                   maxWidth: '44ch',

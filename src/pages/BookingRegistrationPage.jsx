@@ -201,7 +201,7 @@ export default function BookingRegistrationPage() {
         .booking-register-payment-note{margin:1rem 0 0;padding:.9rem 1rem;border:1px solid #BFDBFE;border-radius:12px;background:#EFF6FF;color:#516B89;font-size:.84rem;line-height:1.55}.booking-register-payment-note strong{color:#0B3C78}
         .booking-register-actions{display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-top:1.5rem}.booking-register-back,.booking-register-submit{min-height:52px;padding:.85rem 1.5rem;border-radius:999px;font-family:var(--font-body);font-size:.95rem;font-weight:850;cursor:pointer}.booking-register-back{border:1.5px solid #CBD5E1;background:#fff;color:${SKY_BLUE}}.booking-register-submit{border:0;background:linear-gradient(135deg,${SKY_BLUE},#0B63CE);color:#fff;box-shadow:0 10px 25px rgba(1,69,168,.22)}.booking-register-submit:disabled{opacity:.6;cursor:wait}
         .booking-register-error{margin:1rem 0 0;padding:.85rem 1rem;border:1px solid #FCA5A5;border-radius:10px;background:#FEF2F2;color:#B91C1C;font-weight:700}
-        .booking-register-login{text-align:center;margin:0 0 1.5rem;color:#64748B}.booking-register-login a{color:${SKY_BLUE};font-weight:800}
+        .booking-register-login{text-align:center;margin:0 0 1.5rem;color:#334155}.booking-register-login a{color:${SKY_BLUE};font-weight:800}
         @media(max-width:700px){.booking-register-grid{grid-template-columns:1fr}.booking-register-wide{grid-column:auto}.booking-register-shell{padding:1.15rem}.booking-register-plan{flex-direction:column}.booking-register-actions>*{width:100%}}
       `}</style>
 
@@ -215,7 +215,7 @@ export default function BookingRegistrationPage() {
         {!items.length ? (
           <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
             <h2 style={{ color: DARK, fontFamily: 'var(--font-display)' }}>No booking selected</h2>
-            <p style={{ color: '#64748B' }}>Select a plan, location and lesson time before completing this form.</p>
+            <p style={{ color: '#334155' }}>Select a plan, location and lesson time before completing this form.</p>
             <Link to="/pricing" className="btn-gold">View Pricing Plans</Link>
           </div>
         ) : (
@@ -297,7 +297,7 @@ export default function BookingRegistrationPage() {
                   <div className="booking-register-plan" key={item.id}>
                     <div>
                       <strong>{item.title}</strong>
-                      <div style={{ marginTop: '.25rem', color: '#64748B', fontSize: '.84rem' }}>
+                      <div style={{ marginTop: '.25rem', color: '#334155', fontSize: '.84rem' }}>
                         {item.city || 'Location selected'} · {item.pickupSlots?.length || 0} slot{item.pickupSlots?.length === 1 ? '' : 's'}
                       </div>
                     </div>

@@ -39,7 +39,7 @@ export default function HomeBlogs() {
         .home-blog-head{display:flex;align-items:end;justify-content:space-between;gap:1.5rem;margin-bottom:2rem}
         .home-blog-eyebrow{margin:0 0 .55rem;color:#C8960C;font-family:var(--font-mono);font-size:.75rem;letter-spacing:.22em;text-transform:uppercase;font-weight:800}
         .home-blog-title{margin:0;color:#082048;font-family:var(--font-display);font-size:clamp(2rem,5vw,3.4rem);line-height:1.05}
-        .home-blog-subtitle{margin:.7rem 0 0;color:#64748B;font-size:1.05rem;line-height:1.6;max-width:650px}
+        .home-blog-subtitle{margin:.7rem 0 0;color:#334155;font-size:1.05rem;line-height:1.6;max-width:650px}
         .home-blog-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.25rem}
         .home-blog-card{display:flex;flex-direction:column;min-width:0;background:#fff;border:1px solid #E2EBF5;border-radius:20px;overflow:hidden;text-decoration:none;box-shadow:0 12px 34px rgba(15,35,70,.07);transition:transform .3s ease,box-shadow .3s ease,border-color .3s ease}
         .home-blog-card:hover{transform:translateY(-7px);box-shadow:0 22px 48px rgba(1,69,168,.14);border-color:rgba(1,69,168,.22)}
@@ -48,10 +48,10 @@ export default function HomeBlogs() {
         .home-blog-media-fallback{height:100%;display:grid;place-items:center;color:rgba(255,255,255,.15);font-family:var(--font-display);font-size:5rem;font-weight:900;background:radial-gradient(circle at 75% 20%,rgba(253,188,1,.4),transparent 8rem),linear-gradient(135deg,#082048,#0145A8)}
         .home-blog-featured{position:absolute;top:1rem;left:1rem;padding:.38rem .6rem;border-radius:999px;background:#FDBC01;color:#082048;font-size:.68rem;text-transform:uppercase;letter-spacing:.12em;font-weight:900}
         .home-blog-body{padding:1.25rem;display:flex;flex-direction:column;flex:1}
-        .home-blog-meta{display:flex;align-items:center;gap:.45rem;color:#64748B;font-size:.78rem;font-weight:700;margin-bottom:.65rem;flex-wrap:wrap}
+        .home-blog-meta{display:flex;align-items:center;gap:.45rem;color:#334155;font-size:.78rem;font-weight:700;margin-bottom:.65rem;flex-wrap:wrap}
         .home-blog-category{color:#0145A8;text-transform:uppercase;letter-spacing:.08em;font-size:.7rem;font-weight:900}
         .home-blog-card h3{margin:0;color:#10213A;font-family:var(--font-display);font-size:1.18rem;line-height:1.35}
-        .home-blog-card p{margin:.65rem 0 1rem;color:#64748B;line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+        .home-blog-card p{margin:.65rem 0 1rem;color:#334155;line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
         .home-blog-read{margin-top:auto;color:#0145A8;font-weight:900;font-size:.84rem}.home-blog-read span{color:#FDBC01;margin-left:.3rem}
         .home-blog-view{display:inline-flex;align-items:center;gap:.4rem;padding:.72rem 1rem;border:1px solid rgba(1,69,168,.2);border-radius:11px;color:#0145A8;text-decoration:none;font-weight:850;background:#fff;white-space:nowrap}
         @media(max-width:900px){.home-blog-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.home-blog-card:last-child{display:none}}

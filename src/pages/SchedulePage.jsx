@@ -387,7 +387,7 @@ export default function SchedulePage() {
           </h1>
 
           <p className="sch-hero-sub" style={{
-            fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.5)',
+            fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.88)',
             fontSize: 'clamp(0.9rem, 1.4vw, 1.1rem)', maxWidth: '42ch',
             marginInline: 'auto', lineHeight: 1.7, marginBottom: '2rem',
           }}>
@@ -412,7 +412,7 @@ export default function SchedulePage() {
                 }}>{t.num}</div>
                 <div style={{
                   fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.15em',
-                  textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)', fontWeight: 600,
+                  textTransform: 'uppercase', color: 'rgba(255,255,255,0.88)', fontWeight: 600,
                 }}>{t.label}</div>
               </div>
             ))}

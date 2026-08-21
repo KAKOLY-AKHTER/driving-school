@@ -149,7 +149,7 @@ export default function AboutPage() {
             <p style={{
               fontFamily: 'var(--font-body)',
               fontSize: 'clamp(0.95rem, 1.5vw, 1.1rem)',
-              color: 'rgba(255,255,255,0.65)',
+              color: 'rgba(255,255,255,0.88)',
               lineHeight: 1.7,
               maxWidth: '60ch',
               margin: '0 auto 1.5rem',
@@ -249,7 +249,7 @@ export default function AboutPage() {
                   fontSize: '0.6rem',
                   letterSpacing: '0.15em',
                   textTransform: 'uppercase',
-                  color: 'rgba(255,255,255,0.5)',
+                  color: 'rgba(255,255,255,0.88)',
                   marginTop: '0.4rem',
                   fontWeight: 600,
                 }}>
@@ -339,7 +339,7 @@ export default function AboutPage() {
                   <p style={{
                     fontFamily: 'var(--font-body)',
                     fontSize: '0.92rem',
-                    color: 'rgba(255,255,255,0.6)',
+                    color: 'rgba(255,255,255,0.88)',
                     lineHeight: 1.7,
                     margin: 0,
                   }}>

@@ -314,7 +314,7 @@ export default function ServiceAreas() {
               style={{
                 fontFamily: 'var(--font-body)',
                 fontSize: 'clamp(0.85rem, 1.5vw, 1rem)',
-                color: 'rgba(255,255,255,0.55)',
+                color: 'rgba(255,255,255,0.88)',
                 maxWidth: '32rem',
                 marginInline: 'auto',
               }}

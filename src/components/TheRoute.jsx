@@ -254,7 +254,7 @@ export default function TheRoute() {
                       <div style={{
                         fontFamily: 'var(--font-mono)',
                         fontSize: '0.5rem',
-                        color: 'rgba(255,255,255,0.7)',
+                        color: 'rgba(255,255,255,0.88)',
                         letterSpacing: '0.1em',
                         textTransform: 'uppercase',
                       }}>MILE</div>

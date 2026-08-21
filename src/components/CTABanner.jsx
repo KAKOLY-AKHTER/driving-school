@@ -155,7 +155,7 @@ export default function CTABanner() {
 
             <p style={{
               fontFamily: 'var(--font-body)',
-              color: 'rgba(255,255,255,0.5)',
+              color: 'rgba(255,255,255,0.88)',
               fontSize: 'clamp(0.95rem, 1.5vw, 1.1rem)',
               marginBottom: '2.5rem',
               maxWidth: '32ch',
@@ -213,7 +213,7 @@ export default function CTABanner() {
               fontSize: '0.6rem',
               letterSpacing: '0.25em',
               textTransform: 'uppercase',
-              color: 'rgba(255,255,255,0.6)',
+              color: 'rgba(255,255,255,0.88)',
               fontWeight: 600,
               marginBottom: '1rem',
             }}>

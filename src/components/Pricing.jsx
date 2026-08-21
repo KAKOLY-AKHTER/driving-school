@@ -288,8 +288,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
           font-size: 0.65rem;
           letter-spacing: 0.1em;
           text-transform: uppercase;
-          color: rgba(10,22,40,0.35);
-          animation: priceScrollHint 2s ease-in-out infinite;
+          color: #475569;
         }
         @keyframes priceScrollHint {
           0%, 100% { opacity: 0.4; }
@@ -371,7 +370,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
             <p style={{
               fontFamily: 'var(--font-body)',
               fontSize: 'clamp(0.85rem, 1.5vw, 1rem)',
-              color: light ? 'rgba(10,22,40,0.6)' : 'rgba(255,255,255,0.65)',
+              color: light ? '#334155' : 'rgba(255,255,255,0.90)',
               maxWidth: '32rem',
               marginInline: 'auto',
             }}>
@@ -566,7 +565,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
           <p style={{
             fontFamily: 'var(--font-body)',
             fontSize: '0.75rem',
-            color: 'rgba(10,22,40,0.35)',
+            color: '#475569',
             marginTop: '2.5rem',
             textAlign: 'center',
           }}>

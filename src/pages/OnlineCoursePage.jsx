@@ -33,7 +33,7 @@ export default function OnlineCoursePage() {
         .oc-btn { display:inline-flex; align-items:center; justify-content:center; padding:.9rem 1.6rem; border:0; border-radius:7px; background:${SKY}; color:#fff; font-weight:800; text-decoration:none; cursor:pointer; }
         .oc-section { padding:5rem 0; }
         .oc-title { margin:0 0 .6rem; text-align:center; color:${DARK}; font-family:var(--font-display); font-size:clamp(1.8rem,4vw,2.7rem); font-weight:800; }
-        .oc-sub { max-width:660px; margin:0 auto 2.5rem; text-align:center; color:#64748b; }
+        .oc-sub { max-width:660px; margin:0 auto 2.5rem; text-align:center; color:#334155; }
         .oc-steps { display:grid; grid-template-columns:repeat(3,1fr); gap:2rem; }
         .oc-card { padding:2rem 1.25rem; text-align:center; background:#fff; border:1px solid #dbe7f4; border-radius:16px; box-shadow:0 12px 35px rgba(15,40,75,.08); }
         .oc-number { width:38px; height:38px; margin:-3.2rem auto 1.2rem; display:grid; place-items:center; border-radius:50%; background:${SKY}; color:#fff; font-weight:800; box-shadow:0 7px 18px rgba(8,102,255,.3); }
@@ -72,7 +72,7 @@ export default function OnlineCoursePage() {
           <div className="oc-panel">
             <div style={{ color:'#ffd04a', fontWeight:800, fontSize:'.8rem', letterSpacing:'.12em', textTransform:'uppercase' }}>California State Approved</div>
             <h1 style={{ margin:'.55rem 0', fontFamily:'var(--font-display)', fontSize:'clamp(2rem,5vw,3.2rem)', lineHeight:1.05 }}>California DMV-Approved</h1>
-            <p style={{ margin:'0 0 1rem', color:'rgba(255,255,255,.78)' }}>DMV License #E4566</p>
+            <p style={{ margin:'0 0 1rem', color:'rgba(255,255,255,0.88)' }}>DMV License #E4566</p>
             <ul style={{ paddingLeft:'1.2rem', lineHeight:1.9, color:'rgba(255,255,255,.85)' }}>
               <li>100% online and mobile friendly</li><li>No hidden fees</li><li>Guaranteed to pass</li><li>Certificate of completion included</li>
             </ul>
@@ -90,7 +90,7 @@ export default function OnlineCoursePage() {
               ['Pass Your Online Driver Ed','Complete our state-approved online course at your own pace from any device.'],
               ['Take Certificate to DMV','Bring your course completion certificate to your local DMV office.'],
               ["Get Your Driver's Permit",'With your certificate, you are one step closer to getting your permit.'],
-            ].map((item,i)=><div className="oc-card" key={item[0]}><div className="oc-number">{i+1}</div><div style={{ fontSize:'2rem' }}>{['▣','★','▤'][i]}</div><h3>{item[0]}</h3><p style={{ color:'#64748b', fontSize:'.88rem', lineHeight:1.7 }}>{item[1]}</p></div>)}
+            ].map((item,i)=><div className="oc-card" key={item[0]}><div className="oc-number">{i+1}</div><div style={{ fontSize:'2rem' }}>{['▣','★','▤'][i]}</div><h3>{item[0]}</h3><p style={{ color:'#334155', fontSize:'.88rem', lineHeight:1.7 }}>{item[1]}</p></div>)}
           </div>
         </div>
       </section>
@@ -108,8 +108,8 @@ export default function OnlineCoursePage() {
           <h2 className="oc-title">Fulfill Your California Permit Requirements</h2>
           <p className="oc-sub" style={{ color:'#e93647', fontWeight:800 }}>Includes Free DMV Practice Test</p>
           <div className="oc-requirements">
-            <div className="oc-requirement"><h3>Teenagers</h3><p style={{ color:'rgba(255,255,255,.75)', lineHeight:1.8 }}>California teens aged 15½ to 17½ must finish DMV-approved driver education before applying for an instruction permit.</p></div>
-            <div className="oc-requirement"><h3>Adults</h3><p style={{ color:'rgba(255,255,255,.75)', lineHeight:1.8 }}>Eligible drivers can prepare for the written test, learn California road laws, and build safe driving knowledge.</p></div>
+            <div className="oc-requirement"><h3>Teenagers</h3><p style={{ color:'rgba(255,255,255,0.88)', lineHeight:1.8 }}>California teens aged 15½ to 17½ must finish DMV-approved driver education before applying for an instruction permit.</p></div>
+            <div className="oc-requirement"><h3>Adults</h3><p style={{ color:'rgba(255,255,255,0.88)', lineHeight:1.8 }}>Eligible drivers can prepare for the written test, learn California road laws, and build safe driving knowledge.</p></div>
           </div>
         </div>
       </section>
