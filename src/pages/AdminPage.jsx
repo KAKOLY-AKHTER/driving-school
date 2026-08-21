@@ -8,6 +8,7 @@ import { api, makeEmbedCode } from '../api'
 import { DEFAULT_SOCIALS, SOCIAL_PLATFORMS, socialIcon, socialPlatformLabel } from '../socials'
 import { usePageMeta } from '../usePageMeta'
 import { DEFAULT_BOOKING_LOCATIONS, locationDistanceLabel } from '../locations'
+import { AdminLiveSupportPanel } from '../components/LiveSupportPanels'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -414,7 +415,7 @@ export default function AdminPage() {
   const hasPasswordProvider = Boolean(user?.providerData?.some(provider => provider.providerId === 'password'))
 
   const [activeTab, setActiveTab] = useState('dashboard')
-  const [stats, setStats] = useState({ totalUsers: 0, totalBookings: 0, activeEnrollments: 0, upcomingBookings: 0, pendingContacts: 0, pendingRefunds: 0 })
+  const [stats, setStats] = useState({ totalUsers: 0, totalBookings: 0, activeEnrollments: 0, upcomingBookings: 0, pendingContacts: 0, pendingRefunds: 0, unreadSupport: 0 })
   const [users, setUsers] = useState([])
   const [bookings, setBookings] = useState([])
   const [contacts, setContacts] = useState([])
@@ -511,7 +512,7 @@ export default function AdminPage() {
           api.getSocials().catch(() => DEFAULT_SOCIALS),
         ])
         if (cancelled) return
-        setStats(s || { totalUsers: 0, totalBookings: 0, activeEnrollments: 0, upcomingBookings: 0, pendingContacts: 0, pendingRefunds: 0 })
+        setStats(s || { totalUsers: 0, totalBookings: 0, activeEnrollments: 0, upcomingBookings: 0, pendingContacts: 0, pendingRefunds: 0, unreadSupport: 0 })
         setUsers(Array.isArray(u) ? u : [])
         setBookings(Array.isArray(b) ? b : [])
         setContacts(Array.isArray(c) ? c : [])
@@ -935,6 +936,7 @@ export default function AdminPage() {
     { id: 'bookings', label: 'Bookings', icon: SVG.calendar },
     { id: 'calendar', label: 'Admin Calendar', icon: SVG.calendar },
     { id: 'contacts', label: 'Contacts', icon: SVG.mail },
+    { id: 'live-support', label: 'Live Support', icon: SVG.mail, badge: stats.unreadSupport },
     { id: 'enrolled', label: 'Enrolled Courses', icon: SVG.book },
     { id: 'refunds', label: 'Refunds', icon: SVG.refund },
     { id: 'reviews', label: 'Reviews', icon: SVG.star },
@@ -946,6 +948,9 @@ export default function AdminPage() {
   ]
 
   const switchTab = (tab) => { setActiveTab(tab); setSidebarOpen(false) }
+  const handleSupportUnreadChange = useCallback(unread => {
+    setStats(previous => previous.unreadSupport === unread ? previous : { ...previous, unreadSupport: unread })
+  }, [])
 
   return (
     <>
@@ -1081,7 +1086,7 @@ export default function AdminPage() {
               {navItems.map(item => (
                 <button type="button" key={item.id} aria-current={activeTab === item.id ? 'page' : undefined} onClick={() => switchTab(item.id)} className={`admin-nav-item ${activeTab === item.id ? 'admin-nav-active' : ''}`} style={{ marginBottom: '4px' }}>
                   <div style={{ flexShrink: 0, width: '34px', height: '34px', borderRadius: '10px', background: activeTab === item.id ? 'linear-gradient(135deg,rgba(253,188,1,0.25),rgba(253,188,1,0.10))' : 'linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s' }}>{item.icon}</div>
-                  <span>{item.label}</span>
+                  <span style={{ display:'flex', alignItems:'center', gap:'.45rem' }}>{item.label}{item.badge > 0 && <span aria-label={`${item.badge} unread live support ${item.badge === 1 ? 'request' : 'requests'}`} style={{ minWidth:'20px', height:'20px', padding:'0 5px', display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:'999px', background:'#DC2626', color:'#fff', fontSize:'.68rem', fontWeight:900 }}>{item.badge}</span>}</span>
                 </button>
               ))}
             </nav>
@@ -1330,6 +1335,8 @@ export default function AdminPage() {
                   setMessage={message => { setMsg(message); window.setTimeout(() => setMsg(''), 3200) }}
                 />
               )}
+
+              {!loading && !loadError && activeTab === 'live-support' && <AdminLiveSupportPanel onUnreadChange={handleSupportUnreadChange} />}
 
               {!loading && !loadError && activeTab === 'contacts' && (
                 <div style={cardStyle}>

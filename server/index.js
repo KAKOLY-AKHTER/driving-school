@@ -2224,24 +2224,31 @@ app.post('/api/users/:uid/dedup-courses', async (req, res) => {
 app.get('/api/users/:uid/messages', async (req, res) => {
   try {
     const user = await usersCol.findOne({ uid: req.params.uid })
-    res.json(user?.messages || [])
+    const threads = Array.isArray(user?.messages) ? user.messages : []
+    threads.sort((a, b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || '')))
+    res.json(threads)
   } catch (e) {
     sendServerError(res, e, 'Message lookup failed')
   }
 })
 
-app.post('/api/users/:uid/messages', async (req, res) => {
+app.post('/api/users/:uid/messages', rateLimit({ windowMs: 10 * 60_000, max: 10 }), async (req, res) => {
   try {
     const { uid } = req.params
     const subject = cleanText(req.body?.subject, 200)
     const text = cleanText(req.body?.text, 4000)
     if (!subject || !text) return res.status(400).json({ error: 'Subject and text required' })
+    const now = new Date().toISOString()
     const thread = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
       subject,
-      messages: [{ from: 'user', text, timestamp: new Date().toISOString() }],
+      messages: [{ from: 'user', text, timestamp: now }],
+      status: 'open',
+      unreadByAdmin: true,
+      unreadByUser: false,
       read: false,
-      createdAt: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
     }
     await usersCol.updateOne(
       { uid },
@@ -2258,15 +2265,25 @@ app.post('/api/users/:uid/messages', async (req, res) => {
   }
 })
 
-app.post('/api/users/:uid/messages/:threadId/reply', async (req, res) => {
+app.post('/api/users/:uid/messages/:threadId/reply', rateLimit({ windowMs: 60_000, max: 20 }), async (req, res) => {
   try {
     const { uid, threadId } = req.params
     const text = cleanText(req.body?.text, 4000)
     if (!text) return res.status(400).json({ error: 'Text required' })
-    const reply = { from: 'user', text, timestamp: new Date().toISOString() }
+    const now = new Date().toISOString()
+    const reply = { from: 'user', text, timestamp: now }
     const result = await usersCol.updateOne(
       { uid, 'messages.id': threadId },
-      { $push: { 'messages.$.messages': { $each: [reply], $slice: -200 } } }
+      {
+        $push: { 'messages.$.messages': { $each: [reply], $slice: -200 } },
+        $set: {
+          'messages.$.status': 'open',
+          'messages.$.unreadByAdmin': true,
+          'messages.$.unreadByUser': false,
+          'messages.$.read': false,
+          'messages.$.updatedAt': now,
+        },
+      }
     )
     if (result.matchedCount === 0) return res.status(404).json({ error: 'Message thread not found.' })
     const user = await usersCol.findOne({ uid })
@@ -2281,12 +2298,145 @@ app.put('/api/users/:uid/messages/read', async (req, res) => {
     const { uid } = req.params
     await usersCol.updateOne(
       { uid, messages: { $type: 'array' } },
-      { $set: { 'messages.$[].read': true } }
+      { $set: { 'messages.$[].read': true, 'messages.$[].unreadByUser': false } }
     )
     const user = await usersCol.findOne({ uid })
     res.json({ ok: true, messages: user?.messages || [] })
   } catch (e) {
     sendServerError(res, e, 'Message status update failed')
+  }
+})
+
+app.put('/api/users/:uid/messages/:threadId/read', async (req, res) => {
+  try {
+    const { uid, threadId } = req.params
+    const result = await usersCol.updateOne(
+      { uid, 'messages.id': threadId },
+      { $set: { 'messages.$.read': true, 'messages.$.unreadByUser': false } }
+    )
+    if (result.matchedCount === 0) return res.status(404).json({ error: 'Support conversation not found.' })
+    const user = await usersCol.findOne({ uid }, { projection: { messages: 1 } })
+    res.json({ ok: true, messages: user?.messages || [] })
+  } catch (e) {
+    sendServerError(res, e, 'Message status update failed')
+  }
+})
+
+app.get('/api/admin/support', async (req, res) => {
+  try {
+    const search = cleanText(req.query?.search, 160).toLowerCase()
+    const statusFilter = cleanText(req.query?.status, 20).toLowerCase()
+    const accounts = await usersCol.find(
+      { 'messages.0': { $exists: true } },
+      { projection: { uid: 1, name: 1, displayName: 1, email: 1, phone: 1, photoURL: 1, messages: 1 } }
+    ).limit(1000).toArray()
+
+    const threads = accounts.flatMap(account => {
+      const identity = {
+        uid: cleanText(account.uid, 180),
+        name: cleanText(account.name || account.displayName, 160) || 'Student',
+        email: normalizeEmail(account.email),
+        phone: cleanText(account.phone, 40),
+        photoURL: cleanHttpUrl(account.photoURL),
+      }
+      return (Array.isArray(account.messages) ? account.messages : []).map(thread => {
+        const replies = Array.isArray(thread?.messages) ? thread.messages.slice(-200) : []
+        const updatedAt = cleanText(
+          thread?.updatedAt || replies[replies.length - 1]?.timestamp || thread?.createdAt,
+          80
+        )
+        return {
+          id: cleanText(thread?.id, 180),
+          subject: cleanText(thread?.subject, 200) || 'Support request',
+          status: cleanText(thread?.status, 20).toLowerCase() === 'closed' ? 'closed' : 'open',
+          unreadByAdmin: typeof thread?.unreadByAdmin === 'boolean' ? thread.unreadByAdmin : thread?.read === false,
+          createdAt: cleanText(thread?.createdAt, 80),
+          updatedAt,
+          messages: replies.map(message => ({
+            from: message?.from === 'admin' ? 'admin' : 'user',
+            text: cleanText(message?.text, 4000),
+            timestamp: cleanText(message?.timestamp, 80),
+          })).filter(message => message.text),
+          student: identity,
+        }
+      })
+    }).filter(thread => thread.id && thread.student.uid)
+
+    const filtered = threads.filter(thread => {
+      const matchesStatus = !statusFilter || statusFilter === 'all' || thread.status === statusFilter
+      const haystack = [thread.subject, thread.student.name, thread.student.email, thread.student.phone]
+        .join(' ').toLowerCase()
+      return matchesStatus && (!search || haystack.includes(search))
+    }).sort((a, b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || '')))
+
+    res.json({
+      threads: filtered,
+      counts: {
+        total: threads.length,
+        open: threads.filter(thread => thread.status === 'open').length,
+        unread: threads.filter(thread => thread.unreadByAdmin).length,
+      },
+    })
+  } catch (e) {
+    sendServerError(res, e, 'Live support inbox lookup failed')
+  }
+})
+
+app.post('/api/admin/support/:uid/:threadId/reply', rateLimit({ windowMs: 60_000, max: 60 }), async (req, res) => {
+  try {
+    const { uid, threadId } = req.params
+    const text = cleanText(req.body?.text, 4000)
+    if (!text) return res.status(400).json({ error: 'Reply text is required.' })
+    const now = new Date().toISOString()
+    const reply = { from: 'admin', text, timestamp: now }
+    const result = await usersCol.updateOne(
+      { uid, 'messages.id': threadId },
+      {
+        $push: { 'messages.$.messages': { $each: [reply], $slice: -200 } },
+        $set: {
+          'messages.$.status': 'open',
+          'messages.$.unreadByAdmin': false,
+          'messages.$.unreadByUser': true,
+          'messages.$.read': false,
+          'messages.$.updatedAt': now,
+        },
+      }
+    )
+    if (result.matchedCount === 0) return res.status(404).json({ error: 'Support conversation not found.' })
+    res.json({ ok: true, reply })
+  } catch (e) {
+    sendServerError(res, e, 'Live support reply failed')
+  }
+})
+
+app.put('/api/admin/support/:uid/:threadId/read', async (req, res) => {
+  try {
+    const { uid, threadId } = req.params
+    const result = await usersCol.updateOne(
+      { uid, 'messages.id': threadId },
+      { $set: { 'messages.$.unreadByAdmin': false } }
+    )
+    if (result.matchedCount === 0) return res.status(404).json({ error: 'Support conversation not found.' })
+    res.json({ ok: true })
+  } catch (e) {
+    sendServerError(res, e, 'Live support message status update failed')
+  }
+})
+
+app.put('/api/admin/support/:uid/:threadId/status', async (req, res) => {
+  try {
+    const { uid, threadId } = req.params
+    const status = cleanText(req.body?.status, 20).toLowerCase()
+    if (!['open', 'closed'].includes(status)) return res.status(400).json({ error: 'Status must be open or closed.' })
+    const now = new Date().toISOString()
+    const result = await usersCol.updateOne(
+      { uid, 'messages.id': threadId },
+      { $set: { 'messages.$.status': status, 'messages.$.unreadByAdmin': false, 'messages.$.updatedAt': now } }
+    )
+    if (result.matchedCount === 0) return res.status(404).json({ error: 'Support conversation not found.' })
+    res.json({ ok: true, status, updatedAt: now })
+  } catch (e) {
+    sendServerError(res, e, 'Live support status update failed')
   }
 })
 
@@ -2437,7 +2587,7 @@ app.get('/api/admin/stats', async (req, res) => {
   try {
     const today = californiaDateKey()
     const inactiveCourseStatuses = ['refund pending', 'refunded', 'cancelled', 'canceled']
-    const [totalUsers, totalBookings, activeEnrollmentRows, upcomingBookings, pendingContacts, pendingRefunds] = await Promise.all([
+    const [totalUsers, totalBookings, activeEnrollmentRows, upcomingBookings, pendingContacts, pendingRefunds, unreadSupportRows] = await Promise.all([
       usersCol.countDocuments({ isAdmin: { $ne: true } }),
       bookingsCol.countDocuments({ status: { $ne: 'held' } }),
       usersCol.aggregate([
@@ -2463,6 +2613,18 @@ app.get('/api/admin/stats', async (req, res) => {
       }),
       contactCol.countDocuments({ $or: [{ status: { $exists: false } }, { status: null }, { status: '' }, { status: { $regex: /^new$/i } }] }),
       refundsCol.countDocuments({ Status: { $regex: /^pending$/i } }),
+      usersCol.aggregate([
+        { $unwind: '$messages' },
+        {
+          $match: {
+            $or: [
+              { 'messages.unreadByAdmin': true },
+              { 'messages.unreadByAdmin': { $exists: false }, 'messages.read': false },
+            ],
+          },
+        },
+        { $count: 'count' },
+      ]).toArray(),
     ])
     res.json({
       totalUsers,
@@ -2471,6 +2633,7 @@ app.get('/api/admin/stats', async (req, res) => {
       upcomingBookings,
       pendingContacts,
       pendingRefunds,
+      unreadSupport: Number(unreadSupportRows[0]?.count || 0),
     })
   } catch (e) {
     sendServerError(res, e, 'Admin statistics lookup failed')

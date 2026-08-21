@@ -9,6 +9,7 @@ import { api } from '../api'
 import { usePageMeta } from '../usePageMeta'
 import { openPrintableDocument } from '../utils/printDocument'
 import { ONLINE_COURSE_CURRICULUM } from '../data/onlineCourseCurriculum'
+import { UserLiveSupportPanel } from '../components/LiveSupportPanels'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -134,6 +135,7 @@ export default function DashboardPage() {
   const [expiryDate, setExpiryDate] = useState('')
   const [courses, setCourses] = useState([])
   const [payments, setPayments] = useState([])
+  const [supportUnread, setSupportUnread] = useState(0)
   const [sUsername, setSUsername] = useState('')
   const [sPhone, setSPhone] = useState('')
   const [sAddress, setSAddress] = useState('')
@@ -205,6 +207,7 @@ export default function DashboardPage() {
           setExpiryDate(profile.expiryDate || '')
           setCourses(Array.isArray(profile.courses) ? profile.courses : [])
           setPayments(Array.isArray(profile.payments) ? profile.payments : [])
+          setSupportUnread((Array.isArray(profile.messages) ? profile.messages : []).filter(thread => thread?.unreadByUser).length)
           setSUsername(profile.username || profile.displayName || '')
           setSPhone(profile.phone || '')
           setSAddress(profile.address || '')
@@ -696,6 +699,7 @@ export default function DashboardPage() {
     { id: 'payments', label: 'Payments', sublabel: 'Invoices', icon: I.profile },
     ...(showCourse ? [{ id: 'course', label: 'Driver Ed', sublabel: 'Online modules', icon: I.book }] : []),
     { id: 'settings', label: 'Settings', sublabel: 'Account', icon: I.shield },
+    { id: 'live-support', label: 'Live Support', sublabel: 'School team', icon: I.profile, badge: supportUnread },
     { id: 'support', label: 'Support', sublabel: 'AI assistant', icon: I.profile },
   ]
   const visibleLoadError = activeTab === 'bookings'
@@ -936,7 +940,7 @@ export default function DashboardPage() {
               ) : (
                 <button key={item.id} onClick={() => switchTab(item.id)} className={`dash-nav-item ${activeTab === item.id ? 'dash-nav-active' : ''}`} style={{ marginBottom:'4px' }}>
                   <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:activeTab === item.id ? 'linear-gradient(135deg,rgba(253,188,1,0.25),rgba(253,188,1,0.10))' : 'linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.3s' }}>{item.icon}</div>
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}><span>{item.label}</span>{item.sublabel && <span style={{ fontSize:'0.85rem', fontWeight:400, color:activeTab === item.id ? 'rgba(253,188,1,0.85)' : 'rgba(255,255,255,0.55)', marginTop:'2px' }}>{item.sublabel}</span>}</div>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', minWidth:0 }}><span style={{ display:'flex', alignItems:'center', gap:'.45rem' }}>{item.label}{item.badge > 0 && <span aria-label={`${item.badge} unread support ${item.badge === 1 ? 'reply' : 'replies'}`} style={{ minWidth:'20px', height:'20px', padding:'0 5px', display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:'999px', background:'#DC2626', color:'#fff', fontSize:'.68rem', fontWeight:900 }}>{item.badge}</span>}</span>{item.sublabel && <span style={{ fontSize:'0.85rem', fontWeight:400, color:activeTab === item.id ? 'rgba(253,188,1,0.85)' : 'rgba(255,255,255,0.55)', marginTop:'2px' }}>{item.sublabel}</span>}</div>
                 </button>
               ))}
             </nav>
@@ -1386,6 +1390,8 @@ export default function DashboardPage() {
                   </div>
                 </div>
               )}
+
+              {activeTab === 'live-support' && <UserLiveSupportPanel user={user} onUnreadChange={setSupportUnread} />}
 
               {activeTab === 'support' && (
                 <div className="dash-chat-wrap" style={{ maxWidth:'1100px', margin:'0 auto', display:'flex', gap:'1rem', height:'clamp(500px,70vh,650px)' }}>
