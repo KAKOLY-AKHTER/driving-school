@@ -822,7 +822,9 @@ export default function PricingPage() {
 
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8899aa', fontWeight: 700, marginBottom: '0.75rem' }}>What's included</p>
               <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', listStyle: 'none', padding: 0, margin: '0 0 1.75rem 0' }}>
-                {selectedTier.options.map((opt, i) => (
+                {selectedTier.options
+                  .filter((opt) => String(opt.text || '').trim())
+                  .map((opt, i) => (
                   <li key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
                     {opt.permission === 'Included' ? (
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
@@ -842,7 +844,7 @@ export default function PricingPage() {
                       {opt.text || opt.permission}
                     </span>
                   </li>
-                ))}
+                  ))}
               </ul>
 
               {error && (

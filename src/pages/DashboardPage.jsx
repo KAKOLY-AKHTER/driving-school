@@ -784,6 +784,7 @@ export default function DashboardPage() {
         .dash-btn-gold::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.3),transparent 50%); pointer-events:none; }
         .dash-btn-gold:hover { transform:translateY(-2px); box-shadow:0 8px 32px rgba(253,188,1,0.35),inset 0 1px 0 rgba(255,255,255,0.75); }
         .dash-main { background:radial-gradient(circle at 85% 2%,rgba(1,69,168,.055),transparent 28%),linear-gradient(180deg,#F8FAFD 0%,#F4F7FB 100%); }
+        .dash-content-width { width:100%; max-width:1180px; margin-left:auto; margin-right:auto; }
         .dash-toast { position:fixed; top:92px; right:clamp(1rem,3vw,2rem); z-index:1200; width:min(390px,calc(100vw - 2rem)); animation:dashToastIn .35s cubic-bezier(.22,1,.36,1) both; }
         .dash-skeleton-wrap { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; margin-bottom:1.25rem; }
         .dash-skeleton { height:96px; border-radius:18px; background:linear-gradient(100deg,#e9eef5 25%,#f8fafc 40%,#e9eef5 55%); background-size:200% 100%; animation:dashSkeleton 1.25s linear infinite; border:1px solid #e2e8f0; }
@@ -987,7 +988,7 @@ export default function DashboardPage() {
 
               {!loading && <>
               {activeTab === 'dashboard' && (
-                <div>
+                <div className="dash-content-width">
                   <div style={{ marginBottom:'2.5rem' }}>
                     <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600 }}>Welcome back</p>
                     <h2 style={{ fontFamily:'var(--font-display)', fontSize:'clamp(1.8rem,3vw,2.4rem)', color:'#0F172A', margin:'0 0 0.5rem', fontWeight:800, lineHeight:1.1 }}>Dashboard</h2>
@@ -1092,7 +1093,7 @@ export default function DashboardPage() {
               )}
 
               {activeTab === 'courses' && (
-                <div style={{ maxWidth:'1000px', margin:'0 auto' }}>
+                <div className="dash-content-width">
                   <div className="dash-anim dash-card-premium" style={{ padding:'2.5rem' }}>
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${SKY_BLUE},${GOLD_BRIGHT},${SKY_BLUE})`, backgroundSize:'200% 100%', animation:'dashShimmer 5s linear infinite' }} />
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'0.75rem', marginBottom:'0.5rem' }}>
@@ -1251,8 +1252,8 @@ export default function DashboardPage() {
               )}
 
               {activeTab === 'payments' && (
-                <div style={{ maxWidth:'1000px', margin:'0 auto' }}>
-                  <div className="dash-anim dash-card-premium" style={{ padding:'2.5rem' }}>
+                <div className="dash-content-width">
+                  <div className="dash-anim dash-card-premium" style={{ padding:'clamp(1.25rem,2.5vw,2.5rem)' }}>
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT},${GOLD})`, backgroundSize:'200% 100%', animation:'dashShimmer 5s linear infinite' }} />
                     <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600, animation:'dashTextReveal 0.8s ease both' }}>Billing</p>
                     <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'#0F172A', margin:'0 0 1.5rem', fontWeight:800, textTransform:'uppercase' }}>PAYMENT HISTORY</h2>
@@ -1308,7 +1309,7 @@ export default function DashboardPage() {
               )}
 
               {activeTab === 'settings' && (
-                <div style={{ maxWidth:'1000px', margin:'0 auto' }}>
+                <div className="dash-content-width">
                   <div className="dash-anim dash-card-premium" style={{ padding:'2.5rem' }}>
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${SKY_BLUE},${GOLD_BRIGHT},${SKY_BLUE})`, backgroundSize:'200% 100%', animation:'dashShimmer 5s linear infinite' }} />
                     <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600 }}>Settings</p>
@@ -1394,7 +1395,7 @@ export default function DashboardPage() {
               {activeTab === 'live-support' && <UserLiveSupportPanel user={user} onUnreadChange={setSupportUnread} />}
 
               {activeTab === 'support' && (
-                <div className="dash-chat-wrap" style={{ maxWidth:'1100px', margin:'0 auto', display:'flex', gap:'1rem', height:'clamp(500px,70vh,650px)' }}>
+                <div className="dash-chat-wrap dash-content-width" style={{ display:'flex', gap:'1rem', height:'clamp(500px,70vh,650px)' }}>
                   <div className="dash-anim dash-chat-list" style={{ width:'260px', flexShrink:0, background:'#ffffff', borderRadius:'18px', border:'1px solid rgba(226,235,245,0.6)', boxShadow:'0 1px 3px rgba(0,0,0,0.02), 0 4px 16px rgba(0,0,0,0.03)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
                     <div style={{ padding:'1rem', borderBottom:'1px solid #E8EDF4' }}>
                       <button type="button" disabled={supportBusy} onClick={handleNewChat} style={{ width:'100%', padding:'0.65rem', background: chatMessages.length === 0 && !activeConvId ? 'rgba(1,69,168,0.06)' : 'transparent', border:'1.5px solid rgba(1,69,168,0.1)', borderRadius:'10px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:600, color:SKY_BLUE, cursor:supportBusy ? 'wait' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem', transition:'all 0.2s', opacity:supportBusy ? .65 : 1 }} onMouseEnter={(e) => { if (!supportBusy && !(chatMessages.length === 0 && !activeConvId)) { e.currentTarget.style.background='rgba(1,69,168,0.04)'; e.currentTarget.style.borderColor='rgba(1,69,168,0.2)' } }} onMouseLeave={(e) => { if (!(chatMessages.length === 0 && !activeConvId)) { e.currentTarget.style.background='transparent'; e.currentTarget.style.borderColor='rgba(1,69,168,0.1)' } }}>
@@ -1486,7 +1487,7 @@ export default function DashboardPage() {
               )}
 
               {activeTab === 'bookings' && (
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.25rem' }} className="dash-grid">
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.25rem' }} className="dash-grid dash-content-width">
                   <div className="dash-anim dash-card-premium">
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT},${GOLD})`, backgroundSize:'200% 100%', animation:'dashShimmer 4s linear infinite' }} />
                     <h3 style={{ fontFamily:'var(--font-display)', fontSize:'1.15rem', color:DARK, fontWeight:700, marginBottom:'1.25rem', display:'flex', alignItems:'center', gap:'0.6rem' }}>
@@ -1556,7 +1557,7 @@ export default function DashboardPage() {
               )}
 
               {activeTab === 'course' && showCourse && (
-                <div>
+                <div className="dash-content-width">
                   {activeMod && moduleStep > 0 ? (
                     <div>
                       <button onClick={() => { setActiveModule(null); setModuleStep(0); }} style={{ background:'none', border:'none', color:SKY_BLUE, fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.1em', textTransform:'uppercase', cursor:'pointer', fontWeight:700, marginBottom:'1.25rem', display:'flex', alignItems:'center', gap:'0.4rem' }}>

@@ -441,7 +441,9 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                     padding: 0,
                     margin: '0 0 2rem 0',
                   }}>
-                    {tier.options.map((opt, i) => (
+                    {tier.options
+                      .filter((opt) => String(opt.text || '').trim())
+                      .map((opt, i) => (
                       <li key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
                         {opt.permission === 'Included' ? (
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tone)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '3px' }}>
@@ -471,7 +473,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                           )}
                         </span>
                       </li>
-                    ))}
+                      ))}
                   </ul>
 
                   {/* CTA */}
