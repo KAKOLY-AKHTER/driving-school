@@ -9,6 +9,7 @@ import { DEFAULT_SOCIALS, SOCIAL_PLATFORMS, socialIcon, socialPlatformLabel } fr
 import { usePageMeta } from '../usePageMeta'
 import { DEFAULT_BOOKING_LOCATIONS, locationDistanceLabel } from '../locations'
 import { AdminLiveSupportPanel } from '../components/LiveSupportPanels'
+import AdminBlogPanel from '../components/AdminBlogPanel'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -940,6 +941,7 @@ export default function AdminPage() {
     { id: 'enrolled', label: 'Enrolled Courses', icon: SVG.book },
     { id: 'refunds', label: 'Refunds', icon: SVG.refund },
     { id: 'reviews', label: 'Reviews', icon: SVG.star },
+    { id: 'blogs', label: 'Blog', icon: SVG.book },
     { id: 'pricing', label: 'Pricing Plan', icon: SVG.dollar },
     { id: 'locations', label: 'Locations', icon: SVG.map },
     { id: 'maps', label: 'Maps', icon: SVG.map },
@@ -1337,6 +1339,18 @@ export default function AdminPage() {
               )}
 
               {!loading && !loadError && activeTab === 'live-support' && <AdminLiveSupportPanel onUnreadChange={handleSupportUnreadChange} />}
+
+              {!loading && !loadError && activeTab === 'blogs' && (
+                <AdminBlogPanel
+                  cardStyle={cardStyle}
+                  inputStyle={inputStyle}
+                  labelStyle={labelStyle}
+                  thStyle={thStyle}
+                  tdStyle={tdStyle}
+                  requestConfirmation={requestConfirmation}
+                  setMessage={message => { setMsg(message); window.setTimeout(() => setMsg(''), 3200) }}
+                />
+              )}
 
               {!loading && !loadError && activeTab === 'contacts' && (
                 <div style={cardStyle}>

@@ -8,6 +8,7 @@ import Awards from '../components/Awards'
 import Testimonials from '../components/Testimonials'
 import ServiceAreas from '../components/ServiceAreas'
 import CTABanner from '../components/CTABanner'
+import HomeBlogs from '../components/HomeBlogs'
 import { usePageMeta } from '../usePageMeta'
 import { Link } from 'react-router-dom'
 
@@ -26,6 +27,7 @@ export default function Home() {
       <Programs />
       <Awards />
       <Testimonials />
+      <HomeBlogs />
       <ServiceAreas />
       <CTABanner />
       <Link className="home-mobile-book" to="/schedule" aria-label="Book a driving lesson">Book a Driving Lesson</Link>

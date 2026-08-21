@@ -25,6 +25,7 @@ const OnlineCourseDetailsPage = lazy(() => import('./pages/OnlineCourseDetailsPa
 const OnlineCoursePricingPage = lazy(() => import('./pages/OnlineCoursePricingPage'))
 const OnlineCoursePermitPage = lazy(() => import('./pages/OnlineCoursePermitPage'))
 const OnlineCourseDriverLicensePage = lazy(() => import('./pages/OnlineCourseDriverLicensePage'))
+const BlogPage = lazy(() => import('./pages/BlogPage'))
 
 function PageLoader() {
   return (
@@ -145,6 +146,8 @@ function AppRoutes() {
               <Route path="/online-drivers-ed/permit" element={<OnlineCoursePermitPage />} />
               <Route path="/online-drivers-ed/driver-license" element={<OnlineCourseDriverLicensePage />} />
               <Route path="/contact" element={<ContactPage />} />
+              <Route path="/blog" element={<BlogPage />} />
+              <Route path="/blog/:slug" element={<BlogPage />} />
               <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/register" element={<RegisterPage />} />

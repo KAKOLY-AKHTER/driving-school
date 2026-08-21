@@ -368,6 +368,50 @@ function sanitizeReview(value, { partial = false } = {}) {
   if (partial && value.text !== undefined && !output.text) throw new HttpError(400, 'Review text is required.')
   return output
 }
+const normalizeBlogSlug = value => cleanText(value, 180)
+  .toLowerCase()
+  .normalize('NFKD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '')
+  .slice(0, 160)
+
+function sanitizeBlog(value) {
+  if (!isPlainObject(value)) throw new HttpError(400, 'A valid blog post is required.')
+  const title = cleanText(value.title, 180).replace(/\s+/g, ' ')
+  const content = cleanText(value.content, 30_000)
+  const excerpt = cleanText(value.excerpt, 420) || content.slice(0, 260).trim()
+  const category = cleanText(value.category, 80).replace(/\s+/g, ' ') || 'Driving Tips'
+  const author = cleanText(value.author, 120).replace(/\s+/g, ' ') || 'A Precision Driving School'
+  const imageUrl = cleanHttpUrl(value.imageUrl)
+  const slug = normalizeBlogSlug(value.slug)
+  const published = value.published === true
+  const featured = value.featured === true
+  const order = cleanInteger(value.order, 0, 0, 10_000)
+  const rawPublishedAt = cleanText(value.publishedAt, 80)
+  let publishedAt = ''
+  if (rawPublishedAt) {
+    const parsed = new Date(rawPublishedAt)
+    if (Number.isNaN(parsed.getTime())) throw new HttpError(400, 'Please enter a valid publication date.')
+    publishedAt = parsed.toISOString()
+  }
+  if (!title || !content) throw new HttpError(400, 'Blog title and content are required.')
+  if (value.imageUrl && !imageUrl) throw new HttpError(400, 'Blog image must use a secure HTTPS URL.')
+  return {
+    title,
+    slug,
+    excerpt,
+    content,
+    category,
+    author,
+    imageUrl,
+    published,
+    featured,
+    order,
+    publishedAt,
+    readingMinutes: Math.max(1, Math.ceil(content.split(/\s+/).filter(Boolean).length / 200)),
+  }
+}
 function sanitizeSettings(value) {
   if (!isPlainObject(value)) throw new HttpError(400, 'Valid site settings are required.')
   const output = {
@@ -541,7 +585,7 @@ const PORT = process.env.PORT || 3001
 const MONGO_URI = process.env.MONGO_URI
 const DB_NAME = 'driving_school'
 
-let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, refundsCol, cartsCol
+let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol
 let connectPromise = null
 
 class HttpError extends Error {
@@ -1090,6 +1134,7 @@ async function connectDB() {
     locationsCol = db.collection('locations')
     socialsCol = db.collection('socials')
     reviewsCol = db.collection('reviews')
+    blogsCol = db.collection('blogs')
     refundsCol = db.collection('refunds')
     cartsCol = db.collection('carts')
     await usersCol.createIndex({ uid: 1 }, { unique: true })
@@ -1103,6 +1148,8 @@ async function connectDB() {
     await refundsCol.createIndex({ requestKey: 1 }, { unique: true, sparse: true, name: 'unique_user_refund_request' })
     await locationsCol.createIndex({ key: 1 }, { unique: true, sparse: true, name: 'unique_booking_location' })
     await reviewsCol.createIndex({ published: 1, order: 1 })
+    await blogsCol.createIndex({ slug: 1 }, { unique: true, name: 'unique_blog_slug' })
+    await blogsCol.createIndex({ published: 1, featured: -1, publishedAt: -1 })
     await cleanupExpiredHolds(true)
     await backfillBookingSlotLocks()
     await seedPricing()
@@ -3085,6 +3132,124 @@ app.delete('/api/admin/reviews/:id', async (req, res) => {
   }
 })
 
+async function uniqueBlogSlug(value, excludeId = null) {
+  const base = normalizeBlogSlug(value) || `post-${Date.now().toString(36)}`
+  for (let suffix = 1; suffix <= 500; suffix += 1) {
+    const slug = suffix === 1 ? base : `${base}-${suffix}`
+    const query = { slug }
+    if (excludeId) query._id = { $ne: excludeId }
+    const existing = await blogsCol.findOne(query, { projection: { _id: 1 } })
+    if (!existing) return slug
+  }
+  throw new HttpError(409, 'A unique blog URL could not be generated. Please change the title.')
+}
+
+app.get('/api/blogs', async (req, res) => {
+  try {
+    const limit = cleanInteger(req.query?.limit, 50, 1, 100)
+    const category = cleanText(req.query?.category, 80)
+    const query = {
+      published: true,
+      publishedAt: { $lte: new Date().toISOString() },
+    }
+    if (category) query.category = category
+    const posts = await blogsCol.find(query)
+      .sort({ featured: -1, order: 1, publishedAt: -1, createdAt: -1 })
+      .limit(limit)
+      .project({ title: 1, slug: 1, excerpt: 1, category: 1, author: 1, imageUrl: 1, featured: 1, publishedAt: 1, readingMinutes: 1 })
+      .toArray()
+    res.json(posts)
+  } catch (error) {
+    sendServerError(res, error, 'Blog post lookup failed')
+  }
+})
+
+app.get('/api/blogs/:slug', async (req, res) => {
+  try {
+    const slug = normalizeBlogSlug(req.params.slug)
+    if (!slug) return res.status(404).json({ error: 'Blog post not found.' })
+    const post = await blogsCol.findOne({
+      slug,
+      published: true,
+      publishedAt: { $lte: new Date().toISOString() },
+    }, { projection: { updatedBy: 0 } })
+    if (!post) return res.status(404).json({ error: 'Blog post not found.' })
+    res.json(post)
+  } catch (error) {
+    sendServerError(res, error, 'Blog post lookup failed')
+  }
+})
+
+app.get('/api/admin/blogs', async (_req, res) => {
+  try {
+    const posts = await blogsCol.find().sort({ featured: -1, order: 1, publishedAt: -1, createdAt: -1 }).toArray()
+    res.json(posts)
+  } catch (error) {
+    sendServerError(res, error, 'Admin blog lookup failed')
+  }
+})
+
+app.post('/api/admin/blogs', async (req, res) => {
+  try {
+    const now = new Date().toISOString()
+    const clean = sanitizeBlog(req.body)
+    const slug = await uniqueBlogSlug(clean.slug || clean.title)
+    const doc = {
+      ...clean,
+      slug,
+      publishedAt: clean.published ? (clean.publishedAt || now) : clean.publishedAt,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: req.auth.uid,
+      updatedBy: req.auth.uid,
+    }
+    const result = await blogsCol.insertOne(doc)
+    res.status(201).json({ ok: true, post: { ...doc, _id: result.insertedId } })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    if (error.code === 11000) return res.status(409).json({ error: 'A blog post already uses this URL.' })
+    sendServerError(res, error, 'Blog post creation failed')
+  }
+})
+
+app.put('/api/admin/blogs/:id', async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid blog post id.')
+    const id = new ObjectId(req.params.id)
+    const existing = await blogsCol.findOne({ _id: id })
+    if (!existing) return res.status(404).json({ error: 'Blog post not found.' })
+    const now = new Date().toISOString()
+    const clean = sanitizeBlog(req.body)
+    const requestedSlug = clean.slug || existing.slug || clean.title
+    const slug = requestedSlug === existing.slug ? existing.slug : await uniqueBlogSlug(requestedSlug, id)
+    const doc = {
+      ...clean,
+      slug,
+      publishedAt: clean.published ? (clean.publishedAt || existing.publishedAt || now) : clean.publishedAt,
+      updatedAt: now,
+      updatedBy: req.auth.uid,
+    }
+    const post = await blogsCol.findOneAndUpdate({ _id: id }, { $set: doc }, { returnDocument: 'after' })
+    res.json({ ok: true, post })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    if (error.code === 11000) return res.status(409).json({ error: 'A blog post already uses this URL.' })
+    sendServerError(res, error, 'Blog post update failed')
+  }
+})
+
+app.delete('/api/admin/blogs/:id', async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid blog post id.')
+    const result = await blogsCol.deleteOne({ _id: new ObjectId(req.params.id) })
+    if (!result.deletedCount) return res.status(404).json({ error: 'Blog post not found.' })
+    res.json({ ok: true })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Blog post deletion failed')
+  }
+})
+
 app.get('/api/socials', async (req, res) => {
   try {
     const socials = await socialsCol.find().sort({ order: 1, platform: 1 }).toArray()
@@ -3559,6 +3724,7 @@ export {
   packageSlotAllowance,
   pricingForBookingLocation,
   sanitizeLocation,
+  sanitizeBlog,
   sanitizePricing,
   sanitizeReview,
   splitCheckoutItems,

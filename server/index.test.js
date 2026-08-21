@@ -9,6 +9,7 @@ const {
   sanitizeLocation,
   sanitizePricing,
   sanitizeReview,
+  sanitizeBlog,
   packageSlotAllowance,
   splitCheckoutItems,
   validateContinuationSlotCount,
@@ -26,6 +27,32 @@ test('customer reviews require clear text and constrain rating, order, and visib
   assert.throws(
     () => sanitizeReview({ name: '', text: 'Helpful', rating: 5 }),
     error => error.status === 400 && /name and review text/i.test(error.message)
+  )
+})
+
+test('blog posts sanitize publish data and require secure images', () => {
+  const post = sanitizeBlog({
+    title: '  Safe Driving Basics  ',
+    content: 'Check your mirrors before every lane change.',
+    category: '  Driving Tips  ',
+    author: '  School Team  ',
+    imageUrl: 'https://example.com/driving.jpg',
+    published: true,
+    featured: true,
+    order: -10,
+  })
+
+  assert.equal(post.title, 'Safe Driving Basics')
+  assert.equal(post.category, 'Driving Tips')
+  assert.equal(post.author, 'School Team')
+  assert.equal(post.excerpt, 'Check your mirrors before every lane change.')
+  assert.equal(post.readingMinutes, 1)
+  assert.equal(post.order, 0)
+  assert.equal(post.published, true)
+  assert.equal(post.featured, true)
+  assert.throws(
+    () => sanitizeBlog({ title: 'Unsafe image', content: 'Text', imageUrl: 'http://example.com/image.jpg' }),
+    error => error.status === 400 && /secure HTTPS URL/i.test(error.message)
   )
 })
 

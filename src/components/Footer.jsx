@@ -216,6 +216,7 @@ export default function Footer() {
                 <li><Link to="/#programs" className="ft-link">Programs</Link></li>
                 <li><Link to="/#pricing" className="ft-link">Pricing</Link></li>
                 <li><Link to="/#route" className="ft-link">The Route</Link></li>
+                <li><Link to="/blog" className="ft-link">Blog</Link></li>
                 <li><Link to="/register" className="ft-link ft-link-gold">Online Drivers Ed</Link></li>
                 <li><Link to="/login" className="ft-link">Student Login</Link></li>
               </ul>

@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { label: 'Home', href: '/', external: false },
   { label: 'Packages And Pricing', href: '/pricing', external: false },
   { label: 'Contact Us', href: '/contact', external: false },
+  { label: 'Blog', href: '/blog', external: false },
   { label: 'Register For Online Drivers Ed', href: '/register', external: false },
   { label: 'Register For Driving Lessons', href: '/schedule', external: false },
 ]
