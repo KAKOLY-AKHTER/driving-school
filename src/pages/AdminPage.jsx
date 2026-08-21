@@ -40,15 +40,6 @@ const adminUserName = (account) => {
   ).trim()
 }
 
-const formatUSD = (value) => {
-  const amount = typeof value === 'number'
-    ? value
-    : Number.parseFloat(String(value ?? '').replace(/[^0-9.-]/g, ''))
-  return Number.isFinite(amount)
-    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
-    : '$0.00'
-}
-
 const bookingSortValue = (booking) => {
   const time = String(booking?.timeSlot || booking?.time || '').match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
   let minutes = 0
@@ -128,6 +119,14 @@ const TIME_SLOT_MAP = {
   slot4: 'Afternoon 2 (4-6 PM)',
 }
 
+const ADMIN_LESSON_TIMES = [
+  '07:00 AM - 09:00 AM',
+  '09:00 AM - 11:00 AM',
+  '12:00 PM - 02:00 PM',
+  '02:00 PM - 04:00 PM',
+  '04:00 PM - 06:00 PM',
+]
+
 const SVG = {
   dashboard: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" /></svg>,
   users: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>,
@@ -144,6 +143,274 @@ const SVG = {
   map: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 20l-6 3V7l6-3 6 3 6-3v16l-6 3-6-3z" /><path d="M9 4v16M15 7v16" /></svg>,
   share: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></svg>,
   refund: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" /></svg>,
+  star: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>,
+}
+
+function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle, requestConfirmation, setMessage }) {
+  const emptyForm = { name: '', text: '', rating: 5, order: 0, published: true }
+  const [reviews, setReviews] = useState([])
+  const [form, setForm] = useState(emptyForm)
+  const [editingId, setEditingId] = useState('')
+  const [search, setSearch] = useState('')
+  const [visibility, setVisibility] = useState('all')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [loadVersion, setLoadVersion] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    setError('')
+    api.adminReviews()
+      .then(data => { if (active) setReviews(Array.isArray(data) ? data : []) })
+      .catch(loadError => { if (active) setError(loadError?.message || 'Reviews could not be loaded.') })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [loadVersion])
+
+  const resetForm = () => { setForm(emptyForm); setEditingId('') }
+
+  const saveReview = async event => {
+    event.preventDefault()
+    if (!form.name.trim() || !form.text.trim()) {
+      setMessage('Reviewer name and review text are required.')
+      return
+    }
+    setSaving(true)
+    try {
+      const payload = { ...form, name: form.name.trim(), text: form.text.trim(), rating: Number(form.rating), order: Number(form.order), published: Boolean(form.published) }
+      if (editingId) await api.adminUpdateReview(editingId, payload)
+      else await api.adminAddReview(payload)
+      setMessage(editingId ? 'Customer review updated.' : 'Customer review added.')
+      resetForm()
+      setLoadVersion(value => value + 1)
+    } catch (saveError) {
+      setMessage(saveError?.message || 'Review could not be saved.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const startEdit = review => {
+    setEditingId(String(review._id))
+    setForm({ name: review.name || '', text: review.text || '', rating: Number(review.rating) || 5, order: Number(review.order) || 0, published: review.published !== false })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const togglePublished = async review => {
+    try {
+      await api.adminUpdateReview(review._id, { ...review, published: review.published === false })
+      setMessage(review.published === false ? 'Review published on the Home page.' : 'Review hidden from the Home page.')
+      setLoadVersion(value => value + 1)
+    } catch (toggleError) {
+      setMessage(toggleError?.message || 'Review visibility could not be changed.')
+    }
+  }
+
+  const deleteReview = async review => {
+    await api.adminDeleteReview(review._id)
+    setMessage('Customer review deleted.')
+    if (editingId === String(review._id)) resetForm()
+    setLoadVersion(value => value + 1)
+  }
+
+  const filtered = reviews.filter(review => {
+    const query = search.trim().toLowerCase()
+    return (!query || String(review.name || '').toLowerCase().includes(query) || String(review.text || '').toLowerCase().includes(query))
+      && (visibility === 'all' || (visibility === 'published' ? review.published !== false : review.published === false))
+  })
+  const publishedCount = reviews.filter(review => review.published !== false).length
+
+  return (
+    <div style={{ display: 'grid', gap: '1.5rem' }}>
+      <form onSubmit={saveReview} style={cardStyle}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+          <div><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>{editingId ? 'Edit Customer Review' : 'Add Customer Review'}</h2><p style={{ margin: '.35rem 0 0', color: '#64748B' }}>Published reviews appear automatically in the Home page testimonial carousel.</p></div>
+          <span style={{ padding: '.35rem .65rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontSize: '.8rem', fontWeight: 800 }}>{publishedCount} Published</span>
+        </div>
+        <div className="admin-grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 180px 180px', gap: '1rem' }}>
+          <div><label htmlFor="review-name" style={labelStyle}>Reviewer Name</label><input id="review-name" maxLength={120} required value={form.name} onChange={event => setForm(current => ({ ...current, name: event.target.value }))} placeholder="Customer name" style={inputStyle} /></div>
+          <div><label htmlFor="review-rating" style={labelStyle}>Rating</label><select id="review-rating" value={form.rating} onChange={event => setForm(current => ({ ...current, rating: Number(event.target.value) }))} style={inputStyle}>{[5,4,3,2,1].map(rating => <option key={rating} value={rating}>{rating} Star{rating === 1 ? '' : 's'}</option>)}</select></div>
+          <div><label htmlFor="review-order" style={labelStyle}>Display Order</label><input id="review-order" type="number" min="0" max="10000" value={form.order} onChange={event => setForm(current => ({ ...current, order: event.target.value }))} style={inputStyle} /></div>
+        </div>
+        <div style={{ marginTop: '1rem' }}><label htmlFor="review-text" style={labelStyle}>Review Text</label><textarea id="review-text" required maxLength={1200} rows={5} value={form.text} onChange={event => setForm(current => ({ ...current, text: event.target.value }))} placeholder="Write the customer's testimonial…" style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }} /><div style={{ textAlign: 'right', color: '#94A3B8', fontSize: '.78rem', marginTop: '.25rem' }}>{form.text.length}/1200</div></div>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '.55rem', marginTop: '.75rem', color: '#334155', fontWeight: 800, cursor: 'pointer' }}><input type="checkbox" checked={form.published} onChange={event => setForm(current => ({ ...current, published: event.target.checked }))} />Publish on Home page</label>
+        <div style={{ display: 'flex', gap: '.65rem', marginTop: '1.15rem', flexWrap: 'wrap' }}><button type="submit" disabled={saving} style={{ minHeight: '44px', padding: '.7rem 1.1rem', border: 0, borderRadius: '9px', background: `linear-gradient(135deg,${SKY_BLUE},#0A2A5E)`, color: '#fff', fontWeight: 850, cursor: saving ? 'wait' : 'pointer' }}>{saving ? 'Saving…' : editingId ? 'Save Changes' : 'Add Review'}</button>{editingId && <button type="button" onClick={resetForm} style={{ minHeight: '44px', padding: '.7rem 1.1rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Cancel Edit</button>}</div>
+      </form>
+
+      <div style={cardStyle}>
+        <div className="admin-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Customer Reviews ({filtered.length} of {reviews.length})</h2><div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}><input className="admin-toolbar-input" type="search" aria-label="Search reviews" placeholder="Search reviewer or text…" value={search} onChange={event => setSearch(event.target.value)} style={{ ...inputStyle, width: '240px' }} /><select aria-label="Filter review visibility" value={visibility} onChange={event => setVisibility(event.target.value)} style={{ ...inputStyle, width: '145px' }}><option value="all">All reviews</option><option value="published">Published</option><option value="draft">Draft</option></select></div></div>
+        {error && <div role="alert" style={{ padding: '.85rem 1rem', marginBottom: '1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{error} <button type="button" onClick={() => setLoadVersion(value => value + 1)} style={{ marginLeft: '.6rem', border: 0, background: 'transparent', color: '#0755AE', fontWeight: 850, cursor: 'pointer' }}>Retry</button></div>}
+        <div className="admin-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr><th style={thStyle}>Order</th><th style={thStyle}>Reviewer</th><th style={thStyle}>Review</th><th style={thStyle}>Rating</th><th style={thStyle}>Visibility</th><th style={thStyle}>Actions</th></tr></thead><tbody>
+          {filtered.map(review => <tr key={review._id}><td style={tdStyle}>{review.order ?? 0}</td><td style={{ ...tdStyle, fontWeight: 800, whiteSpace: 'nowrap' }}>{review.name}</td><td style={{ ...tdStyle, minWidth: '280px', maxWidth: '520px', lineHeight: 1.5 }}>{review.text}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap', color: GOLD_DEEP, fontWeight: 900 }}>{'★'.repeat(Number(review.rating) || 5)}<span style={{ color: '#CBD5E1' }}>{'★'.repeat(5 - (Number(review.rating) || 5))}</span></td><td style={tdStyle}><button type="button" onClick={() => togglePublished(review)} style={{ padding: '.3rem .6rem', border: `1px solid ${review.published !== false ? '#BBF7D0' : '#CBD5E1'}`, borderRadius: '999px', background: review.published !== false ? '#F0FDF4' : '#F8FAFC', color: review.published !== false ? '#15803D' : '#64748B', fontWeight: 800, cursor: 'pointer' }}>{review.published !== false ? 'Published' : 'Draft'}</button></td><td style={tdStyle}><div style={{ display: 'flex', gap: '.4rem' }}><button type="button" onClick={() => startEdit(review)} style={{ padding: '.4rem .65rem', border: `1.5px solid ${SKY_BLUE}`, borderRadius: '8px', background: '#fff', color: SKY_BLUE, fontWeight: 800, cursor: 'pointer' }}>Edit</button><button type="button" onClick={() => requestConfirmation('Delete customer review?', `${review.name}'s testimonial will be permanently removed.`, () => deleteReview(review))} style={{ padding: '.4rem .65rem', border: '1.5px solid #DC2626', borderRadius: '8px', background: '#fff', color: '#DC2626', fontWeight: 800, cursor: 'pointer' }}>Delete</button></div></td></tr>)}
+          {!loading && !filtered.length && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748B' }}>{search || visibility !== 'all' ? 'No reviews match the selected filters.' : 'No customer reviews yet.'}</td></tr>}
+          {loading && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748B' }}>Loading reviews…</td></tr>}
+        </tbody></table></div>
+      </div>
+    </div>
+  )
+}
+
+function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, requestConfirmation, setMessage }) {
+  const [dateInput, setDateInput] = useState('')
+  const [dates, setDates] = useState([])
+  const [times, setTimes] = useState([])
+  const [rows, setRows] = useState([])
+  const [selected, setSelected] = useState([])
+  const [bulkStatus, setBulkStatus] = useState('available')
+  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState('all')
+  const [page, setPage] = useState(1)
+  const [pages, setPages] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [limit, setLimit] = useState('10')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [loadVersion, setLoadVersion] = useState(0)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    setError('')
+    api.adminAvailability({ page, limit, search, status })
+      .then(data => {
+        if (!active) return
+        setRows(Array.isArray(data?.items) ? data.items : [])
+        setTotal(Number(data?.total) || 0)
+        setPages(Math.max(1, Number(data?.pages) || 1))
+        if (Number(data?.page) && Number(data.page) !== page) setPage(Number(data.page))
+        setSelected([])
+      })
+      .catch(loadError => { if (active) setError(loadError?.message || 'Availability could not be loaded.') })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [page, limit, search, status, loadVersion])
+
+  const addDate = () => {
+    if (!dateInput || dateInput <= localDateKey()) {
+      setMessage('Please choose a future date for lesson availability.')
+      return
+    }
+    setDates(current => [...new Set([...current, dateInput])].sort())
+    setDateInput('')
+  }
+
+  const saveAvailability = async () => {
+    if (!dates.length || !times.length) {
+      setMessage('Select at least one future date and one lesson time.')
+      return
+    }
+    setSaving(true)
+    try {
+      const result = await api.adminAddAvailability(dates, times)
+      setMessage(`${result?.saved || dates.length * times.length} availability slot${result?.saved === 1 ? '' : 's'} saved.`)
+      setDates([])
+      setTimes([])
+      setPage(1)
+      setLoadVersion(value => value + 1)
+    } catch (saveError) {
+      setMessage(saveError?.message || 'Availability could not be saved.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const updateSelected = async () => {
+    if (!selected.length) {
+      setMessage('Select at least one availability row first.')
+      return
+    }
+    setSaving(true)
+    try {
+      await api.adminUpdateAvailabilityStatus(selected, bulkStatus)
+      setMessage(`Selected slots marked ${bulkStatus}.`)
+      setLoadVersion(value => value + 1)
+    } catch (updateError) {
+      setMessage(updateError?.message || 'Availability status could not be changed.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const deleteSlot = async (row) => {
+    await api.adminDeleteAvailability(row._id)
+    setMessage('Availability slot deleted.')
+    setLoadVersion(value => value + 1)
+  }
+
+  const statusStyle = (value) => ({
+    available: { background: '#F0FDF4', color: '#15803D' },
+    blocked: { background: '#FEF2F2', color: '#B91C1C' },
+    held: { background: '#FFF7ED', color: '#B45309' },
+    booked: { background: '#EFF6FF', color: '#0755AE' },
+  }[value] || { background: '#F1F5F9', color: '#475569' })
+  const allSelected = rows.length > 0 && rows.every(row => selected.includes(String(row._id)))
+
+  return (
+    <div style={{ display: 'grid', gap: '1.5rem' }}>
+      <div style={cardStyle}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+          <div>
+            <h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>Open Lesson Availability</h2>
+            <p style={{ margin: '.35rem 0 0', color: '#64748B', lineHeight: 1.55 }}>Choose one or more future dates, select the lesson times, then save. Each date/time can be booked by one student.</p>
+          </div>
+          <span style={{ padding: '.35rem .65rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontWeight: 800, fontSize: '.8rem' }}>Pacific Time (California)</span>
+        </div>
+        <div className="admin-grid-responsive" style={{ display: 'grid', gridTemplateColumns: 'minmax(240px,.8fr) minmax(320px,1.2fr)', gap: '1.25rem' }}>
+          <div>
+            <label htmlFor="availability-date" style={{ display: 'block', fontWeight: 800, color: '#334155', marginBottom: '.4rem' }}>Future date</label>
+            <div style={{ display: 'flex', gap: '.5rem' }}>
+              <input id="availability-date" type="date" min={localDateKey(new Date(Date.now() + 86_400_000))} value={dateInput} onChange={event => setDateInput(event.target.value)} style={inputStyle} />
+              <button type="button" onClick={addDate} style={{ padding: '.65rem .9rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}>Add Date</button>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.45rem', marginTop: '.75rem', minHeight: '32px' }}>
+              {dates.map(date => <button type="button" key={date} onClick={() => setDates(current => current.filter(item => item !== date))} title="Remove date" style={{ border: '1px solid #BFDBFE', borderRadius: '999px', padding: '.35rem .6rem', background: '#EFF6FF', color: '#0755AE', fontWeight: 750, cursor: 'pointer' }}>{new Date(`${date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} ×</button>)}
+              {!dates.length && <span style={{ color: '#94A3B8', fontSize: '.9rem' }}>No dates selected yet.</span>}
+            </div>
+          </div>
+          <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+            <legend style={{ fontWeight: 800, color: '#334155', marginBottom: '.4rem' }}>Lesson times</legend>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: '.55rem' }}>
+              {ADMIN_LESSON_TIMES.map(time => <label key={time} style={{ display: 'flex', alignItems: 'center', gap: '.55rem', padding: '.65rem .75rem', border: `1px solid ${times.includes(time) ? '#93C5FD' : '#E2E8F0'}`, borderRadius: '10px', background: times.includes(time) ? '#EFF6FF' : '#fff', color: '#1E293B', fontWeight: 700, cursor: 'pointer' }}><input type="checkbox" checked={times.includes(time)} onChange={() => setTimes(current => current.includes(time) ? current.filter(item => item !== time) : [...current, time])} />{time}</label>)}
+            </div>
+          </fieldset>
+        </div>
+        <div style={{ display: 'flex', gap: '.65rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
+          <button type="button" disabled={saving} onClick={saveAvailability} style={{ minHeight: '44px', padding: '.7rem 1.15rem', border: 0, borderRadius: '9px', background: `linear-gradient(135deg,${SKY_BLUE},#0A2A5E)`, color: '#fff', fontWeight: 850, cursor: saving ? 'wait' : 'pointer' }}>{saving ? 'Saving…' : 'Save Availability'}</button>
+          <button type="button" disabled={saving} onClick={() => { setDates([]); setTimes([]); setDateInput('') }} style={{ minHeight: '44px', padding: '.7rem 1.15rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Reset</button>
+        </div>
+      </div>
+
+      <div style={cardStyle}>
+        <div className="admin-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+          <div><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Availability Calendar ({total})</h2><p style={{ margin: '.25rem 0 0', color: '#64748B', fontSize: '.9rem' }}>Held and Booked statuses are protected and managed automatically.</p></div>
+          <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+            <input className="admin-toolbar-input" type="search" aria-label="Search availability" placeholder="Search date or time…" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '220px' }} />
+            <select aria-label="Filter availability status" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '145px' }}><option value="all">All statuses</option><option value="available">Available</option><option value="blocked">Blocked</option><option value="held">Held</option><option value="booked">Booked</option></select>
+            <select aria-label="Availability rows per page" value={limit} onChange={event => { setLimit(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '90px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1rem' }}>
+          <select aria-label="New status for selected slots" value={bulkStatus} onChange={event => setBulkStatus(event.target.value)} style={{ ...inputStyle, width: '155px' }}><option value="available">Mark Available</option><option value="blocked">Mark Blocked</option></select>
+          <button type="button" disabled={saving || !selected.length} onClick={updateSelected} style={{ minHeight: '42px', padding: '.6rem .9rem', border: 0, borderRadius: '9px', background: selected.length ? SKY_BLUE : '#94A3B8', color: '#fff', fontWeight: 800, cursor: selected.length ? 'pointer' : 'not-allowed' }}>Update Selected ({selected.length})</button>
+        </div>
+        {error && <div role="alert" style={{ padding: '.85rem 1rem', marginBottom: '1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{error} <button type="button" onClick={() => setLoadVersion(value => value + 1)} style={{ marginLeft: '.6rem', border: 0, background: 'transparent', color: '#0755AE', fontWeight: 850, cursor: 'pointer' }}>Retry</button></div>}
+        <div className="admin-table-wrap">
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><tr><th style={thStyle}><input aria-label="Select all visible availability rows" type="checkbox" checked={allSelected} onChange={() => setSelected(allSelected ? [] : rows.map(row => String(row._id)))} /></th><th style={thStyle}>Date</th><th style={thStyle}>Time</th><th style={thStyle}>Status</th><th style={thStyle}>Action</th></tr></thead>
+            <tbody>
+              {rows.map(row => { const meta = statusStyle(row.status); const protectedSlot = row.status === 'held' || row.status === 'booked'; return <tr key={row._id}><td style={tdStyle}><input aria-label={`Select ${row.date} ${row.time}`} type="checkbox" disabled={protectedSlot} checked={selected.includes(String(row._id))} onChange={() => setSelected(current => current.includes(String(row._id)) ? current.filter(id => id !== String(row._id)) : [...current, String(row._id)])} /></td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{new Date(`${row.date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{row.time}</td><td style={tdStyle}><span style={{ ...meta, display: 'inline-flex', padding: '.25rem .55rem', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 800 }}>{row.status}</span></td><td style={tdStyle}><button type="button" disabled={protectedSlot} onClick={() => requestConfirmation('Delete availability?', `${row.date} at ${row.time} will no longer appear in the student calendar.`, () => deleteSlot(row))} style={{ padding: '.4rem .7rem', border: `1.5px solid ${protectedSlot ? '#CBD5E1' : '#DC2626'}`, borderRadius: '8px', background: '#fff', color: protectedSlot ? '#94A3B8' : '#DC2626', fontWeight: 800, cursor: protectedSlot ? 'not-allowed' : 'pointer' }}>Delete</button></td></tr> })}
+              {!loading && !rows.length && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748B' }}>{search || status !== 'all' ? 'No availability matches the filters.' : 'No lesson availability has been created yet.'}</td></tr>}
+              {loading && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748B' }}>Loading availability…</td></tr>}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginTop: '1rem' }}><span style={{ color: '#64748B', fontSize: '.9rem' }}>Page {page} of {pages}</span><div style={{ display: 'flex', gap: '.45rem' }}><button type="button" disabled={page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: page <= 1 ? 'not-allowed' : 'pointer' }}>Previous</button><button type="button" disabled={page >= pages} onClick={() => setPage(value => Math.min(pages, value + 1))} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: page >= pages ? 'not-allowed' : 'pointer' }}>Next</button></div></div>
+      </div>
+    </div>
+  )
 }
 
 export default function AdminPage() {
@@ -687,7 +954,7 @@ export default function AdminPage() {
   const todayStr = localDateKey()
   const initials = user?.displayName ? user.displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : user?.email?.[0]?.toUpperCase() || '?'
   const profilePhotoPreview = validateHttpsUrl(accPhoto, { required: false }).value || DEFAULT_ADMIN_PHOTO_URL
-  const msgIsError = /failed|could not|cannot|required|invalid|blocked|only secure|please (enter|use)/i.test(msg)
+  const msgIsError = /failed|could not|cannot|required|invalid|blocked|no longer|unable|select at least|please (enter|use|choose|select)/i.test(msg)
   const settingsMsgIsError = /failed|could not|cannot|required|invalid|please (enter|use)/i.test(settingsMsg)
 
   useEffect(() => {
@@ -803,14 +1070,15 @@ export default function AdminPage() {
     { id: 'dashboard', label: 'Overview', icon: SVG.dashboard },
     { id: 'users', label: 'Users', icon: SVG.users },
     { id: 'bookings', label: 'Bookings', icon: SVG.calendar },
+    { id: 'calendar', label: 'Admin Calendar', icon: SVG.calendar },
     { id: 'contacts', label: 'Contacts', icon: SVG.mail },
     { id: 'enrolled', label: 'Enrolled Courses', icon: SVG.book },
     { id: 'refunds', label: 'Refunds', icon: SVG.refund },
-    { id: 'pricing', label: 'Pricing', icon: SVG.dollar },
+    { id: 'reviews', label: 'Reviews', icon: SVG.star },
+    { id: 'pricing', label: 'Pricing Plan', icon: SVG.dollar },
     { id: 'locations', label: 'Locations', icon: SVG.map },
     { id: 'maps', label: 'Maps', icon: SVG.map },
-    { id: 'socials', label: 'Social Links', icon: SVG.share },
-    { id: 'settings', label: 'Site Settings', icon: SVG.settings },
+    { id: 'settings', label: 'Settings', icon: SVG.settings },
     { id: 'account', label: 'Admin Account', icon: SVG.shield },
   ]
 
@@ -1219,6 +1487,29 @@ export default function AdminPage() {
                     </table>
                   </div>
                 </div>
+              )}
+
+              {!loading && !loadError && activeTab === 'calendar' && (
+                <AdminAvailabilityPanel
+                  cardStyle={cardStyle}
+                  inputStyle={inputStyle}
+                  thStyle={thStyle}
+                  tdStyle={tdStyle}
+                  requestConfirmation={requestConfirmation}
+                  setMessage={message => { setMsg(message); window.setTimeout(() => setMsg(''), 3200) }}
+                />
+              )}
+
+              {!loading && !loadError && activeTab === 'reviews' && (
+                <AdminReviewsPanel
+                  cardStyle={cardStyle}
+                  inputStyle={inputStyle}
+                  labelStyle={labelStyle}
+                  thStyle={thStyle}
+                  tdStyle={tdStyle}
+                  requestConfirmation={requestConfirmation}
+                  setMessage={message => { setMsg(message); window.setTimeout(() => setMsg(''), 3200) }}
+                />
               )}
 
               {!loading && !loadError && activeTab === 'contacts' && (
@@ -1697,10 +1988,10 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {!loading && !loadError && activeTab === 'socials' && (
-                <div style={cardStyle}>
+              {!loading && !loadError && activeTab === 'settings' && (
+                <div style={{ ...cardStyle, marginBottom: '1.25rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.share} Social Links ({socials.length})</h3>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.share} Social Links Management ({socials.length})</h3>
                     <button onClick={() => { setSocialsForm({ platform: 'facebook', url: '', order: socials.length }); setSocialsEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Social Link</button>
                   </div>
                   <div className="admin-table-wrap">
@@ -1743,7 +2034,7 @@ export default function AdminPage() {
 
               {!loading && !loadError && activeTab === 'settings' && (
                 <div style={cardStyle}>
-                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>{SVG.settings} Contact Information</h3>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>{SVG.settings} Site Information</h3>
                   {settingsMsg && (
                     <div role={settingsMsgIsError ? 'alert' : 'status'} aria-live="polite" style={{ padding: '0.75rem 1rem', background: settingsMsgIsError ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${settingsMsgIsError ? '#FECACA' : '#BBF7D0'}`, borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: settingsMsgIsError ? '#DC2626' : '#16A34A' }}>
                       {settingsMsg}

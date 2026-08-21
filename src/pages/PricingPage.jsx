@@ -98,6 +98,10 @@ export default function PricingPage() {
   const [selectedSlots, setSelectedSlots] = useState([])
   const [pendingDate, setPendingDate] = useState('')
   const [bookedTimes, setBookedTimes] = useState([])
+  const [timeAvailability, setTimeAvailability] = useState({})
+  const [monthAvailability, setMonthAvailability] = useState({})
+  const [monthAvailabilityLoading, setMonthAvailabilityLoading] = useState(false)
+  const [availabilityError, setAvailabilityError] = useState('')
   const [availabilityLoading, setAvailabilityLoading] = useState(false)
   const [error, setError] = useState('')
   const [tiers, setTiers] = useState(null)
@@ -212,13 +216,44 @@ export default function PricingPage() {
     if (!pendingDate) return
     let active = true
     setBookedTimes([])
+    setTimeAvailability({})
     setAvailabilityLoading(true)
     api.getBookingAvailability(pendingDate)
-      .then(data => { if (active) setBookedTimes(Array.isArray(data?.bookedTimes) ? data.bookedTimes : []) })
-      .catch(() => { if (active) setBookedTimes([]) })
+      .then(data => {
+        if (!active) return
+        const slots = Array.isArray(data?.slots) ? data.slots : []
+        setBookedTimes(Array.isArray(data?.bookedTimes) ? data.bookedTimes : [])
+        setTimeAvailability(Object.fromEntries(slots.map(slot => [slot.time, slot.status])))
+      })
+      .catch(() => {
+        if (!active) return
+        setBookedTimes([...PICKUP_TIMES])
+        setTimeAvailability(Object.fromEntries(PICKUP_TIMES.map(time => [time, 'unavailable'])))
+      })
       .finally(() => { if (active) setAvailabilityLoading(false) })
     return () => { active = false }
   }, [pendingDate])
+
+  useEffect(() => {
+    if (step !== 'calendar') return undefined
+    let active = true
+    const year = calendarMonth.getFullYear()
+    const month = calendarMonth.getMonth()
+    const from = `${year}-${String(month + 1).padStart(2, '0')}-01`
+    const lastDay = new Date(year, month + 1, 0).getDate()
+    const to = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    setMonthAvailabilityLoading(true)
+    setAvailabilityError('')
+    api.getAvailability({ from, to })
+      .then(data => { if (active) setMonthAvailability(data?.dates && typeof data.dates === 'object' ? data.dates : {}) })
+      .catch(error => {
+        if (!active) return
+        setMonthAvailability({})
+        setAvailabilityError(error?.message || 'Available lesson dates could not be loaded.')
+      })
+      .finally(() => { if (active) setMonthAvailabilityLoading(false) })
+    return () => { active = false }
+  }, [calendarMonth, step])
 
   const handleChoose = (tier) => {
     if (!enrollmentLoading && planIsContinuation(tier) && selectionLimitForPlan(tier) === 0) {
@@ -541,17 +576,21 @@ export default function PricingPage() {
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><i aria-hidden="true" style={{ width: '11px', height: '11px', borderRadius: '3px', background: '#dbeafe', border: '1px solid #0755ae' }} />Selected</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><i aria-hidden="true" style={{ width: '11px', height: '11px', borderRadius: '3px', background: '#fff1f2', border: '1px solid #fee2e2' }} />Unavailable</span>
               </div>
+              {monthAvailabilityLoading && <p role="status" style={{ margin: '0 0 .65rem', color: '#0755AE', fontSize: '.75rem', fontWeight: 700 }}>Loading available lesson dates…</p>}
+              {availabilityError && <p role="alert" style={{ margin: '0 0 .65rem', color: '#DC2626', fontSize: '.75rem', fontWeight: 700 }}>{availabilityError}</p>}
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '6px' }}>
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => <div key={day} style={{ textAlign: 'center', padding: '0.25rem 0', color: '#475569', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>{day}</div>)}
                 {calendarDays.map((day, index) => {
                   if (!day) return <div key={`blank-${index}`} />
                   const dayDate = new Date(calendarYear, calendarMonthIndex, day)
-                  const disabled = dayDate < today
                   const key = dateKey(day)
+                  const dateSlots = Array.isArray(monthAvailability[key]) ? monthAvailability[key] : []
+                  const hasAvailableTime = dateSlots.some(slot => slot.status === 'available')
+                  const disabled = dayDate < today || monthAvailabilityLoading || !hasAvailableTime
                   const selected = selectedSlots.some(slot => slot.date === key)
                   return (
-                    <button key={key} disabled={disabled} onClick={() => { setPendingDate(key); setError('') }} style={{ minHeight: '42px', border: selected ? '2px solid #0755ae' : `1px solid ${disabled ? '#fee2e2' : '#cde7d2'}`, borderRadius: '3px', background: selected ? '#dbeafe' : disabled ? '#fff1f2' : '#edf7ef', color: selected ? '#0755ae' : disabled ? '#ff3b45' : '#19963b', fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: selected ? 800 : 500, cursor: disabled ? 'not-allowed' : 'pointer' }}>{day}</button>
+                    <button key={key} disabled={disabled} title={hasAvailableTime ? `${dateSlots.filter(slot => slot.status === 'available').length} time slots available` : 'No lesson times opened by the school'} onClick={() => { setPendingDate(key); setError('') }} style={{ minHeight: '42px', border: selected ? '2px solid #0755ae' : `1px solid ${disabled ? '#fee2e2' : '#cde7d2'}`, borderRadius: '3px', background: selected ? '#dbeafe' : disabled ? '#fff1f2' : '#edf7ef', color: selected ? '#0755ae' : disabled ? '#ff3b45' : '#19963b', fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: selected ? 800 : 500, cursor: disabled ? 'not-allowed' : 'pointer' }}>{day}</button>
                   )
                 })}
               </div>
@@ -629,17 +668,26 @@ export default function PricingPage() {
                   <p style={{ margin: '0 0 1.2rem', color: '#102a46', fontFamily: 'var(--font-body)', fontSize: '1rem' }}>Choose your preferred pickup time:</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
                     {PICKUP_TIMES.map(time => {
+                      const effectiveStatus = timeAvailability[time] || (availabilityLoading ? 'loading' : 'unavailable')
                       const booked = bookedTimes.includes(time)
                         || selectedSlots.some(slot => slot.date === pendingDate && slot.time === time)
                         || selectedPlans.some(plan => String(plan.tier.id) !== String(selectedTier.id)
                           && plan.slots.some(slot => slot.date === pendingDate && slot.time === time))
+                        || effectiveStatus !== 'available'
                       const slotLimit = selectionLimitForPlan(selectedTier)
                       const limitReached = selectedSlots.length >= slotLimit
+                      const unavailableLabel = effectiveStatus === 'held'
+                        ? 'Held'
+                        : effectiveStatus === 'booked'
+                          ? 'Booked'
+                          : effectiveStatus === 'blocked'
+                            ? 'Blocked'
+                            : 'Unavailable'
                       return (
                       <div key={time} style={{ minHeight: '56px', padding: '0.7rem 0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', borderRadius: '11px', background: booked ? '#ffe5e5' : '#fff', boxShadow: booked ? 'none' : '0 8px 24px rgba(15,23,42,0.09)' }}>
                         <strong style={{ color: '#08284a', fontFamily: 'var(--font-body)', fontSize: '1rem' }}>{time}</strong>
                         {booked ? (
-                          <button disabled style={{ padding: '0.55rem 0.75rem', border: 0, borderRadius: '5px', background: '#e93647', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.9rem', fontWeight: 800, cursor: 'not-allowed' }}>Booked</button>
+                          <button disabled style={{ padding: '0.55rem 0.75rem', border: 0, borderRadius: '5px', background: effectiveStatus === 'held' ? '#D97706' : '#e93647', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.9rem', fontWeight: 800, cursor: 'not-allowed' }}>{availabilityLoading ? 'Checking…' : unavailableLabel}</button>
                         ) : (
                           <button disabled={limitReached || availabilityLoading} onClick={() => { const nextSlots = [...selectedSlots, { date: pendingDate, time }]; setSelectedSlots(nextSlots); setSelectedPlans(prev => prev.map(plan => plan.tier.id === selectedTier.id ? { ...plan, slots: nextSlots } : plan)); setSelectedDate(pendingDate); setSelectedTime(time); setPendingDate(''); setError('') }} style={{ padding: '0.55rem 0.75rem', border: 0, borderRadius: '5px', background: limitReached || availabilityLoading ? '#94a3b8' : '#0866ff', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.9rem', cursor: limitReached || availabilityLoading ? 'not-allowed' : 'pointer' }}>{availabilityLoading ? 'Checking...' : limitReached ? `Max ${slotLimit} Slot${slotLimit > 1 ? 's' : ''}` : 'Book Now'}</button>
                         )}

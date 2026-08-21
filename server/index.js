@@ -355,6 +355,19 @@ function sanitizeSocial(value) {
   if (!allowedPlatforms.has(platform)) throw new HttpError(400, 'Please choose a supported social platform.')
   return { platform, url, order: cleanInteger(value.order, 0, 0, 10_000) }
 }
+function sanitizeReview(value, { partial = false } = {}) {
+  if (!isPlainObject(value)) throw new HttpError(400, 'A valid customer review is required.')
+  const output = {}
+  if (!partial || value.name !== undefined) output.name = cleanText(value.name, 120)
+  if (!partial || value.text !== undefined) output.text = cleanText(value.text, 1200)
+  if (!partial || value.rating !== undefined) output.rating = cleanInteger(value.rating, 5, 1, 5)
+  if (!partial || value.order !== undefined) output.order = cleanInteger(value.order, 0, 0, 10_000)
+  if (!partial || value.published !== undefined) output.published = value.published !== false
+  if (!partial && (!output.name || !output.text)) throw new HttpError(400, 'Reviewer name and review text are required.')
+  if (partial && value.name !== undefined && !output.name) throw new HttpError(400, 'Reviewer name is required.')
+  if (partial && value.text !== undefined && !output.text) throw new HttpError(400, 'Review text is required.')
+  return output
+}
 function sanitizeSettings(value) {
   if (!isPlainObject(value)) throw new HttpError(400, 'Valid site settings are required.')
   const output = {
@@ -405,6 +418,14 @@ const BOOKING_TIME_ORDER = new Map([
   '02:00 PM - 04:00 PM',
   '04:00 PM - 06:00 PM',
 ].map((time, index) => [time, index]))
+const ADMIN_AVAILABILITY_TIMES = [
+  '07:00 AM - 09:00 AM',
+  '09:00 AM - 11:00 AM',
+  '12:00 PM - 02:00 PM',
+  '02:00 PM - 04:00 PM',
+  '04:00 PM - 06:00 PM',
+]
+const ADMIN_AVAILABILITY_TIME_SET = new Set(ADMIN_AVAILABILITY_TIMES)
 const BOOKING_HOLD_MINUTES = Math.max(5, Math.min(60, Number(process.env.BOOKING_HOLD_MINUTES) || 15))
 const ACTIVE_BOOKING_STATUSES = ['held', 'scheduled', 'confirmed', 'booked']
 const COUNTED_PACKAGE_BOOKING_STATUSES = new Set(['scheduled', 'confirmed', 'booked', 'completed'])
@@ -520,7 +541,7 @@ const PORT = process.env.PORT || 3001
 const MONGO_URI = process.env.MONGO_URI
 const DB_NAME = 'driving_school'
 
-let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, contactCol, settingsCol, pricingCol, enrollmentsCol, areasCol, locationsCol, socialsCol, refundsCol, cartsCol
+let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, refundsCol, cartsCol
 let connectPromise = null
 
 class HttpError extends Error {
@@ -543,6 +564,57 @@ function validateBookingSlot(date, timeSlot) {
     throw new HttpError(400, 'Past dates cannot be booked.')
   }
   return { date: cleanDate, timeSlot: normalizeBookingTime(cleanTime) }
+}
+
+function validateAvailabilitySlot(date, timeSlot, { allowToday = true } = {}) {
+  const slot = validateBookingSlot(date, timeSlot)
+  if (!ADMIN_AVAILABILITY_TIME_SET.has(slot.timeSlot)) {
+    throw new HttpError(400, 'Please choose one of the five supported lesson times.')
+  }
+  if (!allowToday && slot.date <= californiaDateKey()) {
+    throw new HttpError(400, 'Please choose a future date.')
+  }
+  return slot
+}
+
+async function assertSlotsOpenForBooking(slots, session, status = 409) {
+  const keys = [...new Set(slots.map(slot => bookingSlotKey(slot.date, slot.timeSlot)))]
+  if (!keys.length) throw new HttpError(status, 'Please choose at least one available time slot.')
+  const openCount = await availabilityCol.countDocuments(
+    { slotKey: { $in: keys }, status: 'available' },
+    session ? { session } : undefined
+  )
+  if (openCount !== keys.length) {
+    throw new HttpError(status, 'One or more selected time slots are no longer available. Please choose again.')
+  }
+}
+
+async function effectiveAvailabilitySlots(filter, session) {
+  const availability = await availabilityCol.find(filter, session ? { session } : undefined)
+    .sort({ date: 1, timeOrder: 1 })
+    .toArray()
+  if (!availability.length) return []
+  const now = new Date()
+  const locks = await bookingSlotsCol.find({
+    _id: { $in: availability.map(item => item.slotKey) },
+    $or: [
+      { status: { $in: ['confirmed', 'booked', 'scheduled'] } },
+      { status: 'held', expiresAt: { $gt: now } },
+    ],
+  }, session ? { session } : undefined).toArray()
+  const locksByKey = new Map(locks.map(lock => [String(lock._id), lock]))
+  return availability.map(item => {
+    const lock = locksByKey.get(item.slotKey)
+    const lockStatus = normalizedBookingStatus(lock?.status)
+    const status = item.status === 'blocked'
+      ? 'blocked'
+      : lockStatus === 'held'
+        ? 'held'
+        : lock
+          ? 'booked'
+          : 'available'
+    return { ...item, status }
+  })
 }
 
 function pickupSlotsFromCourse(course) {
@@ -1009,6 +1081,7 @@ async function connectDB() {
     usersCol = db.collection('users')
     bookingsCol = db.collection('bookings')
     bookingSlotsCol = db.collection('booking_slots')
+    availabilityCol = db.collection('availability')
     contactCol = db.collection('contact')
     settingsCol = db.collection('settings')
     pricingCol = db.collection('pricing')
@@ -1016,6 +1089,7 @@ async function connectDB() {
     areasCol = db.collection('areas')
     locationsCol = db.collection('locations')
     socialsCol = db.collection('socials')
+    reviewsCol = db.collection('reviews')
     refundsCol = db.collection('refunds')
     cartsCol = db.collection('carts')
     await usersCol.createIndex({ uid: 1 }, { unique: true })
@@ -1023,15 +1097,19 @@ async function connectDB() {
     await bookingsCol.createIndex({ holdExpiresAt: 1 }, { expireAfterSeconds: 0, name: 'expire_booking_holds' })
     await bookingSlotsCol.createIndex({ date: 1 })
     await bookingSlotsCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, name: 'expire_slot_holds' })
+    await availabilityCol.createIndex({ slotKey: 1 }, { unique: true, name: 'unique_admin_availability_slot' })
+    await availabilityCol.createIndex({ date: 1, timeOrder: 1 })
     await cartsCol.createIndex({ uid: 1 }, { unique: true })
     await refundsCol.createIndex({ requestKey: 1 }, { unique: true, sparse: true, name: 'unique_user_refund_request' })
     await locationsCol.createIndex({ key: 1 }, { unique: true, sparse: true, name: 'unique_booking_location' })
+    await reviewsCol.createIndex({ published: 1, order: 1 })
     await cleanupExpiredHolds(true)
     await backfillBookingSlotLocks()
     await seedPricing()
     await seedAreas()
     await seedLocations()
     await seedSocials()
+    await seedReviews()
     console.log('MongoDB connected')
     return db
   })().catch((e) => {
@@ -1214,17 +1292,43 @@ app.get('/api/bookings/availability', async (req, res) => {
     const date = cleanText(req.query.date, 10)
     if (!isDateKey(date)) return res.status(400).json({ error: 'A valid date is required.' })
     await cleanupExpiredHolds()
-    const now = new Date()
-    const locks = await bookingSlotsCol.find({
+    const slots = await effectiveAvailabilitySlots({ date })
+    const availableTimes = slots.filter(slot => slot.status === 'available').map(slot => slot.time)
+    const bookedTimes = ADMIN_AVAILABILITY_TIMES.filter(time => !availableTimes.includes(time))
+    res.json({
       date,
-      $or: [
-        { status: 'confirmed' },
-        { status: 'held', expiresAt: { $gt: now } },
-      ],
-    }, { projection: { timeSlot: 1 } }).toArray()
-    res.json({ bookedTimes: [...new Set(locks.map(lock => lock.timeSlot).filter(Boolean))] })
+      configured: slots.length > 0,
+      slots: ADMIN_AVAILABILITY_TIMES.map(time => {
+        const slot = slots.find(item => item.time === time)
+        return { time, status: slot?.status || 'unavailable' }
+      }),
+      availableTimes,
+      bookedTimes,
+    })
   } catch (e) {
     sendServerError(res, e, 'Booking availability lookup failed')
+  }
+})
+
+app.get('/api/availability', async (req, res) => {
+  try {
+    const from = cleanText(req.query.from, 10)
+    const to = cleanText(req.query.to, 10)
+    if (!isDateKey(from) || !isDateKey(to) || from > to) {
+      return res.status(400).json({ error: 'A valid availability date range is required.' })
+    }
+    const rangeDays = Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)
+    if (rangeDays > 93) return res.status(400).json({ error: 'Availability can be viewed up to 93 days at a time.' })
+    await cleanupExpiredHolds()
+    const slots = await effectiveAvailabilitySlots({ date: { $gte: from, $lte: to } })
+    const dates = {}
+    for (const slot of slots) {
+      if (!dates[slot.date]) dates[slot.date] = []
+      dates[slot.date].push({ time: slot.time, status: slot.status })
+    }
+    res.json({ from, to, dates, slots: slots.map(({ _id, slotKey, date, time, status }) => ({ _id, slotKey, date, time, status })) })
+  } catch (error) {
+    sendServerError(res, error, 'Availability calendar lookup failed')
   }
 })
 
@@ -1263,6 +1367,7 @@ app.post('/api/bookings', requireAuth, requireAdmin, rateLimit({ windowMs: 60_00
     await cleanupExpiredHolds()
 
     const booking = await withMongoTransaction(async (session) => {
+      await assertSlotsOpenForBooking([{ date, timeSlot }], session)
       const key = bookingSlotKey(date, timeSlot)
       await bookingSlotsCol.deleteOne({ _id: key, status: 'held', expiresAt: { $lte: new Date() } }, { session })
       const existingLock = await bookingSlotsCol.findOne({ _id: key }, { session })
@@ -1719,6 +1824,7 @@ app.post('/api/users/:uid/cart', async (req, res) => {
     const result = await withMongoTransaction(async (session) => {
       const tier = await pricingTierById(courseId, session)
       if (!tier) throw new HttpError(400, 'The selected pricing plan is not available.')
+      await assertSlotsOpenForBooking(slots, session)
       const bookingLocation = await bookingLocationByName(req.body?.city, session)
       const locationPrice = pricingForBookingLocation(tier, bookingLocation)
       const user = await usersCol.findOne({ uid }, { session, projection: { courses: 1 } })
@@ -1930,6 +2036,7 @@ app.post('/api/users/:uid/cart/checkout', async (req, res) => {
           validateSlotCountForTier(slots, tier, 409, `The ${tier.planName} selection`)
           allowance = packageSlotAllowance({}, tier, [], slots.length)
         }
+        await assertSlotsOpenForBooking(slots, session)
         verifiedItems.push({
           ...item,
           id: courseId,
@@ -2387,6 +2494,135 @@ app.get('/api/admin/bookings', async (req, res) => {
   }
 })
 
+app.get('/api/admin/availability', async (req, res) => {
+  try {
+    await cleanupExpiredHolds()
+    const page = cleanInteger(req.query.page, 1, 1, 100_000)
+    const limit = cleanInteger(req.query.limit, 10, 5, 100)
+    const search = cleanText(req.query.search, 80)
+    const statusFilter = cleanText(req.query.status, 20).toLowerCase()
+    const from = cleanText(req.query.from, 10)
+    const to = cleanText(req.query.to, 10)
+    const filter = {}
+    if (search) {
+      const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      filter.$or = [{ date: { $regex: safeSearch, $options: 'i' } }, { time: { $regex: safeSearch, $options: 'i' } }]
+    }
+    if (from || to) {
+      filter.date = {}
+      if (from && isDateKey(from)) filter.date.$gte = from
+      if (to && isDateKey(to)) filter.date.$lte = to
+      if (!Object.keys(filter.date).length) delete filter.date
+    }
+    const effective = await effectiveAvailabilitySlots(filter)
+    const filtered = ['available', 'blocked', 'held', 'booked'].includes(statusFilter)
+      ? effective.filter(slot => slot.status === statusFilter)
+      : effective
+    const total = filtered.length
+    const pages = Math.max(1, Math.ceil(total / limit))
+    const safePage = Math.min(page, pages)
+    const items = filtered.slice((safePage - 1) * limit, safePage * limit)
+      .map(({ _id, slotKey, date, time, status, createdAt, updatedAt }) => ({ _id, slotKey, date, time, status, createdAt, updatedAt }))
+    res.json({ items, total, page: safePage, pages, limit })
+  } catch (error) {
+    sendServerError(res, error, 'Admin availability lookup failed')
+  }
+})
+
+app.post('/api/admin/availability', rateLimit({ windowMs: 60_000, max: 30 }), async (req, res) => {
+  try {
+    const dates = [...new Set((Array.isArray(req.body?.dates) ? req.body.dates : []).map(date => cleanText(date, 10)))]
+    const times = [...new Set((Array.isArray(req.body?.times) ? req.body.times : []).map(time => normalizeBookingTime(time)))]
+    if (!dates.length || dates.length > 90) throw new HttpError(400, 'Choose between 1 and 90 future dates.')
+    if (!times.length || times.length > ADMIN_AVAILABILITY_TIMES.length) throw new HttpError(400, 'Choose at least one supported lesson time.')
+    const slots = dates.flatMap(date => times.map(time => validateAvailabilitySlot(date, time, { allowToday: false })))
+    const now = new Date().toISOString()
+    const operations = slots.map(slot => {
+      const slotKey = bookingSlotKey(slot.date, slot.timeSlot)
+      return {
+        updateOne: {
+          filter: { slotKey },
+          update: {
+            $set: {
+              slotKey,
+              date: slot.date,
+              time: slot.timeSlot,
+              timeOrder: ADMIN_AVAILABILITY_TIMES.indexOf(slot.timeSlot),
+              status: 'available',
+              updatedAt: now,
+              updatedBy: req.auth.uid,
+            },
+            $setOnInsert: { createdAt: now, createdBy: req.auth.uid },
+          },
+          upsert: true,
+        },
+      }
+    })
+    await availabilityCol.bulkWrite(operations, { ordered: false })
+    res.status(201).json({ ok: true, saved: slots.length })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Availability creation failed')
+  }
+})
+
+app.put('/api/admin/availability/status', async (req, res) => {
+  try {
+    const ids = [...new Set((Array.isArray(req.body?.ids) ? req.body.ids : []).map(id => cleanText(id, 40)))]
+    const status = cleanText(req.body?.status, 20).toLowerCase()
+    if (!ids.length || ids.length > 100 || ids.some(id => !ObjectId.isValid(id))) throw new HttpError(400, 'Choose valid availability rows.')
+    if (!['available', 'blocked'].includes(status)) throw new HttpError(400, 'Status must be Available or Blocked.')
+    const objectIds = ids.map(id => new ObjectId(id))
+    const result = await withMongoTransaction(async (session) => {
+      const slots = await availabilityCol.find({ _id: { $in: objectIds } }, { session }).toArray()
+      if (slots.length !== objectIds.length) throw new HttpError(404, 'One or more availability rows were not found.')
+      if (status === 'blocked') {
+        const activeLock = await bookingSlotsCol.findOne({
+          _id: { $in: slots.map(slot => slot.slotKey) },
+          $or: [
+            { status: { $in: ['confirmed', 'booked', 'scheduled'] } },
+            { status: 'held', expiresAt: { $gt: new Date() } },
+          ],
+        }, { session })
+        if (activeLock) throw new HttpError(409, 'Held or booked times cannot be blocked. Cancel the related booking first.')
+      }
+      return availabilityCol.updateMany(
+        { _id: { $in: objectIds } },
+        { $set: { status, updatedAt: new Date().toISOString(), updatedBy: req.auth.uid } },
+        { session }
+      )
+    })
+    res.json({ ok: true, updated: result.modifiedCount })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Availability status update failed')
+  }
+})
+
+app.delete('/api/admin/availability/:id', async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid availability id.')
+    const id = new ObjectId(req.params.id)
+    await withMongoTransaction(async (session) => {
+      const slot = await availabilityCol.findOne({ _id: id }, { session })
+      if (!slot) throw new HttpError(404, 'Availability row not found.')
+      const activeLock = await bookingSlotsCol.findOne({
+        _id: slot.slotKey,
+        $or: [
+          { status: { $in: ['confirmed', 'booked', 'scheduled'] } },
+          { status: 'held', expiresAt: { $gt: new Date() } },
+        ],
+      }, { session })
+      if (activeLock) throw new HttpError(409, 'A held or booked time cannot be deleted. Cancel the related booking first.')
+      await availabilityCol.deleteOne({ _id: id }, { session })
+    })
+    res.json({ ok: true })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Availability deletion failed')
+  }
+})
+
 app.put('/api/admin/users/:uid/role', async (req, res) => {
   try {
     const targetUid = cleanText(req.params.uid, 160)
@@ -2623,6 +2859,68 @@ app.delete('/api/admin/locations/:id', async (req, res) => {
   }
 })
 
+app.get('/api/reviews', async (_req, res) => {
+  try {
+    const reviews = await reviewsCol.find({ published: true })
+      .sort({ order: 1, createdAt: 1 })
+      .project({ name: 1, text: 1, rating: 1, order: 1 })
+      .toArray()
+    res.json(reviews)
+  } catch (error) {
+    sendServerError(res, error, 'Customer review lookup failed')
+  }
+})
+
+app.get('/api/admin/reviews', async (_req, res) => {
+  try {
+    const reviews = await reviewsCol.find().sort({ order: 1, createdAt: 1 }).toArray()
+    res.json(reviews)
+  } catch (error) {
+    sendServerError(res, error, 'Admin review lookup failed')
+  }
+})
+
+app.post('/api/admin/reviews', async (req, res) => {
+  try {
+    const now = new Date().toISOString()
+    const doc = { ...sanitizeReview(req.body), createdAt: now, updatedAt: now, updatedBy: req.auth.uid }
+    const result = await reviewsCol.insertOne(doc)
+    res.status(201).json({ ok: true, review: { ...doc, _id: result.insertedId } })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Customer review creation failed')
+  }
+})
+
+app.put('/api/admin/reviews/:id', async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid review id.')
+    const doc = { ...sanitizeReview(req.body), updatedAt: new Date().toISOString(), updatedBy: req.auth.uid }
+    const review = await reviewsCol.findOneAndUpdate(
+      { _id: new ObjectId(req.params.id) },
+      { $set: doc },
+      { returnDocument: 'after' }
+    )
+    if (!review) return res.status(404).json({ error: 'Review not found.' })
+    res.json({ ok: true, review })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Customer review update failed')
+  }
+})
+
+app.delete('/api/admin/reviews/:id', async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid review id.')
+    const result = await reviewsCol.deleteOne({ _id: new ObjectId(req.params.id) })
+    if (!result.deletedCount) return res.status(404).json({ error: 'Review not found.' })
+    res.json({ ok: true })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Customer review deletion failed')
+  }
+})
+
 app.get('/api/socials', async (req, res) => {
   try {
     const socials = await socialsCol.find().sort({ order: 1, platform: 1 }).toArray()
@@ -2729,6 +3027,18 @@ const DEFAULT_SOCIALS = [
   { platform: 'facebook', url: 'https://www.facebook.com/people/A-Precision-Driving-School/61561300479300/', order: 0 },
   { platform: 'instagram', url: 'https://www.instagram.com/aprecisiondrivingschool/', order: 1 },
   { platform: 'youtube', url: 'https://www.youtube.com/@aprecisiondrivingschool', order: 2 },
+]
+
+const DEFAULT_REVIEWS = [
+  { name: 'Hamza Mian', text: 'I had a great time learning how to drive with the instructors. They are very knowledgeable with driving and passing the behind the wheel test.', rating: 5, published: true, order: 0 },
+  { name: 'Roop L.', text: 'I had a very positive experience with this driving school. My daughter had lessons with Raj, and she is a truly great instructor. Raj does a wonderful job helping students understand how to react to the car and the surrounding environment.', rating: 5, published: true, order: 1 },
+  { name: 'SimplyXenia', text: 'Working with Ken has been a very enjoyable experience!! He stays calm and collected while practicing with me. While still giving me helpful tips for the future.', rating: 5, published: true, order: 2 },
+  { name: 'Armaan', text: 'Had an excellent experience with A Precision Driving School. Definitely recommend if you are looking to learn driving and ace your exam. They taught me everything from starting the car to going on the freeway, and I am far more confident as a driver.', rating: 5, published: true, order: 3 },
+  { name: 'Mudassar Mujawar', text: 'I opted for 6 hours classes and time spent in each class was worth. Instructors were knowledgeable and professional throughout, appreciate the way driving skills were imparted during the classes.', rating: 5, published: true, order: 4 },
+  { name: 'Olivia Brandeis', text: 'Ken was a very patient and flexible instructor. He had lots of available times and even took me through the course before my driving test. I would highly recommend this service.', rating: 5, published: true, order: 5 },
+  { name: 'Shishir Bahubali', text: 'Really good driving school. I had Ken as my instructor all three times and he was very helpful. He was very good at explaining what I have to do and answering all my questions.', rating: 5, published: true, order: 6 },
+  { name: 'Aryav Dusara', text: 'The experience I had with A Precision Driving School was very good. The instructor was very helpful and was able to teach me how to drive without any prior experience on my part.', rating: 5, published: true, order: 7 },
+  { name: 'Mehek Saini', text: 'The driving instructors are super helpful and teach amazingly. They always answer questions specifically and point out and help you fix your mistakes. I 100% recommend.', rating: 5, published: true, order: 8 },
 ]
 
 const DEFAULT_PRICING = [
@@ -3038,6 +3348,15 @@ async function seedSocials() {
   }
 }
 
+async function seedReviews() {
+  const count = await reviewsCol.countDocuments()
+  if (count === 0) {
+    const now = new Date().toISOString()
+    await reviewsCol.insertMany(DEFAULT_REVIEWS.map(review => ({ ...sanitizeReview(review), createdAt: now, updatedAt: now })))
+    console.log('Seeded default customer reviews')
+  }
+}
+
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'API endpoint not found.' })
 })
@@ -3077,8 +3396,10 @@ export {
   pricingForBookingLocation,
   sanitizeLocation,
   sanitizePricing,
+  sanitizeReview,
   splitCheckoutItems,
   validateContinuationSlotCount,
+  validateAvailabilitySlot,
   slotLimitForTier,
 }
 export default app

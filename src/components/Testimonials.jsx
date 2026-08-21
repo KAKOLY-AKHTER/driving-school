@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
+import { api } from '../api'
 
-const REVIEWS = [
+const DEFAULT_REVIEWS = [
   {
     name: 'Hamza Mian',
     text: 'I had a great time learning how to drive with the instructors. They are very knowledgeable with driving and passing the behind the wheel test.',
@@ -136,7 +137,7 @@ function CoverCard({ review, position, isPaused }) {
 
       <div style={{ display: 'flex', gap: '3px', marginBottom: isCenter ? '1rem' : '0.6rem' }}>
         {FIVE_STARS.map((i) => (
-          <svg key={i} width={isCenter ? 18 : 13} height={isCenter ? 18 : 13} viewBox="0 0 24 24" fill={GOLD}>
+          <svg key={i} width={isCenter ? 18 : 13} height={isCenter ? 18 : 13} viewBox="0 0 24 24" fill={i < (Number(review.rating) || 5) ? GOLD : '#D8E0EA'}>
             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
           </svg>
         ))}
@@ -187,22 +188,37 @@ function CoverCard({ review, position, isPaused }) {
 }
 
 export default function Testimonials() {
+  const [reviews, setReviews] = useState(DEFAULT_REVIEWS)
   const [active, setActive] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
 
-  const total = REVIEWS.length
+  const total = reviews.length
 
   const timerRef = useRef(null)
 
   useEffect(() => {
+    let activeRequest = true
+    api.getReviews()
+      .then(data => {
+        if (!activeRequest || !Array.isArray(data)) return
+        setReviews(data)
+        setActive(0)
+      })
+      .catch(() => {})
+    return () => { activeRequest = false }
+  }, [])
+
+  useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current)
-    if (!isPaused && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (reviews.length > 0 && !isPaused && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       timerRef.current = setInterval(() => {
-        setActive((curr) => (curr + 1) % REVIEWS.length)
+        setActive((curr) => (curr + 1) % reviews.length)
       }, 4000)
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
-  }, [isPaused])
+  }, [isPaused, reviews.length])
+
+  if (!total) return null
 
   const [prevIdx, centerIdx, nextIdx] = getIndices(active, total)
 
@@ -392,13 +408,13 @@ export default function Testimonials() {
             style={{ minHeight: '440px' }}
           >
             <div className="testi-side-card" style={{ flex: '0 0 28%' }}>
-              <CoverCard review={REVIEWS[prevIdx]} position="left" isPaused={isPaused} />
+              <CoverCard review={reviews[prevIdx]} position="left" isPaused={isPaused} />
             </div>
             <div className="testi-center-card" style={{ flex: '0 0 44%' }}>
-              <CoverCard review={REVIEWS[centerIdx]} position="center" isPaused={isPaused} />
+              <CoverCard review={reviews[centerIdx]} position="center" isPaused={isPaused} />
             </div>
             <div className="testi-side-card" style={{ flex: '0 0 28%' }}>
-              <CoverCard review={REVIEWS[nextIdx]} position="right" isPaused={isPaused} />
+              <CoverCard review={reviews[nextIdx]} position="right" isPaused={isPaused} />
             </div>
           </div>
 
@@ -412,9 +428,9 @@ export default function Testimonials() {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              {REVIEWS.map((_, i) => (
+              {reviews.map((review, i) => (
                 <button
-                  key={i}
+                  key={review._id || `${review.name}-${i}`}
                   onClick={() => setActive(i)}
                   className={`testi-dot${active === i ? ' active' : ''}`}
                   aria-label={`Go to testimonial ${i + 1}`}

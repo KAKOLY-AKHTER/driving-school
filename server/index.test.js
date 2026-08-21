@@ -8,10 +8,41 @@ const {
   pricingForBookingLocation,
   sanitizeLocation,
   sanitizePricing,
+  sanitizeReview,
   packageSlotAllowance,
   splitCheckoutItems,
   validateContinuationSlotCount,
+  validateAvailabilitySlot,
 } = await import('./index.js')
+
+test('customer reviews require clear text and constrain rating, order, and visibility', () => {
+  assert.deepEqual(sanitizeReview({ name: '  Jane Doe ', text: '  Excellent instructor. ', rating: 9, order: -5, published: false }), {
+    name: 'Jane Doe',
+    text: 'Excellent instructor.',
+    rating: 5,
+    order: 0,
+    published: false,
+  })
+  assert.throws(
+    () => sanitizeReview({ name: '', text: 'Helpful', rating: 5 }),
+    error => error.status === 400 && /name and review text/i.test(error.message)
+  )
+})
+
+test('admin availability accepts only valid future dates and the five public lesson times', () => {
+  assert.deepEqual(validateAvailabilitySlot('2099-12-20', '07:00 AM - 09:00 AM', { allowToday: false }), {
+    date: '2099-12-20',
+    timeSlot: '07:00 AM - 09:00 AM',
+  })
+  assert.throws(
+    () => validateAvailabilitySlot('2099-02-31', '07:00 AM - 09:00 AM'),
+    error => error.status === 400 && /valid booking date and time/i.test(error.message)
+  )
+  assert.throws(
+    () => validateAvailabilitySlot('2099-12-20', '11:00 AM - 01:00 PM'),
+    error => error.status === 400 && /five supported lesson times/i.test(error.message)
+  )
+})
 
 test('booking locations match the approved Near and Long city groups', () => {
   const nearNames = DEFAULT_LOCATIONS
