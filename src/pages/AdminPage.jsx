@@ -7,7 +7,6 @@ import { useAuth } from '../contexts/AuthContext'
 import { api, makeEmbedCode } from '../api'
 import { DEFAULT_SOCIALS, SOCIAL_PLATFORMS, socialIcon, socialPlatformLabel } from '../socials'
 import { usePageMeta } from '../usePageMeta'
-import { openPrintableDocument } from '../utils/printDocument'
 import { DEFAULT_BOOKING_LOCATIONS, locationDistanceLabel } from '../locations'
 
 const GOLD = '#FDBC01'
@@ -94,11 +93,6 @@ function validateHttpsUrl(value, { required = true, googleMapsOnly = false } = {
   } catch {
     return { error: 'Please enter a complete, valid URL beginning with https://.' }
   }
-}
-
-function showPopupBlockedMessage(setMessage) {
-  setMessage('Your browser blocked the document window. Please allow pop-ups and try again.')
-  window.setTimeout(() => setMessage(''), 3500)
 }
 
 const COURSE_MAP = {
@@ -425,7 +419,6 @@ export default function AdminPage() {
   const [bookings, setBookings] = useState([])
   const [contacts, setContacts] = useState([])
   const [userSearch, setUserSearch] = useState('')
-  const [userRoleFilter, setUserRoleFilter] = useState('all')
   const [bookingSearch, setBookingSearch] = useState('')
   const [bookingStatusFilter, setBookingStatusFilter] = useState('all')
   const [contactSearch, setContactSearch] = useState('')
@@ -435,8 +428,6 @@ export default function AdminPage() {
   const [loadError, setLoadError] = useState('')
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [courseModal, setCourseModal] = useState(null)
-  const [selectedCourseId, setSelectedCourseId] = useState('')
   const [contactEdit, setContactEdit] = useState(null)
   const [contactForm, setContactForm] = useState({ firstName: '', lastName: '', phone: '', email: '', comments: '', status: '' })
   const [settings, setSettings] = useState({ phone: '', email: '', address: '', subaddress: '', scheduleLabel: '', scheduleLink: '' })
@@ -457,25 +448,9 @@ export default function AdminPage() {
   const [socials, setSocials] = useState([])
   const [socialsEdit, setSocialsEdit] = useState(null)
   const [socialsForm, setSocialsForm] = useState({ platform: 'facebook', url: '', order: 0 })
-  const [enrollments, setEnrollments] = useState([])
-  const [enrollTotal, setEnrollTotal] = useState(0)
   const [enrollPage, setEnrollPage] = useState(1)
-  const [enrollPages, setEnrollPages] = useState(1)
   const [enrollLimit, setEnrollLimit] = useState('10')
   const [enrollSearch, setEnrollSearch] = useState('')
-  const [enrollFrom, setEnrollFrom] = useState('')
-  const [enrollTo, setEnrollTo] = useState('')
-  const [enrollStats, setEnrollStats] = useState({ totalStudents: 0, totalPackages: 0, totalEnrolled: 0 })
-  const [enrollEdit, setEnrollEdit] = useState(null)
-  const [enrollForm, setEnrollForm] = useState({
-    ID: '', Status: 'pending', Full_Name: '', Email: '', 'Student Phone': '', Gender: '',
-    Date_of_Birth: '', Address: '', City: '', State: '', Zip: '', Permit: '',
-    Issue_Date: '', Expire_Date: '', Parent_Phone: '', Pickup_Address: '', Course_Name: '',
-    Booking_Date: '', Meds: '', Notes: '', Calender_booking_Id: '', Price: '', Total: '',
-  })
-  const [enrollLoading, setEnrollLoading] = useState(false)
-  const [enrollError, setEnrollError] = useState('')
-  const [enrollAttempt, setEnrollAttempt] = useState(0)
   const [refunds, setRefunds] = useState([])
   const [refundTotal, setRefundTotal] = useState(0)
   const [refundPage, setRefundPage] = useState(1)
@@ -665,30 +640,6 @@ export default function AdminPage() {
     }
   }
 
-  const updateAdminRole = async (uid, currentIsAdmin) => {
-    try {
-      await api.adminSetRole(uid, !currentIsAdmin)
-      setUsers(prev => prev.map(u => u.uid === uid ? { ...u, isAdmin: !currentIsAdmin } : u))
-      setMsg(`User ${!currentIsAdmin ? 'promoted to' : 'removed from'} admin.`)
-      setTimeout(() => setMsg(''), 2000)
-    } catch {
-      setMsg('Failed to update role.')
-      setTimeout(() => setMsg(''), 2000)
-    }
-  }
-
-  const handleToggleAdmin = (uid, currentIsAdmin) => {
-    const target = users.find(item => item.uid === uid)
-    const isCurrentUser = uid === user?.uid
-    requestConfirmation(
-      currentIsAdmin ? 'Remove administrator access?' : 'Grant administrator access?',
-      currentIsAdmin
-        ? `${target?.email || 'This user'} will lose administrator access.${isCurrentUser ? ' You may be signed out of this panel.' : ''}`
-        : `${target?.email || 'This user'} will be able to view and change protected website data.`,
-      () => updateAdminRole(uid, currentIsAdmin),
-    )
-  }
-
   const deleteBooking = async (id) => {
     try {
       await api.adminDeleteBooking(id)
@@ -710,43 +661,6 @@ export default function AdminPage() {
       () => deleteBooking(booking._id),
     )
   }
-
-  const handleAddCourse = async (uid) => {
-    if (!selectedCourseId) return
-    const courseName = COURSE_MAP[selectedCourseId] || selectedCourseId
-    const targetUser = users.find(u => u.uid === uid)
-    const course = { id: selectedCourseId, title: courseName, status: 'Enrolled', progress: 0, enrolledAt: new Date().toISOString(), email: targetUser?.email || '' }
-    try {
-      const result = await api.addCourse(uid, course)
-      setUsers(prev => prev.map(u => u.uid === uid ? { ...u, courses: result.courses || [] } : u))
-      setSelectedCourseId('')
-      setCourseModal(null)
-      setMsg(`Course "${courseName}" added for user.`)
-      setTimeout(() => setMsg(''), 2500)
-    } catch {
-      setMsg('Failed to add course.')
-      setTimeout(() => setMsg(''), 2500)
-    }
-  }
-
-  const removeCourse = async (uid, courseId, enrollmentId = '') => {
-    try {
-      const result = await api.removeCourse(uid, courseId, enrollmentId)
-      setUsers(prev => prev.map(u => u.uid === uid ? { ...u, courses: result.courses || [] } : u))
-      setMsg('Course removed.')
-      setTimeout(() => setMsg(''), 2500)
-    } catch {
-      setMsg('Failed to remove course.')
-      setTimeout(() => setMsg(''), 2500)
-    }
-  }
-
-
-  const handleRemoveCourse = (targetUser, course) => requestConfirmation(
-    'Remove course enrollment?',
-    `${course.title || COURSE_MAP[course.id] || 'This course'} will be removed from ${targetUser.displayName || targetUser.email || 'this student'}. Its linked future lessons will also be cancelled.`,
-    () => removeCourse(targetUser.uid, course.id, course.enrollmentId || ''),
-  )
 
   const handleEditContact = (contact) => {
     setContactForm({ firstName: contact.firstName || '', lastName: contact.lastName || '', phone: contact.phone || '', email: contact.email || '', comments: contact.comments || '', status: contact.status || 'new' })
@@ -796,18 +710,6 @@ export default function AdminPage() {
     setTimeout(() => setMsg(''), 2500)
   }
 
-  const deleteEnrollment = async (id) => {
-    try {
-      await api.adminDeleteEnrollment(id)
-      setEnrollments(prev => prev.filter(item => item._id !== id))
-      setEnrollTotal(prev => Math.max(0, prev - 1))
-      setMsg('Enrollment deleted.')
-    } catch {
-      setMsg('Failed to delete enrollment.')
-    }
-    setTimeout(() => setMsg(''), 2500)
-  }
-
   const deleteRefund = async (id) => {
     try {
       await api.adminDeleteRefund(id)
@@ -853,60 +755,25 @@ export default function AdminPage() {
     setTimeout(() => setMsg(''), 2500)
   }
 
-  const openEnrollmentInvoice = (enrollment) => {
-    const opened = openPrintableDocument({
-      title: `Invoice - ${enrollment.ID || enrollment._id || 'Enrollment'}`,
-      heading: 'A Precision Driving School',
-      subtitle: 'Enrollment invoice',
-      rows: Object.entries({
-        ID: enrollment.ID,
-        Student: enrollment.Full_Name,
-        Email: enrollment.Email,
-        Course: enrollment.Course_Name,
-        Price: enrollment.Price,
-        Total: enrollment.Total,
-        Status: enrollment.Status,
-        Date: enrollment.Applied_date,
-      }).filter(([, value]) => value !== null && value !== undefined && value !== ''),
-      autoPrint: true,
-    })
-    if (!opened) showPopupBlockedMessage(setMsg)
-  }
-
-  const openEnrollmentForm = (enrollment) => {
-    const rows = Object.entries(enrollment)
-      .filter(([key]) => !['_id', 'updatedAt', '__v'].includes(key))
-      .map(([key, value]) => [key.replaceAll('_', ' '), value])
-    const opened = openPrintableDocument({
-      title: `Enrollment Form - ${enrollment.Full_Name || enrollment.ID || 'Student'}`,
-      heading: 'A Precision Driving School',
-      subtitle: 'Enrollment form',
-      rows,
-    })
-    if (!opened) showPopupBlockedMessage(setMsg)
-  }
-
   const activeDialogKey = contactEdit ? 'contact'
     : pricingEdit ? 'pricing'
       : locationEdit ? 'location'
         : areasEdit ? 'area'
           : socialsEdit ? 'social'
             : refundEdit ? 'refund'
-              : enrollEdit ? 'enrollment'
-                : confirmDialog ? 'confirmation'
-                  : ''
+              : confirmDialog ? 'confirmation'
+                : ''
 
   const closeActiveDialog = useCallback(() => {
     if (confirmDialog?.busy) return
     if (confirmDialog) setConfirmDialog(null)
-    else if (enrollEdit) setEnrollEdit(null)
     else if (refundEdit) setRefundEdit(null)
     else if (socialsEdit) setSocialsEdit(null)
     else if (areasEdit) setAreasEdit(null)
     else if (locationEdit) setLocationEdit(null)
     else if (pricingEdit) setPricingEdit(null)
     else if (contactEdit) setContactEdit(null)
-  }, [areasEdit, confirmDialog, contactEdit, enrollEdit, locationEdit, pricingEdit, refundEdit, socialsEdit])
+  }, [areasEdit, confirmDialog, contactEdit, locationEdit, pricingEdit, refundEdit, socialsEdit])
 
   useEffect(() => {
     const dialogOpen = Boolean(activeDialogKey)
@@ -958,36 +825,6 @@ export default function AdminPage() {
   const settingsMsgIsError = /failed|could not|cannot|required|invalid|please (enter|use)/i.test(settingsMsg)
 
   useEffect(() => {
-    if (activeTab !== 'enrolled') return
-    let cancelled = false
-    const load = async () => {
-      setEnrollLoading(true)
-      setEnrollError('')
-      try {
-        const params = { page: enrollPage, limit: enrollLimit }
-        if (enrollSearch) params.search = enrollSearch
-        if (enrollFrom) params.from = enrollFrom
-        if (enrollTo) params.to = enrollTo
-        const [list, stats] = await Promise.all([
-          api.adminEnrollments(params),
-          api.adminEnrollmentsStats(),
-        ])
-        if (cancelled) return
-        setEnrollments(Array.isArray(list.data) ? list.data : [])
-        setEnrollTotal(list.total || 0)
-        setEnrollPages(list.totalPages || 1)
-        setEnrollStats(stats || { totalStudents: 0, totalPackages: 0, totalEnrolled: 0 })
-      } catch (error) {
-        if (!cancelled) setEnrollError(error?.message || 'Enrollments could not be loaded.')
-      } finally {
-        if (!cancelled) setEnrollLoading(false)
-      }
-    }
-    load()
-    return () => { cancelled = true }
-  }, [activeTab, enrollPage, enrollLimit, enrollSearch, enrollFrom, enrollTo, enrollAttempt])
-
-  useEffect(() => {
     if (activeTab !== 'refunds') return
     let cancelled = false
     const load = async () => {
@@ -1015,12 +852,38 @@ export default function AdminPage() {
     return () => { cancelled = true }
   }, [activeTab, refundPage, refundLimit, refundSearch, refundAttempt])
 
-  const filteredUsers = users.filter(u => {
+  const websiteUsers = users.filter(u => u.isAdmin !== true)
+  const filteredUsers = websiteUsers.filter(u => {
     const q = userSearch.toLowerCase()
-    const matchesSearch = !q || adminUserName(u).toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q) || (u.phone || '').includes(q)
-    const matchesRole = userRoleFilter === 'all' || (userRoleFilter === 'admin' ? u.isAdmin === true : u.isAdmin !== true)
-    return matchesSearch && matchesRole
+    return !q || adminUserName(u).toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q) || (u.phone || '').includes(q)
   })
+
+  const activeEnrollmentRows = websiteUsers.flatMap(account => (Array.isArray(account.courses) ? account.courses : [])
+    .filter(course => !['cancelled', 'canceled', 'refunded'].includes(normalizeStatus(course?.status)))
+    .map((course, index) => ({
+      account,
+      course,
+      key: course.enrollmentId || `${account.uid}-${course.id || 'course'}-${course.enrolledAt || index}`,
+    })))
+  const enrolledQuery = enrollSearch.trim().toLowerCase()
+  const filteredEnrollmentRows = activeEnrollmentRows.filter(({ account, course }) => !enrolledQuery || [
+    adminUserName(account),
+    account.email,
+    account.phone,
+    course.title,
+    COURSE_MAP[course.id],
+    course.city,
+    course.status,
+  ].some(value => String(value || '').toLowerCase().includes(enrolledQuery)))
+  const enrollTotal = filteredEnrollmentRows.length
+  const enrollPages = Math.max(1, Math.ceil(enrollTotal / Number(enrollLimit)))
+  const safeEnrollPage = Math.min(enrollPage, enrollPages)
+  const visibleEnrollmentRows = filteredEnrollmentRows.slice(
+    (safeEnrollPage - 1) * Number(enrollLimit),
+    safeEnrollPage * Number(enrollLimit),
+  )
+  const enrolledStudentCount = new Set(activeEnrollmentRows.map(row => row.account.uid)).size
+  const enrolledPackageCount = new Set(activeEnrollmentRows.map(row => String(row.course.id || row.course.title || ''))).size
 
   const filteredBookings = bookings.filter(b => {
     const q = bookingSearch.toLowerCase()
@@ -1338,15 +1201,13 @@ export default function AdminPage() {
               {!loading && !loadError && activeTab === 'users' && (
                 <div style={cardStyle}>
                   <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.users} Users <span style={{ color: '#64748B', fontSize: '.9rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>({filteredUsers.length} of {users.length})</span></h3>
+                    <div>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.users} Registered Users <span style={{ color: '#64748B', fontSize: '.9rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>({filteredUsers.length} of {websiteUsers.length})</span></h3>
+                      <p style={{ margin: '.35rem 0 0', color: '#64748B', fontSize: '.9rem' }}>Every student account created on the website appears here.</p>
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       <input className="admin-toolbar-input" aria-label="Search users" type="search" placeholder="Search by name, email, phone…" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} style={{ ...inputStyle, width: '280px' }} />
-                      <select aria-label="Filter users by role" value={userRoleFilter} onChange={(event) => setUserRoleFilter(event.target.value)} style={{ ...inputStyle, width: '140px' }}>
-                        <option value="all">All roles</option>
-                        <option value="admin">Administrators</option>
-                        <option value="user">Students</option>
-                      </select>
-                      {(userSearch || userRoleFilter !== 'all') && <button type="button" onClick={() => { setUserSearch(''); setUserRoleFilter('all') }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
+                      {userSearch && <button type="button" onClick={() => setUserSearch('')} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                     </div>
                   </div>
                   <div className="admin-table-wrap">
@@ -1356,9 +1217,7 @@ export default function AdminPage() {
                           <th style={thStyle}>User</th>
                           <th style={thStyle}>Email</th>
                           <th style={thStyle}>Phone</th>
-                          <th style={thStyle}>Courses</th>
-                          <th style={thStyle}>Role</th>
-                          <th style={thStyle}>Actions</th>
+                          <th style={thStyle}>Account</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1375,52 +1234,12 @@ export default function AdminPage() {
                             <td style={tdStyle}>{u.email || '—'}</td>
                             <td style={tdStyle}>{u.phone || '—'}</td>
                             <td style={tdStyle}>
-                              {u.courses && u.courses.length > 0 ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                  {u.courses.map((c, i) => {
-                                    const courseMeta = courseStatusMeta(c)
-                                    const used = Number(c.slotAllowance?.used ?? c.slotUsage?.used)
-                                    const maximum = Number(c.slotAllowance?.maximum ?? c.slotUsage?.maximum)
-                                    return (
-                                      <div key={c.enrollmentId || `${c.id}-${c.enrolledAt || i}`} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                        <span title={`${courseMeta.label}${Number.isFinite(used) && Number.isFinite(maximum) ? ` · ${used}/${maximum} slots used` : ''}`} style={{ padding: '0.15rem 0.4rem', background: courseMeta.background, color: courseMeta.color, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                                          {c.title || COURSE_MAP[c.id] || `Course ${c.id}`}{Number.isFinite(used) && Number.isFinite(maximum) ? ` · ${used}/${maximum}` : ''}
-                                        </span>
-                                        <button type="button" aria-label={`Remove ${c.title || COURSE_MAP[c.id] || 'course'} from ${adminUserName(u) || u.email || 'user'}`} onClick={() => handleRemoveCourse(u, c)} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', padding: '0 0.2rem', fontSize: '0.95rem', lineHeight: 1 }} title="Remove course enrollment">&times;</button>
-                                      </div>
-                                    )
-                                  })}
-                                </div>
-                              ) : <span style={{ color: '#64748b' }}>—</span>}
-                              {courseModal === u.uid ? (
-                                <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
-                                  <select aria-label={`Select a course for ${adminUserName(u) || u.email || 'user'}`} value={selectedCourseId} onChange={(e) => setSelectedCourseId(e.target.value)} style={{ ...inputStyle, width: 'auto', flex: 1, padding: '0.3rem 0.5rem', fontSize: '1.05rem' }}>
-                                    <option value="">Select course...</option>
-                                    {Object.entries(COURSE_MAP).map(([id, name]) => (
-                                      <option key={id} value={id}>{name}</option>
-                                    ))}
-                                  </select>
-                                  <button onClick={() => handleAddCourse(u.uid)} disabled={!selectedCourseId} style={{ padding: '0.3rem 0.6rem', background: selectedCourseId ? SKY_BLUE : '#ccc', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: selectedCourseId ? 'pointer' : 'not-allowed' }}>Add</button>
-                                  <button onClick={() => { setCourseModal(null); setSelectedCourseId('') }} style={{ padding: '0.3rem 0.6rem', background: 'none', border: '1px solid #ccc', color: '#64748b', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                                </div>
-                              ) : (
-                                <button onClick={() => { setCourseModal(u.uid); setSelectedCourseId('') }} style={{ marginTop: '0.3rem', padding: '0.2rem 0.5rem', background: 'none', border: `1px dashed ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>+ Add</button>
-                              )}
-                            </td>
-                            <td style={tdStyle}>
-                              {u.isAdmin
-                                ? <span style={{ padding: '0.2rem 0.5rem', background: 'rgba(253,188,1,0.15)', color: GOLD_DEEP, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>Admin</span>
-                                : <span style={{ padding: '0.2rem 0.5rem', background: 'rgba(136,153,170,0.1)', color: '#64748b', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>User</span>}
-                            </td>
-                            <td style={tdStyle}>
-                              <button aria-label={`${u.isAdmin ? 'Remove administrator access from' : 'Grant administrator access to'} ${adminUserName(u) || u.email || 'user'}`} onClick={() => handleToggleAdmin(u.uid, u.isAdmin)} style={{ background: 'none', border: `1.5px solid ${u.isAdmin ? '#DC2626' : SKY_BLUE}`, color: u.isAdmin ? '#DC2626' : SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.7rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
-                                {u.isAdmin ? 'Remove Admin' : 'Make Admin'}
-                              </button>
+                              <span style={{ display: 'inline-flex', padding: '.28rem .6rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 800 }}>Registered</span>
                             </td>
                           </tr>
                         ))}
                         {filteredUsers.length === 0 && (
-                          <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>No users found</td></tr>
+                          <tr><td colSpan={4} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>{userSearch ? 'No users match your search.' : 'No registered website users yet.'}</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -1640,9 +1459,9 @@ export default function AdminPage() {
                 <div>
                   <div className="admin-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
                     {[
-                      { num: enrollStats.totalStudents, label: 'Total Students', color: SKY_BLUE },
-                      { num: enrollStats.totalPackages, label: 'Total Packages', color: GOLD },
-                      { num: enrollStats.totalEnrolled, label: 'Enrolled Course', color: '#22C55E' },
+                      { num: enrolledStudentCount, label: 'Enrolled Students', color: SKY_BLUE },
+                      { num: enrolledPackageCount, label: 'Active Packages', color: GOLD },
+                      { num: activeEnrollmentRows.length, label: 'Course Enrollments', color: '#22C55E' },
                     ].map(s => (
                       <div key={s.label} className="admin-stat" style={{ background: '#fff', borderRadius: 'var(--radius-lg)', border: '1px solid #E2EBF5', textAlign: 'center', padding: '1.5rem 1rem', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
                         <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 800, color: s.color, lineHeight: 1, marginBottom: '0.3rem' }}>{s.num}</div>
@@ -1653,93 +1472,76 @@ export default function AdminPage() {
 
                   <div style={cardStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.book} Enrolled Courses ({enrollTotal})</h3>
+                      <div>
+                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.book} Enrolled Users ({enrollTotal})</h3>
+                        <p style={{ margin: '.35rem 0 0', color: '#64748B', fontSize: '.9rem' }}>Students appear here automatically after completing a course enrollment.</p>
+                      </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <input aria-label="Enrollment start date" type="date" value={enrollFrom} onChange={e => { setEnrollFrom(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '140px', fontSize: '1.05rem' }} title="From" />
-                        <span style={{ color: '#64748b', fontSize: '1.05rem' }}>to</span>
-                        <input aria-label="Enrollment end date" type="date" value={enrollTo} onChange={e => { setEnrollTo(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '140px', fontSize: '1.05rem' }} title="To" />
-                        <input aria-label="Search enrollments" type="search" placeholder="Search enrollments…" value={enrollSearch} onChange={e => { setEnrollSearch(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '160px' }} />
+                        <input aria-label="Search enrolled users" type="search" placeholder="Search student, email, plan, city…" value={enrollSearch} onChange={e => { setEnrollSearch(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '280px' }} />
                         <select aria-label="Enrollments per page" value={enrollLimit} onChange={e => { setEnrollLimit(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '90px', fontSize: '1.05rem' }}>
                           <option value="10">10 / page</option>
                           <option value="20">20 / page</option>
                           <option value="50">50 / page</option>
-                          <option value="100">100 / page</option>
                         </select>
-                        <button onClick={() => { setEnrollForm({ ID: '', Status: 'pending', Full_Name: '', Email: '', 'Student Phone': '', Gender: '', Date_of_Birth: '', Address: '', City: '', State: '', Zip: '', Permit: '', Issue_Date: '', Expire_Date: '', Parent_Phone: '', Pickup_Address: '', Course_Name: '', Booking_Date: '', Meds: '', Notes: '', Calender_booking_Id: '', Price: '', Total: '' }); setEnrollEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Add</button>
+                        {enrollSearch && <button type="button" onClick={() => { setEnrollSearch(''); setEnrollPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                       </div>
                     </div>
 
                     <div className="admin-table-wrap" style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem', minWidth: '2000px' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem', minWidth: '1050px' }}>
                         <thead>
                           <tr>
-                            {['ID','Status','Action','Applied_date','Price','Total','Full_Name','Email','Student Phone','Gender','Date_of_Birth','Address','City','State','Zip','Permit','Issue_Date','Expire_Date','Parent_Phone','Pickup_Address','Course_Name','Booking_Date','Meds','Notes','Calender_booking_Id'].map(h => (
-                              <th key={h} style={thStyle}>{h}</th>
-                            ))}
+                            <th style={thStyle}>Student</th>
+                            <th style={thStyle}>Email</th>
+                            <th style={thStyle}>Phone</th>
+                            <th style={thStyle}>Course</th>
+                            <th style={thStyle}>Location</th>
+                            <th style={thStyle}>Price</th>
+                            <th style={thStyle}>Slots</th>
+                            <th style={thStyle}>Status</th>
+                            <th style={thStyle}>Enrolled On</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {enrollLoading ? (
-                            <tr><td role="status" aria-live="polite" colSpan={25} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>Loading enrollments…</td></tr>
-                          ) : enrollError ? (
-                            <tr><td role="alert" colSpan={25} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#B91C1C' }}>
-                              <p style={{ margin: '0 0 .75rem' }}>{enrollError}</p>
-                              <button type="button" onClick={() => setEnrollAttempt(value => value + 1)} style={{ padding: '.55rem .9rem', border: '1px solid #FCA5A5', borderRadius: '9px', background: '#fff', color: '#B91C1C', fontWeight: 800, cursor: 'pointer' }}>Try Again</button>
-                            </td></tr>
-                          ) : enrollments.length === 0 ? (
-                            <tr><td colSpan={25} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748b' }}>No enrollments found</td></tr>
-                          ) : enrollments.map(e => (
-                            <tr key={e._id}>
-                              <td style={tdStyle}>{e.ID || '—'}</td>
-                              <td style={tdStyle}>
-                                <span style={{ padding: '0.15rem 0.4rem', background: e.Status === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(253,188,1,0.1)', color: e.Status === 'success' ? '#16A34A' : GOLD_DEEP, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 700, whiteSpace: 'nowrap' }}>{e.Status || 'pending'}</span>
-                              </td>
-                              <td style={tdStyle}>
-                                <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'nowrap' }}>
-                                  <button type="button" aria-label={`Open invoice for ${e.Full_Name || e.ID || 'student'}`} title="Open invoice" onClick={() => openEnrollmentInvoice(e)} style={{ background:'none', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Invoice</button>
-                                  <button type="button" aria-label={`Open enrollment form for ${e.Full_Name || e.ID || 'student'}`} title="Open enrollment form" onClick={() => openEnrollmentForm(e)} style={{ background:'none', border:'none', color:GOLD_DEEP, cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Form</button>
-                                  <button onClick={() => { setEnrollForm({ ID: e.ID || '', Status: e.Status || 'pending', Full_Name: e.Full_Name || '', Email: e.Email || '', 'Student Phone': e['Student Phone'] || '', Gender: e.Gender || '', Date_of_Birth: e.Date_of_Birth || '', Address: e.Address || '', City: e.City || '', State: e.State || '', Zip: e.Zip || '', Permit: e.Permit || '', Issue_Date: e.Issue_Date || '', Expire_Date: e.Expire_Date || '', Parent_Phone: e.Parent_Phone || '', Pickup_Address: e.Pickup_Address || '', Course_Name: e.Course_Name || '', Booking_Date: e.Booking_Date || '', Meds: e.Meds || '', Notes: e.Notes || '', Calender_booking_Id: e.Calender_booking_Id || '', Price: e.Price || '', Total: e.Total || '' }); setEnrollEdit(e._id) }} style={{ background:'none', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Edit</button>
-                                  <button onClick={() => requestConfirmation('Delete enrollment?', `${e.Full_Name || 'This enrollment'} will be permanently removed.`, () => deleteEnrollment(e._id))} style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', padding:'0.15rem', fontSize: '1.05rem', lineHeight:1, textDecoration:'underline' }}>Delete</button>
-                                </div>
-                              </td>
-                              <td style={tdStyle}>{e.Applied_date ? new Date(e.Applied_date).toLocaleString() : '—'}</td>
-                              <td style={tdStyle}>{e.Price || '—'}</td>
-                              <td style={tdStyle}>{e.Total || '—'}</td>
-                              <td style={{ ...tdStyle, fontWeight: 600 }}>{e.Full_Name || '—'}</td>
-                              <td style={tdStyle}>{e.Email || '—'}</td>
-                              <td style={tdStyle}>{e['Student Phone'] || '—'}</td>
-                              <td style={tdStyle}>{e.Gender || '—'}</td>
-                              <td style={tdStyle}>{e.Date_of_Birth || '—'}</td>
-                              <td style={tdStyle}>{e.Address || '—'}</td>
-                              <td style={tdStyle}>{e.City || '—'}</td>
-                              <td style={tdStyle}>{e.State || '—'}</td>
-                              <td style={tdStyle}>{e.Zip || '—'}</td>
-                              <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>{e.Permit || '—'}</td>
-                              <td style={tdStyle}>{e.Issue_Date || '—'}</td>
-                              <td style={tdStyle}>{e.Expire_Date || '—'}</td>
-                              <td style={tdStyle}>{e.Parent_Phone || '—'}</td>
-                              <td style={tdStyle}>{e.Pickup_Address || '—'}</td>
-                              <td style={{ ...tdStyle, fontWeight: 600 }}>{e.Course_Name || '—'}</td>
-                              <td style={tdStyle}>{e.Booking_Date || '—'}</td>
-                              <td style={tdStyle}>{e.Meds || '—'}</td>
-                              <td style={{ ...tdStyle, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.Notes || '—'}</td>
-                              <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>{e.Calender_booking_Id || '—'}</td>
-                            </tr>
-                          ))}
+                          {visibleEnrollmentRows.map(({ account, course, key }) => {
+                            const statusMeta = courseStatusMeta(course)
+                            const used = Number(course.slotAllowance?.used ?? course.slotUsage?.used ?? course.slotUsed ?? (Array.isArray(course.pickupSlots) ? course.pickupSlots.length : 0))
+                            const maximum = Number(course.slotAllowance?.maximum ?? course.slotUsage?.maximum ?? course.slotMaximum)
+                            const enrolledDate = course.enrolledAt ? new Date(course.enrolledAt) : null
+                            return (
+                              <tr key={key}>
+                                <td style={tdStyle}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem' }}>
+                                    <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, flexShrink: 0 }}>{(adminUserName(account) || account.email || '?')[0].toUpperCase()}</div>
+                                    <span style={{ fontWeight: 700 }}>{adminUserName(account)}</span>
+                                  </div>
+                                </td>
+                                <td style={tdStyle}>{account.email || '—'}</td>
+                                <td style={tdStyle}>{account.phone || '—'}</td>
+                                <td style={{ ...tdStyle, fontWeight: 700 }}>{course.title || COURSE_MAP[course.id] || `Course ${course.id || ''}`}</td>
+                                <td style={tdStyle}>{course.city || '—'}{course.cityDistance ? <span style={{ display: 'block', color: '#64748B', fontSize: '.78rem' }}>{locationDistanceLabel(course.cityDistance)}</span> : null}</td>
+                                <td style={{ ...tdStyle, fontWeight: 800 }}>{course.price || '—'}</td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{Number.isFinite(used) && Number.isFinite(maximum) ? `${used} / ${maximum}` : Number.isFinite(used) ? used : '—'}</td>
+                                <td style={tdStyle}><span style={{ display: 'inline-flex', padding: '.25rem .55rem', borderRadius: '999px', background: statusMeta.background, color: statusMeta.color, fontFamily: 'var(--font-mono)', fontSize: '.7rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 800, whiteSpace: 'nowrap' }}>{statusMeta.label}</span></td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{enrolledDate && !Number.isNaN(enrolledDate.getTime()) ? enrolledDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
+                              </tr>
+                            )
+                          })}
+                          {!visibleEnrollmentRows.length && <tr><td colSpan={9} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748B' }}>{enrollSearch ? 'No enrolled users match your search.' : 'No website users have enrolled in a course yet.'}</td></tr>}
                         </tbody>
                       </table>
                     </div>
 
                     {enrollPages > 1 && (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
-                        <button disabled={enrollPage <= 1} onClick={() => setEnrollPage(prev => Math.max(1, prev - 1))} style={{ padding: '0.4rem 0.8rem', background: enrollPage <= 1 ? '#f0f2f5' : '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, color: enrollPage <= 1 ? '#ccc' : DARK, cursor: enrollPage <= 1 ? 'not-allowed' : 'pointer' }}>Prev</button>
+                        <button disabled={safeEnrollPage <= 1} onClick={() => setEnrollPage(prev => Math.max(1, prev - 1))} style={{ padding: '0.4rem 0.8rem', background: safeEnrollPage <= 1 ? '#f0f2f5' : '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, color: safeEnrollPage <= 1 ? '#ccc' : DARK, cursor: safeEnrollPage <= 1 ? 'not-allowed' : 'pointer' }}>Prev</button>
                         {Array.from({ length: Math.min(enrollPages, 10) }, (_, i) => {
-                          const start = Math.max(1, enrollPage - 4)
+                          const start = Math.max(1, safeEnrollPage - 4)
                           const p = start + i
                           if (p > enrollPages) return null
-                          return <button key={p} onClick={() => setEnrollPage(p)} style={{ padding: '0.4rem 0.7rem', background: p === enrollPage ? SKY_BLUE : '#fff', border: `1px solid ${p === enrollPage ? SKY_BLUE : '#E2EBF5'}`, borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, color: p === enrollPage ? '#fff' : DARK, cursor: 'pointer' }}>{p}</button>
+                          return <button key={p} onClick={() => setEnrollPage(p)} style={{ padding: '0.4rem 0.7rem', background: p === safeEnrollPage ? SKY_BLUE : '#fff', border: `1px solid ${p === safeEnrollPage ? SKY_BLUE : '#E2EBF5'}`, borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, color: p === safeEnrollPage ? '#fff' : DARK, cursor: 'pointer' }}>{p}</button>
                         })}
-                        <button disabled={enrollPage >= enrollPages} onClick={() => setEnrollPage(prev => Math.min(enrollPages, prev + 1))} style={{ padding: '0.4rem 0.8rem', background: enrollPage >= enrollPages ? '#f0f2f5' : '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, color: enrollPage >= enrollPages ? '#ccc' : DARK, cursor: enrollPage >= enrollPages ? 'not-allowed' : 'pointer' }}>Next</button>
+                        <button disabled={safeEnrollPage >= enrollPages} onClick={() => setEnrollPage(prev => Math.min(enrollPages, prev + 1))} style={{ padding: '0.4rem 0.8rem', background: safeEnrollPage >= enrollPages ? '#f0f2f5' : '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, color: safeEnrollPage >= enrollPages ? '#ccc' : DARK, cursor: safeEnrollPage >= enrollPages ? 'not-allowed' : 'pointer' }}>Next</button>
                       </div>
                     )}
                   </div>
@@ -2544,97 +2346,6 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {enrollEdit && (
-                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setEnrollEdit(null) }}>
-                  <div role="dialog" aria-modal="true" aria-labelledby="enrollment-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                      <h3 id="enrollment-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{enrollEdit === 'new' ? 'Add Enrollment' : 'Edit Enrollment'}</h3>
-                      <button type="button" aria-label="Close enrollment editor" onClick={() => setEnrollEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#64748b', cursor: 'pointer' }}>&times;</button>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
-                      {[
-                        { k: 'ID', label: 'ID', ph: 'Auto or manual' },
-                        { k: 'Status', label: 'Status', type: 'select', opts: ['pending', 'success', 'failed'] },
-                        { k: 'Full_Name', label: 'Full Name *' },
-                        { k: 'Email', label: 'Email' },
-                        { k: 'Student Phone', label: 'Student Phone' },
-                        { k: 'Gender', label: 'Gender', type: 'select', opts: ['Male', 'Female', 'Other'] },
-                        { k: 'Date_of_Birth', label: 'Date of Birth', type: 'date' },
-                        { k: 'Course_Name', label: 'Course Name' },
-                        { k: 'Price', label: 'Price', ph: '$249' },
-                        { k: 'Total', label: 'Total', ph: '$249' },
-                        { k: 'Permit', label: 'Permit #' },
-                        { k: 'Issue_Date', label: 'Issue Date', type: 'date' },
-                        { k: 'Expire_Date', label: 'Expire Date', type: 'date' },
-                        { k: 'Parent_Phone', label: 'Parent Phone' },
-                        { k: 'Calender_booking_Id', label: 'Booking ID' },
-                        { k: 'Booking_Date', label: 'Booking Date' },
-                      ].map(({ k, label, type, opts, ph }) => (
-                        <div key={k}>
-                          <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>{label}</label>
-                          {type === 'select' ? (
-                            <select aria-label={label.replace(' *', '')} value={enrollForm[k] || ''} onChange={e => setEnrollForm(prev => ({ ...prev, [k]: e.target.value }))} style={inputStyle}>
-                              {opts.map(o => <option key={o} value={o}>{o}</option>)}
-                            </select>
-                          ) : (
-                            <input autoFocus={k === 'Full_Name'} aria-label={label.replace(' *', '')} type={type || 'text'} value={enrollForm[k] || ''} onChange={e => setEnrollForm(prev => ({ ...prev, [k]: e.target.value }))} style={inputStyle} placeholder={ph || ''} />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
-                      <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Address</label>
-                        <input type="text" value={enrollForm.Address || ''} onChange={e => setEnrollForm(prev => ({ ...prev, Address: e.target.value }))} style={inputStyle} />
-                      </div>
-                      <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Pickup Address</label>
-                        <input type="text" value={enrollForm.Pickup_Address || ''} onChange={e => setEnrollForm(prev => ({ ...prev, Pickup_Address: e.target.value }))} style={inputStyle} />
-                      </div>
-                      <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>City</label>
-                        <input type="text" value={enrollForm.City || ''} onChange={e => setEnrollForm(prev => ({ ...prev, City: e.target.value }))} style={inputStyle} />
-                      </div>
-                      <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>State</label>
-                        <input type="text" value={enrollForm.State || ''} onChange={e => setEnrollForm(prev => ({ ...prev, State: e.target.value }))} style={inputStyle} />
-                      </div>
-                      <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Zip</label>
-                        <input type="text" value={enrollForm.Zip || ''} onChange={e => setEnrollForm(prev => ({ ...prev, Zip: e.target.value }))} style={inputStyle} />
-                      </div>
-                      <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Meds</label>
-                        <input type="text" value={enrollForm.Meds || ''} onChange={e => setEnrollForm(prev => ({ ...prev, Meds: e.target.value }))} style={inputStyle} placeholder="N/A" />
-                      </div>
-                    </div>
-                    <div style={{ marginBottom: '1.5rem' }}>
-                      <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>Notes</label>
-                      <textarea rows="3" value={enrollForm.Notes || ''} onChange={e => setEnrollForm(prev => ({ ...prev, Notes: e.target.value }))} style={{ ...inputStyle, resize: 'vertical' }} />
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.75rem' }}>
-                      <button onClick={() => setEnrollEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Cancel</button>
-                      <button onClick={async () => {
-                        if (!enrollForm.Full_Name) { setMsg('Full Name is required.'); setTimeout(() => setMsg(''), 2000); return }
-                        try {
-                          if (enrollEdit === 'new') {
-                            const r = await api.adminAddEnrollment(enrollForm)
-                            if (r.ok) { enrollForm._id = r._id; setEnrollments(prev => [enrollForm, ...prev]); setEnrollTotal(prev => prev + 1) }
-                          } else {
-                            await api.adminUpdateEnrollment(enrollEdit, enrollForm)
-                            setEnrollments(prev => prev.map(x => x._id === enrollEdit ? { ...x, ...enrollForm } : x))
-                          }
-                          setEnrollEdit(null)
-                          setMsg(enrollEdit === 'new' ? 'Enrollment added!' : 'Enrollment updated!')
-                          setTimeout(() => setMsg(''), 2000)
-                        } catch { setMsg('Failed to save enrollment.'); setTimeout(() => setMsg(''), 2000) }
-                      }} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
-                        {enrollEdit === 'new' ? 'Add Enrollment' : 'Save Changes'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>

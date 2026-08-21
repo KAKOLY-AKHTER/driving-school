@@ -2438,9 +2438,10 @@ app.get('/api/admin/stats', async (req, res) => {
     const today = californiaDateKey()
     const inactiveCourseStatuses = ['refund pending', 'refunded', 'cancelled', 'canceled']
     const [totalUsers, totalBookings, activeEnrollmentRows, upcomingBookings, pendingContacts, pendingRefunds] = await Promise.all([
-      usersCol.countDocuments(),
+      usersCol.countDocuments({ isAdmin: { $ne: true } }),
       bookingsCol.countDocuments({ status: { $ne: 'held' } }),
       usersCol.aggregate([
+        { $match: { isAdmin: { $ne: true } } },
         { $unwind: '$courses' },
         {
           $match: {
