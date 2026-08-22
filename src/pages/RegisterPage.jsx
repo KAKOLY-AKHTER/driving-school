@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { cloneElement, useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
 import { auth } from '../firebase'
@@ -24,13 +24,13 @@ const STATES = [
 ]
 
 const COURSE_TYPES = [
-  { value: '1', label: 'Online Driver Ed — $39.99' },
-  { value: '7', label: 'Duplicate Certificate 400C — $15' },
-  { value: '2', label: 'Basic BTW (Package A - 2 Hours) — $210' },
-  { value: '12', label: 'Basic BTW (Package D - 4 Hours) — $399' },
-  { value: '3', label: 'Essential BTW (Package B - 6 Hours) — $599' },
-  { value: '8', label: 'Ideal BTW + Online Ed (Package C - 6 Hours) — $615' },
-  { value: '4', label: 'Premier BTW (Package E - 10 Hours) — $999' },
+  { value: '1', name: 'Online Driver Ed', detail: '30-hour online course', price: '$39.99' },
+  { value: '7', name: 'Duplicate Certificate 400C', detail: 'Replacement certificate', price: '$15' },
+  { value: '2', name: 'Basic BTW', detail: 'Package A · 2 Hours', price: '$210' },
+  { value: '12', name: 'Basic BTW', detail: 'Package D · 4 Hours', price: '$399' },
+  { value: '3', name: 'Essential BTW', detail: 'Package B · 6 Hours', price: '$599' },
+  { value: '8', name: 'Ideal BTW + Online Ed', detail: 'Package C · 6 Hours', price: '$615' },
+  { value: '4', name: 'Premier BTW', detail: 'Package E · 10 Hours', price: '$999' },
 ]
 
 const STEPS = [
@@ -130,15 +130,18 @@ export default function RegisterPage() {
 
   const inputStyle = {
     width: '100%',
-    padding: '0.85rem 1rem',
+    minHeight: '52px',
+    padding: '0.9rem 1rem',
     background: '#ffffff',
-    border: '1.5px solid #D1DFEE',
-    borderRadius: '10px',
+    border: '1.5px solid #B9C8DA',
+    borderRadius: '12px',
     color: '#0a1628',
     fontFamily: 'var(--font-body)',
-    fontSize: '0.9rem',
+    fontSize: '0.95rem',
+    fontWeight: 500,
     outline: 'none',
-    transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
+    boxShadow: '0 1px 2px rgba(10,22,40,0.03)',
+    transition: 'border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease',
   }
 
   return (
@@ -187,7 +190,7 @@ export default function RegisterPage() {
         }
         .rw-input:focus {
           border-color: ${SKY_BLUE} !important;
-          box-shadow: 0 0 0 3px rgba(1,69,168,0.1) !important;
+          box-shadow: 0 0 0 4px rgba(1,69,168,0.11), 0 6px 18px rgba(10,22,40,0.06) !important;
         }
         .rw-input::placeholder { color: #64748B; }
         .rw-select {
@@ -259,12 +262,73 @@ export default function RegisterPage() {
         .rw-hero-title { animation: rwFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) both; }
         .rw-hero-sub { animation: rwFadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.15s both; }
         .rw-card {
-          background: #F8FAFD;
-          border: 1px solid #E2EBF5;
-          border-radius: var(--radius-lg);
-          padding: clamp(1.5rem, 3vw, 2.5rem);
+          background: #ffffff;
+          border: 1px solid #D9E4F0;
+          border-radius: 22px;
+          padding: clamp(1.5rem, 3vw, 3rem);
           animation: rwFadeUp 0.4s cubic-bezier(0.22,1,0.36,1) both;
           position: relative;
+          box-shadow: 0 24px 70px rgba(8,35,73,0.11), 0 3px 12px rgba(8,35,73,0.05);
+          overflow: hidden;
+        }
+        .rw-card::before {
+          content: '';
+          position: absolute;
+          inset: 0 0 auto;
+          height: 4px;
+          background: linear-gradient(90deg, ${SKY_BLUE}, ${GOLD}, ${SKY_BLUE});
+        }
+        .rw-form-section {
+          background:
+            radial-gradient(circle at 12% 10%, rgba(1,69,168,0.08), transparent 26rem),
+            radial-gradient(circle at 88% 82%, rgba(253,188,1,0.09), transparent 24rem),
+            #F5F8FC;
+        }
+        .rw-progress-shell {
+          position: relative;
+          overflow: hidden;
+        }
+        .rw-progress-shell::before {
+          content: '';
+          position: absolute;
+          inset: 0 0 auto;
+          height: 3px;
+          background: linear-gradient(90deg, ${SKY_BLUE}, ${GOLD});
+        }
+        .rw-course-options {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.75rem;
+        }
+        .rw-course-option {
+          min-height: 92px;
+        }
+        .rw-course-option:hover {
+          border-color: rgba(1,69,168,0.45) !important;
+          transform: translateY(-2px);
+          box-shadow: 0 10px 24px rgba(8,35,73,0.08);
+        }
+        .rw-trust-strip {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 0.75rem;
+          margin-top: 1rem;
+        }
+        .rw-trust-item {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          min-height: 44px;
+          padding: 0.65rem 0.75rem;
+          color: #334155;
+          background: #F7FAFD;
+          border: 1px solid #DFE8F2;
+          border-radius: 10px;
+          font-family: var(--font-body);
+          font-size: 0.75rem;
+          font-weight: 700;
+          text-align: center;
         }
         .rw-cta-gold {
           display: inline-flex;
@@ -295,7 +359,7 @@ export default function RegisterPage() {
           gap: 0.5rem;
           padding: 0.9rem 2rem;
           background: transparent;
-          color: SKY_BLUE;
+          color: ${SKY_BLUE};
           font-family: var(--font-mono);
           font-size: 0.7rem;
           letter-spacing: 0.15em;
@@ -310,13 +374,15 @@ export default function RegisterPage() {
           border-color: ${SKY_BLUE};
           background: rgba(1,69,168,0.04);
         }
-        .rw-form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
-        .rw-form-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+        .rw-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.1rem; }
+        .rw-form-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.1rem; }
         .rw-form-grid-2fr1fr { display: grid; grid-template-columns: 2fr 1fr; gap: 0.75rem; }
         .rw-step-bar { display: flex; gap: 0; }
         @media (max-width: 768px) {
           .rw-form-grid, .rw-form-grid-3 { grid-template-columns: 1fr !important; }
           .rw-form-grid-2fr1fr { grid-template-columns: 1fr !important; }
+          .rw-course-options { grid-template-columns: 1fr; }
+          .rw-trust-strip { grid-template-columns: 1fr; }
           .rw-step-bar { gap: 0.25rem; }
           .rw-step-bar .rw-step-line { display: none !important; }
           .rw-step-bar .rw-step { padding: 0.4rem 0.3rem; }
@@ -324,6 +390,10 @@ export default function RegisterPage() {
         @media (max-width: 480px) {
           .rw-step-bar { flex-wrap: wrap; justify-content: center; gap: 0.5rem; }
           .rw-step-bar .rw-step { flex: 0 0 auto; min-width: 60px; padding: 0.5rem 0.4rem; }
+          .rw-card { border-radius: 16px; padding: 1.25rem; }
+          .rw-registration-actions { align-items: stretch !important; gap: 0.75rem; }
+          .rw-registration-actions > div { width: 100%; }
+          .rw-registration-actions button { width: 100%; }
         }
         @media (max-width: 600px) {
           .rw-hero { padding-top: 14rem !important; }
@@ -418,19 +488,19 @@ export default function RegisterPage() {
       </section>
 
       {/* ═══ Stepper + Form ═══ */}
-      <section style={{
+      <section className="rw-form-section" style={{
         position: 'relative', overflow: 'hidden',
-        padding: 'clamp(1.5rem, 4vw, 3rem) 0 4rem',
+        padding: 'clamp(2rem, 5vw, 4.5rem) 0 5rem',
         marginTop: '-1rem',
       }}>
-        <div className="container" style={{ maxWidth: '48rem', position: 'relative', zIndex: 1 }}>
+        <div className="container" style={{ maxWidth: '68rem', position: 'relative', zIndex: 1 }}>
 
           {/* Progress Steps */}
-          <div className="rw-step-bar" style={{
-            display: 'flex', justifyContent: 'center', marginBottom: '2rem',
-            padding: '1.5rem 2rem', background: '#ffffff',
-            border: '1px solid #E2EBF5', borderRadius: '14px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
+          <div className="rw-step-bar rw-progress-shell" style={{
+            display: 'flex', justifyContent: 'center', marginBottom: '1.25rem',
+            padding: '1.75rem 2.5rem 1.5rem', background: '#ffffff',
+            border: '1px solid #D9E4F0', borderRadius: '18px',
+            boxShadow: '0 12px 36px rgba(8,35,73,0.08)',
           }}>
             {STEPS.map((s, i) => (
               <div key={s.label} className={`rw-step ${i === step ? 'rw-step-active' : ''} ${i < step ? 'rw-step-done' : ''}`}>
@@ -473,7 +543,7 @@ export default function RegisterPage() {
                   </div>
                   <div>
                     <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: DARK, fontWeight: 700, margin: 0 }}>Personal Information</h2>
-                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>Step 1 of 4</p>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#475569', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>Step 1 of 4 · Tell us about the student</p>
                   </div>
                 </div>
 
@@ -521,7 +591,7 @@ export default function RegisterPage() {
                   </div>
                   <div>
                     <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: DARK, fontWeight: 700, margin: 0 }}>Course & Account</h2>
-                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>Step 2 of 4</p>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#475569', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>Step 2 of 4 · Choose the right program</p>
                   </div>
                 </div>
 
@@ -529,26 +599,32 @@ export default function RegisterPage() {
                   background: '#ffffff', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-md)',
                   padding: '1.5rem', marginBottom: '1.5rem',
                 }}>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, marginBottom: '0.75rem' }}>Selected Course</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#475569', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.9rem' }}>Select a course</p>
+                  <div className="rw-course-options">
                   {COURSE_TYPES.map(c => (
-                    <label key={c.value} style={{
+                    <label key={c.value} className="rw-course-option" style={{
                       display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem',
                       border: form.courseType === c.value ? `2px solid ${GOLD}` : '1.5px solid #E2EBF5',
-                      borderRadius: '10px', cursor: 'pointer', marginBottom: '0.5rem',
-                      background: form.courseType === c.value ? 'rgba(253,188,1,0.04)' : '#ffffff',
-                      transition: 'all 0.25s ease',
+                      borderRadius: '12px', cursor: 'pointer',
+                      background: form.courseType === c.value ? 'linear-gradient(135deg, rgba(253,188,1,0.10), rgba(253,188,1,0.025))' : '#ffffff',
+                      transition: 'all 0.25s ease', position: 'relative',
                     }}>
                       <input type="radio" name="courseType" value={c.value} checked={form.courseType === c.value} onChange={handleChange} style={{ accentColor: GOLD, width: '18px', height: '18px' }} />
-                      <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: DARK, fontWeight: 600 }}>{c.label}</span>
+                      <span style={{ minWidth: 0, flex: 1 }}>
+                        <strong style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: DARK, fontWeight: 800, lineHeight: 1.35 }}>{c.name}</strong>
+                        <span style={{ display: 'block', marginTop: '0.2rem', fontFamily: 'var(--font-body)', fontSize: '0.76rem', color: '#475569', fontWeight: 600 }}>{c.detail}</span>
+                      </span>
+                      <strong style={{ color: SKY_BLUE, fontSize: '0.92rem', whiteSpace: 'nowrap' }}>{c.price}</strong>
                     </label>
                   ))}
+                  </div>
                 </div>
 
                 <div style={{
                   background: '#ffffff', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-md)',
                   padding: '1.5rem',
                 }}>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, marginBottom: '1rem' }}>Create Account</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#475569', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: '1rem' }}>Create your secure account</p>
                   <div className="rw-form-grid-3">
                     <Field label="Username" required><input name="username" value={form.username} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
                     <Field label="Password" required><input name="password" type="password" value={form.password} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
@@ -577,7 +653,7 @@ export default function RegisterPage() {
                   </div>
                   <div>
                     <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: DARK, fontWeight: 700, margin: 0 }}>Enrollment Details</h2>
-                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>Step 3 of 4</p>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#475569', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>Step 3 of 4 · Enrollment status</p>
                   </div>
                 </div>
 
@@ -595,6 +671,17 @@ export default function RegisterPage() {
                       Online payment will be enabled after the secure payment provider is connected. You can complete your account registration now without entering any card information.
                     </p>
                   </div>
+                </div>
+
+                <div className="rw-form-grid">
+                  <SummaryCard title="Selected program">
+                    <SumLine label="Course" value={COURSE_TYPES.find(c => c.value === form.courseType)?.name || '—'} />
+                    <SumLine label="Tuition" value={COURSE_TYPES.find(c => c.value === form.courseType)?.price || '—'} />
+                  </SummaryCard>
+                  <SummaryCard title="What happens next">
+                    <SumLine label="Account" value="Created securely" />
+                    <SumLine label="Access" value="Student dashboard" />
+                  </SummaryCard>
                 </div>
 
               </div>
@@ -619,7 +706,7 @@ export default function RegisterPage() {
                   </div>
                   <div>
                     <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: DARK, fontWeight: 700, margin: 0 }}>Review & Confirm</h2>
-                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#8899aa', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>Step 4 of 4</p>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#475569', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>Step 4 of 4 · Verify before submitting</p>
                   </div>
                 </div>
 
@@ -632,7 +719,8 @@ export default function RegisterPage() {
                     <SumLine label="DOB" value={form.dob || '—'} />
                   </SummaryCard>
                   <SummaryCard title="Course">
-                    <SumLine label="Course" value={COURSE_TYPES.find(c => c.value === form.courseType)?.label || '—'} />
+                    <SumLine label="Course" value={COURSE_TYPES.find(c => c.value === form.courseType)?.name || '—'} />
+                    <SumLine label="Tuition" value={COURSE_TYPES.find(c => c.value === form.courseType)?.price || '—'} />
                     <SumLine label="Username" value={form.username || '—'} />
                   </SummaryCard>
                   <SummaryCard title="Address">
@@ -669,7 +757,7 @@ export default function RegisterPage() {
             )}
 
             {/* Navigation */}
-            <div style={{
+            <div className="rw-registration-actions" style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid #E2EBF5',
             }}>
@@ -703,6 +791,15 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            <div className="rw-trust-strip" aria-label="Registration assurances">
+              {['Secure account creation', 'Privacy protected', 'No card details stored'].map((item) => (
+                <div className="rw-trust-item" key={item}>
+                  <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                  {item}
+                </div>
+              ))}
+            </div>
+
           </div>
         </div>
       </section>
@@ -711,13 +808,14 @@ export default function RegisterPage() {
 }
 
 function Field({ label, required, children }) {
+  const controlId = children.props.id || `registration-${children.props.name}`
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-      <label style={{
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+      <label htmlFor={controlId} style={{
         fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 700,
-        color: '#364B6B', letterSpacing: '0.06em', textTransform: 'uppercase',
+        color: '#253B5C', letterSpacing: '0.07em', textTransform: 'uppercase',
       }}>{label}{required && <span style={{ color: '#B23B3B' }}> *</span>}</label>
-      {children}
+      {cloneElement(children, { id: controlId })}
     </div>
   )
 }
@@ -725,8 +823,8 @@ function Field({ label, required, children }) {
 function SummaryCard({ title, children }) {
   return (
     <div style={{
-      background: '#ffffff', border: '1.5px solid #E2EBF5', borderRadius: '10px',
-      padding: '1rem 1.25rem',
+      background: 'linear-gradient(145deg, #ffffff, #F8FBFE)', border: '1.5px solid #D9E4F0', borderRadius: '12px',
+      padding: '1.15rem 1.25rem', boxShadow: '0 6px 18px rgba(8,35,73,0.045)',
     }}>
       <p style={{
         fontFamily: 'var(--font-mono)', fontSize: '0.55rem', color: GOLD_DEEP,
@@ -741,8 +839,8 @@ function SummaryCard({ title, children }) {
 function SumLine({ label, value }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '0.25rem 0' }}>
-      <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: '#8899aa' }}>{label}</span>
-      <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: DARK, fontWeight: 600 }}>{value}</span>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.76rem', color: '#475569', fontWeight: 600 }}>{label}</span>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: DARK, fontWeight: 700, textAlign: 'right' }}>{value}</span>
     </div>
   )
 }
