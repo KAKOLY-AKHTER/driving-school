@@ -1602,7 +1602,7 @@ export default function AdminPage() {
                     </div>
 
                     <div role="note" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #BFDBFE', borderRadius: '12px', background: '#EFF6FF', color: '#1E3A8A', fontSize: '.9rem', lineHeight: 1.55 }}>
-                      These are administrative records only. This dashboard does not transfer or return funds; payment processing will be connected separately.
+                      Refund requests stay pending until reviewed. Changing a PayPal-linked request to Refunded sends the refund through PayPal; Denied closes the request without returning funds.
                     </div>
 
                     <div className="admin-table-wrap">
@@ -2344,6 +2344,11 @@ export default function AdminPage() {
                       <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Reason</label>
                       <textarea rows="3" value={refundForm.Reason} onChange={e => setRefundForm(prev => ({ ...prev, Reason: e.target.value }))} style={{ ...inputStyle, resize: 'vertical' }} placeholder="Why is this being refunded?" />
                     </div>
+                    {refundEdit !== 'new' && refundForm.Status === 'refunded' && (
+                      <div role="alert" style={{ marginBottom: '1.25rem', padding: '.85rem 1rem', border: '1px solid #FCD34D', borderRadius: '12px', background: '#FFFBEB', color: '#92400E', fontSize: '.9rem', lineHeight: 1.55, fontWeight: 650 }}>
+                        Confirm carefully: saving this status will send the linked refund through PayPal. The server verifies the captured payment and prevents the same refund from being submitted twice.
+                      </div>
+                    )}
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
                       <button onClick={() => setRefundEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#334155', cursor: 'pointer' }}>Cancel</button>
                       <button onClick={async () => {
@@ -2354,15 +2359,21 @@ export default function AdminPage() {
                             const r = await api.adminAddRefund(doc)
                             if (r.ok) { doc._id = r._id; setRefunds(prev => [doc, ...prev]); setRefundTotal(prev => prev + 1) }
                           } else {
-                            await api.adminUpdateRefund(refundEdit, doc)
-                            setRefunds(prev => prev.map(x => x._id === refundEdit ? { ...x, ...doc } : x))
+                            if (doc.Status === 'refunded' && !window.confirm('Issue this refund through PayPal now? This payment action cannot be undone from this dashboard.')) return
+                            const result = await api.adminUpdateRefund(refundEdit, doc)
+                            if (result?.status === 'pending' && result?.providerStatus === 'PENDING') {
+                              setMsg('PayPal is processing the refund. Its status remains pending.')
+                            } else {
+                              setMsg(doc.Status === 'refunded' ? 'PayPal refund completed!' : 'Refund updated!')
+                            }
+                            setRefundAttempt(value => value + 1)
                           }
                           setRefundEdit(null)
-                          setMsg(refundEdit === 'new' ? 'Refund added!' : 'Refund updated!')
-                          setTimeout(() => setMsg(''), 2000)
-                        } catch { setMsg('Failed to save refund.'); setTimeout(() => setMsg(''), 2000) }
+                          if (refundEdit === 'new') setMsg('Refund added!')
+                          setTimeout(() => setMsg(''), 3500)
+                        } catch (error) { setMsg(error?.message || 'Failed to save refund.'); setTimeout(() => setMsg(''), 4500) }
                       }} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
-                        {refundEdit === 'new' ? 'Add Refund' : 'Save Changes'}
+                        {refundEdit === 'new' ? 'Add Refund' : refundForm.Status === 'refunded' ? 'Issue PayPal Refund' : 'Save Changes'}
                       </button>
                     </div>
                   </div>

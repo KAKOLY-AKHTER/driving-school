@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useRef } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useCallback } from 'react'
 import { signOut, updateProfile, reauthenticateWithCredential, EmailAuthProvider, updatePassword } from 'firebase/auth'
 import { auth } from '../firebase'
@@ -33,6 +33,24 @@ const formatUSD = (value) => {
   return Number.isFinite(amount)
     ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
     : '$0.00'
+}
+
+const moneyValue = (value) => {
+  const amount = typeof value === 'number'
+    ? value
+    : Number.parseFloat(String(value ?? '').replace(/[^0-9.-]/g, ''))
+  return Number.isFinite(amount) ? amount : 0
+}
+
+const refundedPaymentAmount = (payment) => Math.max(0, moneyValue(payment?.refundedAmount))
+const netPaymentAmount = (payment) => Math.max(0, moneyValue(payment?.amount) - refundedPaymentAmount(payment))
+
+const paymentStatusColors = (status) => {
+  const normalized = normalizeStatus(status)
+  if (normalized === 'paid') return { background:'rgba(5,150,105,0.06)', color:'#047857' }
+  if (normalized === 'refunded' || normalized === 'partially refunded') return { background:'rgba(202,138,4,0.09)', color:'#A16207' }
+  if (normalized === 'pending') return { background:'rgba(234,179,8,0.08)', color:'#A16207' }
+  return { background:'rgba(220,38,38,0.06)', color:'#B91C1C' }
 }
 
 const normalizeStatus = (status) => String(status || '').trim().toLowerCase().replace(/[\s_-]+/g, ' ')
@@ -69,6 +87,7 @@ const bookingSortValue = (booking) => {
 }
 
 const profileTabs = new Set(['dashboard', 'courses', 'payments', 'settings', 'course'])
+const dashboardTabs = new Set(['dashboard', 'courses', 'bookings', 'payments', 'course', 'settings', 'live-support', 'support'])
 
 const dashboardLoadMessage = (result, label) => {
   if (result.status !== 'rejected') return ''
@@ -110,6 +129,7 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const { count: cartCount } = useCart()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
   const [courseType, setCourseType] = useState('')
@@ -117,7 +137,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [loadErrors, setLoadErrors] = useState({ profile: '', bookings: '' })
   const [loadVersion, setLoadVersion] = useState(0)
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const requestedTab = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState(dashboardTabs.has(requestedTab) ? requestedTab : 'dashboard')
   const [bookings, setBookings] = useState([])
   const [completedModules, setCompletedModules] = useState([])
   const [activeModule, setActiveModule] = useState(null)
@@ -174,6 +195,12 @@ export default function DashboardPage() {
   useEffect(() => () => {
     if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current)
   }, [])
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    const nextTab = dashboardTabs.has(tab) ? tab : 'dashboard'
+    setActiveTab(current => current === nextTab ? current : nextTab)
+  }, [searchParams])
 
   useEffect(() => {
     const warnBeforeLeaving = (event) => {
@@ -602,8 +629,8 @@ export default function DashboardPage() {
       } catch {
         showNotice('Your answer is visible, but the conversation history could not be saved.', 'error', 3500)
       }
-    } catch (error) {
-      setChatMessages([...newMessages, { role: 'assistant', content: error.message || 'Sorry, I am temporarily unavailable. Please try again later or contact us at +1 925 329 1736.' }])
+    } catch {
+      setChatMessages([...newMessages, { role: 'assistant', content: 'Sorry, the assistant is temporarily unavailable. Please try again later or contact us at +1 925 329 1736.' }])
     } finally {
       setChatLoading(false)
     }
@@ -659,6 +686,8 @@ export default function DashboardPage() {
   }
 
   const handlePrintPayment = (payment) => {
+    const refunded = refundedPaymentAmount(payment)
+    const net = netPaymentAmount(payment)
     const opened = openPrintableDocument({
       title: `Invoice - ${payment.ref || 'Booking'}`,
       heading: 'A Precision Driving School',
@@ -669,6 +698,7 @@ export default function DashboardPage() {
         ['Email', payment.email],
         ['Item', payment.item],
         ['Amount', formatUSD(payment.amount)],
+        ...(refunded > 0 ? [['Refunded', formatUSD(refunded)], ['Net paid', formatUSD(net)]] : []),
         ['Status', payment.status],
       ],
       autoPrint: true,
@@ -689,8 +719,8 @@ export default function DashboardPage() {
     .sort((a, b) => bookingSortValue(b).localeCompare(bookingSortValue(a)))
   const nextBooking = upcomingBookings[0] || null
   const totalPaid = payments
-    .filter(payment => normalizeStatus(payment.status) === 'paid')
-    .reduce((sum, payment) => sum + (Number.parseFloat(String(payment.amount ?? '').replace(/[^0-9.-]/g, '')) || 0), 0)
+    .filter(payment => ['paid', 'refunded', 'partially refunded'].includes(normalizeStatus(payment.status)))
+    .reduce((sum, payment) => sum + netPaymentAmount(payment), 0)
   const pendingRefunds = courses.filter(course => normalizeStatus(course.status) === 'refund pending').length
   const activeCourses = courses.filter(course => !['refund pending', 'refunded', 'cancelled', 'canceled'].includes(normalizeStatus(course.status)))
   const totalSlotUsage = activeCourses.reduce((summary, course) => {
@@ -718,6 +748,10 @@ export default function DashboardPage() {
     : profileTabs.has(activeTab) ? loadErrors.profile : ''
   const completeTabSwitch = (tab) => {
     setActiveTab(tab)
+    const next = new URLSearchParams(searchParams)
+    if (tab === 'dashboard') next.delete('tab')
+    else next.set('tab', tab)
+    setSearchParams(next, { replace: false })
     setSidebarOpen(false)
     setActiveModule(null)
     setModuleStep(0)
@@ -1057,7 +1091,13 @@ export default function DashboardPage() {
                     <div className="dash-anim dash-d2 dash-card-premium" style={{ gridColumn:'span 4' }}>
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT})` }} />
                       <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.82rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:'0 0 .55rem', fontWeight:700 }}>Lesson Slots</p>
-                      <p style={{ fontFamily:'var(--font-display)', fontSize:'1.25rem', color:DARK, margin:'0 0 .25rem', fontWeight:800 }}>{totalSlotUsage.used} used · {totalSlotUsage.remaining} remaining</p>
+                      {activeCourses.length > 0 ? (
+                        <p style={{ fontFamily:'var(--font-display)', fontSize:'1.25rem', color:DARK, margin:'0 0 .25rem', fontWeight:800 }}>{totalSlotUsage.used} used · {totalSlotUsage.remaining} remaining</p>
+                      ) : pendingRefunds > 0 ? (
+                        <p style={{ fontFamily:'var(--font-display)', fontSize:'1.05rem', color:'#A16207', margin:'0 0 .25rem', fontWeight:800 }}>Unavailable during refund review</p>
+                      ) : (
+                        <p style={{ fontFamily:'var(--font-display)', fontSize:'1.05rem', color:'#475569', margin:'0 0 .25rem', fontWeight:800 }}>No active package</p>
+                      )}
                       <button type="button" onClick={() => switchTab('courses')} style={{ border:0, padding:0, background:'none', color:SKY_BLUE, fontWeight:800, cursor:'pointer' }}>View plan limits</button>
                     </div>
                     <div className="dash-anim dash-d3 dash-card-premium" style={{ gridColumn:'span 4' }}>
@@ -1178,7 +1218,7 @@ export default function DashboardPage() {
                             <div style={{ height:'6px', background:'#E8EDF4', borderRadius:'3px', overflow:'hidden', marginBottom:'0.4rem', maxWidth:'300px' }}>
                               <div style={{ width:`${courseProgress}%`, height:'100%', background:`linear-gradient(90deg,${SKY_BLUE},#3B82F6)`, borderRadius:'3px', transition:'width 0.8s cubic-bezier(0.22,1,0.36,1)' }} />
                             </div>
-                            <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', margin:0 }}>{courseProgress}% study progress · {usage.used}/{usage.maximum} lesson slots used</p>
+                            <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', margin:0 }}>{normalizedStatus === 'refund pending' ? 'Lesson access paused while the refund is reviewed' : normalizedStatus === 'refunded' ? 'Refund completed · enrollment closed' : `${courseProgress}% study progress · ${usage.used}/${usage.maximum} lesson slots used`}</p>
                           </div>
                           <div style={{ display:'flex', gap:'0.5rem', flexShrink:0, flexWrap:'wrap', justifyContent:'flex-end', alignItems:'center' }}>
                             {canRequestAction && course.canBookMore !== false && usage.remaining > 0 && <button type="button" onClick={() => navigate(`/pricing?plan=${encodeURIComponent(course.id)}&continue=1${course.enrollmentId ? `&enrollmentId=${encodeURIComponent(course.enrollmentId)}` : ''}`)} style={{ padding:'0.5rem 1rem', background:'linear-gradient(135deg,rgba(253,188,1,.16),rgba(253,188,1,.06))', color:'#7A5600', border:'1px solid rgba(253,188,1,.35)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:800, cursor:'pointer' }}>Book {usage.remaining} Remaining</button>}
@@ -1258,6 +1298,7 @@ export default function DashboardPage() {
                       </div>
                       <h3 id="cancel-course-title" style={{ fontFamily:'var(--font-display)', fontSize:'1.2rem', color:'#0F172A', fontWeight:800, margin:'0 0 0.5rem' }}>Cancel Enrollment</h3>
                       <p id="cancel-course-copy" style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:0, lineHeight:1.5 }}>Are you sure you want to cancel this course? Its linked future lessons will also be cancelled. Older unlinked lessons remain available on the Lessons page for review. This action cannot be undone.</p>
+                      <p style={{ margin:'0.8rem 0 0', padding:'0.7rem 0.8rem', borderRadius:'10px', background:'#FFF7ED', border:'1px solid #FED7AA', color:'#9A3412', fontFamily:'var(--font-body)', fontSize:'0.9rem', lineHeight:1.45, textAlign:'left' }}>If you added a lesson to Google, Apple, Outlook, or your device calendar, remove that external calendar event manually after cancellation.</p>
                       {courseActionError && <p role="alert" style={{ margin:'1rem 0 0', padding:'0.7rem 0.8rem', borderRadius:'10px', background:'#FEF2F2', border:'1px solid #FECACA', color:'#B91C1C', fontFamily:'var(--font-body)', fontSize:'0.92rem', textAlign:'left' }}>{courseActionError}</p>}
                     </div>
                     <div style={{ padding:'0 2rem 2rem', display:'flex', gap:'0.75rem' }}>
@@ -1277,6 +1318,7 @@ export default function DashboardPage() {
                       </div>
                       <h3 id="refund-course-title" style={{ fontFamily:'var(--font-display)', fontSize:'1.2rem', color:'#0F172A', fontWeight:800, margin:'0 0 0.5rem' }}>Request Refund</h3>
                       <p id="refund-course-copy" style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:0, lineHeight:1.5 }}>Submit this course for review. It will stay visible as “Refund Pending” while the school reviews your request, and linked future lessons will be cancelled. Older unlinked lessons can be reviewed on the Lessons page.</p>
+                      <p style={{ margin:'0.8rem 0 0', padding:'0.7rem 0.8rem', borderRadius:'10px', background:'#FFF7ED', border:'1px solid #FED7AA', color:'#9A3412', fontFamily:'var(--font-body)', fontSize:'0.9rem', lineHeight:1.45, textAlign:'left' }}>Calendar events already saved to Google, Apple, Outlook, or your device are not removed automatically. Please delete them manually.</p>
                       <label htmlFor="refund-reason" style={{ display:'block', textAlign:'left', margin:'1rem 0 0.4rem', fontFamily:'var(--font-body)', fontSize:'0.9rem', fontWeight:700, color:'#334155' }}>Reason (optional)</label>
                       <textarea id="refund-reason" value={refundReason} maxLength={1000} disabled={Boolean(courseActionLoading)} onChange={(event) => setRefundReason(event.target.value)} rows="3" placeholder="Briefly tell us why you are requesting a refund" className="dash-input" style={{ resize:'vertical', minHeight:'82px', textAlign:'left' }} />
                       {courseActionError && <p role="alert" style={{ margin:'1rem 0 0', padding:'0.7rem 0.8rem', borderRadius:'10px', background:'#FEF2F2', border:'1px solid #FECACA', color:'#B91C1C', fontFamily:'var(--font-body)', fontSize:'0.92rem', textAlign:'left' }}>{courseActionError}</p>}
@@ -1328,17 +1370,19 @@ export default function DashboardPage() {
                             </td>
                           </tr>
                         )}
-                        {payments.map((p, i) => (
-                          <tr key={p.ref || p._id || `${p.date}-${p.item}-${i}`} className="dash-table-row" style={{ borderBottom:'1px solid #F1F5F9' }}>
+                        {payments.map((p, i) => {
+                          const refunded = refundedPaymentAmount(p)
+                          const statusColors = paymentStatusColors(p.status)
+                          return <tr key={p.ref || p._id || `${p.date}-${p.item}-${i}`} className="dash-table-row" style={{ borderBottom:'1px solid #F1F5F9' }}>
                             <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569' }}>{p.date}</td>
                             <td style={{ padding:'1rem', fontFamily:'var(--font-mono)', fontSize:'1.05rem', color:'#475569', fontWeight:600 }}>{p.ref}</td>
                             <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569' }}>{p.email}</td>
                             <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', fontWeight:600 }}>{p.item}</td>
-                            <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#0F172A', fontWeight:700 }}>{formatUSD(p.amount)}</td>
-                            <td style={{ padding:'1rem' }}><span style={{ padding:'0.25rem 0.7rem', background:p.status==='Paid' ? 'rgba(5,150,105,0.06)' : 'rgba(220,38,38,0.04)', color:p.status==='Paid' ? '#059669' : '#DC2626', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:700 }}>{p.status}</span></td>
+                            <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#0F172A', fontWeight:700 }}>{refunded > 0 ? <><span style={{ display:'block' }}>{formatUSD(netPaymentAmount(p))} net</span><span style={{ display:'block', color:'#A16207', fontSize:'0.82rem', fontWeight:700 }}>{formatUSD(refunded)} refunded</span></> : formatUSD(p.amount)}</td>
+                            <td style={{ padding:'1rem' }}><span style={{ padding:'0.25rem 0.7rem', ...statusColors, borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:700 }}>{p.status}</span></td>
                             <td style={{ padding:'1rem', textAlign:'center' }}><button type="button" aria-label={`Print invoice ${p.ref || ''}`} title="Print invoice" onClick={() => handlePrintPayment(p)} style={{ background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.35rem', borderRadius:'8px', display:'inline-flex' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg></button></td>
                           </tr>
-                        ))}
+                        })}
                       </tbody>
                     </table>
                     </div>

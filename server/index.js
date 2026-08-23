@@ -708,6 +708,70 @@ async function paypalApiRequest(pathname, { method = 'GET', body, requestId = ''
   return data
 }
 
+const refundedPaymentCents = (payment) => moneyCents(payment?.refundedAmount || 0)
+
+function findPayPalPaymentForRefund(user, refund) {
+  const payments = Array.isArray(user?.payments) ? user.payments : []
+  const enrollmentId = cleanText(refund?.Enrollment_ID, 160)
+  const courseName = cleanText(refund?.Course_Name, 200).toLowerCase()
+  const refundAmount = planPriceAmount(refund?.Amount)
+  const eligible = payments
+    .map((payment, index) => ({ payment, index }))
+    .filter(({ payment }) =>
+      cleanText(payment?.provider, 40).toLowerCase() === 'paypal'
+      && cleanText(payment?.providerCaptureId, 120)
+      && refundedPaymentCents(payment) < moneyCents(payment?.amount)
+    )
+
+  if (enrollmentId) {
+    const exact = eligible.find(({ payment }) =>
+      (Array.isArray(payment?.enrollmentIds) && payment.enrollmentIds.some(id => String(id) === enrollmentId))
+      || (Array.isArray(payment?.courseBreakdown) && payment.courseBreakdown.some(item =>
+        String(item?.enrollmentId) === enrollmentId
+      ))
+    )
+    // A modern refund carrying an enrollment id must never fall back to a
+    // similarly named legacy invoice. That could refund the wrong purchase
+    // when a student buys the same package more than once.
+    return exact || null
+  }
+
+  // Legacy invoices did not store enrollment IDs. Only match them when the
+  // entire captured invoice is unmistakably for this one course and amount.
+  return eligible.find(({ payment }) => {
+    const item = cleanText(payment?.item, 500).toLowerCase()
+    return courseName
+      && item === courseName
+      && refundAmount !== null
+      && moneyCents(payment?.amount) === moneyCents(refundAmount)
+  }) || null
+}
+
+async function resolvePayPalRefund(refund, payment) {
+  const existingRefundId = cleanText(refund?.Provider_Refund_ID, 120)
+  if (existingRefundId) {
+    return paypalApiRequest(`/v2/payments/refunds/${encodeURIComponent(existingRefundId)}`)
+  }
+
+  const captureId = cleanText(payment?.providerCaptureId, 120)
+  const refundAmount = planPriceAmount(refund?.Amount)
+  if (!captureId || refundAmount === null || refundAmount <= 0) {
+    throw new HttpError(409, 'This refund is not linked to a captured PayPal payment. Review the payment record before approving it.')
+  }
+
+  return paypalApiRequest(`/v2/payments/captures/${encodeURIComponent(captureId)}/refund`, {
+    method: 'POST',
+    requestId: `refund-${String(refund._id)}`,
+    body: {
+      amount: {
+        value: moneyString(refundAmount),
+        currency_code: PAYPAL_CURRENCY,
+      },
+      note_to_payer: 'Approved refund from A Precision Driving School.',
+    },
+  })
+}
+
 const isDuplicateKey = (error) => error?.code === 11000
 const activeHoldExpiry = () => new Date(Date.now() + BOOKING_HOLD_MINUTES * 60_000)
 
@@ -2383,6 +2447,15 @@ async function processCartCheckout(req, { quoteOnly = false } = {}) {
         email: normalizeEmail(req.auth.email) || user?.email || '',
         item: toAdd.map(course => course.title).join(' + '),
         amount: quoteAmount,
+        enrollmentIds: toAdd.map(course => cleanText(course.enrollmentId, 160)).filter(Boolean),
+        courseBreakdown: toAdd.map(course => ({
+          courseId: String(course.id || ''),
+          enrollmentId: cleanText(course.enrollmentId, 160),
+          title: cleanText(course.title, 200),
+          amount: planPriceAmount(course.price) || 0,
+        })),
+        refundedAmount: 0,
+        providerRefundIds: [],
         status: verifiedPayment ? 'Paid' : 'Pending',
         ...(verifiedPayment ? {
           provider: 'PayPal',
@@ -2959,8 +3032,34 @@ WEBSITE WORKFLOWS:
 - Students choose a package, city, and at least 1 date and time slot from the Pricing page, up to the package maximum, then continue through the cart.
 - Students can view invoices, cancel future bookings, cancel a course, or submit a refund request from their dashboard.
 - A submitted refund remains Refund Pending until an administrator approves or denies it.
-- Payment-provider and bank instructions are not yet configured. Never request or invent card, bank, routing, or payment credentials; direct payment questions to the school using the contact details above.
-- Do not invent prices, policies, availability, confirmations, or refund decisions. If current information is unavailable, ask the student to contact the school.`
+ - PayPal checkout is configured for secure online payments. Students should complete payment only through the website checkout. Never request card numbers, PayPal passwords, bank details, or payment credentials in chat.
+ - Do not invent prices, policies, availability, confirmations, or refund decisions. If current information is unavailable, ask the student to contact the school.`
+}
+
+const groqModels = [...new Set([
+  cleanText(process.env.GROQ_MODEL, 120),
+  'llama-3.1-8b-instant',
+  'openai/gpt-oss-20b',
+].filter(Boolean))]
+
+async function createSupportCompletion(messages) {
+  let lastError
+  for (const model of groqModels) {
+    try {
+      return await groq.chat.completions.create({
+        model,
+        messages,
+        max_tokens: 800,
+        temperature: 0.7,
+      })
+    } catch (error) {
+      lastError = error
+      const code = cleanText(error?.error?.error?.code || error?.error?.code || error?.code, 80).toLowerCase()
+      if (Number(error?.status) === 404 || code === 'model_not_found') continue
+      throw error
+    }
+  }
+  throw lastError || new Error('No supported assistant model is available.')
 }
 
 app.post('/api/chat', requireAuth, rateLimit({ windowMs: 60_000, max: 12 }), async (req, res) => {
@@ -2974,18 +3073,13 @@ app.post('/api/chat', requireAuth, rateLimit({ windowMs: 60_000, max: 12 }), asy
       ...messages,
     ]
 
-    const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      messages: chatMessages,
-      max_tokens: 800,
-      temperature: 0.7,
-    })
+    const completion = await createSupportCompletion(chatMessages)
 
     const reply = completion.choices[0]?.message?.content || 'Sorry, I could not process your request.'
     res.json({ ok: true, reply })
   } catch (e) {
-    if (e.status) return res.status(e.status).json({ error: e.message })
-    sendServerError(res, e, 'Chat request failed')
+    console.error('Chat request failed:', cleanText(e?.code || e?.error?.code || e?.status || 'unknown', 80))
+    return res.status(503).json({ error: 'The support assistant is temporarily unavailable. Please try again shortly.' })
   }
 })
 
@@ -3996,21 +4090,105 @@ app.put('/api/admin/refunds/:id', async (req, res) => {
     if (!ObjectId.isValid(req.params.id)) return res.status(400).json({ error: 'Invalid refund id.' })
     const refundId = new ObjectId(req.params.id)
     const sanitized = sanitizeRefundRecord(req.body, { partial: true })
+    const existingRefund = await refundsCol.findOne({ _id: refundId })
+    if (!existingRefund) return res.status(404).json({ error: 'Refund record not found.' })
+    const requestedStatus = cleanText(sanitized.Status || existingRefund.Status || 'pending', 20).toLowerCase()
+
+    let providerRefund = null
+    let matchedPayment = null
+    if (requestedStatus === 'refunded' && cleanText(existingRefund.Status, 20).toLowerCase() !== 'refunded') {
+      const uid = cleanText(existingRefund.uid || existingRefund.User_UID, 160)
+      if (!uid) return res.status(409).json({ error: 'This refund is not linked to a student payment.' })
+      const user = await usersCol.findOne({ uid }, { projection: { payments: 1 } })
+      matchedPayment = findPayPalPaymentForRefund(user, existingRefund)
+      if (!matchedPayment) {
+        return res.status(409).json({
+          error: 'No matching captured PayPal payment was found. Verify the invoice before approving this refund.',
+        })
+      }
+      providerRefund = await resolvePayPalRefund(existingRefund, matchedPayment.payment)
+      const providerStatus = cleanText(providerRefund?.status, 30).toUpperCase()
+      const providerFields = {
+        Provider: 'PayPal',
+        Provider_Environment: PAYPAL_ENVIRONMENT,
+        Provider_Order_ID: cleanText(matchedPayment.payment.providerOrderId, 120),
+        Provider_Capture_ID: cleanText(matchedPayment.payment.providerCaptureId, 120),
+        Provider_Payment_Ref: cleanText(matchedPayment.payment.ref, 120),
+        Provider_Refund_ID: cleanText(providerRefund?.id, 120),
+        Provider_Refund_Status: providerStatus,
+        Provider_Updated_At: new Date().toISOString(),
+      }
+      if (providerStatus === 'PENDING') {
+        await refundsCol.updateOne(
+          { _id: refundId, Status: { $ne: 'refunded' } },
+          { $set: { ...providerFields, updated_at: new Date().toISOString().replace('T', ' ').slice(0, 19) } }
+        )
+        return res.status(202).json({ ok: true, status: 'pending', providerStatus })
+      }
+      if (providerStatus !== 'COMPLETED') {
+        return res.status(502).json({ error: 'PayPal has not completed this refund. Please try again later.' })
+      }
+    }
+
     const result = await withMongoTransaction(async (session) => {
       const existing = await refundsCol.findOne({ _id: refundId }, { session })
       if (!existing) return { found: false }
       const updatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19)
+      const providerStatus = cleanText(providerRefund?.status, 30).toUpperCase()
+      const providerRefundId = cleanText(providerRefund?.id || existing.Provider_Refund_ID, 120)
+      const providerFields = providerRefund ? {
+        Provider: 'PayPal',
+        Provider_Environment: PAYPAL_ENVIRONMENT,
+        Provider_Order_ID: cleanText(matchedPayment?.payment?.providerOrderId, 120),
+        Provider_Capture_ID: cleanText(matchedPayment?.payment?.providerCaptureId, 120),
+        Provider_Payment_Ref: cleanText(matchedPayment?.payment?.ref, 120),
+        Provider_Refund_ID: providerRefundId,
+        Provider_Refund_Status: providerStatus,
+        Provider_Updated_At: new Date().toISOString(),
+      } : {}
       await refundsCol.updateOne(
         { _id: refundId },
-        { $set: { ...sanitized, updated_at: updatedAt } },
+        { $set: { ...sanitized, ...providerFields, updated_at: updatedAt } },
         { session }
       )
       const nextStatus = sanitized.Status || existing.Status || 'pending'
       await applyRefundDecisionToCourse(existing, nextStatus, session)
-      return { found: true, status: nextStatus }
+      if (String(nextStatus).toLowerCase() === 'refunded' && providerRefundId) {
+        const uid = cleanText(existing.uid || existing.User_UID, 160)
+        const user = await usersCol.findOne({ uid }, { session, projection: { payments: 1 } })
+        const paymentMatch = findPayPalPaymentForRefund(user, existing)
+        if (!paymentMatch) throw new HttpError(409, 'The linked PayPal payment changed before the refund was saved.')
+        const payment = paymentMatch.payment
+        const refundIds = Array.isArray(payment.providerRefundIds)
+          ? payment.providerRefundIds.map(id => String(id))
+          : []
+        const alreadyRecorded = refundIds.includes(providerRefundId)
+        const refundedAmount = alreadyRecorded
+          ? Number(payment.refundedAmount || 0)
+          : Number(payment.refundedAmount || 0) + Number(providerRefund?.amount?.value || planPriceAmount(existing.Amount) || 0)
+        const paymentAmount = Number(payment.amount || 0)
+        const paymentStatus = moneyCents(refundedAmount) >= moneyCents(paymentAmount)
+          ? 'Refunded'
+          : 'Partially Refunded'
+        await usersCol.updateOne(
+          { uid },
+          {
+            $set: {
+              [`payments.${paymentMatch.index}.status`]: paymentStatus,
+              [`payments.${paymentMatch.index}.refundedAmount`]: Number(moneyString(refundedAmount)),
+              [`payments.${paymentMatch.index}.providerRefundIds`]: alreadyRecorded ? refundIds : [...refundIds, providerRefundId],
+              [`payments.${paymentMatch.index}.providerRefundId`]: providerRefundId,
+              [`payments.${paymentMatch.index}.refundStatus`]: 'COMPLETED',
+              [`payments.${paymentMatch.index}.refundedAt`]: cleanText(providerRefund?.update_time || providerRefund?.create_time, 80) || new Date().toISOString(),
+            },
+          },
+          { session }
+        )
+      }
+      return { found: true, status: nextStatus, providerStatus: providerStatus || undefined }
     })
     if (!result.found) return res.status(404).json({ error: 'Refund record not found.' })
-    res.json({ ok: true, status: result.status })
+    res.json({ ok: true, status: result.status, providerStatus: result.providerStatus })
   } catch (e) {
     if (e.status) return res.status(e.status).json({ error: e.message })
     sendServerError(res, e, 'Refund record update failed')
@@ -4157,12 +4335,14 @@ export {
   DEFAULT_LOCATIONS,
   bookingsForEnrollment,
   checkoutFingerprint,
+  findPayPalPaymentForRefund,
   moneyString,
   normalizePlanPrice,
   normalizeLocationKey,
   packageSlotAllowance,
   pickupSlotsFromCourse,
   pricingForBookingLocation,
+  refundedPaymentCents,
   sanitizeLocation,
   sanitizeBlog,
   sanitizePricing,

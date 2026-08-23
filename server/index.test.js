@@ -6,9 +6,11 @@ const {
   DEFAULT_LOCATIONS,
   bookingsForEnrollment,
   checkoutFingerprint,
+  findPayPalPaymentForRefund,
   moneyString,
   payableCheckoutAmount,
   pricingForBookingLocation,
+  refundedPaymentCents,
   sanitizeLocation,
   sanitizePricing,
   sanitizeReview,
@@ -47,6 +49,30 @@ test('PayPal cart fingerprint is stable across plan and slot ordering', () => {
   const reorderedFirst = { ...first, pickupSlots: [...first.pickupSlots].reverse() }
   assert.equal(checkoutFingerprint([first, second]), checkoutFingerprint([second, reorderedFirst]))
   assert.notEqual(checkoutFingerprint([first]), checkoutFingerprint([{ ...first, chargeAmount: 998 }]))
+})
+
+test('PayPal refund matching is enrollment-scoped and tracks previously refunded cents', () => {
+  const user = {
+    payments: [{
+      status: 'Paid',
+      amount: 999,
+      refundedAmount: 200,
+      provider: 'PayPal',
+      providerCaptureId: 'CAPTURE-123',
+      enrollmentIds: ['enrollment-premier'],
+      courseBreakdown: [{ enrollmentId: 'enrollment-premier', courseId: '5', title: 'PREMIER PLAN', amount: 999 }],
+    }],
+  }
+  const refund = { Enrollment_ID: 'enrollment-premier', Course_ID: '5', Course_Name: 'PREMIER PLAN', Amount: '$999' }
+  const match = findPayPalPaymentForRefund(user, refund)
+
+  assert.equal(match.index, 0)
+  assert.equal(match.payment.providerCaptureId, 'CAPTURE-123')
+  assert.equal(refundedPaymentCents(match.payment), 20000)
+  assert.equal(
+    findPayPalPaymentForRefund(user, { ...refund, Enrollment_ID: 'another-enrollment' }),
+    null
+  )
 })
 
 test('customer reviews require clear text and constrain rating, order, and visibility', () => {
