@@ -292,9 +292,11 @@ export default function PaymentPage() {
 
               {paymentError && <div className="paypal-error" role="alert">{paymentError}</div>}
               {paymentState === 'processing' && <div className="paypal-processing" role="status">Securely processing your PayPal payment. Please do not close this page.</div>}
-              <div className="paypal-checkout" ref={paypalButtonsRef} aria-describedby="payment-provider-status">
-                {(paymentState === 'idle' || paymentState === 'loading') && <div className="paypal-loading" role="status">Loading secure PayPal checkout...</div>}
-              </div>
+              {(paymentState === 'idle' || paymentState === 'loading') && (
+                <div className="paypal-loading" role="status">Loading secure PayPal checkout...</div>
+              )}
+              {/* Keep this node empty so only the PayPal SDK owns its children. */}
+              <div className="paypal-checkout" ref={paypalButtonsRef} aria-describedby="payment-provider-status" />
               <p id="payment-provider-status" className="payment-powered">
                 PayPal {paymentEnvironment === 'sandbox' ? 'Sandbox test mode' : 'secure checkout'} · Course enrollment completes only after verified payment
               </p>
