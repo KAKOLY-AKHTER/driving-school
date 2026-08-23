@@ -5,6 +5,7 @@ import { auth } from '../firebase'
 import { api } from '../api'
 import { usePageMeta } from '../usePageMeta'
 import { consumeBookingReturn } from '../utils/bookingStorage'
+import PasswordInput from '../components/PasswordInput'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -689,8 +690,8 @@ export default function RegisterPage() {
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#475569', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: '1rem' }}>Create your secure account</p>
                   <div className="rw-form-grid-3">
                     <Field label="Username" required error={fieldErrors.username}><input name="username" value={form.username} onChange={handleChange} required autoComplete="username" className="rw-input" style={inputStyle} /></Field>
-                    <Field label="Password" required error={fieldErrors.password}><input name="password" type="password" value={form.password} onChange={handleChange} required autoComplete="new-password" className="rw-input" style={inputStyle} /></Field>
-                    <Field label="Confirm Password" required error={fieldErrors.confirmPassword}><input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} required autoComplete="new-password" className="rw-input" style={inputStyle} /></Field>
+                    <Field label="Password" required error={fieldErrors.password}><PasswordInput name="password" value={form.password} onChange={handleChange} required autoComplete="new-password" className="rw-input" style={inputStyle} /></Field>
+                    <Field label="Confirm Password" required error={fieldErrors.confirmPassword}><PasswordInput name="confirmPassword" value={form.confirmPassword} onChange={handleChange} required autoComplete="new-password" className="rw-input" style={inputStyle} /></Field>
                   </div>
                 </div>
               </div>

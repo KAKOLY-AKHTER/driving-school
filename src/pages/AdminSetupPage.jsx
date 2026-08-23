@@ -4,6 +4,7 @@ import { createUserWithEmailAndPassword, sendEmailVerification, signOut, updateP
 import { auth } from '../firebase'
 import { api } from '../api'
 import { usePageMeta } from '../usePageMeta'
+import PasswordInput from '../components/PasswordInput'
 
 const GOLD = '#FDBC01'
 const GOLD_BRIGHT = '#FFD54F'
@@ -19,7 +20,6 @@ export default function AdminSetupPage() {
   const [name, setName] = useState('Site Administrator')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [showPass, setShowPass] = useState(false)
   const [photo, setPhoto] = useState(DEFAULT_PHOTO)
   const [error, setError] = useState('')
   const [created, setCreated] = useState(false)
@@ -130,16 +130,7 @@ export default function AdminSetupPage() {
 
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8899aa', fontWeight: 600, marginBottom: '0.4rem' }}>Password</label>
-                <div style={{ position: 'relative' }}>
-                  <input type={showPass ? 'text' : 'password'} required value={password} onChange={(e) => setPassword(e.target.value)} className="admst-input" style={{ ...inputStyle, paddingRight: '3rem' }} autoComplete="new-password" />
-                  <button type="button" onClick={() => setShowPass(!showPass)} aria-label={showPass ? 'Hide password' : 'Show password'} title={showPass ? 'Hide password' : 'Show password'} style={{ position: 'absolute', right: '0.4rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8899aa', transition: 'color 0.2s' }}>
-                    {showPass ? (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
-                    ) : (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
-                    )}
-                  </button>
-                </div>
+                <PasswordInput required value={password} onChange={(e) => setPassword(e.target.value)} className="admst-input" style={inputStyle} autoComplete="new-password" />
               </div>
 
               <div style={{ marginBottom: '1.5rem' }}>

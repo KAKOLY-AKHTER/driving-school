@@ -5,6 +5,7 @@ import { auth, googleProvider } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
 import { usePageMeta } from '../usePageMeta'
 import { consumeBookingReturn } from '../utils/bookingStorage'
+import PasswordInput from '../components/PasswordInput'
 
 const GOLD = '#FDBC01'
 const GOLD_BRIGHT = '#FFD54F'
@@ -169,7 +170,7 @@ export default function LoginPage() {
                   <label style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8899aa', fontWeight: 600 }}>Password</label>
                   <button type="button" onClick={handleForgotPassword} style={{ background: 'none', border: 'none', color: SKY_BLUE, fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', fontWeight: 700 }}>Forgot?</button>
                 </div>
-                <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="lg-input" style={inputStyle} placeholder="Enter your password" />
+                <PasswordInput required value={password} onChange={(e) => setPassword(e.target.value)} className="lg-input" style={inputStyle} placeholder="Enter your password" autoComplete="current-password" />
               </div>
 
               {error && (

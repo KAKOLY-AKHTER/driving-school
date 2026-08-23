@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useCart } from '../contexts/CartContext'
 import { usePageMeta } from '../usePageMeta'
 import { saveBookingReturn, writeGuestCart } from '../utils/bookingStorage'
+import PasswordInput from '../components/PasswordInput'
 
 const SKY_BLUE = '#0145A8'
 const DARK = '#0A1628'
@@ -54,7 +55,6 @@ export default function BookingRegistrationPage() {
   const [creating, setCreating] = useState(false)
   const [completedUid, setCompletedUid] = useState('')
   const [error, setError] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
   const [sameAsHome, setSameAsHome] = useState(false)
   const [form, setForm] = useState(() => ({
     email: '',
@@ -227,13 +227,10 @@ export default function BookingRegistrationPage() {
                   <input id="booking-email" className={inputClass} name="email" type="email" autoComplete="email" value={form.email} onChange={update} required />
                 </Field>
                 <Field id="booking-password" label="Password" required>
-                  <div className="booking-register-password">
-                    <input id="booking-password" className={inputClass} name="password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" minLength="8" value={form.password} onChange={update} required />
-                    <button type="button" onClick={() => setShowPassword(value => !value)}>{showPassword ? 'Hide' : 'Show'}</button>
-                  </div>
+                  <PasswordInput id="booking-password" className={inputClass} name="password" autoComplete="new-password" minLength="8" value={form.password} onChange={update} required />
                 </Field>
                 <Field id="booking-confirm-password" label="Confirm Password" required>
-                  <input id="booking-confirm-password" className={inputClass} name="confirmPassword" type={showPassword ? 'text' : 'password'} autoComplete="new-password" minLength="8" value={form.confirmPassword} onChange={update} required />
+                  <PasswordInput id="booking-confirm-password" className={inputClass} name="confirmPassword" autoComplete="new-password" minLength="8" value={form.confirmPassword} onChange={update} required />
                 </Field>
               </div>
             </div>

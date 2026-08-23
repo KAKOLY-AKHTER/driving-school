@@ -10,6 +10,7 @@ import { usePageMeta } from '../usePageMeta'
 import { DEFAULT_BOOKING_LOCATIONS, locationDistanceLabel } from '../locations'
 import { AdminLiveSupportPanel } from '../components/LiveSupportPanels'
 import AdminBlogPanel from '../components/AdminBlogPanel'
+import PasswordInput from '../components/PasswordInput'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -470,8 +471,6 @@ export default function AdminPage() {
   const [accEmail, setAccEmail] = useState('')
   const [accPass, setAccPass] = useState('')
   const [accNewPass, setAccNewPass] = useState('')
-  const [showAccPass, setShowAccPass] = useState(false)
-  const [showAccNewPass, setShowAccNewPass] = useState(false)
   const [accMsg, setAccMsg] = useState('')
   const [accErr, setAccErr] = useState('')
   const [accLoading, setAccLoading] = useState(false)
@@ -1955,19 +1954,13 @@ export default function AdminPage() {
                         <div style={{ marginBottom: '1.25rem' }}><label htmlFor="admin-account-email" style={labelStyle}>Admin Email</label><input id="admin-account-email" type="email" autoComplete="email" value={accEmail} onChange={e => setAccEmail(e.target.value)} style={inputStyle} /></div>
                         <div style={{ marginBottom: '1.5rem' }}>
                           <label htmlFor="admin-current-password" style={labelStyle}>Current Password</label>
-                          <div style={{ position: 'relative' }}>
-                            <input id="admin-current-password" type={showAccPass ? 'text' : 'password'} value={accPass} onChange={e => setAccPass(e.target.value)} style={{ ...inputStyle, paddingRight: '3rem' }} autoComplete="current-password" />
-                            <button type="button" onClick={() => setShowAccPass(!showAccPass)} aria-label={showAccPass ? 'Hide current password' : 'Show current password'} style={{ position: 'absolute', right: '0.4rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.4rem', color: '#334155' }}>{showAccPass ? 'Hide' : 'Show'}</button>
-                          </div>
+                          <PasswordInput id="admin-current-password" value={accPass} onChange={e => setAccPass(e.target.value)} style={inputStyle} autoComplete="current-password" />
                         </div>
                         <button type="button" onClick={handleChangeEmail} disabled={accLoading || !accPass} style={{ padding: '0.75rem 2rem', background: 'linear-gradient(135deg,#FDBC01,#FFD54F)', color: DARK, border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(253,188,1,0.25)', opacity: accLoading || !accPass ? 0.6 : 1 }}>Save Email</button>
                         <div style={{ borderTop: '1px solid #E2EBF5', margin: '1.5rem 0' }} />
                         <div style={{ marginBottom: '1.25rem' }}>
                           <label htmlFor="admin-new-password" style={labelStyle}>New Password</label>
-                          <div style={{ position: 'relative' }}>
-                            <input id="admin-new-password" type={showAccNewPass ? 'text' : 'password'} value={accNewPass} onChange={e => setAccNewPass(e.target.value)} style={{ ...inputStyle, paddingRight: '3rem' }} autoComplete="new-password" placeholder="At least 6 characters" />
-                            <button type="button" onClick={() => setShowAccNewPass(!showAccNewPass)} aria-label={showAccNewPass ? 'Hide new password' : 'Show new password'} style={{ position: 'absolute', right: '0.4rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.4rem', color: '#334155' }}>{showAccNewPass ? 'Hide' : 'Show'}</button>
-                          </div>
+                          <PasswordInput id="admin-new-password" value={accNewPass} onChange={e => setAccNewPass(e.target.value)} style={inputStyle} autoComplete="new-password" placeholder="At least 6 characters" />
                           <p style={{ margin: '.5rem 0 0', color: '#334155', fontSize: '.78rem', lineHeight: 1.5 }}>For security, your saved password is never displayed and this field will be empty after a reload.</p>
                         </div>
                         <button type="button" onClick={handleChangePassword} disabled={accLoading || !accPass || !accNewPass} style={{ padding: '0.75rem 2rem', background: 'linear-gradient(135deg,#FDBC01,#FFD54F)', color: DARK, border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(253,188,1,0.25)', opacity: accLoading || !accPass || !accNewPass ? 0.6 : 1 }}>Change Password</button>

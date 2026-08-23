@@ -11,6 +11,8 @@ import { openPrintableDocument } from '../utils/printDocument'
 import { downloadBookingCalendar, googleCalendarUrl } from '../utils/bookingCalendar'
 import { ONLINE_COURSE_CURRICULUM } from '../data/onlineCourseCurriculum'
 import { UserLiveSupportPanel } from '../components/LiveSupportPanels'
+import PasswordInput from '../components/PasswordInput'
+import ChatMessageContent from '../components/ChatMessageContent'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -1446,15 +1448,15 @@ export default function DashboardPage() {
                         <div className="dash-form-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'1.5rem' }}>
                           <div>
                             <label htmlFor="settings-current-password" style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Current password</label>
-                            <input id="settings-current-password" type="password" autoComplete="current-password" maxLength="128" aria-describedby="password-help" placeholder="Enter current password" value={sCurrentPass} onChange={e => setSCurrentPass(e.target.value)} className="dash-input" />
+                            <PasswordInput id="settings-current-password" autoComplete="current-password" maxLength="128" aria-describedby="password-help" placeholder="Enter current password" value={sCurrentPass} onChange={e => setSCurrentPass(e.target.value)} className="dash-input" />
                           </div>
                           <div>
                             <label htmlFor="settings-new-password" style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>New password</label>
-                            <input id="settings-new-password" type="password" autoComplete="new-password" minLength="8" maxLength="128" aria-describedby="password-help" placeholder="Min 8 characters" value={sNewPass} onChange={e => setSNewPass(e.target.value)} className="dash-input" />
+                            <PasswordInput id="settings-new-password" autoComplete="new-password" minLength="8" maxLength="128" aria-describedby="password-help" placeholder="Min 8 characters" value={sNewPass} onChange={e => setSNewPass(e.target.value)} className="dash-input" />
                           </div>
                           <div>
                             <label htmlFor="settings-confirm-password" style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Confirm new password</label>
-                            <input id="settings-confirm-password" type="password" autoComplete="new-password" minLength="8" maxLength="128" aria-describedby="password-help" placeholder="Repeat new password" value={sConfirmPass} onChange={e => setSConfirmPass(e.target.value)} className="dash-input" />
+                            <PasswordInput id="settings-confirm-password" autoComplete="new-password" minLength="8" maxLength="128" aria-describedby="password-help" placeholder="Repeat new password" value={sConfirmPass} onChange={e => setSConfirmPass(e.target.value)} className="dash-input" />
                           </div>
                         </div>
                       </>
@@ -1534,7 +1536,9 @@ export default function DashboardPage() {
                           )}
                           <div style={{ flex:1, maxWidth: m.role === 'assistant' ? 'calc(100% - 40px)' : '100%', display:'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
                             <div style={{ padding:'0.85rem 1.15rem', borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: m.role === 'user' ? `linear-gradient(135deg,${SKY_BLUE},#0a2a5e)` : 'linear-gradient(135deg,#F1F5F9,#E8EDF4)', color: m.role === 'user' ? '#fff' : DARK, fontFamily:'var(--font-body)', fontSize:'1.05rem', lineHeight:1.7, maxWidth:'85%', boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}>
-                              {m.content}
+                              {m.role === 'assistant'
+                                ? <ChatMessageContent content={m.content} />
+                                : m.content}
                             </div>
                           </div>
                           {m.role === 'user' && (
