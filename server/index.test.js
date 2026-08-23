@@ -5,6 +5,9 @@ process.env.VERCEL = '1'
 const {
   DEFAULT_LOCATIONS,
   bookingsForEnrollment,
+  checkoutFingerprint,
+  moneyString,
+  payableCheckoutAmount,
   pricingForBookingLocation,
   sanitizeLocation,
   sanitizePricing,
@@ -16,6 +19,35 @@ const {
   validateContinuationSlotCount,
   validateAvailabilitySlot,
 } = await import('./index.js')
+
+test('PayPal quote uses server cents and excludes free continuation items', () => {
+  const items = [
+    { id: '5', chargeAmount: 999, continuation: false },
+    { id: '2', chargeAmount: 210, continuation: true },
+    { id: '6', chargeAmount: 225.555, continuation: false },
+  ]
+  assert.equal(moneyString(payableCheckoutAmount(items)), '1224.56')
+})
+
+test('PayPal cart fingerprint is stable across plan and slot ordering', () => {
+  const first = {
+    id: '5',
+    enrollmentId: '',
+    title: 'PREMIER PLAN',
+    city: 'Fremont',
+    cityDistance: 'Near',
+    continuation: false,
+    chargeAmount: 999,
+    pickupSlots: [
+      { date: '2026-09-02', time: '09:00 AM - 11:00 AM' },
+      { date: '2026-09-01', time: '07:00 AM - 09:00 AM' },
+    ],
+  }
+  const second = { id: '2', title: 'BASIC PLAN', city: 'Newark', chargeAmount: 210, pickupSlots: [] }
+  const reorderedFirst = { ...first, pickupSlots: [...first.pickupSlots].reverse() }
+  assert.equal(checkoutFingerprint([first, second]), checkoutFingerprint([second, reorderedFirst]))
+  assert.notEqual(checkoutFingerprint([first]), checkoutFingerprint([{ ...first, chargeAmount: 998 }]))
+})
 
 test('customer reviews require clear text and constrain rating, order, and visibility', () => {
   assert.deepEqual(sanitizeReview({ name: '  Jane Doe ', text: '  Excellent instructor. ', rating: 9, order: -5, published: false }), {

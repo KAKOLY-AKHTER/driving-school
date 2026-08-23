@@ -5,6 +5,7 @@ const REQUEST_TIMEOUT_MS = 20_000
 const pathPart = (value) => encodeURIComponent(String(value ?? ''))
 
 async function request(path, options = {}) {
+  const { timeoutMs = REQUEST_TIMEOUT_MS, ...fetchOptions } = options
   const headers = new Headers(options.headers || {})
   headers.set('Accept', 'application/json')
   if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
@@ -22,14 +23,14 @@ async function request(path, options = {}) {
   await applyAuthHeader()
 
   const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs)
   if (options.signal) {
     if (options.signal.aborted) controller.abort()
     else options.signal.addEventListener('abort', () => controller.abort(), { once: true })
   }
 
   const send = () => fetch(`${API_URL}${path}`, {
-    ...options,
+    ...fetchOptions,
     headers,
     signal: controller.signal,
   })
@@ -61,6 +62,7 @@ async function request(path, options = {}) {
   if (!res.ok) {
     const error = new Error(data?.error || `Request failed with status ${res.status}`)
     error.status = res.status
+    error.code = data?.issue || data?.code || ''
     throw error
   }
   return data
@@ -95,6 +97,9 @@ export const api = {
   addToCart: (uid, course) => request(`/api/users/${pathPart(uid)}/cart`, { method: 'POST', body: JSON.stringify(course) }),
   removeFromCart: (uid, courseId) => request(`/api/users/${pathPart(uid)}/cart/${pathPart(courseId)}`, { method: 'DELETE' }),
   enrollAllCart: (uid) => request(`/api/users/${pathPart(uid)}/cart/checkout`, { method: 'POST' }),
+  getPayPalConfig: () => request('/api/paypal/config'),
+  createPayPalOrder: (uid) => request(`/api/users/${pathPart(uid)}/paypal/orders`, { method: 'POST', timeoutMs: 35_000 }),
+  capturePayPalOrder: (uid, orderId) => request(`/api/users/${pathPart(uid)}/paypal/orders/${pathPart(orderId)}/capture`, { method: 'POST', timeoutMs: 50_000 }),
   getMessages: (uid) => request(`/api/users/${pathPart(uid)}/messages`),
   createThread: (uid, subject, text) => request(`/api/users/${pathPart(uid)}/messages`, { method: 'POST', body: JSON.stringify({ subject, text }) }),
   replyThread: (uid, threadId, text) => request(`/api/users/${pathPart(uid)}/messages/${pathPart(threadId)}/reply`, { method: 'POST', body: JSON.stringify({ text }) }),

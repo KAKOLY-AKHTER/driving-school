@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { api } from '../api'
 import { useAuth } from '../contexts/AuthContext'
 import { useCart } from '../contexts/CartContext'
 import { usePageMeta } from '../usePageMeta'
@@ -7,6 +8,34 @@ import { usePageMeta } from '../usePageMeta'
 const BLUE = '#0145A8'
 const DARK = '#0A1628'
 const GOLD = '#FDBC01'
+
+let paypalSdkPromise = null
+
+function loadPayPalSdk(clientId, currency) {
+  if (window.paypal?.Buttons) return Promise.resolve(window.paypal)
+  if (paypalSdkPromise) return paypalSdkPromise
+  paypalSdkPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    const params = new URLSearchParams({
+      'client-id': clientId,
+      currency,
+      intent: 'capture',
+      components: 'buttons',
+    })
+    script.src = `https://www.paypal.com/sdk/js?${params}`
+    script.async = true
+    script.dataset.paypalSdk = 'true'
+    script.onload = () => window.paypal?.Buttons
+      ? resolve(window.paypal)
+      : reject(new Error('PayPal checkout could not be loaded.'))
+    script.onerror = () => {
+      paypalSdkPromise = null
+      reject(new Error('PayPal checkout could not be loaded. Check your connection and try again.'))
+    }
+    document.head.appendChild(script)
+  })
+  return paypalSdkPromise
+}
 
 const amountNumber = value => {
   const amount = Number.parseFloat(String(value ?? '').replace(/[^0-9.]/g, ''))
@@ -40,6 +69,11 @@ export default function PaymentPage() {
   const { items, loading, syncError, refreshCart } = useCart()
   const [coupon, setCoupon] = useState('')
   const [notice, setNotice] = useState('')
+  const [paymentState, setPaymentState] = useState('idle')
+  const [paymentError, setPaymentError] = useState('')
+  const [paymentEnvironment, setPaymentEnvironment] = useState('sandbox')
+  const [paymentResult, setPaymentResult] = useState(null)
+  const paypalButtonsRef = useRef(null)
   const [checkoutReference] = useState(() => {
     const suffix = Math.random().toString(36).slice(2, 8).toUpperCase()
     return `PAY-${Date.now().toString(36).toUpperCase()}-${suffix}`
@@ -55,16 +89,90 @@ export default function PaymentPage() {
     return slots.map(slot => ({ ...slot, plan: item.title, city: item.city }))
   }), [items])
 
-  const showProviderNotice = method => {
-    setNotice(`${method} payment is not connected yet. No payment was charged. The provider credentials can be connected here later.`)
-  }
-
   const applyCoupon = event => {
     event.preventDefault()
     setNotice(coupon.trim()
       ? 'Coupon verification will be activated with the payment provider. The total has not been changed.'
       : 'Enter a coupon code before selecting Apply Coupon.')
   }
+
+  useEffect(() => {
+    if (!user || !items.length || subtotal <= 0 || paymentResult) return undefined
+    let cancelled = false
+    let buttons = null
+
+    const initializePayPal = async () => {
+      try {
+        setPaymentState('loading')
+        setPaymentError('')
+        const config = await api.getPayPalConfig()
+        if (cancelled) return
+        setPaymentEnvironment(config.environment || 'sandbox')
+        const paypal = await loadPayPalSdk(config.clientId, config.currency || 'USD')
+        if (cancelled || !paypalButtonsRef.current) return
+        paypalButtonsRef.current.replaceChildren()
+        buttons = paypal.Buttons({
+          style: {
+            layout: 'vertical',
+            color: 'gold',
+            shape: 'pill',
+            label: 'paypal',
+            height: 48,
+          },
+          createOrder: async () => {
+            setPaymentState('processing')
+            setPaymentError('')
+            const order = await api.createPayPalOrder(user.uid)
+            if (!order?.id) throw new Error('PayPal did not return an order number.')
+            return order.id
+          },
+          onApprove: async (data, actions) => {
+            try {
+              setPaymentState('processing')
+              const result = await api.capturePayPalOrder(user.uid, data.orderID)
+              if (cancelled) return
+              setPaymentResult(result)
+              setPaymentState('complete')
+              await refreshCart()
+            } catch (error) {
+              if (error.code === 'INSTRUMENT_DECLINED' && actions?.restart) {
+                setPaymentState('ready')
+                setPaymentError('That payment method was declined. Please choose another PayPal funding source.')
+                return actions.restart()
+              }
+              setPaymentState('error')
+              setPaymentError(error.message || 'PayPal payment could not be completed. Please try again.')
+              throw error
+            }
+          },
+          onCancel: () => {
+            setPaymentState('ready')
+            setPaymentError('Payment was cancelled. Your booking selection is still saved for a limited time.')
+          },
+          onError: () => {
+            setPaymentState('error')
+            setPaymentError(current => current || 'PayPal checkout encountered an error. Please try again.')
+          },
+        })
+        if (!buttons.isEligible()) {
+          throw new Error('PayPal is not available for this browser or location.')
+        }
+        await buttons.render(paypalButtonsRef.current)
+        if (!cancelled) setPaymentState('ready')
+      } catch (error) {
+        if (!cancelled) {
+          setPaymentState('error')
+          setPaymentError(error.message || 'PayPal checkout could not be loaded.')
+        }
+      }
+    }
+
+    initializePayPal()
+    return () => {
+      cancelled = true
+      try { buttons?.close() } catch { /* PayPal may already have removed its iframe. */ }
+    }
+  }, [items, paymentResult, refreshCart, subtotal, user])
 
   return (
     <section className="payment-page">
@@ -88,7 +196,8 @@ export default function PaymentPage() {
         .payment-coupon{display:flex;gap:.65rem;margin-bottom:1rem}.payment-coupon input{min-width:0;flex:1;min-height:48px;padding:.75rem .9rem;border:1.5px solid #D8E2EE;border-radius:10px;font:500 .9rem var(--font-body);outline:none}.payment-coupon input:focus{border-color:${BLUE};box-shadow:0 0 0 4px rgba(1,69,168,.08)}.payment-coupon button{border:0;border-radius:10px;background:${BLUE};color:#fff;font-weight:800;padding:.75rem 1rem;cursor:pointer}
         .payment-total{display:grid;gap:.55rem;padding:1rem 0;border-top:1px solid #DCE5EF;border-bottom:1px solid #DCE5EF;margin-bottom:1.15rem}.payment-total-row{display:flex;justify-content:space-between;gap:1rem;color:#475569}.payment-total-row.final{font-size:1.15rem;color:${DARK};font-weight:900}.payment-total-row.final strong{color:${BLUE}}
         .payment-notice{padding:.8rem .9rem;border:1px solid #FCD34D;border-radius:10px;background:#FFFBEB;color:#92400E;font-size:.82rem;line-height:1.5;margin:0 0 1rem}
-        .payment-methods{display:grid;gap:.75rem}.payment-method{min-height:52px;border:0;border-radius:999px;color:#fff;font-family:var(--font-body);font-size:1rem;font-weight:900;cursor:pointer;transition:transform .2s,box-shadow .2s}.payment-method:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(1,69,168,.2)}.payment-method.paypal{background:#087CC1}.payment-method.later{background:#1669B2}.payment-method.card{background:#252B31}.payment-powered{text-align:center;margin:.85rem 0 0;color:#475569;font-size:.72rem}.payment-powered strong{color:#087CC1}
+        .paypal-checkout{min-height:52px;position:relative}.paypal-loading{min-height:52px;display:grid;place-items:center;border-radius:999px;background:#F1F5F9;color:#334155;font-weight:800}.paypal-processing{padding:.75rem 1rem;border-radius:10px;background:#EFF6FF;color:#1D4ED8;text-align:center;font-weight:800;margin-bottom:.75rem}.paypal-error{padding:.8rem .9rem;border:1px solid #FCA5A5;border-radius:10px;background:#FEF2F2;color:#B91C1C;font-size:.84rem;line-height:1.5;margin-bottom:.85rem}.payment-powered{text-align:center;margin:.85rem 0 0;color:#475569;font-size:.72rem}.payment-powered strong{color:#087CC1}
+        .payment-success{padding:clamp(2rem,6vw,4.5rem);text-align:center;border:1px solid #BBE7D2;border-top:6px solid #059669;border-radius:20px;background:#fff;box-shadow:0 24px 70px rgba(15,35,65,.1)}.payment-success-icon{width:76px;height:76px;margin:0 auto 1.2rem;border-radius:50%;display:grid;place-items:center;background:#ECFDF5;color:#047857;font-size:2.2rem;font-weight:900}.payment-success h2{margin:0;font-family:var(--font-display);font-size:clamp(2rem,4vw,3rem);color:${DARK}}.payment-success p{color:#334155;line-height:1.65}.payment-success-reference{display:inline-block;padding:.8rem 1rem;margin:.5rem 0 1.3rem;border-radius:10px;background:#F8FAFC;border:1px solid #E2E8F0;color:${DARK};overflow-wrap:anywhere}.payment-success-actions{display:flex;justify-content:center;gap:.75rem;flex-wrap:wrap}
         .payment-actions{display:flex;justify-content:center;gap:.7rem;flex-wrap:wrap;margin-top:1.35rem}.payment-back{border:1px solid #CAD7E5;border-radius:999px;background:#fff;color:${BLUE};padding:.75rem 1.15rem;font-weight:800;cursor:pointer}.payment-contact{color:${BLUE};font-weight:800;text-decoration:none;padding:.75rem 1.15rem}
         .payment-empty{padding:4rem 1rem;text-align:center;border:1px solid #D9E4F0;border-radius:20px;background:#fff;box-shadow:0 20px 60px rgba(15,35,65,.08)}.payment-empty h2{font-family:var(--font-display);font-size:2rem;margin:0 0 .6rem}.payment-empty p{color:#334155;margin:0 0 1.5rem}
         @media(max-width:860px){.payment-grid{grid-template-columns:1fr}.payment-security{min-height:auto}.payment-security h2{margin-top:1.4rem}}
@@ -101,7 +210,21 @@ export default function PaymentPage() {
           <p>Review your booking details before choosing a secure payment method.</p>
         </header>
 
-        {loading && !items.length ? (
+        {paymentResult ? (
+          <div className="payment-success" role="status">
+            <div className="payment-success-icon" aria-hidden="true">✓</div>
+            <h2>Payment completed</h2>
+            <p>Your PayPal payment was verified and your selected course and lesson times are now enrolled.</p>
+            <div className="payment-success-reference">
+              PayPal order: <strong>{paymentResult.orderId}</strong>
+              {paymentResult.captureId && <><br />Capture: <strong>{paymentResult.captureId}</strong></>}
+            </div>
+            <div className="payment-success-actions">
+              <Link to="/dashboard?tab=courses" className="btn-gold">View My Courses</Link>
+              <Link to="/dashboard?tab=payments" className="payment-contact">View Receipt</Link>
+            </div>
+          </div>
+        ) : loading && !items.length ? (
           <div className="payment-empty" role="status">Restoring your selected booking...</div>
         ) : !items.length ? (
           <div className="payment-empty">
@@ -167,12 +290,14 @@ export default function PaymentPage() {
               {syncError && <div className="payment-notice" role="alert">{syncError} <button type="button" onClick={refreshCart} style={{ border: 0, background: 'transparent', color: BLUE, fontWeight: 900, cursor: 'pointer' }}>Retry</button></div>}
               {notice && <div className="payment-notice" role="status">{notice}</div>}
 
-              <div className="payment-methods" aria-describedby="payment-provider-status">
-                <button type="button" className="payment-method paypal" onClick={() => showProviderNotice('PayPal')}>PayPal</button>
-                <button type="button" className="payment-method later" onClick={() => showProviderNotice('Pay Later')}>Pay Later</button>
-                <button type="button" className="payment-method card" onClick={() => showProviderNotice('Debit or credit card')}>▣ Debit or Credit Card</button>
+              {paymentError && <div className="paypal-error" role="alert">{paymentError}</div>}
+              {paymentState === 'processing' && <div className="paypal-processing" role="status">Securely processing your PayPal payment. Please do not close this page.</div>}
+              <div className="paypal-checkout" ref={paypalButtonsRef} aria-describedby="payment-provider-status">
+                {(paymentState === 'idle' || paymentState === 'loading') && <div className="paypal-loading" role="status">Loading secure PayPal checkout...</div>}
               </div>
-              <p id="payment-provider-status" className="payment-powered">Payment provider connection pending · No charge will be made yet</p>
+              <p id="payment-provider-status" className="payment-powered">
+                PayPal {paymentEnvironment === 'sandbox' ? 'Sandbox test mode' : 'secure checkout'} · Course enrollment completes only after verified payment
+              </p>
 
               <div className="payment-actions">
                 <button type="button" className="payment-back" onClick={() => navigate('/cart')}>← Back to Cart</button>

@@ -30,6 +30,10 @@ and/or Vercel):
 - First-admin allowlist: `ADMIN_UID` (preferred for an existing Firebase user), or
   `ADMIN_EMAIL` (the exact address must be verified in Firebase).
 - `BOOKING_HOLD_MINUTES`: optional; defaults to `15` and is limited to 5-60 minutes.
+- `PAYPAL_CLIENT_ID`: PayPal app client ID (use a Sandbox app while testing).
+- `PAYPAL_CLIENT_SECRET`: PayPal app secret; server-only and never a `VITE_` value.
+- `PAYPAL_ENVIRONMENT`: `sandbox` for testing or `live` after production approval.
+- `PAYPAL_ORDER_HOLD_MINUTES`: optional; defaults to `30` and is limited to 15-60 minutes.
 
 ### Vercel Firebase Admin setup
 
@@ -51,3 +55,19 @@ Never place Firebase Admin credentials in a `VITE_` variable or commit them to G
 With `ADMIN_EMAIL`, create the account at `/admin/setup`, verify the email, and sign
 in at `/admin/login`. With `ADMIN_UID`, create the Firebase user first and sign in
 directly at `/admin/login`.
+
+### PayPal Sandbox setup
+
+1. In the PayPal Developer Dashboard, create or select a Sandbox REST app and copy
+   its Client ID and Secret.
+2. Add `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, and
+   `PAYPAL_ENVIRONMENT=sandbox` to the local `server/.env` and to the Vercel
+   Production/Preview environment variables. Do not commit either credential.
+3. Restart the local API or redeploy Vercel after changing the variables.
+4. Use a PayPal Sandbox personal test account at checkout. A successful capture
+   enrolls the course, confirms its reserved lesson slots, and stores a paid
+   receipt with PayPal order/capture references.
+
+The browser receives only the public Client ID. The server creates and captures
+orders, recalculates the payable total from MongoDB pricing, and enrolls the user
+only after PayPal reports a completed capture.

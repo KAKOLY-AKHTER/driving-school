@@ -8,6 +8,7 @@ import { useCart } from '../contexts/CartContext'
 import { api } from '../api'
 import { usePageMeta } from '../usePageMeta'
 import { openPrintableDocument } from '../utils/printDocument'
+import { downloadBookingCalendar, googleCalendarUrl } from '../utils/bookingCalendar'
 import { ONLINE_COURSE_CURRICULUM } from '../data/onlineCourseCurriculum'
 import { UserLiveSupportPanel } from '../components/LiveSupportPanels'
 
@@ -248,7 +249,14 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     if (logoutLoading) return
-    if (settingsDirty && !window.confirm('You have unsaved settings. Sign out without saving them?')) return
+    if (settingsDirty) {
+      setUnsavedConfirm({ action: 'logout' })
+      return
+    }
+    await performLogout()
+  }
+
+  const performLogout = async () => {
     setLogoutLoading(true)
     try {
       await signOut(auth)
@@ -284,8 +292,10 @@ export default function DashboardPage() {
   const [conversationDeleteConfirm, setConversationDeleteConfirm] = useState(null)
   const [conversationError, setConversationError] = useState('')
   const [conversationVersion, setConversationVersion] = useState(0)
+  const [unsavedConfirm, setUnsavedConfirm] = useState(null)
 
-  const openModalKey = courseDetail ? 'course-detail'
+  const openModalKey = unsavedConfirm ? 'unsaved-settings'
+    : courseDetail ? 'course-detail'
     : cancelConfirm ? 'cancel-course'
       : refundConfirm ? 'refund-course'
         : bookingCancelConfirm ? 'cancel-booking'
@@ -302,6 +312,7 @@ export default function DashboardPage() {
     setBookingCancelConfirm(null)
     setBookingCancelError('')
     setConversationDeleteConfirm(null)
+    setUnsavedConfirm(null)
   }, [courseActionLoading, bookingCancelLoading, conversationActionId])
 
   useEffect(() => {
@@ -705,8 +716,7 @@ export default function DashboardPage() {
   const visibleLoadError = activeTab === 'bookings'
     ? loadErrors.bookings
     : profileTabs.has(activeTab) ? loadErrors.profile : ''
-  const switchTab = (tab) => {
-    if (activeTab === 'settings' && tab !== 'settings' && settingsDirty && !window.confirm('You have unsaved settings. Leave without saving them?')) return
+  const completeTabSwitch = (tab) => {
     setActiveTab(tab)
     setSidebarOpen(false)
     setActiveModule(null)
@@ -719,6 +729,34 @@ export default function DashboardPage() {
     setBookingCancelConfirm(null)
     setBookingCancelError('')
     setShowAllHistory(false)
+  }
+  const switchTab = (tab) => {
+    if (activeTab === 'settings' && tab !== 'settings' && settingsDirty) {
+      setUnsavedConfirm({ action: 'tab', tab })
+      return
+    }
+    completeTabSwitch(tab)
+  }
+  const requestHomeNavigation = () => {
+    if (settingsDirty) {
+      setUnsavedConfirm({ action: 'home' })
+      return
+    }
+    navigate('/')
+  }
+  const confirmUnsavedAction = async () => {
+    const request = unsavedConfirm
+    setUnsavedConfirm(null)
+    if (!request) return
+    if (request.action === 'logout') {
+      await performLogout()
+      return
+    }
+    if (request.action === 'home') {
+      navigate('/')
+      return
+    }
+    if (request.action === 'tab' && request.tab) completeTabSwitch(request.tab)
   }
 
   return (
@@ -947,7 +985,7 @@ export default function DashboardPage() {
             </nav>
             <div style={{ padding:'0.75rem', marginTop:'auto' }}>
               <div className="dash-gold-line" />
-              <button onClick={() => { if (!settingsDirty || window.confirm('You have unsaved settings. Leave without saving them?')) navigate('/') }} className="dash-nav-item" style={{ marginBottom:'4px', marginTop:'0.5rem' }}>
+              <button type="button" onClick={requestHomeNavigation} className="dash-nav-item" style={{ marginBottom:'4px', marginTop:'0.5rem' }}>
                 <div style={{ flexShrink:0, width:'34px', height:'34px', borderRadius:'10px', background:'linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))', display:'flex', alignItems:'center', justifyContent:'center' }}>{I.home}</div>
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}><span>Back to Home</span></div>
               </button>
@@ -1506,6 +1544,7 @@ export default function DashboardPage() {
                       <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(1,69,168,0.08),rgba(1,69,168,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}>{I.book}</div>
                       My Bookings
                     </h3>
+                    {upcomingBookings.length > 0 && <p style={{ margin:'-.35rem 0 1rem', padding:'.65rem .75rem', borderRadius:'10px', background:'#EFF6FF', border:'1px solid #DBEAFE', color:'#1E3A8A', fontFamily:'var(--font-body)', fontSize:'.82rem', lineHeight:1.5 }}>Add a lesson to Google Calendar, or use <strong>Phone / Other</strong> for Apple Calendar, Outlook, and your device calendar. Confirm it once by choosing Save or Add in the calendar app.</p>}
                     {upcomingBookings.length === 0 && pastBookings.length === 0 ? (
                       <div style={{ textAlign:'center', padding:'2.5rem 1rem' }}>
                         <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg></div>
@@ -1517,14 +1556,18 @@ export default function DashboardPage() {
                           <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', fontWeight:600, margin:'0.25rem 0' }}>Upcoming</p>
                           {upcomingBookings.map(b => {
                             const slot = TIME_SLOTS.find(s => s.id === b.timeSlot)
+                            const displayedTime = slot?.time || b.timeSlot || b.time || ''
+                            const googleUrl = googleCalendarUrl(b, courses, displayedTime)
                             return (
-                              <div key={b._id || `${b.date}-${b.timeSlot || b.time}-${b.enrollmentId || ''}`} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.85rem 1rem', background:'linear-gradient(135deg,rgba(34,197,94,0.04),rgba(34,197,94,0.01))', borderRadius:'14px', border:'1px solid rgba(34,197,94,0.1)' }}>
-                                <div>
+                              <div key={b._id || `${b.date}-${b.timeSlot || b.time}-${b.enrollmentId || ''}`} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'.85rem', flexWrap:'wrap', padding:'0.9rem 1rem', background:'linear-gradient(135deg,rgba(34,197,94,0.055),rgba(34,197,94,0.015))', borderRadius:'14px', border:'1px solid rgba(34,197,94,0.14)' }}>
+                                <div style={{ minWidth:'150px', flex:'1 1 170px' }}>
                                   <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:DARK, fontWeight:600, margin:0 }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })}</p>
-                                  <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', margin:'0.15rem 0 0' }}>{slot?.time || b.timeSlot}</p>
+                                  <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#334155', margin:'0.15rem 0 0' }}>{displayedTime}</p>
                                 </div>
-                                <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                                <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:'0.45rem', flexWrap:'wrap', flex:'1 1 260px' }}>
                                   <span style={{ padding:'0.25rem 0.7rem', background:normalizeStatus(b.status) === 'confirmed' ? 'rgba(1,69,168,.10)' : 'rgba(34,197,94,.10)', color:normalizeStatus(b.status) === 'confirmed' ? SKY_BLUE : '#15803D', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700 }}>{normalizeStatus(b.status) === 'booked' ? 'Booked' : normalizeStatus(b.status) === 'confirmed' ? 'Confirmed' : 'Scheduled'}</span>
+                                  {googleUrl && <a href={googleUrl} target="_blank" rel="noreferrer" aria-label={`Add ${b.date} lesson to Google Calendar`} title="Open in Google Calendar" style={{ minHeight:'34px', display:'inline-flex', alignItems:'center', gap:'.35rem', padding:'.4rem .65rem', borderRadius:'9px', border:'1px solid rgba(1,69,168,.22)', background:'#fff', color:SKY_BLUE, fontFamily:'var(--font-body)', fontSize:'.78rem', fontWeight:800, textDecoration:'none', whiteSpace:'nowrap' }}><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 10h18"/><path d="m9 15 2 2 4-4"/></svg>Google Calendar</a>}
+                                  <button type="button" aria-label={`Add ${b.date} lesson to phone, Apple Calendar, or Outlook`} title="Download calendar event for phone, Apple Calendar, or Outlook" onClick={() => { if (!downloadBookingCalendar(b, courses, displayedTime)) showNotice('This booking does not have a valid date and time for the calendar.', 'error') }} style={{ minHeight:'34px', display:'inline-flex', alignItems:'center', gap:'.35rem', padding:'.4rem .65rem', borderRadius:'9px', border:'1px solid #CBD5E1', background:'#fff', color:'#334155', fontFamily:'var(--font-body)', fontSize:'.78rem', fontWeight:800, cursor:'pointer', whiteSpace:'nowrap' }}><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M5 19h14"/></svg>Phone / Other</button>
                                   <button type="button" aria-label="Cancel booking" title="Cancel booking" onClick={() => handleCancelBooking(b._id)} style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', padding:'0.35rem', borderRadius:'6px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
                                 </div>
                               </div>
@@ -1651,6 +1694,23 @@ export default function DashboardPage() {
               </>}
 
             </div>
+
+            {unsavedConfirm && (
+              <div className="dash-modal-backdrop" role="presentation" style={{ position:'fixed', inset:0, background:'rgba(10,22,40,.68)', backdropFilter:'blur(10px)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }} onClick={(event) => { if (event.target === event.currentTarget) setUnsavedConfirm(null) }}>
+                <div ref={modalRef} className="dash-confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="unsaved-settings-title" aria-describedby="unsaved-settings-copy" style={{ width:'100%', maxWidth:'430px', background:'#fff', borderRadius:'22px', boxShadow:'0 28px 90px rgba(2,12,27,.35)', padding:'2rem', border:'1px solid rgba(253,188,1,.3)' }}>
+                  <div style={{ width:'58px', height:'58px', borderRadius:'18px', background:'rgba(253,188,1,.12)', color:'#9A7000', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'1.2rem' }}>
+                    <svg aria-hidden="true" width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4m0 4h.01M10.3 3.6 2.4 17.3A1.8 1.8 0 0 0 4 20h16a1.8 1.8 0 0 0 1.6-2.7L13.7 3.6a2 2 0 0 0-3.4 0Z" /></svg>
+                  </div>
+                  <p style={{ margin:'0 0 .4rem', fontFamily:'var(--font-mono)', fontSize:'.7rem', letterSpacing:'.14em', textTransform:'uppercase', color:'#8A6500', fontWeight:800 }}>Unsaved changes</p>
+                  <h2 id="unsaved-settings-title" style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', color:DARK, margin:'0 0 .55rem' }}>Leave without saving?</h2>
+                  <p id="unsaved-settings-copy" style={{ fontFamily:'var(--font-body)', fontSize:'1rem', lineHeight:1.65, color:'#475569', margin:'0 0 1.5rem' }}>Your latest account settings have not been saved. Stay on this page to keep editing, or leave and discard those changes.</p>
+                  <div style={{ display:'flex', gap:'.75rem', justifyContent:'flex-end', flexWrap:'wrap' }}>
+                    <button type="button" onClick={() => setUnsavedConfirm(null)} style={{ padding:'.82rem 1.15rem', border:'1px solid #CBD5E1', borderRadius:'11px', background:'#fff', color:'#334155', fontWeight:800, cursor:'pointer' }}>Keep Editing</button>
+                    <button type="button" onClick={confirmUnsavedAction} style={{ padding:'.82rem 1.15rem', border:0, borderRadius:'11px', background:'linear-gradient(135deg,#FDBC01,#FFD54F)', color:DARK, fontWeight:900, cursor:'pointer', boxShadow:'0 8px 20px rgba(253,188,1,.25)' }}>Leave Without Saving</button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {conversationDeleteConfirm && (
               <div className="dash-modal-backdrop" role="presentation" style={{ position:'fixed', inset:0, background:'rgba(10,22,40,.68)', backdropFilter:'blur(10px)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }} onClick={(event) => { if (event.target === event.currentTarget && !conversationActionId) setConversationDeleteConfirm(null) }}>

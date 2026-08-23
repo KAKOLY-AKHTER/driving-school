@@ -47,6 +47,8 @@ export default function RegisterPage() {
   )
   const [step, setStep] = useState(0)
   const [regError, setRegError] = useState('')
+  const [stepError, setStepError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
   const [regLoading, setRegLoading] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
@@ -71,13 +73,59 @@ export default function RegisterPage() {
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm(prev => ({ ...prev, [name]: value }))
+    setFieldErrors(prev => {
+      if (!prev[name]) return prev
+      const nextErrors = { ...prev }
+      delete nextErrors[name]
+      return nextErrors
+    })
+    setStepError('')
+    setRegError('')
+  }
+
+  const validateStep = (currentStep) => {
+    const errors = {}
+    if (currentStep === 0) {
+      const requiredFields = {
+        firstName: 'Enter the student’s first name.',
+        lastName: 'Enter the student’s last name.',
+        dob: 'Enter the student’s date of birth.',
+        phone: 'Enter a phone number.',
+        email: 'Enter an email address.',
+        address1: 'Enter the home address.',
+        city: 'Enter the city.',
+        state: 'Select a state.',
+        zipCode: 'Enter the ZIP code.',
+      }
+      Object.entries(requiredFields).forEach(([name, message]) => {
+        if (!String(form[name] || '').trim()) errors[name] = message
+      })
+      if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errors.email = 'Enter a valid email address.'
+      if (form.phone && form.phone.replace(/\D/g, '').length < 10) errors.phone = 'Enter a valid phone number with at least 10 digits.'
+      if (form.zipCode && !/^\d{5}$/.test(form.zipCode.trim())) errors.zipCode = 'Enter a valid 5-digit ZIP code.'
+    }
+    if (currentStep === 1) {
+      if (form.username.trim().length < 3) errors.username = 'Username must contain at least 3 characters.'
+      if (form.password.length < 6) errors.password = 'Password must contain at least 6 characters.'
+      if (!form.confirmPassword) errors.confirmPassword = 'Confirm your password.'
+      else if (form.password !== form.confirmPassword) errors.confirmPassword = 'Passwords do not match.'
+    }
+    if (currentStep === 3 && form.disclaimer !== '1') {
+      errors.disclaimer = 'Accept the enrollment disclaimer to complete registration.'
+    }
+    setFieldErrors(errors)
+    const firstInvalid = Object.keys(errors)[0]
+    if (firstInvalid) {
+      setStepError('Please review the highlighted information before continuing.')
+      window.requestAnimationFrame(() => document.querySelector(`[name="${firstInvalid}"]`)?.focus())
+      return false
+    }
+    setStepError('')
+    return true
   }
 
   const handleSubmit = async () => {
-    if (form.disclaimer !== '1') {
-      alert('Please accept the disclaimer to proceed.')
-      return
-    }
+    if (!validateStep(3)) return
     if (form.password !== form.confirmPassword) {
       setRegError('Passwords do not match.')
       return
@@ -125,8 +173,15 @@ export default function RegisterPage() {
     setRegLoading(false)
   }
 
-  const next = () => setStep(s => Math.min(s + 1, 3))
-  const prev = () => setStep(s => Math.max(s - 1, 0))
+  const next = () => {
+    if (!validateStep(step)) return
+    setStep(s => Math.min(s + 1, 3))
+  }
+  const prev = () => {
+    setStepError('')
+    setFieldErrors({})
+    setStep(s => Math.max(s - 1, 0))
+  }
 
   const inputStyle = {
     width: '100%',
@@ -524,6 +579,13 @@ export default function RegisterPage() {
           {/* Form Card */}
           <div className="rw-card">
 
+            {stepError && (
+              <div role="alert" aria-live="assertive" style={{ display:'flex', alignItems:'flex-start', gap:'.7rem', margin:'0 0 1.35rem', padding:'.9rem 1rem', border:'1px solid #FECACA', borderRadius:'12px', background:'#FFF7F7', color:'#B91C1C', fontFamily:'var(--font-body)', fontSize:'.88rem', fontWeight:700, lineHeight:1.5 }}>
+                <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink:0, marginTop:'1px' }}><circle cx="12" cy="12" r="9" /><path d="M12 8v5m0 3h.01" /></svg>
+                {stepError}
+              </div>
+            )}
+
             {/* ═══ STEP 0 — Personal Info ═══ */}
             {step === 0 && (
               <div>
@@ -548,25 +610,25 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="rw-form-grid">
-                  <Field label="First Name" required><input name="firstName" value={form.firstName} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                  <Field label="First Name" required error={fieldErrors.firstName}><input name="firstName" value={form.firstName} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
                   <Field label="Middle Name"><input name="middleName" value={form.middleName} onChange={handleChange} className="rw-input" style={inputStyle} /></Field>
-                  <Field label="Last Name" required><input name="lastName" value={form.lastName} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
-                  <Field label="Date of Birth" required><input name="dob" value={form.dob} onChange={handleChange} required placeholder="MM-DD-YYYY" className="rw-input" style={inputStyle} /></Field>
-                  <Field label="Phone Number" required><input name="phone" value={form.phone} onChange={handleChange} required placeholder="999-999-9999" className="rw-input" style={inputStyle} /></Field>
-                  <Field label="Email" required><input name="email" type="email" value={form.email} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                  <Field label="Last Name" required error={fieldErrors.lastName}><input name="lastName" value={form.lastName} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                  <Field label="Date of Birth" required error={fieldErrors.dob}><input name="dob" value={form.dob} onChange={handleChange} required placeholder="MM-DD-YYYY" className="rw-input" style={inputStyle} /></Field>
+                  <Field label="Phone Number" required error={fieldErrors.phone}><input name="phone" value={form.phone} onChange={handleChange} required placeholder="999-999-9999" className="rw-input" style={inputStyle} /></Field>
+                  <Field label="Email" required error={fieldErrors.email}><input name="email" type="email" value={form.email} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
                 </div>
 
                 <div className="rw-form-grid" style={{ marginTop: '1rem' }}>
-                  <Field label="Address" required><input name="address1" value={form.address1} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                  <Field label="Address" required error={fieldErrors.address1}><input name="address1" value={form.address1} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
                   <Field label="Apt / Suite"><input name="address2" value={form.address2} onChange={handleChange} className="rw-input" style={inputStyle} /></Field>
-                  <Field label="City" required><input name="city" value={form.city} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                  <Field label="City" required error={fieldErrors.city}><input name="city" value={form.city} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
                   <div className="rw-form-grid-2fr1fr">
-                    <Field label="State" required>
+                    <Field label="State" required error={fieldErrors.state}>
                       <select name="state" value={form.state} onChange={handleChange} required className="rw-input rw-select" style={inputStyle}>
                         {STATES.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </Field>
-                    <Field label="Zip" required><input name="zipCode" value={form.zipCode} onChange={handleChange} required maxLength={5} className="rw-input" style={inputStyle} /></Field>
+                    <Field label="Zip" required error={fieldErrors.zipCode}><input name="zipCode" value={form.zipCode} onChange={handleChange} required maxLength={5} inputMode="numeric" className="rw-input" style={inputStyle} /></Field>
                   </div>
                 </div>
               </div>
@@ -626,9 +688,9 @@ export default function RegisterPage() {
                 }}>
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#475569', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: '1rem' }}>Create your secure account</p>
                   <div className="rw-form-grid-3">
-                    <Field label="Username" required><input name="username" value={form.username} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
-                    <Field label="Password" required><input name="password" type="password" value={form.password} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
-                    <Field label="Confirm Password" required><input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
+                    <Field label="Username" required error={fieldErrors.username}><input name="username" value={form.username} onChange={handleChange} required autoComplete="username" className="rw-input" style={inputStyle} /></Field>
+                    <Field label="Password" required error={fieldErrors.password}><input name="password" type="password" value={form.password} onChange={handleChange} required autoComplete="new-password" className="rw-input" style={inputStyle} /></Field>
+                    <Field label="Confirm Password" required error={fieldErrors.confirmPassword}><input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} required autoComplete="new-password" className="rw-input" style={inputStyle} /></Field>
                   </div>
                 </div>
               </div>
@@ -752,6 +814,7 @@ export default function RegisterPage() {
                       I Disagree
                     </label>
                   </div>
+                  {fieldErrors.disclaimer && <p id="registration-disclaimer-error" role="alert" style={{ margin:'.8rem 0 0', color:'#B91C1C', fontFamily:'var(--font-body)', fontSize:'.78rem', fontWeight:700 }}>{fieldErrors.disclaimer}</p>}
                 </div>
               </div>
             )}
@@ -807,15 +870,24 @@ export default function RegisterPage() {
   )
 }
 
-function Field({ label, required, children }) {
+function Field({ label, required, error, children }) {
   const controlId = children.props.id || `registration-${children.props.name}`
+  const errorId = `${controlId}-error`
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
       <label htmlFor={controlId} style={{
         fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 700,
         color: '#253B5C', letterSpacing: '0.07em', textTransform: 'uppercase',
       }}>{label}{required && <span style={{ color: '#B23B3B' }}> *</span>}</label>
-      {cloneElement(children, { id: controlId })}
+      {cloneElement(children, {
+        id: controlId,
+        'aria-invalid': error ? 'true' : undefined,
+        'aria-describedby': error ? errorId : children.props['aria-describedby'],
+        style: error
+          ? { ...children.props.style, borderColor:'#DC2626', background:'#FFF9F9', boxShadow:'0 0 0 3px rgba(220,38,38,.07)' }
+          : children.props.style,
+      })}
+      {error && <span id={errorId} role="alert" style={{ color:'#B91C1C', fontFamily:'var(--font-body)', fontSize:'.74rem', fontWeight:700, lineHeight:1.4 }}>{error}</span>}
     </div>
   )
 }

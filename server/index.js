@@ -6,7 +6,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { MongoClient, ObjectId } from 'mongodb'
 import Groq from 'groq-sdk'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 
@@ -596,8 +596,16 @@ async function requireSelf(req, res, next) {
 const PORT = process.env.PORT || 3001
 const MONGO_URI = process.env.MONGO_URI
 const DB_NAME = 'driving_school'
+const PAYPAL_ENVIRONMENT = String(process.env.PAYPAL_ENVIRONMENT || 'sandbox').trim().toLowerCase() === 'live'
+  ? 'live'
+  : 'sandbox'
+const PAYPAL_API_BASE = PAYPAL_ENVIRONMENT === 'live'
+  ? 'https://api-m.paypal.com'
+  : 'https://api-m.sandbox.paypal.com'
+const PAYPAL_CURRENCY = 'USD'
+const PAYPAL_ORDER_HOLD_MINUTES = Math.max(15, Math.min(60, Number(process.env.PAYPAL_ORDER_HOLD_MINUTES) || 30))
 
-let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol
+let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol
 let connectPromise = null
 
 class HttpError extends Error {
@@ -605,6 +613,99 @@ class HttpError extends Error {
     super(message)
     this.status = status
   }
+}
+
+const moneyCents = (value) => Math.round(Number(value || 0) * 100)
+const moneyString = (value) => (moneyCents(value) / 100).toFixed(2)
+
+function checkoutFingerprint(items = []) {
+  const canonical = items.map(item => ({
+    id: String(item.id || ''),
+    enrollmentId: cleanText(item.enrollmentId, 160),
+    title: cleanText(item.title, 180),
+    city: cleanText(item.city, 120),
+    cityDistance: cleanText(item.cityDistance, 20),
+    continuation: item.continuation === true,
+    chargeAmount: moneyString(item.chargeAmount),
+    pickupSlots: (Array.isArray(item.pickupSlots) ? item.pickupSlots : [])
+      .map(slot => ({ date: cleanText(slot.date, 10), time: normalizeBookingTime(slot.time) }))
+      .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time)),
+  })).sort((a, b) => a.id.localeCompare(b.id) || a.enrollmentId.localeCompare(b.enrollmentId))
+  return createHash('sha256').update(JSON.stringify(canonical)).digest('hex')
+}
+
+const payableCheckoutAmount = (items = []) => items.reduce(
+  (sum, item) => sum + (item.continuation === true ? 0 : Number(item.chargeAmount || 0)),
+  0
+)
+
+let paypalAccessToken = ''
+let paypalAccessTokenExpiresAt = 0
+
+function paypalConfiguration() {
+  const clientId = String(process.env.PAYPAL_CLIENT_ID || '').trim()
+  const clientSecret = String(process.env.PAYPAL_CLIENT_SECRET || '').trim()
+  if (!clientId || !clientSecret) {
+    throw new HttpError(503, 'PayPal Sandbox is not configured yet. Please contact the school.')
+  }
+  return { clientId, clientSecret }
+}
+
+async function getPayPalAccessToken() {
+  if (paypalAccessToken && paypalAccessTokenExpiresAt > Date.now() + 60_000) return paypalAccessToken
+  const { clientId, clientSecret } = paypalConfiguration()
+  let response
+  try {
+    response = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'grant_type=client_credentials',
+      signal: AbortSignal.timeout(15_000),
+    })
+  } catch (error) {
+    console.error('PayPal authentication request failed:', error?.message || error)
+    throw new HttpError(502, 'PayPal could not be reached. Please try again.')
+  }
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok || !data.access_token) {
+    console.error('PayPal authentication rejected:', response.status, data?.error || data?.name || 'unknown')
+    throw new HttpError(502, 'PayPal authentication failed. Please contact the school.')
+  }
+  paypalAccessToken = data.access_token
+  paypalAccessTokenExpiresAt = Date.now() + Math.max(60, Number(data.expires_in) || 300) * 1000
+  return paypalAccessToken
+}
+
+async function paypalApiRequest(pathname, { method = 'GET', body, requestId = '' } = {}) {
+  const accessToken = await getPayPalAccessToken()
+  let response
+  try {
+    response = await fetch(`${PAYPAL_API_BASE}${pathname}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        ...(requestId ? { 'PayPal-Request-Id': requestId } : {}),
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      signal: AbortSignal.timeout(20_000),
+    })
+  } catch (error) {
+    console.error('PayPal API request failed:', error?.message || error)
+    throw new HttpError(502, 'PayPal could not be reached. Please try again.')
+  }
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const issue = cleanText(data?.details?.[0]?.issue || data?.name, 120)
+    console.error('PayPal API rejected request:', response.status, issue || 'unknown', cleanText(data?.debug_id, 120))
+    const error = new HttpError(response.status === 422 ? 422 : 502, 'PayPal could not complete this request. Please try again.')
+    error.paypalIssue = issue
+    throw error
+  }
+  return data
 }
 
 const isDuplicateKey = (error) => error?.code === 11000
@@ -1165,6 +1266,7 @@ async function connectDB() {
     blogsCol = db.collection('blogs')
     refundsCol = db.collection('refunds')
     cartsCol = db.collection('carts')
+    paypalOrdersCol = db.collection('paypal_orders')
     await usersCol.createIndex({ uid: 1 }, { unique: true })
     await bookingsCol.createIndex({ userId: 1, date: 1 })
     await bookingsCol.createIndex({ holdExpiresAt: 1 }, { expireAfterSeconds: 0, name: 'expire_booking_holds' })
@@ -1173,6 +1275,8 @@ async function connectDB() {
     await availabilityCol.createIndex({ slotKey: 1 }, { unique: true, name: 'unique_admin_availability_slot' })
     await availabilityCol.createIndex({ date: 1, timeOrder: 1 })
     await cartsCol.createIndex({ uid: 1 }, { unique: true })
+    await paypalOrdersCol.createIndex({ uid: 1, createdAt: -1 })
+    await paypalOrdersCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, name: 'expire_unfinished_paypal_orders' })
     await refundsCol.createIndex({ requestKey: 1 }, { unique: true, sparse: true, name: 'unique_user_refund_request' })
     await locationsCol.createIndex({ key: 1 }, { unique: true, sparse: true, name: 'unique_booking_location' })
     await reviewsCol.createIndex({ published: 1, order: 1 })
@@ -2043,11 +2147,10 @@ app.delete('/api/users/:uid/cart/:courseId', async (req, res) => {
   }
 })
 
-app.post('/api/users/:uid/cart/checkout', async (req, res) => {
-  try {
-    const uid = req.auth.uid
-    await cleanupExpiredHolds()
-    const checkout = await withMongoTransaction(async (session) => {
+async function processCartCheckout(req, { quoteOnly = false } = {}) {
+  const uid = req.auth.uid
+  await cleanupExpiredHolds()
+  return withMongoTransaction(async (session) => {
       const cart = await cartsCol.findOne({ uid }, { session })
       const items = cart?.items || []
       if (items.length === 0) {
@@ -2167,6 +2270,64 @@ app.post('/api/users/:uid/cart/checkout', async (req, res) => {
           holds.push({ lock, booking: heldBooking, enrollmentId })
         }
       }
+      const quoteAmount = payableCheckoutAmount(verifiedItems)
+      const cartFingerprint = checkoutFingerprint(verifiedItems)
+      if (quoteOnly) {
+        if (quoteAmount <= 0) {
+          throw new HttpError(400, 'No PayPal payment is required for this booking.')
+        }
+        const extendedExpiry = new Date(Date.now() + PAYPAL_ORDER_HOLD_MINUTES * 60_000)
+        const heldBookingIds = holds.map(({ booking }) => booking._id).filter(Boolean)
+        const heldLockIds = holds.map(({ lock }) => lock._id).filter(Boolean)
+        if (heldBookingIds.length) {
+          await bookingsCol.updateMany(
+            { _id: { $in: heldBookingIds }, userId: uid, status: 'held' },
+            { $set: { holdExpiresAt: extendedExpiry } },
+            { session }
+          )
+        }
+        if (heldLockIds.length) {
+          await bookingSlotsCol.updateMany(
+            { _id: { $in: heldLockIds }, userId: uid, status: 'held' },
+            { $set: { expiresAt: extendedExpiry } },
+            { session }
+          )
+        }
+        await cartsCol.updateOne(
+          { uid },
+          {
+            $set: {
+              'items.$[].holdExpiresAt': extendedExpiry.toISOString(),
+              'items.$[].holdExpired': false,
+              updatedAt: new Date().toISOString(),
+            },
+          },
+          { session }
+        )
+        return {
+          quoteOnly: true,
+          amount: quoteAmount,
+          currency: PAYPAL_CURRENCY,
+          cartFingerprint,
+          description: verifiedItems.filter(item => !item.continuation).map(item => item.title).join(' + ').slice(0, 127),
+          itemCount: verifiedItems.length,
+          holdExpiresAt: extendedExpiry,
+        }
+      }
+
+      const verifiedPayment = req.verifiedPayment || null
+      if (quoteAmount > 0) {
+        if (!verifiedPayment) {
+          throw new HttpError(402, 'Please complete the PayPal payment before enrollment.')
+        }
+        if (verifiedPayment.currency !== PAYPAL_CURRENCY || moneyCents(verifiedPayment.amount) !== moneyCents(quoteAmount)) {
+          throw new HttpError(409, 'The booking total changed. No enrollment was completed; please restart PayPal checkout.')
+        }
+        if (verifiedPayment.cartFingerprint !== cartFingerprint) {
+          throw new HttpError(409, 'Your cart changed after PayPal checkout started. Please restart checkout.')
+        }
+      }
+
       const enrolledAt = new Date().toISOString()
       const { newItems, continuationItems: continuedItems } = splitCheckoutItems(verifiedItems)
       const toAdd = newItems
@@ -2221,8 +2382,16 @@ app.post('/api/users/:uid/cart/checkout', async (req, res) => {
         ref: `INV-${Date.now().toString(36).toUpperCase()}`,
         email: normalizeEmail(req.auth.email) || user?.email || '',
         item: toAdd.map(course => course.title).join(' + '),
-        amount: toAdd.reduce((sum, course) => sum + (parseFloat(String(course.price).replace(/[^0-9.]/g, '')) || 0), 0),
-        status: 'Pending',
+        amount: quoteAmount,
+        status: verifiedPayment ? 'Paid' : 'Pending',
+        ...(verifiedPayment ? {
+          provider: 'PayPal',
+          providerEnvironment: PAYPAL_ENVIRONMENT,
+          providerOrderId: verifiedPayment.orderId,
+          providerCaptureId: verifiedPayment.captureId,
+          payerEmail: verifiedPayment.payerEmail || '',
+          paidAt: verifiedPayment.paidAt || enrolledAt,
+        } : {}),
       } : null
       const userUpdate = {
         $set: { courses: nextCourses },
@@ -2260,21 +2429,253 @@ app.post('/api/users/:uid/cart/checkout', async (req, res) => {
         courses: nextCourses,
       }
     })
-    res.json({
-      ok: true,
+}
+
+async function checkoutCartHandler(req, res) {
+  try {
+    const checkout = await processCartCheckout(req)
+    return res.json({ ok: true, ...checkout })
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      ok: false,
+      error: error.status ? error.message : 'Checkout could not be completed. Please try again.',
+    })
+  }
+}
+
+app.get('/api/paypal/config', requireAuth, (_req, res) => {
+  try {
+    const { clientId } = paypalConfiguration()
+    res.setHeader('Cache-Control', 'no-store')
+    return res.json({
+      clientId,
+      currency: PAYPAL_CURRENCY,
+      environment: PAYPAL_ENVIRONMENT,
+    })
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      error: error.status ? error.message : 'PayPal configuration is unavailable.',
+    })
+  }
+})
+
+app.post('/api/users/:uid/paypal/orders', rateLimit({ windowMs: 60_000, max: 10 }), async (req, res) => {
+  try {
+    const quote = await processCartCheckout(req, { quoteOnly: true })
+    const reusableOrder = await paypalOrdersCol.findOne({
+      uid: req.auth.uid,
+      cartFingerprint: quote.cartFingerprint,
+      status: { $in: ['CREATED', 'CAPTURING'] },
+      expiresAt: { $gt: new Date() },
+    }, { sort: { createdAt: -1 } })
+    if (reusableOrder) {
+      return res.json({
+        id: reusableOrder._id,
+        status: reusableOrder.status,
+        amount: moneyString(reusableOrder.amount),
+        currency: reusableOrder.currency,
+        environment: PAYPAL_ENVIRONMENT,
+      })
+    }
+
+    const requestId = randomUUID()
+    const order = await paypalApiRequest('/v2/checkout/orders', {
+      method: 'POST',
+      requestId,
+      body: {
+        intent: 'CAPTURE',
+        purchase_units: [{
+          reference_id: `cart-${req.auth.uid}`.slice(0, 256),
+          custom_id: quote.cartFingerprint,
+          description: quote.description || 'Driving lesson booking',
+          amount: {
+            currency_code: PAYPAL_CURRENCY,
+            value: moneyString(quote.amount),
+          },
+        }],
+        application_context: {
+          shipping_preference: 'NO_SHIPPING',
+          user_action: 'PAY_NOW',
+        },
+      },
+    })
+    const orderId = cleanText(order?.id, 80)
+    if (!orderId) throw new HttpError(502, 'PayPal did not create an order. Please try again.')
+
+    await paypalOrdersCol.updateOne(
+      { _id: orderId },
+      {
+        $setOnInsert: {
+          _id: orderId,
+          uid: req.auth.uid,
+          status: 'CREATED',
+          amount: Number(moneyString(quote.amount)),
+          currency: PAYPAL_CURRENCY,
+          cartFingerprint: quote.cartFingerprint,
+          requestId,
+          createdAt: new Date(),
+          expiresAt: new Date(quote.holdExpiresAt),
+        },
+      },
+      { upsert: true }
+    )
+
+    return res.status(201).json({
+      id: orderId,
+      status: order.status || 'CREATED',
+      amount: moneyString(quote.amount),
+      currency: PAYPAL_CURRENCY,
+      environment: PAYPAL_ENVIRONMENT,
+    })
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      error: error.status ? error.message : 'PayPal order could not be created. Please try again.',
+      ...(error.paypalIssue ? { issue: error.paypalIssue } : {}),
+    })
+  }
+})
+
+app.post('/api/users/:uid/paypal/orders/:orderId/capture', rateLimit({ windowMs: 60_000, max: 12 }), async (req, res) => {
+  const orderId = cleanText(req.params.orderId, 80)
+  if (!/^[A-Za-z0-9-]{5,80}$/.test(orderId)) {
+    return res.status(400).json({ error: 'Invalid PayPal order.' })
+  }
+
+  let record
+  try {
+    record = await paypalOrdersCol.findOne({ _id: orderId, uid: req.auth.uid })
+    if (!record) throw new HttpError(404, 'PayPal order was not found or has expired.')
+    if (record.status === 'COMPLETED' && record.checkoutResult) {
+      return res.json({
+        ok: true,
+        orderId,
+        captureId: record.captureId,
+        status: 'COMPLETED',
+        ...record.checkoutResult,
+      })
+    }
+
+    let captureData = null
+    let capture = null
+    if (record.status !== 'CAPTURED') {
+      // The buyer can leave the PayPal approval window open for several minutes.
+      // Revalidate the authoritative cart and refresh its slot holds immediately
+      // before capture so an expired or changed booking is never charged.
+      const refreshedQuote = await processCartCheckout(req, { quoteOnly: true })
+      if (
+        refreshedQuote.currency !== record.currency
+        || moneyCents(refreshedQuote.amount) !== moneyCents(record.amount)
+        || refreshedQuote.cartFingerprint !== record.cartFingerprint
+      ) {
+        throw new HttpError(409, 'Your booking or total changed before payment. Please restart PayPal checkout.')
+      }
+      await paypalOrdersCol.updateOne(
+        { _id: orderId, uid: req.auth.uid, status: { $in: ['CREATED', 'CAPTURING'] } },
+        { $set: { expiresAt: new Date(refreshedQuote.holdExpiresAt) } }
+      )
+
+      const staleCapture = new Date(Date.now() - 90_000)
+      const claim = await paypalOrdersCol.updateOne(
+        {
+          _id: orderId,
+          uid: req.auth.uid,
+          $or: [
+            { status: 'CREATED' },
+            { status: 'CAPTURING', captureStartedAt: { $lt: staleCapture } },
+          ],
+        },
+        { $set: { status: 'CAPTURING', captureStartedAt: new Date() } }
+      )
+      if (claim.matchedCount !== 1) {
+        throw new HttpError(409, 'This PayPal payment is already being processed. Please wait a moment.')
+      }
+
+      try {
+        captureData = await paypalApiRequest(`/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, {
+          method: 'POST',
+          requestId: `capture-${orderId}`,
+        })
+      } catch (error) {
+        await paypalOrdersCol.updateOne(
+          { _id: orderId, uid: req.auth.uid, status: 'CAPTURING' },
+          { $set: { status: 'CREATED' }, $unset: { captureStartedAt: '' } }
+        )
+        throw error
+      }
+
+      capture = captureData?.purchase_units?.[0]?.payments?.captures?.[0]
+      const capturedAmount = capture?.amount
+      if (
+        captureData?.status !== 'COMPLETED'
+        || capture?.status !== 'COMPLETED'
+        || cleanText(capturedAmount?.currency_code, 3) !== record.currency
+        || moneyCents(capturedAmount?.value) !== moneyCents(record.amount)
+      ) {
+        await paypalOrdersCol.updateOne(
+          { _id: orderId, uid: req.auth.uid },
+          { $set: { status: 'REVIEW_REQUIRED', paypalStatus: captureData?.status || capture?.status || 'UNKNOWN' }, $unset: { expiresAt: '' } }
+        )
+        throw new HttpError(409, 'PayPal payment requires review. Please contact the school before trying again.')
+      }
+
+      await paypalOrdersCol.updateOne(
+        { _id: orderId, uid: req.auth.uid },
+        {
+          $set: {
+            status: 'CAPTURED',
+            captureId: cleanText(capture.id, 100),
+            payerEmail: cleanText(captureData?.payer?.email_address, 180),
+            paidAt: capture.create_time || new Date().toISOString(),
+            capturedAt: new Date(),
+          },
+          $unset: { expiresAt: '', captureStartedAt: '' },
+        }
+      )
+      record = await paypalOrdersCol.findOne({ _id: orderId, uid: req.auth.uid })
+    }
+
+    req.verifiedPayment = {
+      amount: Number(record.amount),
+      currency: record.currency,
+      cartFingerprint: record.cartFingerprint,
+      orderId,
+      captureId: record.captureId,
+      payerEmail: record.payerEmail,
+      paidAt: record.paidAt,
+    }
+    const checkout = await processCartCheckout(req)
+    const checkoutResult = {
       enrolled: checkout.enrolled,
       continued: checkout.continued,
       newBookings: checkout.newBookings,
       payment: checkout.payment,
       courses: checkout.courses,
+    }
+    await paypalOrdersCol.updateOne(
+      { _id: orderId, uid: req.auth.uid },
+      { $set: { status: 'COMPLETED', completedAt: new Date(), checkoutResult } }
+    )
+    return res.json({
+      ok: true,
+      orderId,
+      captureId: record.captureId,
+      status: 'COMPLETED',
+      ...checkoutResult,
     })
-  } catch (e) {
-    res.status(e.status || 500).json({
+  } catch (error) {
+    const issue = error.paypalIssue || ''
+    const message = issue === 'INSTRUMENT_DECLINED'
+      ? 'The selected PayPal payment method was declined. Please choose another one.'
+      : (error.status ? error.message : 'PayPal payment could not be completed. Please try again.')
+    return res.status(error.status || 500).json({
       ok: false,
-      error: e.status ? e.message : 'Checkout could not be completed. Please try again.',
+      error: message,
+      ...(issue ? { issue } : {}),
     })
   }
 })
+
+app.post('/api/users/:uid/cart/checkout', checkoutCartHandler)
 
 app.post('/api/users/:uid/dedup-courses', async (req, res) => {
   try {
@@ -3755,6 +4156,8 @@ if (process.env.VERCEL !== '1') {
 export {
   DEFAULT_LOCATIONS,
   bookingsForEnrollment,
+  checkoutFingerprint,
+  moneyString,
   normalizePlanPrice,
   normalizeLocationKey,
   packageSlotAllowance,
@@ -3764,6 +4167,7 @@ export {
   sanitizeBlog,
   sanitizePricing,
   sanitizeReview,
+  payableCheckoutAmount,
   splitCheckoutItems,
   validateContinuationSlotCount,
   validateAvailabilitySlot,

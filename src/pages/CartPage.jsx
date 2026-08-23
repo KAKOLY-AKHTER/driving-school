@@ -174,7 +174,7 @@ export default function CartPage() {
                   <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#475569', fontWeight: 700, margin: 0 }}>Amount due ({newPackageCount} new, {continuationCount} continuation)</p>
                   <p style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: GOLD, fontWeight: 800, margin: '0.25rem 0 0', lineHeight: 1 }}>${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                 </div>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: '#334155', margin: 0, maxWidth: '320px', lineHeight: 1.5 }}>{newPackageCount > 0 ? 'Only new packages create a pending invoice. Remaining lessons from an existing package have no additional charge.' : 'These lessons are already included in your package. Confirming them will not create another invoice.'}</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: '#334155', margin: 0, maxWidth: '320px', lineHeight: 1.5 }}>{newPackageCount > 0 ? 'New packages are enrolled only after PayPal confirms the payment. Remaining lessons from an existing package have no additional charge.' : 'These lessons are already included in your package. Confirming them will not create another payment.'}</p>
               </div>
 
               {error && (
