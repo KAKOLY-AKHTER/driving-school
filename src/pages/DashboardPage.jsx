@@ -859,6 +859,35 @@ export default function DashboardPage() {
         .dash-btn-gold:hover { transform:translateY(-2px); box-shadow:0 8px 32px rgba(253,188,1,0.35),inset 0 1px 0 rgba(255,255,255,0.75); }
         .dash-main { background:radial-gradient(circle at 85% 2%,rgba(1,69,168,.055),transparent 28%),linear-gradient(180deg,#F8FAFD 0%,#F4F7FB 100%); }
         .dash-content-width { width:100%; max-width:1180px; margin-left:auto; margin-right:auto; }
+        .dash-overview-page { display:grid; gap:1.25rem; }
+        .dash-overview-header { position:relative; isolation:isolate; overflow:hidden; display:flex; align-items:center; justify-content:space-between; gap:2rem; padding:2rem 2.25rem; border:1px solid rgba(255,255,255,.14); border-radius:26px; background:linear-gradient(135deg,#061A37 0%,#073A7F 54%,#0759C7 100%); color:#fff; box-shadow:0 24px 60px rgba(6,31,70,.22); }
+        .dash-overview-header::before { content:''; position:absolute; right:-110px; bottom:-190px; width:420px; height:420px; border-radius:50%; background:radial-gradient(circle,rgba(255,194,12,.34),rgba(255,194,12,0) 70%); z-index:-1; }
+        .dash-overview-header::after { content:''; position:absolute; inset:0; background:linear-gradient(120deg,transparent 0 54%,rgba(255,255,255,.07) 54% 54.8%,transparent 54.8% 100%); z-index:-1; pointer-events:none; }
+        .dash-overview-header-copy { position:relative; z-index:1; max-width:660px; }
+        .dash-overview-kicker { margin:0 0 .6rem; font-family:var(--font-mono); font-size:.76rem; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:#FFD249; }
+        .dash-overview-header h2 { margin:0 0 .55rem; font-family:var(--font-display); font-size:clamp(2rem,4vw,3.25rem); font-weight:800; line-height:1.02; color:#fff; }
+        .dash-overview-header-copy > p:last-child { margin:0; max-width:590px; font-family:var(--font-body); font-size:1.05rem; line-height:1.65; color:rgba(255,255,255,.82); }
+        .dash-overview-header-actions { position:relative; z-index:1; display:flex; align-items:stretch; gap:.75rem; flex-shrink:0; }
+        .dash-overview-package-count { min-width:128px; padding:.78rem 1rem; border:1px solid rgba(255,255,255,.2); border-radius:16px; background:rgba(255,255,255,.1); box-shadow:inset 0 1px 0 rgba(255,255,255,.13); backdrop-filter:blur(8px); }
+        .dash-overview-package-count strong { display:block; font-family:var(--font-display); font-size:1.65rem; line-height:1; color:#fff; }
+        .dash-overview-package-count span { display:block; margin-top:.35rem; font-family:var(--font-mono); font-size:.65rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,.76); }
+        .dash-overview-header-button { min-height:100%; padding:.8rem 1.15rem; border:1px solid #FFD249; border-radius:16px; background:linear-gradient(135deg,#FFD249,#FDBE16); color:#071A36; font-family:var(--font-mono); font-size:.7rem; font-weight:900; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; box-shadow:0 10px 26px rgba(253,190,22,.2); transition:transform .25s ease,box-shadow .25s ease; }
+        .dash-overview-header-button:hover { transform:translateY(-2px); box-shadow:0 14px 32px rgba(253,190,22,.3); }
+        .dash-overview-profile-card { min-height:194px; }
+        .dash-overview-profile-card > div:last-child { min-width:0; }
+        .dash-overview-profile-card p { overflow-wrap:anywhere; }
+        .dash-overview-next-card { min-height:194px; display:flex; flex-direction:column; }
+        .dash-overview-next-card .dash-overview-inline-action { margin-top:auto; padding-top:1rem; }
+        .dash-overview-stat-card { min-height:168px; }
+        .dash-overview-progress { width:100%; height:7px; margin:.9rem 0 .8rem; overflow:hidden; border-radius:999px; background:#E8EEF6; }
+        .dash-overview-progress span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#F8B500,#FFD249); transition:width .5s ease; }
+        .dash-overview-inline-action { display:inline-flex; align-items:center; gap:.4rem; width:max-content; border:0; padding:0; background:none; color:#0759C7; font-family:var(--font-body); font-size:.94rem; font-weight:800; cursor:pointer; }
+        .dash-overview-section-title { grid-column:1/-1; display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; padding:.55rem .15rem 0; }
+        .dash-overview-section-title span { display:block; margin-bottom:.25rem; font-family:var(--font-mono); font-size:.72rem; font-weight:800; letter-spacing:.18em; text-transform:uppercase; color:#0759C7; }
+        .dash-overview-section-title p { margin:0; color:#475569; font-family:var(--font-body); font-size:.96rem; }
+        .dash-overview-section-title button { display:inline-flex; align-items:center; gap:.45rem; flex-shrink:0; padding:.65rem .9rem; border:1px solid #D7E3F1; border-radius:11px; background:#fff; color:#0759C7; font-family:var(--font-body); font-weight:800; cursor:pointer; box-shadow:0 4px 14px rgba(15,46,85,.05); }
+        .dash-overview-detail-card { min-height:142px; }
+        .dash-overview-detail-card > p:last-child { overflow-wrap:anywhere; }
         .dash-toast { position:fixed; top:92px; right:clamp(1rem,3vw,2rem); z-index:1200; width:min(390px,calc(100vw - 2rem)); animation:dashToastIn .35s cubic-bezier(.22,1,.36,1) both; }
         .dash-skeleton-wrap { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; margin-bottom:1.25rem; }
         .dash-skeleton { height:96px; border-radius:18px; background:linear-gradient(100deg,#e9eef5 25%,#f8fafc 40%,#e9eef5 55%); background-size:200% 100%; animation:dashSkeleton 1.25s linear infinite; border:1px solid #e2e8f0; }
@@ -877,6 +906,9 @@ export default function DashboardPage() {
           .dash-mod-grid { grid-template-columns:1fr !important; }
           .dash-hero-grid { grid-template-columns:1fr !important; }
           .dash-hero-grid > * { grid-column:span 1 !important; }
+          .dash-overview-header { align-items:flex-start; flex-direction:column; padding:1.5rem; }
+          .dash-overview-header-actions { width:100%; justify-content:flex-start; }
+          .dash-overview-section-title { align-items:flex-start; flex-direction:column; }
         }
         @media (max-width:480px) { .dash-slot-grid { grid-template-columns:1fr !important; } }
         @media (max-width:900px) {
@@ -891,6 +923,10 @@ export default function DashboardPage() {
           .dash-bell, .dash-header-divider { display:none !important; }
           .dash-profile-text { display:none !important; }
           .dash-profile-card { flex-wrap:wrap !important; }
+          .dash-overview-header { padding:1.25rem; border-radius:20px; }
+          .dash-overview-header-actions { display:grid; grid-template-columns:1fr; }
+          .dash-overview-package-count,.dash-overview-header-button { width:100%; }
+          .dash-overview-profile-card { align-items:flex-start !important; flex-direction:column; }
           .dash-stat-grid { grid-template-columns:1fr !important; }
           .dash-form-grid { grid-template-columns:1fr !important; }
           .dash-modal-grid { grid-template-columns:1fr !important; }
@@ -1062,15 +1098,26 @@ export default function DashboardPage() {
 
               {!loading && <>
               {activeTab === 'dashboard' && (
-                <div className="dash-content-width">
-                  <div style={{ marginBottom:'2.5rem' }}>
-                    <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600 }}>Welcome back</p>
-                    <h2 style={{ fontFamily:'var(--font-display)', fontSize:'clamp(1.8rem,3vw,2.4rem)', color:'#0F172A', margin:'0 0 0.5rem', fontWeight:800, lineHeight:1.1 }}>Dashboard</h2>
-                    <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:0 }}>Your profile details and quick summary</p>
+                <div className="dash-content-width dash-overview-page">
+                  <div className="dash-overview-header">
+                    <div className="dash-overview-header-copy">
+                      <p className="dash-overview-kicker">Student dashboard</p>
+                      <h2>Welcome back, {(user?.displayName || 'Student').trim().split(/\s+/)[0]}</h2>
+                      <p>Everything you need for your courses, lessons, and account—in one place.</p>
+                    </div>
+                    <div className="dash-overview-header-actions">
+                      <div className="dash-overview-package-count">
+                        <strong>{activeCourses.length}</strong>
+                        <span>Active {activeCourses.length === 1 ? 'package' : 'packages'}</span>
+                      </div>
+                      <button type="button" className="dash-overview-header-button" onClick={() => switchTab('courses')}>
+                        View courses <span aria-hidden="true">→</span>
+                      </button>
+                    </div>
                   </div>
                   <div className="dash-hero-grid" style={{ display:'grid', gridTemplateColumns:'repeat(12,1fr)', gap:'1.25rem' }}>
                     {/* Profile */}
-                    <div className="dash-anim dash-card-premium dash-profile-card" style={{ gridColumn:'span 7', display:'flex', gap:'1.5rem', alignItems:'center' }}>
+                    <div className="dash-anim dash-card-premium dash-profile-card dash-overview-profile-card" style={{ gridColumn:'span 8', display:'flex', gap:'1.5rem', alignItems:'center' }}>
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${SKY_BLUE},${GOLD_BRIGHT},${SKY_BLUE})`, backgroundSize:'200% 100%', animation:'dashShimmer 4s linear infinite' }} />
                       <div style={{ width:'90px', height:'90px', borderRadius:'22px', background:`linear-gradient(145deg,${DARK},#1a2f50 50%,${SKY_BLUE})`, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:'2rem', fontWeight:800, fontFamily:'var(--font-display)', boxShadow:'0 12px 32px rgba(10,22,40,0.3),inset 0 1px 0 rgba(255,255,255,0.1)', flexShrink:0, position:'relative' }}>
                         {initials[0] || 'S'}
@@ -1085,12 +1132,15 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Actionable summary */}
-                    <div className="dash-anim dash-d1 dash-card-premium" style={{ gridColumn:'span 4' }}>
+                    <div className="dash-anim dash-d1 dash-card-premium dash-overview-next-card" style={{ gridColumn:'span 4' }}>
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${SKY_BLUE},#3B82F6)` }} />
                       <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.82rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:'0 0 .55rem', fontWeight:700 }}>Next Lesson</p>
                       {nextBooking ? <><p style={{ fontFamily:'var(--font-display)', fontSize:'1.05rem', color:DARK, margin:'0 0 .25rem', fontWeight:800 }}>{nextBooking.date}</p><p style={{ margin:0, color:'#475569', fontFamily:'var(--font-body)' }}>{nextBooking.timeSlot || nextBooking.time || 'Time to be confirmed'}</p></> : <p style={{ margin:0, color:'#475569', fontFamily:'var(--font-body)' }}>No upcoming lesson</p>}
+                      <button type="button" className="dash-overview-inline-action" onClick={() => switchTab('bookings')}>
+                        View lesson schedule <span aria-hidden="true">&rarr;</span>
+                      </button>
                     </div>
-                    <div className="dash-anim dash-d2 dash-card-premium" style={{ gridColumn:'span 4' }}>
+                    <div className="dash-anim dash-d2 dash-card-premium dash-overview-stat-card" style={{ gridColumn:'span 6' }}>
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT})` }} />
                       <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.82rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:'0 0 .55rem', fontWeight:700 }}>Lesson Slots</p>
                       {activeCourses.length > 0 ? (
@@ -1100,17 +1150,41 @@ export default function DashboardPage() {
                       ) : (
                         <p style={{ fontFamily:'var(--font-display)', fontSize:'1.05rem', color:'#475569', margin:'0 0 .25rem', fontWeight:800 }}>No active package</p>
                       )}
-                      <button type="button" onClick={() => switchTab('courses')} style={{ border:0, padding:0, background:'none', color:SKY_BLUE, fontWeight:800, cursor:'pointer' }}>View plan limits</button>
+                      {activeCourses.length > 0 && (
+                        <div
+                          className="dash-overview-progress"
+                          role="progressbar"
+                          aria-label="Lesson slot usage"
+                          aria-valuemin={0}
+                          aria-valuemax={totalSlotUsage.maximum || 1}
+                          aria-valuenow={totalSlotUsage.used}
+                        >
+                          <span style={{ width:`${totalSlotUsage.maximum ? Math.min(100, (totalSlotUsage.used / totalSlotUsage.maximum) * 100) : 0}%` }} />
+                        </div>
+                      )}
+                      <button type="button" className="dash-overview-inline-action" onClick={() => switchTab('courses')}>
+                        View plan limits <span aria-hidden="true">&rarr;</span>
+                      </button>
                     </div>
-                    <div className="dash-anim dash-d3 dash-card-premium" style={{ gridColumn:'span 4' }}>
+                    <div className="dash-anim dash-d3 dash-card-premium dash-overview-stat-card" style={{ gridColumn:'span 6' }}>
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:'linear-gradient(90deg,#CA8A04,#F59E0B)' }} />
                       <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.82rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:'0 0 .55rem', fontWeight:700 }}>Refund Review</p>
                       <p style={{ fontFamily:'var(--font-display)', fontSize:'1.25rem', color:DARK, margin:'0 0 .25rem', fontWeight:800 }}>{pendingRefunds}</p>
                       <p style={{ margin:0, color:'#475569', fontFamily:'var(--font-body)' }}>{pendingRefunds === 1 ? 'request pending' : 'requests pending'}</p>
                     </div>
 
+                    <div className="dash-overview-section-title">
+                      <div>
+                        <span>Student information</span>
+                        <p>Important account and permit details at a glance.</p>
+                      </div>
+                      <button type="button" onClick={() => switchTab('settings')}>
+                        Edit information <span aria-hidden="true">&rarr;</span>
+                      </button>
+                    </div>
+
                     {/* Medications */}
-                    <div className="dash-anim dash-d1 dash-card-premium" style={{ gridColumn:'span 5' }}>
+                    <div className="dash-anim dash-d1 dash-card-premium dash-overview-detail-card" style={{ gridColumn:'span 4' }}>
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:'linear-gradient(90deg,#DC2626,#F97316)' }} />
                       <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.75rem' }}>
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(220,38,38,0.08),rgba(220,38,38,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0016.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 002 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg></div>
@@ -1120,7 +1194,7 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Permit */}
-                    <div className="dash-anim dash-d2 dash-card-premium" style={{ gridColumn:'span 3' }}>
+                    <div className="dash-anim dash-d2 dash-card-premium dash-overview-detail-card" style={{ gridColumn:'span 4' }}>
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${SKY_BLUE},#3B82F6)` }} />
                       <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.75rem' }}>
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(1,69,168,0.08),rgba(1,69,168,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={SKY_BLUE} strokeWidth="2"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg></div>
@@ -1130,7 +1204,7 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Submitted */}
-                    <div className="dash-anim dash-d2 dash-card-premium" style={{ gridColumn:'span 4' }}>
+                    <div className="dash-anim dash-d2 dash-card-premium dash-overview-detail-card" style={{ gridColumn:'span 4' }}>
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT})` }} />
                       <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.75rem' }}>
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(253,188,1,0.1),rgba(253,188,1,0.04))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={GOLD_DEEP} strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg></div>
@@ -1140,7 +1214,7 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Notes */}
-                    <div className="dash-anim dash-d3 dash-card-premium" style={{ gridColumn:'span 5', gridRow:'span 2' }}>
+                    <div className="dash-anim dash-d3 dash-card-premium dash-overview-detail-card" style={{ gridColumn:'span 4' }}>
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:'linear-gradient(90deg,#8B5CF6,#A78BFA)' }} />
                       <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.75rem' }}>
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(139,92,246,0.08),rgba(139,92,246,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg></div>
@@ -1150,7 +1224,7 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Issue Date */}
-                    <div className="dash-anim dash-d4 dash-card-premium" style={{ gridColumn:'span 3' }}>
+                    <div className="dash-anim dash-d4 dash-card-premium dash-overview-detail-card" style={{ gridColumn:'span 4' }}>
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:'linear-gradient(90deg,#059669,#10B981)' }} />
                       <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.75rem' }}>
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(5,150,105,0.08),rgba(5,150,105,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg></div>
@@ -1160,7 +1234,7 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Expiry */}
-                    <div className="dash-anim dash-d5 dash-card-premium" style={{ gridColumn:'span 4' }}>
+                    <div className="dash-anim dash-d5 dash-card-premium dash-overview-detail-card" style={{ gridColumn:'span 4' }}>
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:'linear-gradient(90deg,#DC2626,#EF4444)' }} />
                       <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.75rem' }}>
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(220,38,38,0.08),rgba(220,38,38,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg></div>
