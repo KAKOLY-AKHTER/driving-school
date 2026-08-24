@@ -70,6 +70,14 @@ const courseStatusMeta = (course) => {
   return { label: course?.status || 'Enrolled', color: '#15803D', background: '#F0FDF4' }
 }
 
+const enrollmentStatusGroup = (course) => {
+  const status = normalizeStatus(course?.status || 'enrolled')
+  if (status === 'refund pending') return 'refund pending'
+  if (status === 'refunded') return 'refunded'
+  if (status === 'cancelled' || status === 'canceled') return 'cancelled'
+  return 'active'
+}
+
 const GOOGLE_MAPS_HOSTS = ['google.com', 'googleusercontent.com']
 
 function validateHttpsUrl(value, { required = true, googleMapsOnly = false } = {}) {
@@ -455,6 +463,7 @@ export default function AdminPage() {
   const [enrollPage, setEnrollPage] = useState(1)
   const [enrollLimit, setEnrollLimit] = useState('10')
   const [enrollSearch, setEnrollSearch] = useState('')
+  const [enrollStatusFilter, setEnrollStatusFilter] = useState('all')
   const [refunds, setRefunds] = useState([])
   const [refundTotal, setRefundTotal] = useState(0)
   const [refundPage, setRefundPage] = useState(1)
@@ -860,23 +869,27 @@ export default function AdminPage() {
     return !q || adminUserName(u).toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q) || (u.phone || '').includes(q)
   })
 
-  const activeEnrollmentRows = websiteUsers.flatMap(account => (Array.isArray(account.courses) ? account.courses : [])
-    .filter(course => !['cancelled', 'canceled', 'refunded'].includes(normalizeStatus(course?.status)))
+  const enrollmentRows = websiteUsers.flatMap(account => (Array.isArray(account.courses) ? account.courses : [])
     .map((course, index) => ({
       account,
       course,
       key: course.enrollmentId || `${account.uid}-${course.id || 'course'}-${course.enrolledAt || index}`,
     })))
+  const activeEnrollmentRows = enrollmentRows.filter(({ course }) => enrollmentStatusGroup(course) === 'active')
   const enrolledQuery = enrollSearch.trim().toLowerCase()
-  const filteredEnrollmentRows = activeEnrollmentRows.filter(({ account, course }) => !enrolledQuery || [
-    adminUserName(account),
-    account.email,
-    account.phone,
-    course.title,
-    COURSE_MAP[course.id],
-    course.city,
-    course.status,
-  ].some(value => String(value || '').toLowerCase().includes(enrolledQuery)))
+  const filteredEnrollmentRows = enrollmentRows.filter(({ account, course }) => {
+    const matchesStatus = enrollStatusFilter === 'all' || enrollmentStatusGroup(course) === enrollStatusFilter
+    const matchesSearch = !enrolledQuery || [
+      adminUserName(account),
+      account.email,
+      account.phone,
+      course.title,
+      COURSE_MAP[course.id],
+      course.city,
+      course.status,
+    ].some(value => String(value || '').toLowerCase().includes(enrolledQuery))
+    return matchesStatus && matchesSearch
+  })
   const enrollTotal = filteredEnrollmentRows.length
   const enrollPages = Math.max(1, Math.ceil(enrollTotal / Number(enrollLimit)))
   const safeEnrollPage = Math.min(enrollPage, enrollPages)
@@ -1498,7 +1511,7 @@ export default function AdminPage() {
                     {[
                       { num: enrolledStudentCount, label: 'Enrolled Students', color: SKY_BLUE },
                       { num: enrolledPackageCount, label: 'Active Packages', color: GOLD },
-                      { num: activeEnrollmentRows.length, label: 'Course Enrollments', color: '#22C55E' },
+                      { num: enrollmentRows.length, label: 'Course Enrollments', color: '#22C55E' },
                     ].map(s => (
                       <div key={s.label} className="admin-stat" style={{ background: '#fff', borderRadius: 'var(--radius-lg)', border: '1px solid #E2EBF5', textAlign: 'center', padding: '1.5rem 1rem', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
                         <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 800, color: s.color, lineHeight: 1, marginBottom: '0.3rem' }}>{s.num}</div>
@@ -1515,12 +1528,19 @@ export default function AdminPage() {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                         <input aria-label="Search enrolled users" type="search" placeholder="Search student, email, plan, city…" value={enrollSearch} onChange={e => { setEnrollSearch(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '280px' }} />
+                        <select aria-label="Filter enrollments by status" value={enrollStatusFilter} onChange={e => { setEnrollStatusFilter(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '170px', fontSize: '1.05rem' }}>
+                          <option value="all">All statuses</option>
+                          <option value="active">Active</option>
+                          <option value="refund pending">Refund Pending</option>
+                          <option value="refunded">Refunded</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
                         <select aria-label="Enrollments per page" value={enrollLimit} onChange={e => { setEnrollLimit(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '90px', fontSize: '1.05rem' }}>
                           <option value="10">10 / page</option>
                           <option value="20">20 / page</option>
                           <option value="50">50 / page</option>
                         </select>
-                        {enrollSearch && <button type="button" onClick={() => { setEnrollSearch(''); setEnrollPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
+                        {(enrollSearch || enrollStatusFilter !== 'all') && <button type="button" onClick={() => { setEnrollSearch(''); setEnrollStatusFilter('all'); setEnrollPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                       </div>
                     </div>
 
@@ -1544,6 +1564,9 @@ export default function AdminPage() {
                             const statusMeta = courseStatusMeta(course)
                             const used = Number(course.slotAllowance?.used ?? course.slotUsage?.used ?? course.slotUsed ?? (Array.isArray(course.pickupSlots) ? course.pickupSlots.length : 0))
                             const maximum = Number(course.slotAllowance?.maximum ?? course.slotUsage?.maximum ?? course.slotMaximum)
+                            const hasSlotRecord = Array.isArray(course.pickupSlots)
+                              || course.slotAllowance?.used != null || course.slotUsage?.used != null || course.slotUsed != null
+                              || course.slotAllowance?.maximum != null || course.slotUsage?.maximum != null || course.slotMaximum != null
                             const enrolledDate = course.enrolledAt ? new Date(course.enrolledAt) : null
                             return (
                               <tr key={key}>
@@ -1554,17 +1577,17 @@ export default function AdminPage() {
                                   </div>
                                 </td>
                                 <td style={tdStyle}>{account.email || '—'}</td>
-                                <td style={tdStyle}>{account.phone || '—'}</td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{account.phone || 'Not recorded'}</td>
                                 <td style={{ ...tdStyle, minWidth: '240px', whiteSpace: 'nowrap', fontWeight: 700 }}>{course.title || COURSE_MAP[course.id] || `Course ${course.id || ''}`}</td>
-                                <td style={tdStyle}>{course.city || '—'}{course.cityDistance ? <span style={{ display: 'block', color: '#334155', fontSize: '.78rem' }}>{locationDistanceLabel(course.cityDistance)}</span> : null}</td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{course.city || <span title="Legacy record" style={{ color: '#64748B' }}>Not recorded</span>}{course.cityDistance ? <span style={{ display: 'block', color: '#334155', fontSize: '.78rem' }}>{locationDistanceLabel(course.cityDistance)}</span> : null}</td>
                                 <td style={{ ...tdStyle, fontWeight: 800 }}>{course.price || '—'}</td>
-                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{Number.isFinite(used) && Number.isFinite(maximum) ? `${used} / ${maximum}` : Number.isFinite(used) ? used : '—'}</td>
-                                <td style={tdStyle}><span style={{ display: 'inline-flex', padding: '.25rem .55rem', borderRadius: '999px', background: statusMeta.background, color: statusMeta.color, fontFamily: 'var(--font-mono)', fontSize: '.7rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 800, whiteSpace: 'nowrap' }}>{statusMeta.label}</span></td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{hasSlotRecord ? (Number.isFinite(used) && Number.isFinite(maximum) ? `${used} / ${maximum}` : Number.isFinite(used) ? used : 'Not recorded') : <span title="Legacy record" style={{ color: '#64748B' }}>Not recorded</span>}</td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><span style={{ display: 'inline-flex', padding: '.25rem .55rem', borderRadius: '999px', background: statusMeta.background, color: statusMeta.color, fontFamily: 'var(--font-mono)', fontSize: '.7rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 800, whiteSpace: 'nowrap' }}>{statusMeta.label}</span></td>
                                 <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{enrolledDate && !Number.isNaN(enrolledDate.getTime()) ? enrolledDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
                               </tr>
                             )
                           })}
-                          {!visibleEnrollmentRows.length && <tr><td colSpan={9} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{enrollSearch ? 'No enrolled users match your search.' : 'No website users have enrolled in a course yet.'}</td></tr>}
+                          {!visibleEnrollmentRows.length && <tr><td colSpan={9} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{enrollSearch || enrollStatusFilter !== 'all' ? 'No enrollments match the selected search or status.' : 'No website users have enrolled in a course yet.'}</td></tr>}
                         </tbody>
                       </table>
                     </div>
