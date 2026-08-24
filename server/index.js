@@ -190,6 +190,58 @@ function rateLimit({ windowMs = 60_000, max = 20 } = {}) {
 
 const cleanText = (value, maxLength = 500) => String(value || '').trim().slice(0, maxLength)
 const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+const escapeEmailHtml = (value) => String(value || '')
+  .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;').replaceAll("'", '&#039;')
+
+const resendConfiguration = () => ({
+  apiKey: cleanText(process.env.RESEND_API_KEY, 500),
+  from: cleanText(process.env.CONTACT_FROM_EMAIL, 320),
+  adminEmail: cleanText(process.env.CONTACT_ADMIN_EMAIL, 160).toLowerCase(),
+})
+
+async function sendResendEmail({ to, subject, html, replyTo }) {
+  const { apiKey, from } = resendConfiguration()
+  if (!apiKey || !from) return { skipped: true }
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from, to: [to], subject, html, ...(replyTo ? { reply_to: replyTo } : {}) }),
+    signal: AbortSignal.timeout(8_000),
+  })
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(cleanText(payload?.message, 240) || `Resend request failed with status ${response.status}.`)
+  return { id: cleanText(payload?.id, 160) }
+}
+
+const emailShell = ({ eyebrow, title, body, footer }) => `<!doctype html><html><body style="margin:0;background:#f3f6fb;font-family:Arial,sans-serif;color:#17233a"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:28px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#fff;border:1px solid #dfe7f1;border-radius:18px;overflow:hidden;box-shadow:0 16px 45px rgba(8,32,72,.1)"><tr><td style="height:7px;background:#0145a8"></td></tr><tr><td style="padding:34px 34px 12px"><div style="color:#a77900;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase">${eyebrow}</div><h1 style="margin:10px 0 0;color:#082048;font-size:28px;line-height:1.25">${title}</h1></td></tr><tr><td style="padding:12px 34px 34px;font-size:15px;line-height:1.7">${body}</td></tr><tr><td style="padding:18px 34px;background:#082048;color:#d8e1ed;font-size:12px;line-height:1.6">${footer}</td></tr></table></td></tr></table></body></html>`
+
+async function deliverContactEmails(contact) {
+  const { apiKey, from, adminEmail } = resendConfiguration()
+  if (!apiKey || !from || !isEmail(adminEmail)) return { status: 'skipped', reason: 'Contact email environment variables are incomplete.' }
+  const name = `${contact.firstName} ${contact.lastName}`.trim()
+  const safeName = escapeEmailHtml(name)
+  const safeEmail = escapeEmailHtml(contact.email)
+  const safePhone = escapeEmailHtml(contact.phone)
+  const safeComments = escapeEmailHtml(contact.comments).replaceAll('\n', '<br>')
+  const adminHtml = emailShell({
+    eyebrow: 'New website enquiry', title: `New message from ${safeName}`,
+    body: `<p>A visitor submitted the website contact form.</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;background:#f7faff"><tr><td style="padding:12px;font-weight:700">Email</td><td style="padding:12px"><a href="mailto:${safeEmail}" style="color:#0145a8">${safeEmail}</a></td></tr><tr><td style="padding:12px;font-weight:700">Phone</td><td style="padding:12px">${safePhone}</td></tr><tr><td style="padding:12px;font-weight:700;vertical-align:top">Message</td><td style="padding:12px">${safeComments}</td></tr></table><p>Reply to this email to respond directly to ${safeName}.</p>`,
+    footer: 'A Precision Driving School · Website contact notification',
+  })
+  const receiptHtml = emailShell({
+    eyebrow: 'Message received', title: `Thank you, ${safeName}.`,
+    body: `<p>We received your message and a member of our team will get back to you as soon as possible.</p><div style="padding:16px;border-left:4px solid #fdbc01;background:#f7faff">${safeComments}</div><p>If your request is urgent, please call or text the school directly.</p>`,
+    footer: 'A Precision Driving School · Please keep this email for your records.',
+  })
+  const results = await Promise.allSettled([
+    sendResendEmail({ to: adminEmail, subject: `Website enquiry from ${name}`, html: adminHtml, replyTo: contact.email }),
+    sendResendEmail({ to: contact.email, subject: 'We received your message | A Precision Driving School', html: receiptHtml, replyTo: adminEmail }),
+  ])
+  const sentIds = results.filter(result => result.status === 'fulfilled').map(result => result.value?.id).filter(Boolean)
+  const errors = results.filter(result => result.status === 'rejected').map(result => cleanText(result.reason?.message, 240))
+  return { status: errors.length === 0 ? 'sent' : sentIds.length ? 'partial' : 'failed', sentIds, ...(errors.length ? { error: errors.join(' | ') } : {}) }
+}
 const isDateKey = (value) => {
   const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (!match) return false
@@ -1446,8 +1498,20 @@ app.post('/api/contact', rateLimit({ windowMs: 10 * 60_000, max: 5 }), async (re
       return res.status(400).json({ error: 'All fields are required.' })
     }
     if (!isEmail(email)) return res.status(400).json({ error: 'Please enter a valid email address.' })
-    await contactCol.insertOne({ firstName, lastName, phone, email, comments, createdAt: new Date().toISOString() })
-    res.json({ ok: true })
+    const createdAt = new Date().toISOString()
+    const contact = { firstName, lastName, phone, email, comments, createdAt, emailDelivery: { status: 'pending' } }
+    const insertResult = await contactCol.insertOne(contact)
+    const emailDelivery = await deliverContactEmails(contact).catch(error => ({
+      status: 'failed',
+      error: cleanText(error?.message, 240) || 'Email delivery failed.',
+    }))
+    await contactCol.updateOne(
+      { _id: insertResult.insertedId },
+      { $set: { emailDelivery: { ...emailDelivery, attemptedAt: new Date().toISOString() } } }
+    ).catch(error => console.warn('Contact email status could not be saved:', error?.message || error))
+    if (emailDelivery.status === 'failed') console.warn('Contact email delivery failed:', emailDelivery.error)
+    if (emailDelivery.status === 'skipped') console.warn(emailDelivery.reason)
+    res.json({ ok: true, emailNotification: emailDelivery.status })
   } catch (e) {
     sendServerError(res, e, 'Contact submission failed')
   }
@@ -4448,6 +4512,8 @@ if (process.env.VERCEL !== '1') {
 
 export {
   DEFAULT_LOCATIONS,
+  deliverContactEmails,
+  escapeEmailHtml,
   adminAvailabilityStatus,
   canonicalAdminBookingStatus,
   bookingsForEnrollment,

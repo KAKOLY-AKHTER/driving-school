@@ -8,6 +8,7 @@ const {
   canonicalAdminBookingStatus,
   bookingsForEnrollment,
   checkoutFingerprint,
+  escapeEmailHtml,
   findPayPalPaymentForRefund,
   isFinalRefundStatus,
   moneyString,
@@ -24,6 +25,13 @@ const {
   validateContinuationSlotCount,
   validateAvailabilitySlot,
 } = await import('./index.js')
+
+test('contact email content escapes untrusted HTML', () => {
+  assert.equal(
+    escapeEmailHtml(`<script>alert("x")</script> & 'test'`),
+    '&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &amp; &#039;test&#039;'
+  )
+})
 
 test('PayPal quote uses server cents and excludes free continuation items', () => {
   const items = [

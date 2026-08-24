@@ -63,11 +63,25 @@ export default function HomeBlogs() {
         .home-blog-read{margin-top:auto;color:#0145A8;font-weight:900;font-size:.84rem}.home-blog-read span{color:#FDBC01;margin-left:.3rem}
         .home-blog-view{display:inline-flex;align-items:center;gap:.4rem;padding:.72rem 1rem;border:1px solid rgba(1,69,168,.2);border-radius:11px;color:#0145A8;text-decoration:none;font-weight:850;background:#fff;white-space:nowrap}
         .home-blog-state{grid-column:1/-1;min-height:180px;display:grid;place-items:center;text-align:center;padding:2rem;border:1px solid #E2EBF5;border-radius:20px;background:#fff;color:#334155}
+        .home-blog-empty{position:relative;isolation:isolate;min-height:285px;padding:clamp(2rem,5vw,3.25rem);overflow:hidden;border-color:rgba(1,69,168,.16);background:radial-gradient(circle at 8% 15%,rgba(253,188,1,.2),transparent 12rem),radial-gradient(circle at 92% 85%,rgba(54,133,245,.18),transparent 15rem),linear-gradient(125deg,#071a35 0%,#0a3475 58%,#0758bd 100%);box-shadow:0 22px 55px rgba(8,32,72,.16);color:#fff}
+        .home-blog-empty:before{content:"";position:absolute;inset:0;z-index:-1;opacity:.12;background-image:linear-gradient(rgba(255,255,255,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.2) 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(110deg,#000,transparent 70%)}
+        .home-blog-empty:after{content:"A";position:absolute;right:-.4rem;bottom:-6.8rem;z-index:-1;color:rgba(255,255,255,.055);font-family:var(--font-display);font-size:19rem;font-weight:900;line-height:1}
+        .home-blog-empty-inner{width:min(700px,100%)}
+        .home-blog-empty-icon{width:68px;height:68px;margin:0 auto 1.15rem;display:grid;place-items:center;border:1px solid rgba(255,255,255,.25);border-radius:19px;background:linear-gradient(135deg,#FDBC01,#FFD54F);color:#082048;box-shadow:0 12px 32px rgba(253,188,1,.25);transform:rotate(-3deg)}
+        .home-blog-empty-icon svg{width:34px;height:34px}
+        .home-blog-empty-label{display:inline-flex;padding:.38rem .72rem;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(255,255,255,.09);color:#FFD54F;font-family:var(--font-mono);font-size:.66rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
+        .home-blog-empty h3{margin:.9rem 0 .55rem;color:#fff;font-family:var(--font-display);font-size:clamp(1.65rem,4vw,2.35rem);line-height:1.15}
+        .home-blog-empty p{max-width:570px;margin:0 auto;color:rgba(255,255,255,.82);font-size:.96rem;line-height:1.7}
+        .home-blog-empty-actions{display:flex;justify-content:center;gap:.7rem;flex-wrap:wrap;margin-top:1.4rem}
+        .home-blog-empty-action{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:.72rem 1rem;border-radius:11px;text-decoration:none;font-size:.82rem;font-weight:850}
+        .home-blog-empty-action.primary{background:linear-gradient(135deg,#FDBC01,#FFD54F);color:#082048;box-shadow:0 10px 25px rgba(253,188,1,.22)}
+        .home-blog-empty-action.secondary{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;backdrop-filter:blur(8px)}
+        .home-blog-empty-action:hover{transform:translateY(-2px)}
         .home-blog-retry{margin-top:1rem;padding:.72rem 1.1rem;border:0;border-radius:10px;background:#0145A8;color:#fff;font:inherit;font-weight:850;cursor:pointer}
         .home-blog-skeleton{height:360px;border-radius:20px;background:linear-gradient(100deg,#edf2f7 30%,#f8fafc 45%,#edf2f7 60%);background-size:220% 100%;animation:home-blog-loading 1.3s ease-in-out infinite}
         @keyframes home-blog-loading{to{background-position-x:-220%}}
         @media(max-width:900px){.home-blog-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.home-blog-card:last-child{display:none}}
-        @media(max-width:620px){.home-blog-head{align-items:flex-start;flex-direction:column}.home-blog-grid{grid-template-columns:1fr}.home-blog-card:last-child{display:flex}.home-blog-media{height:200px}}
+        @media(max-width:620px){.home-blog-head{align-items:flex-start;flex-direction:column}.home-blog-grid{grid-template-columns:1fr}.home-blog-card:last-child{display:flex}.home-blog-media{height:200px}.home-blog-empty{min-height:340px;padding:2rem 1.2rem}.home-blog-empty:after{right:-2rem}.home-blog-empty-actions{flex-direction:column}.home-blog-empty-action{width:100%}}
       `}</style>
       <div className="home-blog-wrap">
         <div className="home-blog-head">
@@ -95,7 +109,23 @@ export default function HomeBlogs() {
               </div>
             </div>
           ) : !posts.length ? (
-            <div className="home-blog-state"><p>No articles have been published yet. Please check back soon.</p></div>
+            <div className="home-blog-state home-blog-empty">
+              <div className="home-blog-empty-inner">
+                <div className="home-blog-empty-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5v13Z" />
+                    <path d="M8 8h8M8 12h6" />
+                  </svg>
+                </div>
+                <span className="home-blog-empty-label">Fresh insights are on the way</span>
+                <h3>Our next driving guide is being prepared.</h3>
+                <p>While our instructors finish the latest article, explore our online driver education program or reserve your next behind-the-wheel lesson.</p>
+                <div className="home-blog-empty-actions">
+                  <Link to="/online-drivers-ed" className="home-blog-empty-action primary">Explore driver education</Link>
+                  <Link to="/schedule" className="home-blog-empty-action secondary">Book a driving lesson</Link>
+                </div>
+              </div>
+            </div>
           ) : posts.map((post) => (
             <Link
               key={post._id || post.slug}

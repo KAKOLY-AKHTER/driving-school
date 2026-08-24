@@ -55,10 +55,10 @@ const bookingSortValue = (booking) => {
 
 const bookingStatusMeta = (booking, today = localDateKey()) => {
   const status = normalizeStatus(booking?.status)
-  if (status === 'cancelled' || status === 'canceled') return { label: 'Cancelled', color: '#B91C1C', background: '#FEF2F2', group: 'cancelled' }
-  if (status === 'completed' || String(booking?.date || '') < today) return { label: 'Completed', color: '#475569', background: '#F1F5F9', group: 'completed' }
-  if (status === 'confirmed') return { label: 'Confirmed', color: '#0755AE', background: '#EFF6FF', group: 'confirmed' }
-  return { label: 'Scheduled', color: '#15803D', background: '#F0FDF4', group: 'scheduled' }
+  if (status === 'cancelled' || status === 'canceled') return { label: 'Lesson Cancelled', color: '#B91C1C', background: '#FEF2F2', group: 'cancelled' }
+  if (status === 'completed' || String(booking?.date || '') < today) return { label: 'Lesson Completed', color: '#475569', background: '#F1F5F9', group: 'completed' }
+  if (status === 'confirmed') return { label: 'Lesson Confirmed', color: '#0755AE', background: '#EFF6FF', group: 'confirmed' }
+  return { label: 'Awaiting Confirmation', color: '#9A6700', background: '#FFFBEB', group: 'scheduled' }
 }
 
 const courseStatusMeta = (course) => {
@@ -272,8 +272,11 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
 }
 
 function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, requestConfirmation, setMessage }) {
-  const [dateInput, setDateInput] = useState('')
   const [dates, setDates] = useState([])
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const [year, month] = localDateKey().split('-').map(Number)
+    return new Date(year, month - 1, 1)
+  })
   const [times, setTimes] = useState([])
   const [rows, setRows] = useState([])
   const [selected, setSelected] = useState([])
@@ -307,13 +310,32 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
     return () => { active = false }
   }, [page, limit, search, status, loadVersion])
 
-  const addDate = () => {
-    if (!dateInput || dateInput <= localDateKey()) {
-      setMessage('Please choose a future date for lesson availability.')
-      return
-    }
-    setDates(current => [...new Set([...current, dateInput])].sort())
-    setDateInput('')
+  const calendarYear = calendarMonth.getFullYear()
+  const calendarMonthIndex = calendarMonth.getMonth()
+  const calendarStartDay = new Date(calendarYear, calendarMonthIndex, 1).getDay()
+  const calendarDayCount = new Date(calendarYear, calendarMonthIndex + 1, 0).getDate()
+  const todayKey = localDateKey()
+  const [todayYear, todayMonth] = todayKey.split('-').map(Number)
+  const currentMonthStart = new Date(todayYear, todayMonth - 1, 1)
+  const calendarDateKey = day => `${calendarYear}-${String(calendarMonthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  const toggleDate = date => {
+    if (date <= todayKey) return
+    setDates(current => {
+      if (current.includes(date)) return current.filter(item => item !== date)
+      if (current.length >= 90) {
+        setMessage('You can select up to 90 future dates at a time.')
+        return current
+      }
+      return [...current, date].sort()
+    })
+  }
+  const selectAvailableMonth = () => {
+    const monthDates = Array.from({ length: calendarDayCount }, (_, index) => calendarDateKey(index + 1)).filter(date => date > todayKey)
+    setDates(current => {
+      const combined = [...new Set([...current, ...monthDates])].sort()
+      if (combined.length > 90) setMessage('Only the first 90 future dates were selected. Save them before adding more.')
+      return combined.slice(0, 90)
+    })
   }
 
   const saveAvailability = async () => {
@@ -382,10 +404,31 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
         </div>
         <div className="admin-grid-responsive" style={{ display: 'grid', gridTemplateColumns: 'minmax(240px,.8fr) minmax(320px,1.2fr)', gap: '1.25rem' }}>
           <div>
-            <label htmlFor="availability-date" style={{ display: 'block', fontWeight: 800, color: '#334155', marginBottom: '.4rem' }}>Future date</label>
-            <div style={{ display: 'flex', gap: '.5rem' }}>
-              <input id="availability-date" type="date" min={localDateKey(new Date(Date.now() + 86_400_000))} value={dateInput} onChange={event => setDateInput(event.target.value)} style={inputStyle} />
-              <button type="button" onClick={addDate} style={{ padding: '.65rem .9rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}>Add Date</button>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.6rem', marginBottom: '.55rem' }}>
+              <span id="availability-calendar-label" style={{ fontWeight: 800, color: '#334155' }}>Select future dates</span>
+              <span aria-live="polite" style={{ color: '#0755AE', fontSize: '.78rem', fontWeight: 800 }}>{dates.length} selected</span>
+            </div>
+            <div role="group" aria-labelledby="availability-calendar-label" style={{ padding: '.85rem', border: '1px solid #DCE6F2', borderRadius: '14px', background: 'linear-gradient(180deg,#F8FBFF,#fff)', boxShadow: '0 10px 28px rgba(15,35,70,.06)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', marginBottom: '.75rem' }}>
+                <button type="button" aria-label="Previous month" disabled={calendarMonth <= currentMonthStart} onClick={() => setCalendarMonth(new Date(calendarYear, calendarMonthIndex - 1, 1))} style={{ width: '38px', height: '38px', border: '1px solid #D7E3F1', borderRadius: '10px', background: '#fff', color: DARK, fontSize: '1.25rem', cursor: calendarMonth <= currentMonthStart ? 'not-allowed' : 'pointer', opacity: calendarMonth <= currentMonthStart ? .4 : 1 }}>&lsaquo;</button>
+                <strong style={{ color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.05rem' }}>{calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</strong>
+                <button type="button" aria-label="Next month" onClick={() => setCalendarMonth(new Date(calendarYear, calendarMonthIndex + 1, 1))} style={{ width: '38px', height: '38px', border: '1px solid #D7E3F1', borderRadius: '10px', background: '#fff', color: DARK, fontSize: '1.25rem', cursor: 'pointer' }}>&rsaquo;</button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,minmax(0,1fr))', gap: '.3rem', textAlign: 'center' }}>
+                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day => <span key={day} aria-hidden="true" style={{ padding: '.25rem 0', color: '#64748B', fontSize: '.68rem', fontWeight: 850 }}>{day.slice(0, 1)}</span>)}
+                {Array.from({ length: calendarStartDay }, (_, index) => <span key={`blank-${index}`} />)}
+                {Array.from({ length: calendarDayCount }, (_, index) => {
+                  const day = index + 1
+                  const date = calendarDateKey(day)
+                  const disabled = date <= todayKey
+                  const chosen = dates.includes(date)
+                  return <button type="button" key={date} disabled={disabled} aria-pressed={chosen} aria-label={`${chosen ? 'Remove' : 'Select'} ${new Date(`${date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`} onClick={() => toggleDate(date)} style={{ aspectRatio: '1', minWidth: 0, border: chosen ? `2px solid ${SKY_BLUE}` : '1px solid transparent', borderRadius: '10px', background: chosen ? 'linear-gradient(135deg,#0755AE,#2D7BE5)' : disabled ? 'transparent' : '#fff', color: chosen ? '#fff' : disabled ? '#CBD5E1' : '#1E293B', fontWeight: chosen ? 900 : 750, cursor: disabled ? 'not-allowed' : 'pointer', boxShadow: chosen ? '0 6px 14px rgba(7,85,174,.22)' : disabled ? 'none' : '0 1px 4px rgba(15,35,70,.08)' }}>{day}</button>
+                })}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '.5rem', flexWrap: 'wrap', marginTop: '.8rem' }}>
+                <button type="button" onClick={selectAvailableMonth} style={{ border: 0, background: 'transparent', color: '#0755AE', fontWeight: 850, cursor: 'pointer', padding: '.35rem' }}>Select all future dates this month</button>
+                {!!dates.length && <button type="button" onClick={() => setDates([])} style={{ border: 0, background: 'transparent', color: '#B91C1C', fontWeight: 850, cursor: 'pointer', padding: '.35rem' }}>Clear all</button>}
+              </div>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.45rem', marginTop: '.75rem', minHeight: '32px' }}>
               {dates.map(date => <button type="button" key={date} onClick={() => setDates(current => current.filter(item => item !== date))} title="Remove date" style={{ border: '1px solid #BFDBFE', borderRadius: '999px', padding: '.35rem .6rem', background: '#EFF6FF', color: '#0755AE', fontWeight: 750, cursor: 'pointer' }}>{new Date(`${date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} ×</button>)}
@@ -401,7 +444,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
         </div>
         <div style={{ display: 'flex', gap: '.65rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
           <button type="button" disabled={saving} onClick={saveAvailability} style={{ minHeight: '44px', padding: '.7rem 1.15rem', border: 0, borderRadius: '9px', background: `linear-gradient(135deg,${SKY_BLUE},#0A2A5E)`, color: '#fff', fontWeight: 850, cursor: saving ? 'wait' : 'pointer' }}>{saving ? 'Saving…' : 'Save Availability'}</button>
-          <button type="button" disabled={saving} onClick={() => { setDates([]); setTimes([]); setDateInput('') }} style={{ minHeight: '44px', padding: '.7rem 1.15rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Reset</button>
+          <button type="button" disabled={saving} onClick={() => { setDates([]); setTimes([]) }} style={{ minHeight: '44px', padding: '.7rem 1.15rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Reset</button>
         </div>
       </div>
 
@@ -1438,12 +1481,12 @@ export default function AdminPage() {
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.calendar} Bookings <span style={{ color: '#334155', fontSize: '.9rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>({filteredBookings.length} of {bookings.length})</span></h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       <input className="admin-toolbar-input" aria-label="Search bookings" type="search" placeholder="Search student, plan, date, time…" value={bookingSearch} onChange={(e) => { setBookingSearch(e.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '280px' }} />
-                      <select aria-label="Filter bookings by status" value={bookingStatusFilter} onChange={(event) => { setBookingStatusFilter(event.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '145px' }}>
-                        <option value="all">All statuses</option>
-                        <option value="scheduled">Scheduled</option>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
+                      <select aria-label="Filter bookings by status" value={bookingStatusFilter} onChange={(event) => { setBookingStatusFilter(event.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '210px' }}>
+                        <option value="all">All Booking Statuses</option>
+                        <option value="scheduled">Awaiting Confirmation</option>
+                        <option value="confirmed">Lesson Confirmed</option>
+                        <option value="completed">Lesson Completed</option>
+                        <option value="cancelled">Lesson Cancelled</option>
                       </select>
                       <select aria-label="Booking rows per page" value={bookingLimit} onChange={event => { setBookingLimit(event.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '105px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
                       {(bookingSearch || bookingStatusFilter !== 'all') && <button type="button" onClick={() => { setBookingSearch(''); setBookingStatusFilter('all'); setBookingPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
