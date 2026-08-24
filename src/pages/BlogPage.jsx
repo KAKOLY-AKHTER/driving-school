@@ -100,6 +100,7 @@ export default function BlogPage() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
+  const [requestVersion, setRequestVersion] = useState(0);
 
   usePageMeta(
     post
@@ -135,7 +136,7 @@ export default function BlogPage() {
     return () => {
       active = false;
     };
-  }, [slug]);
+  }, [slug, requestVersion]);
 
   const categories = useMemo(
     () => ["All", ...new Set(posts.map((item) => item.category).filter(Boolean))],
@@ -205,6 +206,7 @@ export default function BlogPage() {
             <div className="blog-state">
               <h2>Article not found</h2>
               <p>{error}</p>
+              {error && <button type="button" className="public-retry-button" onClick={() => setRequestVersion(value => value + 1)}>Retry</button>}
               <Link to="/blog">Back to all articles</Link>
             </div>
           ) : (
@@ -334,6 +336,7 @@ export default function BlogPage() {
                 <div className="blog-state">
                   <h2>Articles unavailable</h2>
                   <p>{error}</p>
+                  <button type="button" className="public-retry-button" onClick={() => setRequestVersion(value => value + 1)}>Retry articles</button>
                 </div>
               ) : filtered.length ? (
                 <>
@@ -354,6 +357,7 @@ export default function BlogPage() {
                 <div className="blog-state">
                   <h2>No matching articles</h2>
                   <p>Try another search term or category.</p>
+                  <button type="button" className="public-retry-button" onClick={() => { setQuery(""); setCategory("All"); }}>Clear filters</button>
                 </div>
               ) : (
                 <div className="blog-empty">

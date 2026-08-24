@@ -469,7 +469,7 @@ export default function SchedulePage() {
                 <div style={{
                   fontFamily: 'var(--font-display)', fontSize: '2.2rem',
                   fontWeight: 800, color: GOLD, marginBottom: '0.25rem', lineHeight: 1,
-                }}>{pkg.price}</div>
+                }}>See current pricing</div>
 
                 <p style={{
                   fontFamily: 'var(--font-body)', fontSize: '0.8rem',
@@ -477,11 +477,12 @@ export default function SchedulePage() {
                 }}>{pkg.desc}</p>
 
                 <button
-                  onClick={() => navigate('/register', { state: { packageId: pkg.id } })}
+                  type="button"
+                  onClick={() => navigate('/pricing')}
                   className={pkg.highlight ? 'sch-cta-gold' : 'sch-cta-ghost'}
                   style={{ width: '100%', border: pkg.highlight ? 'none' : undefined, cursor: 'pointer' }}
                 >
-                  Register Now
+                  View live price &amp; book
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>

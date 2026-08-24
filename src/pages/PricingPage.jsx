@@ -116,6 +116,9 @@ export default function PricingPage() {
   const [availabilityLoading, setAvailabilityLoading] = useState(false)
   const [error, setError] = useState('')
   const [tiers, setTiers] = useState(null)
+  const [pricingLoading, setPricingLoading] = useState(true)
+  const [pricingLoadError, setPricingLoadError] = useState('')
+  const [pricingLoadVersion, setPricingLoadVersion] = useState(0)
   const [bookingLocations, setBookingLocations] = useState(DEFAULT_BOOKING_LOCATIONS)
   const [enrolledCourses, setEnrolledCourses] = useState([])
   const [enrollmentLoading, setEnrollmentLoading] = useState(false)
@@ -123,8 +126,23 @@ export default function PricingPage() {
   const [enrollmentLoadVersion, setEnrollmentLoadVersion] = useState(0)
 
   useEffect(() => {
-    api.getPricing().then(d => { if (Array.isArray(d) && d.length) setTiers(d) }).catch(() => {})
-  }, [])
+    let active = true
+    setPricingLoading(true)
+    setPricingLoadError('')
+    api.getPricing()
+      .then(data => {
+        if (!active) return
+        if (!Array.isArray(data) || !data.length) throw new Error('No pricing plans are currently available.')
+        setTiers(data)
+      })
+      .catch(loadError => {
+        if (active) setPricingLoadError(loadError?.message || 'Pricing plans could not be loaded.')
+      })
+      .finally(() => {
+        if (active) setPricingLoading(false)
+      })
+    return () => { active = false }
+  }, [pricingLoadVersion])
 
   useEffect(() => {
     let active = true
@@ -517,7 +535,22 @@ export default function PricingPage() {
         @keyframes pulseRing { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(2.2); opacity: 0; } }
       `}</style>
 
-      <Pricing light onEnroll={handleChoose} tiers={tiers} />
+      {pricingLoading ? (
+        <section className="public-page-state" role="status" aria-live="polite">
+          <span className="sr-only">Loading current pricing packages.</span>
+          <div className="public-card-skeleton-grid" aria-hidden="true">
+            {[0, 1, 2].map(item => <div className="public-card-skeleton" key={item} />)}
+          </div>
+        </section>
+      ) : pricingLoadError ? (
+        <section className="public-page-state" role="alert">
+          <h1>Pricing is temporarily unavailable</h1>
+          <p>{pricingLoadError} Please try again.</p>
+          <button type="button" className="public-retry-button" onClick={() => setPricingLoadVersion(value => value + 1)}>Retry pricing</button>
+        </section>
+      ) : (
+        <Pricing light onEnroll={handleChoose} tiers={tiers} />
+      )}
 
       {step === 'full' && selectedTier && (
         <div style={backdropStyle} onClick={(event) => { if (event.target === event.currentTarget) handleClose() }}>

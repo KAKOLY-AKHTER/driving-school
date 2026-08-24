@@ -650,6 +650,13 @@ textarea:hover {
 @keyframes home-pricing-loading { to { background-position-x: -220%; } }
 .home-retry-button { min-height: 44px; margin-top: 0.65rem; padding: 0.75rem 1.15rem; border: 0; border-radius: 10px; background: #0145a8; color: #fff; font: inherit; font-weight: 800; cursor: pointer; }
 
+.public-page-state { width: min(1180px, calc(100% - 2rem)); min-height: 360px; margin: 0 auto; padding: 4rem 0; display: grid; align-content: center; justify-items: center; text-align: center; color: #334155; }
+.public-page-state h1 { margin: 0 0 0.75rem; color: #0a1628; font-family: var(--font-display); font-size: clamp(1.8rem, 4vw, 3rem); }
+.public-page-state p { max-width: 620px; line-height: 1.65; }
+.public-retry-button { min-height: 44px; padding: 0.75rem 1.1rem; border: 0; border-radius: 10px; background: #0758bd; color: #fff; font: inherit; font-weight: 850; cursor: pointer; }
+.public-card-skeleton-grid { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.public-card-skeleton { min-height: 330px; border-radius: 20px; background: linear-gradient(100deg, #edf2f7 30%, #f8fafc 45%, #edf2f7 60%); background-size: 220% 100%; animation: home-pricing-loading 1.3s ease-in-out infinite; }
+
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
@@ -676,6 +683,8 @@ textarea:focus-visible {
 
   .home-pricing-skeletons { grid-template-columns: 1fr; }
   .home-pricing-skeleton:not(:first-of-type) { display: none; }
+  .public-card-skeleton-grid { grid-template-columns: 1fr; }
+  .public-card-skeleton:not(:first-child) { display: none; }
 
   .pricing-page {
     padding-top: 9rem !important;

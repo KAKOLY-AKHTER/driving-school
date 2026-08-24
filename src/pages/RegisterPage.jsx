@@ -107,7 +107,7 @@ export default function RegisterPage() {
     }
     if (currentStep === 1) {
       if (form.username.trim().length < 3) errors.username = 'Username must contain at least 3 characters.'
-      if (form.password.length < 6) errors.password = 'Password must contain at least 6 characters.'
+      if (form.password.length < 8) errors.password = 'Password must contain at least 8 characters.'
       if (!form.confirmPassword) errors.confirmPassword = 'Confirm your password.'
       else if (form.password !== form.confirmPassword) errors.confirmPassword = 'Passwords do not match.'
     }
@@ -164,7 +164,7 @@ export default function RegisterPage() {
       navigate(requestedReturn || consumeBookingReturn() || '/dashboard', { replace: true })
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') setRegError('An account with this email already exists.')
-      else if (err.code === 'auth/weak-password') setRegError('Password must be at least 6 characters.')
+      else if (err.code === 'auth/weak-password') setRegError('Password must be at least 8 characters.')
       else if (err.code === 'auth/invalid-email') setRegError('Invalid email address.')
       else {
         console.error(err)
