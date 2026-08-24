@@ -5,6 +5,7 @@ process.env.VERCEL = '1'
 const {
   DEFAULT_LOCATIONS,
   adminAvailabilityStatus,
+  canonicalAdminBookingStatus,
   bookingsForEnrollment,
   checkoutFingerprint,
   findPayPalPaymentForRefund,
@@ -137,6 +138,14 @@ test('admin availability marks non-future open slots expired without hiding book
   assert.equal(adminAvailabilityStatus({ date: today, status: 'available' }, today), 'expired')
   assert.equal(adminAvailabilityStatus({ date: '2026-08-25', status: 'available' }, today), 'available')
   assert.equal(adminAvailabilityStatus({ date: '2026-08-23', status: 'booked' }, today), 'booked')
+})
+
+test('admin bookings expose only the four canonical dashboard statuses', () => {
+  const today = '2026-08-24'
+  assert.equal(canonicalAdminBookingStatus({ date: '2026-08-25', status: 'booked' }, today), 'scheduled')
+  assert.equal(canonicalAdminBookingStatus({ date: '2026-08-25', status: 'confirmed' }, today), 'confirmed')
+  assert.equal(canonicalAdminBookingStatus({ date: '2026-08-23', status: 'confirmed' }, today), 'completed')
+  assert.equal(canonicalAdminBookingStatus({ date: '2026-08-25', status: 'canceled' }, today), 'cancelled')
 })
 
 test('only the two DMV rental plans accept exact appointment times', () => {

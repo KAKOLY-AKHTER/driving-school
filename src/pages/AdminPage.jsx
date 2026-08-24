@@ -56,13 +56,9 @@ const bookingSortValue = (booking) => {
 const bookingStatusMeta = (booking, today = localDateKey()) => {
   const status = normalizeStatus(booking?.status)
   if (status === 'cancelled' || status === 'canceled') return { label: 'Cancelled', color: '#B91C1C', background: '#FEF2F2', group: 'cancelled' }
-  if (status === 'completed') return { label: 'Completed', color: '#475569', background: '#F1F5F9', group: 'completed' }
-  if (status === 'no show') return { label: 'No Show', color: '#B45309', background: '#FFF7ED', group: 'completed' }
-  if (status === 'refunded') return { label: 'Refunded', color: '#7C3AED', background: '#F5F3FF', group: 'completed' }
-  if (status === 'confirmed') return { label: 'Confirmed', color: '#0755AE', background: '#EFF6FF', group: String(booking?.date || '') >= today ? 'upcoming' : 'completed' }
-  if (status === 'booked') return { label: 'Booked', color: '#15803D', background: '#F0FDF4', group: String(booking?.date || '') >= today ? 'upcoming' : 'completed' }
-  const upcoming = String(booking?.date || '') >= today
-  return { label: upcoming ? 'Scheduled' : 'Completed', color: upcoming ? '#15803D' : '#475569', background: upcoming ? '#F0FDF4' : '#F1F5F9', group: upcoming ? 'upcoming' : 'completed' }
+  if (status === 'completed' || String(booking?.date || '') < today) return { label: 'Completed', color: '#475569', background: '#F1F5F9', group: 'completed' }
+  if (status === 'confirmed') return { label: 'Confirmed', color: '#0755AE', background: '#EFF6FF', group: 'confirmed' }
+  return { label: 'Scheduled', color: '#15803D', background: '#F0FDF4', group: 'scheduled' }
 }
 
 const courseStatusMeta = (course) => {
@@ -427,6 +423,8 @@ export default function AdminPage() {
   const [userSearch, setUserSearch] = useState('')
   const [bookingSearch, setBookingSearch] = useState('')
   const [bookingStatusFilter, setBookingStatusFilter] = useState('all')
+  const [bookingPage, setBookingPage] = useState(1)
+  const [bookingLimit, setBookingLimit] = useState('10')
   const [contactSearch, setContactSearch] = useState('')
   const [contactStatusFilter, setContactStatusFilter] = useState('all')
   const [msg, setMsg] = useState('')
@@ -900,6 +898,12 @@ export default function AdminPage() {
     const matchesStatus = bookingStatusFilter === 'all' || group === bookingStatusFilter
     return matchesSearch && matchesStatus
   }).sort((a, b) => bookingSortValue(a).localeCompare(bookingSortValue(b)))
+  const bookingPages = Math.max(1, Math.ceil(filteredBookings.length / Number(bookingLimit)))
+  const safeBookingPage = Math.min(bookingPage, bookingPages)
+  const visibleBookings = filteredBookings.slice(
+    (safeBookingPage - 1) * Number(bookingLimit),
+    safeBookingPage * Number(bookingLimit),
+  )
 
   const filteredContacts = contacts.filter(contact => {
     const q = contactSearch.trim().toLowerCase()
@@ -1263,14 +1267,16 @@ export default function AdminPage() {
                   <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.calendar} Bookings <span style={{ color: '#334155', fontSize: '.9rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>({filteredBookings.length} of {bookings.length})</span></h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      <input className="admin-toolbar-input" aria-label="Search bookings" type="search" placeholder="Search student, plan, date, time…" value={bookingSearch} onChange={(e) => setBookingSearch(e.target.value)} style={{ ...inputStyle, width: '280px' }} />
-                      <select aria-label="Filter bookings by status" value={bookingStatusFilter} onChange={(event) => setBookingStatusFilter(event.target.value)} style={{ ...inputStyle, width: '145px' }}>
+                      <input className="admin-toolbar-input" aria-label="Search bookings" type="search" placeholder="Search student, plan, date, time…" value={bookingSearch} onChange={(e) => { setBookingSearch(e.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '280px' }} />
+                      <select aria-label="Filter bookings by status" value={bookingStatusFilter} onChange={(event) => { setBookingStatusFilter(event.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '145px' }}>
                         <option value="all">All statuses</option>
-                        <option value="upcoming">Upcoming</option>
+                        <option value="scheduled">Scheduled</option>
+                        <option value="confirmed">Confirmed</option>
                         <option value="completed">Completed</option>
                         <option value="cancelled">Cancelled</option>
                       </select>
-                      {(bookingSearch || bookingStatusFilter !== 'all') && <button type="button" onClick={() => { setBookingSearch(''); setBookingStatusFilter('all') }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
+                      <select aria-label="Booking rows per page" value={bookingLimit} onChange={event => { setBookingLimit(event.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '105px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
+                      {(bookingSearch || bookingStatusFilter !== 'all') && <button type="button" onClick={() => { setBookingSearch(''); setBookingStatusFilter('all'); setBookingPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                     </div>
                   </div>
                   <div className="admin-table-wrap">
@@ -1285,7 +1291,7 @@ export default function AdminPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredBookings.map(b => {
+                        {visibleBookings.map(b => {
                           const u = users.find(ux => ux.uid === b.userId)
                           const statusMeta = bookingStatusMeta(b, todayStr)
                           return (
@@ -1294,7 +1300,7 @@ export default function AdminPage() {
                                 <div>
                                   <p style={{ fontWeight: 600, margin: 0 }}>{adminUserName(u)}</p>
                                   <p style={{ fontSize: '0.95rem', color: '#334155', margin: '0.1rem 0 0' }}>{u?.email || b.userId}</p>
-                                  <p style={{ fontSize: '0.85rem', color: SKY_BLUE, margin: '0.16rem 0 0', fontWeight: 700 }}>{COURSE_MAP[b.courseId] || b.courseTitle || `Plan ${b.courseId || '—'}`}</p>
+                                  <p style={{ fontSize: '0.85rem', color: SKY_BLUE, margin: '0.16rem 0 0', fontWeight: 700 }}>{COURSE_MAP[b.courseId] || b.courseTitle || (b.courseId ? `Plan ${b.courseId}` : 'Legacy / Unassigned')}</p>
                                 </div>
                               </td>
                               <td style={tdStyle}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</td>
@@ -1746,6 +1752,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                       </table>
                     </div>
                   </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginTop: '1rem' }}><span style={{ color: '#334155', fontSize: '.9rem' }}>Page {safeBookingPage} of {bookingPages} · {filteredBookings.length} booking{filteredBookings.length === 1 ? '' : 's'}</span><div style={{ display: 'flex', gap: '.45rem' }}><button type="button" disabled={safeBookingPage <= 1} onClick={() => setBookingPage(value => Math.max(1, value - 1))} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: safeBookingPage <= 1 ? 'not-allowed' : 'pointer' }}>Previous</button><button type="button" disabled={safeBookingPage >= bookingPages} onClick={() => setBookingPage(value => Math.min(bookingPages, value + 1))} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: safeBookingPage >= bookingPages ? 'not-allowed' : 'pointer' }}>Next</button></div></div>
                 </div>
               )}
 

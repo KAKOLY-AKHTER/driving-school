@@ -893,6 +893,14 @@ function validateSlotCountForTier(slots, tier, status = 400, planLabel = 'This p
 }
 
 const normalizedBookingStatus = (value) => cleanText(value, 40).toLowerCase()
+
+function canonicalAdminBookingStatus(booking, today = californiaDateKey()) {
+  const status = normalizedBookingStatus(booking?.status)
+  if (status === 'cancelled' || status === 'canceled') return 'cancelled'
+  if (status === 'completed' || status === 'refunded' || status === 'no show' || String(booking?.date || '') < today) return 'completed'
+  if (status === 'confirmed') return 'confirmed'
+  return 'scheduled'
+}
 const normalizedCourseStatus = (value) => cleanText(value || 'Enrolled', 40).toLowerCase()
 const courseCanAcceptMoreBookings = (course) => {
   const status = normalizedCourseStatus(course?.status)
@@ -3240,7 +3248,11 @@ app.get('/api/admin/users', async (req, res) => {
 app.get('/api/admin/bookings', async (req, res) => {
   try {
     const bookings = await bookingsCol.find({ status: { $ne: 'held' } }).sort({ _id: -1 }).toArray()
-    res.json(bookings)
+    const today = californiaDateKey()
+    res.json(bookings.map(booking => ({
+      ...booking,
+      status: canonicalAdminBookingStatus(booking, today),
+    })))
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
@@ -4352,6 +4364,7 @@ if (process.env.VERCEL !== '1') {
 export {
   DEFAULT_LOCATIONS,
   adminAvailabilityStatus,
+  canonicalAdminBookingStatus,
   bookingsForEnrollment,
   checkoutFingerprint,
   findPayPalPaymentForRefund,
