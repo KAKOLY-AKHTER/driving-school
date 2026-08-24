@@ -199,8 +199,9 @@ test('booking locations match the approved Near and Long city groups', () => {
 test('booking location input is normalized and constrained to Near or Long', () => {
   assert.deepEqual(
     sanitizeLocation({ name: '  Redwood   CITY ', distance: 'long', order: 10 }),
-    { name: 'Redwood CITY', key: 'redwood city', distance: 'Long', order: 10 }
+    { name: 'Redwood City', key: 'redwood city', distance: 'Long', order: 10 }
   )
+  assert.equal(sanitizeLocation({ name: 'REDWOOD city', distance: 'Near' }).key, 'redwood city')
   assert.throws(
     () => sanitizeLocation({ name: 'Fremont', distance: 'medium' }),
     error => error.status === 400 && /Near or Long/.test(error.message)

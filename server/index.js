@@ -337,13 +337,38 @@ const normalizeLocationKey = (value) => cleanText(value, 120)
 
 function sanitizeLocation(value) {
   if (!isPlainObject(value)) throw new HttpError(400, 'A valid booking location is required.')
-  const name = cleanText(value.name, 120).replace(/\s+/g, ' ')
+  const name = cleanText(value.name, 120)
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+    .replace(/(^|[\s'-])([a-z])/g, (_match, boundary, letter) => `${boundary}${letter.toUpperCase()}`)
   const key = normalizeLocationKey(name)
   const rawDistance = cleanText(value.distance, 20).toLowerCase()
   const distance = rawDistance === 'near' ? 'Near' : rawDistance === 'long' ? 'Long' : ''
   if (!name || !key) throw new HttpError(400, 'City name is required.')
   if (!distance) throw new HttpError(400, 'Package distance must be Near or Long.')
   return { name, key, distance, order: cleanInteger(value.order, 0, 0, 10_000) }
+}
+
+async function locationUsage(location) {
+  const safeName = cleanText(location?.name, 120).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  if (!safeName) return { enrollments: 0, carts: 0, bookings: 0, total: 0 }
+  const exactCity = { $regex: `^${safeName}$`, $options: 'i' }
+  const [enrollmentRows, cartRows, bookings] = await Promise.all([
+    usersCol.aggregate([
+      { $unwind: '$courses' },
+      { $match: { 'courses.city': exactCity } },
+      { $count: 'count' },
+    ]).toArray(),
+    cartsCol.aggregate([
+      { $unwind: '$items' },
+      { $match: { 'items.city': exactCity } },
+      { $count: 'count' },
+    ]).toArray(),
+    bookingsCol.countDocuments({ city: exactCity }),
+  ])
+  const enrollments = Number(enrollmentRows[0]?.count || 0)
+  const carts = Number(cartRows[0]?.count || 0)
+  return { enrollments, carts, bookings, total: enrollments + carts + bookings }
 }
 function sanitizeSocial(value) {
   if (!isPlainObject(value)) throw new HttpError(400, 'A valid social link is required.')
@@ -3631,10 +3656,29 @@ app.put('/api/admin/locations/:id', async (req, res) => {
   }
 })
 
+app.get('/api/admin/locations/:id/usage', async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid location id.')
+    const location = await locationsCol.findOne({ _id: new ObjectId(req.params.id) })
+    if (!location) throw new HttpError(404, 'Location not found.')
+    res.json({ location: { _id: location._id, name: location.name }, ...(await locationUsage(location)) })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Booking location usage lookup failed')
+  }
+})
+
 app.delete('/api/admin/locations/:id', async (req, res) => {
   try {
     if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid location id.')
-    const result = await locationsCol.deleteOne({ _id: new ObjectId(req.params.id) })
+    const id = new ObjectId(req.params.id)
+    const location = await locationsCol.findOne({ _id: id })
+    if (!location) return res.status(404).json({ error: 'Location not found.' })
+    const usage = await locationUsage(location)
+    if (usage.total > 0 && req.query.confirmInUse !== 'true') {
+      throw new HttpError(409, `This city is used by ${usage.total} existing record${usage.total === 1 ? '' : 's'}. Confirm the in-use location warning before deleting it.`)
+    }
+    const result = await locationsCol.deleteOne({ _id: id })
     if (!result.deletedCount) return res.status(404).json({ error: 'Location not found.' })
     res.json({ ok: true })
   } catch (error) {

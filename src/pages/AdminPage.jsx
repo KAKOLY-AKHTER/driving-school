@@ -134,6 +134,7 @@ const isValidPlanAmount = (value) => {
   const amount = Number(raw)
   return Number.isFinite(amount) && amount >= 0 && amount <= 1_000_000
 }
+const normalizedCityKey = value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 
 const SVG = {
   dashboard: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" /></svg>,
@@ -606,20 +607,22 @@ export default function AdminPage() {
     try {
       const cur = auth.currentUser
       if (!cur || !user?.email) throw new Error('Your session has expired. Please sign in again.')
-      if (accNewPass.length < 6) throw new Error('New password must be at least 6 characters.')
+      if (!accPass) throw new Error('Current password is required.')
+      if (accNewPass.length < 8) throw new Error('New password must be at least 8 characters.')
+      if (accNewPass === accPass) throw new Error('New password must be different from your current password.')
       await reauthenticateWithCredential(cur, EmailAuthProvider.credential(cur.email, accPass))
       await updatePassword(cur, accNewPass)
       await reauthenticateWithCredential(cur, EmailAuthProvider.credential(cur.email, accNewPass))
       await refreshAuthUser()
       setAccPass(''); setAccNewPass('')
-      setAccMsg('Password changed securely. Use the new password the next time you sign in.')
-      setTimeout(() => setAccMsg(''), 2500)
+      setAccMsg('Password changed successfully. Use the new password the next time you sign in.')
+      setTimeout(() => setAccMsg(''), 5000)
     } catch (e) {
-      if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') setAccErr('Incorrect current password.')
-      else if (e.code === 'auth/weak-password') setAccErr('New password must be at least 6 characters.')
-      else if (e.code === 'auth/requires-recent-login') setAccErr('For security, please sign out, sign in again, and retry the password change.')
-      else if (e.code === 'auth/too-many-requests') setAccErr('Too many attempts. Please wait a few minutes and try again.')
-      else setAccErr(e.message || 'Failed to change password.')
+      if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') setAccErr('Password change failed: the current password is incorrect.')
+      else if (e.code === 'auth/weak-password') setAccErr('Password change failed: the new password must be at least 8 characters.')
+      else if (e.code === 'auth/requires-recent-login') setAccErr('Password change failed: please sign out, sign in again, and retry for security.')
+      else if (e.code === 'auth/too-many-requests') setAccErr('Password change failed: too many attempts. Please wait a few minutes and try again.')
+      else setAccErr(e.message ? `Password change failed: ${e.message}` : 'Password change failed. Please try again.')
     } finally {
       setAccLoading(false)
     }
@@ -644,16 +647,16 @@ export default function AdminPage() {
         : account))
       setAccEmail(nextEmail)
       setAccPass('')
-      setAccMsg('Email updated.')
-      setTimeout(() => setAccMsg(''), 2500)
+      setAccMsg(`Admin email changed successfully to ${nextEmail}. Use this address the next time you sign in.`)
+      setTimeout(() => setAccMsg(''), 5000)
     } catch (e) {
-      if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') setAccErr('Incorrect current password.')
-      else if (e.code === 'auth/email-already-in-use') setAccErr('This email is already in use.')
-      else if (e.code === 'auth/invalid-email') setAccErr('Invalid email address.')
-      else if (e.code === 'auth/requires-recent-login') setAccErr('For security, please sign out, sign in again, and retry the email change.')
-      else if (e.code === 'auth/operation-not-allowed') setAccErr('Email changes are currently restricted by Firebase Authentication settings.')
-      else if (e.code === 'auth/too-many-requests') setAccErr('Too many attempts. Please wait a few minutes and try again.')
-      else setAccErr(e.message || 'Failed to change email.')
+      if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') setAccErr('Email change failed: the current password is incorrect.')
+      else if (e.code === 'auth/email-already-in-use') setAccErr('Email change failed: this address is already in use.')
+      else if (e.code === 'auth/invalid-email') setAccErr('Email change failed: enter a valid email address.')
+      else if (e.code === 'auth/requires-recent-login') setAccErr('Email change failed: please sign out, sign in again, and retry for security.')
+      else if (e.code === 'auth/operation-not-allowed') setAccErr('Email change failed: email changes are restricted by Firebase Authentication settings.')
+      else if (e.code === 'auth/too-many-requests') setAccErr('Email change failed: too many attempts. Please wait a few minutes and try again.')
+      else setAccErr(e.message ? `Email change failed: ${e.message}` : 'Email change failed. Please try again.')
     } finally {
       setAccLoading(false)
     }
@@ -800,15 +803,37 @@ export default function AdminPage() {
     }
   }
 
-  const deleteLocation = async (id) => {
+  const deleteLocation = async (location, confirmedInUse = false) => {
     try {
-      await api.adminDeleteLocation(id)
-      setLocations(previous => previous.filter(item => item._id !== id))
+      await api.adminDeleteLocation(location._id, confirmedInUse)
+      setLocations(previous => previous.filter(item => item._id !== location._id))
       setMsg('Booking location deleted.')
     } catch (error) {
       setMsg(error?.message || 'Failed to delete booking location.')
     }
     setTimeout(() => setMsg(''), 2500)
+  }
+
+  const handleDeleteLocation = async (location) => {
+    try {
+      const usage = await api.adminLocationUsage(location._id)
+      const total = Number(usage?.total || 0)
+      const breakdown = [
+        Number(usage?.enrollments || 0) ? `${usage.enrollments} enrollment${usage.enrollments === 1 ? '' : 's'}` : '',
+        Number(usage?.carts || 0) ? `${usage.carts} saved cart selection${usage.carts === 1 ? '' : 's'}` : '',
+        Number(usage?.bookings || 0) ? `${usage.bookings} booking${usage.bookings === 1 ? '' : 's'}` : '',
+      ].filter(Boolean).join(', ')
+      requestConfirmation(
+        total > 0 ? 'Delete location currently in use?' : 'Delete booking location?',
+        total > 0
+          ? `${location.name} is referenced by ${breakdown || `${total} existing records`}. Historical records will keep the city name, but it will disappear from new booking selections. Confirm only if this is intentional.`
+          : `${location.name || 'This city'} will no longer appear in new booking selections.`,
+        () => deleteLocation(location, total > 0),
+      )
+    } catch (error) {
+      setMsg(error?.message || 'Location usage could not be checked. Nothing was deleted.')
+      setTimeout(() => setMsg(''), 3500)
+    }
   }
 
   const deleteArea = async (id) => {
@@ -1843,7 +1868,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                                 <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
                                   <div style={{ display: 'flex', gap: '.45rem' }}>
                                     <button type="button" onClick={() => { setLocationForm({ name: location.name || '', distance, order: Number(location.order) || index + 1 }); setLocationEdit(location._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
-                                    <button type="button" onClick={() => requestConfirmation('Delete booking location?', `${location.name || 'This city'} will no longer appear in new booking selections.`, () => deleteLocation(location._id))} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+                                    <button type="button" onClick={() => handleDeleteLocation(location)} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
                                   </div>
                                 </td>
                               </tr>
@@ -2068,16 +2093,17 @@ Near and Long pricing is applied automatically from the selected city and verifi
                         <div style={{ marginBottom: '1.25rem' }}><label htmlFor="admin-account-email" style={labelStyle}>Admin Email</label><input id="admin-account-email" type="email" autoComplete="email" value={accEmail} onChange={e => setAccEmail(e.target.value)} style={inputStyle} /></div>
                         <div style={{ marginBottom: '1.5rem' }}>
                           <label htmlFor="admin-current-password" style={labelStyle}>Current Password</label>
-                          <PasswordInput id="admin-current-password" value={accPass} onChange={e => setAccPass(e.target.value)} style={inputStyle} autoComplete="current-password" />
+                          <PasswordInput id="admin-current-password" visibilityLabel="current password" value={accPass} onChange={e => setAccPass(e.target.value)} style={inputStyle} autoComplete="current-password" aria-describedby="admin-password-help" />
                         </div>
-                        <button type="button" onClick={handleChangeEmail} disabled={accLoading || !accPass} style={{ padding: '0.75rem 2rem', background: 'linear-gradient(135deg,#FDBC01,#FFD54F)', color: DARK, border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(253,188,1,0.25)', opacity: accLoading || !accPass ? 0.6 : 1 }}>Save Email</button>
+                        <button type="button" onClick={handleChangeEmail} disabled={accLoading || !accPass} style={{ padding: '0.75rem 2rem', background: 'linear-gradient(135deg,#FDBC01,#FFD54F)', color: DARK, border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: accLoading ? 'wait' : 'pointer', boxShadow: '0 4px 16px rgba(253,188,1,0.25)', opacity: accLoading || !accPass ? 0.6 : 1 }}>{accLoading ? 'Updating…' : 'Save Email'}</button>
                         <div style={{ borderTop: '1px solid #E2EBF5', margin: '1.5rem 0' }} />
                         <div style={{ marginBottom: '1.25rem' }}>
                           <label htmlFor="admin-new-password" style={labelStyle}>New Password</label>
-                          <PasswordInput id="admin-new-password" value={accNewPass} onChange={e => setAccNewPass(e.target.value)} style={inputStyle} autoComplete="new-password" placeholder="At least 6 characters" />
-                          <p style={{ margin: '.5rem 0 0', color: '#334155', fontSize: '.78rem', lineHeight: 1.5 }}>For security, your saved password is never displayed and this field will be empty after a reload.</p>
+                          <PasswordInput id="admin-new-password" visibilityLabel="new password" value={accNewPass} onChange={e => setAccNewPass(e.target.value)} style={inputStyle} autoComplete="new-password" minLength={8} aria-describedby="admin-password-help" placeholder="At least 8 characters" />
+                          <p id="admin-password-help" style={{ margin: '.5rem 0 0', color: '#334155', fontSize: '.78rem', lineHeight: 1.5 }}>Use at least 8 characters. The new password must differ from the current password and is never displayed after reload.</p>
                         </div>
-                        <button type="button" onClick={handleChangePassword} disabled={accLoading || !accPass || !accNewPass} style={{ padding: '0.75rem 2rem', background: 'linear-gradient(135deg,#FDBC01,#FFD54F)', color: DARK, border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(253,188,1,0.25)', opacity: accLoading || !accPass || !accNewPass ? 0.6 : 1 }}>Change Password</button>
+                        <button type="button" onClick={handleChangePassword} disabled={accLoading || !accPass || accNewPass.length < 8} style={{ padding: '0.75rem 2rem', background: 'linear-gradient(135deg,#FDBC01,#FFD54F)', color: DARK, border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: accLoading ? 'wait' : 'pointer', boxShadow: '0 4px 16px rgba(253,188,1,0.25)', opacity: accLoading || !accPass || accNewPass.length < 8 ? 0.6 : 1 }}>{accLoading ? 'Updating…' : 'Change Password'}</button>
+                        <div role="note" style={{ marginTop: '1.5rem', padding: '.9rem 1rem', border: '1px solid #BFDBFE', borderRadius: '12px', background: '#EFF6FF', color: '#1E3A5F', lineHeight: 1.55 }}><strong>Admin MFA:</strong> Multi-factor authentication is not enabled yet. It can be added later after client approval and Firebase MFA configuration.</div>
                       </>
                     ) : (
                       <div role="note" style={{ padding: '1.1rem', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '12px', color: '#1E3A5F' }}>
@@ -2089,7 +2115,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
 
                   {(accMsg || accErr) && (
                     <div style={{ gridColumn: '1 / -1' }}>
-                      <div style={{ padding: '0.85rem 1.1rem', background: accErr ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${accErr ? '#FECACA' : '#BBF7D0'}`, borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: accErr ? '#DC2626' : '#16A34A' }}>
+                      <div role={accErr ? 'alert' : 'status'} aria-live="polite" style={{ padding: '0.85rem 1.1rem', background: accErr ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${accErr ? '#FECACA' : '#BBF7D0'}`, borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-body)', fontSize: '0.95rem', fontWeight: 700, color: accErr ? '#B91C1C' : '#15803D' }}>
                         {accErr || accMsg}
                       </div>
                     </div>
@@ -2249,6 +2275,12 @@ Near and Long pricing is applied automatically from the selected city and verifi
                         setTimeout(() => setMsg(''), 2500)
                         return
                       }
+                      const duplicate = locations.some(location => String(location._id) !== String(locationEdit) && normalizedCityKey(location.name) === normalizedCityKey(name))
+                      if (duplicate) {
+                        setMsg('This city already exists. Capitalization does not create a different city.')
+                        setTimeout(() => setMsg(''), 3000)
+                        return
+                      }
                       const doc = {
                         name,
                         distance: locationDistanceLabel(locationForm.distance),
@@ -2297,7 +2329,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                       </select>
                     </div>
                     <div role="note" style={{ padding: '.8rem 1rem', marginBottom: '1.5rem', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', color: '#475569', lineHeight: 1.55 }}>
-                      The selected group will be stored with future cart and booking records. Dollar adjustments can be connected after the client confirms the Near and Long amounts.
+                      Near cities use each plan's Near Price and Long cities use its Long Price. The server verifies the selected city and applies the matching current price to future carts and bookings.
                     </div>
                     <div style={{ display: 'flex', gap: '.75rem' }}>
                       <button type="button" onClick={() => setLocationEdit(null)} style={{ flex: 1, padding: '.8rem', background: '#fff', border: '1.5px solid #CBD5E1', borderRadius: 'var(--radius-sm)', color: '#475569', fontFamily: 'var(--font-mono)', fontSize: '.8rem', letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 800, cursor: 'pointer' }}>Cancel</button>

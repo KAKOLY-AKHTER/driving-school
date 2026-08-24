@@ -1,7 +1,7 @@
 import { useId, useState } from 'react'
 import './PasswordInput.css'
 
-export default function PasswordInput({ id, className = '', style, ...inputProps }) {
+export default function PasswordInput({ id, className = '', style, visibilityLabel = 'password', ...inputProps }) {
   const generatedId = useId()
   const inputId = id || `password-${generatedId.replace(/:/g, '')}`
   const [isVisible, setIsVisible] = useState(false)
@@ -19,10 +19,10 @@ export default function PasswordInput({ id, className = '', style, ...inputProps
         type="button"
         className="password-visibility-toggle"
         onClick={() => setIsVisible(value => !value)}
-        aria-label={isVisible ? 'Hide password' : 'Show password'}
+        aria-label={`${isVisible ? 'Hide' : 'Show'} ${visibilityLabel}`}
         aria-pressed={isVisible}
         aria-controls={inputId}
-        title={isVisible ? 'Hide password' : 'Show password'}
+        title={`${isVisible ? 'Hide' : 'Show'} ${visibilityLabel}`}
       >
         {isVisible ? (
           <svg viewBox="0 0 24 24" aria-hidden="true">
