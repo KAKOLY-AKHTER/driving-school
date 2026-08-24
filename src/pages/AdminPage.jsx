@@ -1692,7 +1692,7 @@ export default function AdminPage() {
                     </div>
 
                     <div role="note" style={{ marginBottom: '1rem', padding: '.85rem 1rem', border: '1px solid #BFDBFE', background: '#EFF6FF', borderRadius: '12px', color: '#1E3A5F', lineHeight: 1.55 }}>
-                      Location groups are ready. No extra dollar charge is applied until the client provides the Near and Long pricing amounts.
+Near and Long pricing is applied automatically from the selected city and verified by the server.
                     </div>
 
                     <div className="admin-toolbar" style={{ display: 'flex', gap: '.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
