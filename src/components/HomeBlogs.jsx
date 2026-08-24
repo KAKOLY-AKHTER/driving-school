@@ -15,21 +15,29 @@ const formatDate = (value) => {
 
 export default function HomeBlogs() {
   const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [request, setRequest] = useState(0);
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setError("");
     api
       .getBlogs({ limit: 3 })
       .then((data) => {
         if (active) setPosts(Array.isArray(data) ? data : []);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (active) setError("Articles could not be loaded.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
     return () => {
       active = false;
     };
-  }, []);
-
-  if (!posts.length) return null;
+  }, [request]);
 
   return (
     <section className="home-blog-section" aria-labelledby="home-blog-title">
@@ -54,6 +62,10 @@ export default function HomeBlogs() {
         .home-blog-card p{margin:.65rem 0 1rem;color:#334155;line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
         .home-blog-read{margin-top:auto;color:#0145A8;font-weight:900;font-size:.84rem}.home-blog-read span{color:#FDBC01;margin-left:.3rem}
         .home-blog-view{display:inline-flex;align-items:center;gap:.4rem;padding:.72rem 1rem;border:1px solid rgba(1,69,168,.2);border-radius:11px;color:#0145A8;text-decoration:none;font-weight:850;background:#fff;white-space:nowrap}
+        .home-blog-state{grid-column:1/-1;min-height:180px;display:grid;place-items:center;text-align:center;padding:2rem;border:1px solid #E2EBF5;border-radius:20px;background:#fff;color:#334155}
+        .home-blog-retry{margin-top:1rem;padding:.72rem 1.1rem;border:0;border-radius:10px;background:#0145A8;color:#fff;font:inherit;font-weight:850;cursor:pointer}
+        .home-blog-skeleton{height:360px;border-radius:20px;background:linear-gradient(100deg,#edf2f7 30%,#f8fafc 45%,#edf2f7 60%);background-size:220% 100%;animation:home-blog-loading 1.3s ease-in-out infinite}
+        @keyframes home-blog-loading{to{background-position-x:-220%}}
         @media(max-width:900px){.home-blog-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.home-blog-card:last-child{display:none}}
         @media(max-width:620px){.home-blog-head{align-items:flex-start;flex-direction:column}.home-blog-grid{grid-template-columns:1fr}.home-blog-card:last-child{display:flex}.home-blog-media{height:200px}}
       `}</style>
@@ -74,7 +86,17 @@ export default function HomeBlogs() {
           </Link>
         </div>
         <div className="home-blog-grid">
-          {posts.map((post) => (
+          {loading ? [0, 1, 2].map(item => (
+            <div key={item} className="home-blog-skeleton" aria-hidden="true" />
+          )) : error ? (
+            <div className="home-blog-state" role="alert">
+              <div><strong>{error}</strong><br />Please try again.
+                <div><button type="button" className="home-blog-retry" onClick={() => setRequest(value => value + 1)}>Retry</button></div>
+              </div>
+            </div>
+          ) : !posts.length ? (
+            <div className="home-blog-state"><p>No articles have been published yet. Please check back soon.</p></div>
+          ) : posts.map((post) => (
             <Link
               key={post._id || post.slug}
               to={`/blog/${post.slug}`}

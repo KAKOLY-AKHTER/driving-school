@@ -18,7 +18,10 @@ const ALL = [...TRUST_ITEMS, ...TRUST_ITEMS]
 
 export default function TrustBar() {
   return (
-    <div className="marquee-wrapper" aria-label="Trust signals">
+    <section className="marquee-wrapper" aria-label="Why drivers trust A Precision Driving School">
+      <ul className="sr-only">
+        {TRUST_ITEMS.map(item => <li key={item.text}>{item.text}</li>)}
+      </ul>
       <div className="marquee-track" aria-hidden="true">
         {ALL.map((item, i) => (
           <div key={i} className={`marquee-item${item.highlight ? ' highlight' : ''}`}>
@@ -27,6 +30,6 @@ export default function TrustBar() {
           </div>
         ))}
       </div>
-    </div>
+    </section>
   )
 }

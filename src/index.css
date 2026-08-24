@@ -629,6 +629,27 @@ textarea:hover {
   transform: translateY(0);
 }
 
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.home-pricing-state { background: #fff; color: #0a1628; }
+.home-pricing-state h2 { margin: 0 auto 0.75rem; max-width: 42rem; font-family: var(--font-display); font-size: clamp(1.8rem, 4vw, 3rem); }
+.home-pricing-state p { color: #475569; }
+.home-pricing-eyebrow { color: #9a7100 !important; font-family: var(--font-mono); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.25em; text-transform: uppercase; }
+.home-pricing-skeletons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-top: 2rem; }
+.home-pricing-skeleton { min-height: 260px; border-radius: 20px; background: linear-gradient(100deg, #edf2f7 30%, #f8fafc 45%, #edf2f7 60%); background-size: 220% 100%; animation: home-pricing-loading 1.3s ease-in-out infinite; }
+@keyframes home-pricing-loading { to { background-position-x: -220%; } }
+.home-retry-button { min-height: 44px; margin-top: 0.65rem; padding: 0.75rem 1.15rem; border: 0; border-radius: 10px; background: #0145a8; color: #fff; font: inherit; font-weight: 800; cursor: pointer; }
+
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
@@ -652,6 +673,9 @@ textarea:focus-visible {
     padding-top: 4.5rem;
     padding-bottom: 4.5rem;
   }
+
+  .home-pricing-skeletons { grid-template-columns: 1fr; }
+  .home-pricing-skeleton:not(:first-of-type) { display: none; }
 
   .pricing-page {
     padding-top: 9rem !important;
