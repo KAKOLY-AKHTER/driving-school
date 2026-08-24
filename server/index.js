@@ -799,6 +799,10 @@ function validateAvailabilitySlot(date, timeSlot, { allowToday = true } = {}) {
   return slot
 }
 
+function adminAvailabilityStatus(slot, today = californiaDateKey()) {
+  return slot?.status === 'available' && slot?.date <= today ? 'expired' : slot?.status
+}
+
 async function assertSlotsOpenForBooking(slots, session, status = 409, { dateAvailabilityOnly = false } = {}) {
   if (dateAvailabilityOnly) {
     const dates = [...new Set(slots.map(slot => slot.date))]
@@ -838,12 +842,12 @@ async function effectiveAvailabilitySlots(filter, session) {
   return availability.map(item => {
     const lock = locksByKey.get(item.slotKey)
     const lockStatus = normalizedBookingStatus(lock?.status)
-    const status = item.status === 'blocked'
-      ? 'blocked'
-      : lockStatus === 'held'
-        ? 'held'
-        : lock
-          ? 'booked'
+    const status = lockStatus === 'held'
+      ? 'held'
+      : lock
+        ? 'booked'
+        : item.status === 'blocked'
+          ? 'blocked'
           : 'available'
     return { ...item, status }
   })
@@ -3262,8 +3266,12 @@ app.get('/api/admin/availability', async (req, res) => {
       if (to && isDateKey(to)) filter.date.$lte = to
       if (!Object.keys(filter.date).length) delete filter.date
     }
-    const effective = await effectiveAvailabilitySlots(filter)
-    const filtered = ['available', 'blocked', 'held', 'booked'].includes(statusFilter)
+    const today = californiaDateKey()
+    const effective = (await effectiveAvailabilitySlots(filter)).map(slot => ({
+      ...slot,
+      status: adminAvailabilityStatus(slot, today),
+    }))
+    const filtered = ['available', 'blocked', 'held', 'booked', 'expired'].includes(statusFilter)
       ? effective.filter(slot => slot.status === statusFilter)
       : effective
     const total = filtered.length
@@ -3324,16 +3332,17 @@ app.put('/api/admin/availability/status', async (req, res) => {
     const result = await withMongoTransaction(async (session) => {
       const slots = await availabilityCol.find({ _id: { $in: objectIds } }, { session }).toArray()
       if (slots.length !== objectIds.length) throw new HttpError(404, 'One or more availability rows were not found.')
-      if (status === 'blocked') {
-        const activeLock = await bookingSlotsCol.findOne({
-          _id: { $in: slots.map(slot => slot.slotKey) },
-          $or: [
-            { status: { $in: ['confirmed', 'booked', 'scheduled'] } },
-            { status: 'held', expiresAt: { $gt: new Date() } },
-          ],
-        }, { session })
-        if (activeLock) throw new HttpError(409, 'Held or booked times cannot be blocked. Cancel the related booking first.')
+      if (slots.some(slot => slot.date <= californiaDateKey())) {
+        throw new HttpError(409, 'Expired availability cannot be changed. Only future slots can be managed.')
       }
+      const activeLock = await bookingSlotsCol.findOne({
+        _id: { $in: slots.map(slot => slot.slotKey) },
+        $or: [
+          { status: { $in: ['confirmed', 'booked', 'scheduled'] } },
+          { status: 'held', expiresAt: { $gt: new Date() } },
+        ],
+      }, { session })
+      if (activeLock) throw new HttpError(409, 'Held or booked times cannot be changed. Cancel the related booking first.')
       return availabilityCol.updateMany(
         { _id: { $in: objectIds } },
         { $set: { status, updatedAt: new Date().toISOString(), updatedBy: req.auth.uid } },
@@ -3354,6 +3363,9 @@ app.delete('/api/admin/availability/:id', async (req, res) => {
     await withMongoTransaction(async (session) => {
       const slot = await availabilityCol.findOne({ _id: id }, { session })
       if (!slot) throw new HttpError(404, 'Availability row not found.')
+      if (slot.date <= californiaDateKey()) {
+        throw new HttpError(409, 'Expired availability cannot be deleted. Only future slots can be managed.')
+      }
       const activeLock = await bookingSlotsCol.findOne({
         _id: slot.slotKey,
         $or: [
@@ -4339,6 +4351,7 @@ if (process.env.VERCEL !== '1') {
 
 export {
   DEFAULT_LOCATIONS,
+  adminAvailabilityStatus,
   bookingsForEnrollment,
   checkoutFingerprint,
   findPayPalPaymentForRefund,

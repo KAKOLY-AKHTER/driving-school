@@ -4,6 +4,7 @@ import test from 'node:test'
 process.env.VERCEL = '1'
 const {
   DEFAULT_LOCATIONS,
+  adminAvailabilityStatus,
   bookingsForEnrollment,
   checkoutFingerprint,
   findPayPalPaymentForRefund,
@@ -128,6 +129,14 @@ test('admin availability accepts only valid future dates and the five public les
     () => validateAvailabilitySlot('2099-12-20', '11:00 AM - 01:00 PM'),
     error => error.status === 400 && /five supported lesson times/i.test(error.message)
   )
+})
+
+test('admin availability marks non-future open slots expired without hiding booked status', () => {
+  const today = '2026-08-24'
+  assert.equal(adminAvailabilityStatus({ date: '2026-08-23', status: 'available' }, today), 'expired')
+  assert.equal(adminAvailabilityStatus({ date: today, status: 'available' }, today), 'expired')
+  assert.equal(adminAvailabilityStatus({ date: '2026-08-25', status: 'available' }, today), 'available')
+  assert.equal(adminAvailabilityStatus({ date: '2026-08-23', status: 'booked' }, today), 'booked')
 })
 
 test('only the two DMV rental plans accept exact appointment times', () => {
