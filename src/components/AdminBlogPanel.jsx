@@ -49,6 +49,8 @@ export default function AdminBlogPanel({
   const [editingId, setEditingId] = useState("");
   const [search, setSearch] = useState("");
   const [visibility, setVisibility] = useState("all");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -92,6 +94,9 @@ export default function AdminBlogPanel({
       return matchesSearch && matchesVisibility;
     });
   }, [posts, search, visibility]);
+  const pages = Math.max(1, Math.ceil(filtered.length / limit));
+  const safePage = Math.min(page, pages);
+  const visiblePosts = filtered.slice((safePage - 1) * limit, safePage * limit);
 
   const reset = () => {
     setEditingId("");
@@ -582,19 +587,20 @@ export default function AdminBlogPanel({
               aria-label="Search blog posts"
               style={{ ...inputStyle, width: 260 }}
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => { setSearch(event.target.value); setPage(1); }}
               placeholder="Search title, category…"
             />
             <select
               aria-label="Filter blog visibility"
               style={{ ...inputStyle, width: 140 }}
               value={visibility}
-              onChange={(event) => setVisibility(event.target.value)}
+              onChange={(event) => { setVisibility(event.target.value); setPage(1); }}
             >
               <option value="all">All posts</option>
               <option value="published">Published</option>
               <option value="draft">Drafts</option>
             </select>
+            <select aria-label="Blog rows per page" style={{ ...inputStyle, width: 112 }} value={limit} onChange={(event) => { setLimit(Number(event.target.value)); setPage(1); }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
           </div>
         </div>
         {loading ? (
@@ -631,7 +637,7 @@ export default function AdminBlogPanel({
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((post) => (
+                {visiblePosts.map((post) => (
                   <tr key={post._id}>
                     <td style={{ ...tdStyle, minWidth: 260 }}>
                       <strong style={{ display: "block", color: "#10213A" }}>
@@ -765,6 +771,7 @@ export default function AdminBlogPanel({
                 )}
               </tbody>
             </table>
+            <div aria-label="Blog pagination" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: ".75rem", flexWrap: "wrap", marginTop: "1rem" }}><span style={{ color: "#334155" }}>Page {safePage} of {pages} · {filtered.length} posts</span><div style={{ display: "flex", gap: ".45rem" }}><button type="button" disabled={safePage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>Previous</button><button type="button" disabled={safePage >= pages} onClick={() => setPage((value) => Math.min(pages, value + 1))}>Next</button></div></div>
           </div>
         )}
       </section>

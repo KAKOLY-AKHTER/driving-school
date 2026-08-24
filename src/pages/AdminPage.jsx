@@ -167,6 +167,8 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
   const [editingId, setEditingId] = useState('')
   const [search, setSearch] = useState('')
   const [visibility, setVisibility] = useState('all')
+  const [reviewPage, setReviewPage] = useState(1)
+  const reviewLimit = 10
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -229,12 +231,15 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
     setLoadVersion(value => value + 1)
   }
 
-  const filtered = reviews.filter(review => {
+  const matchedReviews = reviews.filter(review => {
     const query = search.trim().toLowerCase()
     return (!query || String(review.name || '').toLowerCase().includes(query) || String(review.text || '').toLowerCase().includes(query))
       && (visibility === 'all' || (visibility === 'published' ? review.published !== false : review.published === false))
   })
   const publishedCount = reviews.filter(review => review.published !== false).length
+  const reviewPages = Math.max(1, Math.ceil(matchedReviews.length / reviewLimit))
+  const safeReviewPage = Math.min(reviewPage, reviewPages)
+  const filtered = matchedReviews.slice((safeReviewPage - 1) * reviewLimit, safeReviewPage * reviewLimit)
 
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
@@ -260,7 +265,7 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
           {filtered.map(review => <tr key={review._id}><td style={tdStyle}>{review.order ?? 0}</td><td style={{ ...tdStyle, fontWeight: 800, whiteSpace: 'nowrap' }}>{review.name}</td><td style={{ ...tdStyle, minWidth: '280px', maxWidth: '520px', lineHeight: 1.5 }}>{review.text}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap', color: GOLD_DEEP, fontWeight: 900 }}>{'★'.repeat(Number(review.rating) || 5)}<span style={{ color: '#CBD5E1' }}>{'★'.repeat(5 - (Number(review.rating) || 5))}</span></td><td style={tdStyle}><button type="button" onClick={() => togglePublished(review)} style={{ padding: '.3rem .6rem', border: `1px solid ${review.published !== false ? '#BBF7D0' : '#CBD5E1'}`, borderRadius: '999px', background: review.published !== false ? '#F0FDF4' : '#F8FAFC', color: review.published !== false ? '#15803D' : '#64748B', fontWeight: 800, cursor: 'pointer' }}>{review.published !== false ? 'Published' : 'Draft'}</button></td><td style={tdStyle}><div style={{ display: 'flex', gap: '.4rem' }}><button type="button" onClick={() => startEdit(review)} style={{ padding: '.4rem .65rem', border: `1.5px solid ${SKY_BLUE}`, borderRadius: '8px', background: '#fff', color: SKY_BLUE, fontWeight: 800, cursor: 'pointer' }}>Edit</button><button type="button" onClick={() => requestConfirmation('Delete customer review?', `${review.name}'s testimonial will be permanently removed.`, () => deleteReview(review))} style={{ padding: '.4rem .65rem', border: '1.5px solid #DC2626', borderRadius: '8px', background: '#fff', color: '#DC2626', fontWeight: 800, cursor: 'pointer' }}>Delete</button></div></td></tr>)}
           {!loading && !filtered.length && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{search || visibility !== 'all' ? 'No reviews match the selected filters.' : 'No customer reviews yet.'}</td></tr>}
           {loading && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>Loading reviews…</td></tr>}
-        </tbody></table></div>
+        </tbody></table></div><TablePager page={safeReviewPage} pages={reviewPages} total={matchedReviews.length} label="reviews" onChange={setReviewPage} />
       </div>
     </div>
   )
@@ -461,6 +466,9 @@ export default function AdminPage() {
   const [settingsMsg, setSettingsMsg] = useState('')
   const [settingsSaving, setSettingsSaving] = useState(false)
   const [pricing, setPricing] = useState([])
+  const [pricingSearch, setPricingSearch] = useState('')
+  const [pricingUsageFilter, setPricingUsageFilter] = useState('all')
+  const [pricingPage, setPricingPage] = useState(1)
   const [pricingEdit, setPricingEdit] = useState(null)
   const [pricingForm, setPricingForm] = useState({ planName: '', id: '', planPrice: '', planPriceTwo: '', option1: '', perm1: 'Select', option2: '', perm2: 'Select', option3: '', perm3: 'Select', option4: '', perm4: 'Select', option5: '', perm5: 'Select' })
   const [locations, setLocations] = useState(DEFAULT_BOOKING_LOCATIONS)
@@ -512,6 +520,7 @@ export default function AdminPage() {
   const requestConfirmation = (title, message, action) => {
     setConfirmDialog({ title, message, action, busy: false })
   }
+  const requestEditorClose = useCallback((label, close) => setConfirmDialog({ title: 'Discard unsaved changes?', message: `Close the ${label}? Any unsaved changes will be lost.`, action: close, busy: false }), [])
 
   const runConfirmedAction = async () => {
     if (!confirmDialog?.action || confirmDialog.busy) return
@@ -887,13 +896,13 @@ export default function AdminPage() {
     if (confirmDialog) setConfirmDialog(null)
     else if (detailsDialog) setDetailsDialog(null)
     else if (refundDetails) setRefundDetails(null)
-    else if (refundEdit) setRefundEdit(null)
-    else if (socialsEdit) setSocialsEdit(null)
-    else if (areasEdit) setAreasEdit(null)
-    else if (locationEdit) setLocationEdit(null)
-    else if (pricingEdit) setPricingEdit(null)
-    else if (contactEdit) setContactEdit(null)
-  }, [areasEdit, confirmDialog, contactEdit, detailsDialog, locationEdit, pricingEdit, refundDetails, refundEdit, socialsEdit])
+    else if (refundEdit) requestEditorClose('refund editor', () => setRefundEdit(null))
+    else if (socialsEdit) requestEditorClose('social link editor', () => setSocialsEdit(null))
+    else if (areasEdit) requestEditorClose('map editor', () => setAreasEdit(null))
+    else if (locationEdit) requestEditorClose('location editor', () => setLocationEdit(null))
+    else if (pricingEdit) requestEditorClose('pricing editor', () => setPricingEdit(null))
+    else if (contactEdit) requestEditorClose('contact editor', () => setContactEdit(null))
+  }, [areasEdit, confirmDialog, contactEdit, detailsDialog, locationEdit, pricingEdit, refundDetails, refundEdit, requestEditorClose, socialsEdit])
 
   useEffect(() => {
     const dialogOpen = Boolean(activeDialogKey)
@@ -988,6 +997,15 @@ export default function AdminPage() {
       key: course.enrollmentId || `${account.uid}-${course.id || 'course'}-${course.enrolledAt || index}`,
     })))
   const activeEnrollmentRows = enrollmentRows.filter(({ course }) => enrollmentStatusGroup(course) === 'active')
+  const filteredPricing = pricing.filter(plan => {
+    const query = pricingSearch.trim().toLowerCase()
+    const usage = enrollmentRows.filter(({ course }) => String(course?.id || '') === String(plan.id || '')).length
+    return (!query || [plan.id, plan.planName, plan.planPrice, plan.planPriceTwo, ...(plan.options || []).map(option => option?.text)].some(value => String(value || '').toLowerCase().includes(query)))
+      && (pricingUsageFilter === 'all' || (pricingUsageFilter === 'used' ? usage > 0 : usage === 0))
+  })
+  const pricingPages = Math.max(1, Math.ceil(filteredPricing.length / 10))
+  const safePricingPage = Math.min(pricingPage, pricingPages)
+  const visiblePricing = filteredPricing.slice((safePricingPage - 1) * 10, safePricingPage * 10)
   const enrolledQuery = enrollSearch.trim().toLowerCase()
   const filteredEnrollmentRows = enrollmentRows.filter(({ account, course }) => {
     const matchesStatus = enrollStatusFilter === 'all' || enrollmentStatusGroup(course) === enrollStatusFilter
@@ -1581,6 +1599,7 @@ export default function AdminPage() {
                   <div role="note" style={{ marginBottom: '1.25rem', padding: '0.9rem 1rem', border: '1px solid #BFDBFE', background: '#EFF6FF', borderRadius: '12px', color: '#1E3A5F', lineHeight: 1.55 }}>
                     <strong>Location pricing:</strong> Near cities use the Near Price; Long cities use the Long Price. The server verifies the selected city and applies the matching price to the cart and invoice.
                   </div>
+                  <div className="admin-toolbar" style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', marginBottom: '1rem' }}><input type="search" aria-label="Search pricing plans" placeholder="Search plan, price or option…" value={pricingSearch} onChange={event => { setPricingSearch(event.target.value); setPricingPage(1) }} style={{ ...inputStyle, maxWidth: '300px' }} /><select aria-label="Filter pricing plans by usage" value={pricingUsageFilter} onChange={event => { setPricingUsageFilter(event.target.value); setPricingPage(1) }} style={{ ...inputStyle, width: '170px' }}><option value="all">All plans</option><option value="used">Enrolled plans</option><option value="unused">Unused plans</option></select></div>
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
@@ -1598,19 +1617,17 @@ export default function AdminPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {pricing.map(t => {
+                        {visiblePricing.map(t => {
                           const opts = t.options || []
                           const enrolledCount = enrollmentRows.filter(({ course }) => String(course?.id || '') === String(t.id || '')).length
                           return (
                             <tr key={t._id}>
                               <td style={tdStyle}><span style={{ padding: '0.15rem 0.4rem', background: 'rgba(1,69,168,0.08)', color: SKY_BLUE, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 700 }}>{t.id}</span></td>
-                              <td style={{ ...tdStyle, fontWeight: 600, maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.planName}</td>
+                              <td style={{ ...tdStyle, fontWeight: 600, maxWidth: '160px' }}><button type="button" aria-label={`View full pricing details for ${t.planName}`} onClick={() => setDetailsDialog({ title: t.planName || 'Pricing Plan', subtitle: `Near ${t.planPrice || '—'} · Long ${t.planPriceTwo || '—'}`, content: (opts.length ? opts.map((option, index) => `${index + 1}. ${option?.text || '—'} — ${option?.permission && option.permission !== 'Select' ? option.permission : '—'}`).join('\n') : 'No options recorded.') })} style={{ maxWidth: '145px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: 0, padding: 0, background: 'transparent', color: SKY_BLUE, textDecoration: 'underline', cursor: 'pointer', fontWeight: 700 }}>{t.planName}</button></td>
                               <td style={tdStyle}>{t.planPrice}</td>
                               <td style={tdStyle}>{t.planPriceTwo}</td>
                               {[0,1,2,3,4].map(i => (
-                                <td key={i} style={{ ...tdStyle, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.95rem', color: opts[i]?.permission === 'Included' ? '#16A34A' : opts[i]?.permission === 'Not Included' ? '#DC2626' : '#64748b' }}>
-                                  {opts[i]?.text ? `${opts[i].text.slice(0, 30)}${opts[i].text.length > 30 ? '...' : ''}` : opts[i]?.permission && opts[i].permission !== 'Select' ? opts[i].permission : '—'}
-                                </td>
+                                <td key={i} style={{ ...tdStyle, maxWidth: '140px', fontSize: '0.95rem', color: opts[i]?.permission === 'Included' ? '#16A34A' : opts[i]?.permission === 'Not Included' ? '#DC2626' : '#64748b' }}><button type="button" aria-label={`View option ${i + 1} for ${t.planName}`} onClick={() => setDetailsDialog({ title: `${t.planName || 'Plan'} — Option ${i + 1}`, content: opts[i]?.text ? `${opts[i].text}\n\nPermission: ${opts[i]?.permission && opts[i].permission !== 'Select' ? opts[i].permission : '—'}` : opts[i]?.permission && opts[i].permission !== 'Select' ? opts[i].permission : '—' })} style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: 0, padding: 0, background: 'transparent', color: 'inherit', textDecoration: opts[i]?.text ? 'underline' : 'none', cursor: opts[i]?.text ? 'pointer' : 'default' }}>{opts[i]?.text || (opts[i]?.permission && opts[i].permission !== 'Select' ? opts[i].permission : '—')}</button></td>
                               ))}
                               <td className="pricing-actions-cell" style={{ ...tdStyle, minWidth: '150px' }}>
                                 <div style={{ display: 'flex', gap: '0.4rem' }}>
@@ -1632,7 +1649,7 @@ export default function AdminPage() {
                             </tr>
                           )
                         })}
-                        {pricing.length === 0 && (
+                        {filteredPricing.length === 0 && (
                           <tr><td colSpan={10} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>No pricing packages yet. Click "+ Add Pricing Plan" to create one.</td></tr>
                         )}
                       </tbody>
@@ -2163,7 +2180,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
               )}
 
               {contactEdit && (
-                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setContactEdit(null) }}>
+                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) requestEditorClose('contact editor', () => setContactEdit(null)) }}>
                   <div role="dialog" aria-modal="true" aria-labelledby="contact-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '500px', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                       <h3 id="contact-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>Edit Contact</h3>
@@ -2210,7 +2227,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
               )}
 
               {pricingEdit && (
-                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setPricingEdit(null) }}>
+                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) requestEditorClose('pricing editor', () => setPricingEdit(null)) }}>
                   <div role="dialog" aria-modal="true" aria-labelledby="pricing-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                       <h3 id="pricing-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>
@@ -2300,7 +2317,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
               )}
 
               {locationEdit && (
-                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(event) => { if (event.target === event.currentTarget) setLocationEdit(null) }}>
+                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(event) => { if (event.target === event.currentTarget) requestEditorClose('location editor', () => setLocationEdit(null)) }}>
                   <form
                     role="dialog"
                     aria-modal="true"
@@ -2379,7 +2396,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
               )}
 
               {areasEdit && (
-                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setAreasEdit(null) }}>
+                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) requestEditorClose('map editor', () => setAreasEdit(null)) }}>
                   <div role="dialog" aria-modal="true" aria-labelledby="area-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                       <h3 id="area-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{areasEdit === 'new' ? 'Add Service Area Map' : 'Edit Service Area Map'}</h3>
@@ -2430,7 +2447,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
               )}
 
               {socialsEdit && (
-                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setSocialsEdit(null) }}>
+                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) requestEditorClose('social link editor', () => setSocialsEdit(null)) }}>
                   <div role="dialog" aria-modal="true" aria-labelledby="social-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '500px', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                       <h3 id="social-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{socialsEdit === 'new' ? 'Add Social Link' : 'Edit Social Link'}</h3>
@@ -2490,11 +2507,12 @@ Near and Long pricing is applied automatically from the selected city and verifi
                     <dl style={{ display: 'grid', gridTemplateColumns: 'minmax(130px,.6fr) minmax(0,1.4fr)', gap: '.65rem 1rem', margin: 0, overflowWrap: 'anywhere' }}><dt style={{ color: '#64748B', fontWeight: 750 }}>Status</dt><dd style={{ margin: 0, fontWeight: 800, textTransform: 'capitalize' }}>{refundDetails.Status || 'pending'}</dd><dt style={{ color: '#64748B', fontWeight: 750 }}>Amount</dt><dd style={{ margin: 0 }}>{refundDetails.Amount || 'Not recorded'}</dd><dt style={{ color: '#64748B', fontWeight: 750 }}>PayPal reference</dt><dd style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: '.85rem' }}>{refundDetails.PayPal_Reference || refundDetails.Provider_Refund_ID || refundDetails.Provider_Payment_Ref || 'Not available'}</dd><dt style={{ color: '#64748B', fontWeight: 750 }}>Capture ID</dt><dd style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: '.85rem' }}>{refundDetails.PayPal_Capture_ID || refundDetails.Provider_Capture_ID || 'Not available'}</dd></dl>
                     <button type="button" onClick={() => setRefundDetails(null)} style={{ width: '100%', marginTop: '1.4rem', minHeight: '44px', border: 0, borderRadius: '10px', background: SKY_BLUE, color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Close</button>
                   </div>
+                  <TablePager page={safePricingPage} pages={pricingPages} total={filteredPricing.length} label="plans" onChange={setPricingPage} />
                 </div>
               )}
 
               {refundEdit && (
-                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setRefundEdit(null) }}>
+                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) requestEditorClose('refund editor', () => setRefundEdit(null)) }}>
                   <div role="dialog" aria-modal="true" aria-labelledby="refund-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                       <h3 id="refund-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{refundEdit === 'new' ? 'Add Refund Record' : 'Edit Refund Record'}</h3>
