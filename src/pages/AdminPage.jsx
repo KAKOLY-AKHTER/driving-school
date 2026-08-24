@@ -155,6 +155,11 @@ const SVG = {
   star: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>,
 }
 
+function TablePager({ page, pages, total, label, onChange }) {
+  const current = Math.min(Math.max(1, page), Math.max(1, pages))
+  return <div className="admin-table-pager" aria-label={`${label} pagination`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginTop: '1rem' }}><span style={{ color: '#334155', fontSize: '.9rem' }}>Page {current} of {Math.max(1, pages)} · {total} {label}</span><div style={{ display: 'flex', gap: '.45rem' }}><button type="button" disabled={current <= 1} onClick={() => onChange(current - 1)} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: current <= 1 ? 'not-allowed' : 'pointer' }}>Previous</button><button type="button" disabled={current >= pages} onClick={() => onChange(current + 1)} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: current >= pages ? 'not-allowed' : 'pointer' }}>Next</button></div></div>
+}
+
 function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle, requestConfirmation, setMessage }) {
   const emptyForm = { name: '', text: '', rating: 5, order: 0, published: true }
   const [reviews, setReviews] = useState([])
@@ -437,12 +442,14 @@ export default function AdminPage() {
   const [bookings, setBookings] = useState([])
   const [contacts, setContacts] = useState([])
   const [userSearch, setUserSearch] = useState('')
+  const [userPage, setUserPage] = useState(1)
   const [bookingSearch, setBookingSearch] = useState('')
   const [bookingStatusFilter, setBookingStatusFilter] = useState('all')
   const [bookingPage, setBookingPage] = useState(1)
   const [bookingLimit, setBookingLimit] = useState('10')
   const [contactSearch, setContactSearch] = useState('')
   const [contactStatusFilter, setContactStatusFilter] = useState('all')
+  const [contactPage, setContactPage] = useState(1)
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -461,13 +468,19 @@ export default function AdminPage() {
   const [locationForm, setLocationForm] = useState({ name: '', distance: 'Near', order: 1 })
   const [locationSearch, setLocationSearch] = useState('')
   const [locationDistanceFilter, setLocationDistanceFilter] = useState('all')
+  const [locationPage, setLocationPage] = useState(1)
   const [areas, setAreas] = useState([])
   const [areasEdit, setAreasEdit] = useState(null)
   const [areasForm, setAreasForm] = useState({ name: '', map: '', icon: '', order: 0 })
   const [copiedArea, setCopiedArea] = useState(null)
+  const [areaSearch, setAreaSearch] = useState('')
+  const [areaPage, setAreaPage] = useState(1)
   const [socials, setSocials] = useState([])
   const [socialsEdit, setSocialsEdit] = useState(null)
   const [socialsForm, setSocialsForm] = useState({ platform: 'facebook', url: '', order: 0 })
+  const [socialSearch, setSocialSearch] = useState('')
+  const [socialPage, setSocialPage] = useState(1)
+  const [detailsDialog, setDetailsDialog] = useState(null)
   const [enrollPage, setEnrollPage] = useState(1)
   const [enrollLimit, setEnrollLimit] = useState('10')
   const [enrollSearch, setEnrollSearch] = useState('')
@@ -859,6 +872,7 @@ export default function AdminPage() {
   }
 
   const activeDialogKey = confirmDialog ? 'confirmation'
+    : detailsDialog ? 'details'
     : contactEdit ? 'contact'
     : pricingEdit ? 'pricing'
       : locationEdit ? 'location'
@@ -871,6 +885,7 @@ export default function AdminPage() {
   const closeActiveDialog = useCallback(() => {
     if (confirmDialog?.busy) return
     if (confirmDialog) setConfirmDialog(null)
+    else if (detailsDialog) setDetailsDialog(null)
     else if (refundDetails) setRefundDetails(null)
     else if (refundEdit) setRefundEdit(null)
     else if (socialsEdit) setSocialsEdit(null)
@@ -878,7 +893,7 @@ export default function AdminPage() {
     else if (locationEdit) setLocationEdit(null)
     else if (pricingEdit) setPricingEdit(null)
     else if (contactEdit) setContactEdit(null)
-  }, [areasEdit, confirmDialog, contactEdit, locationEdit, pricingEdit, refundDetails, refundEdit, socialsEdit])
+  }, [areasEdit, confirmDialog, contactEdit, detailsDialog, locationEdit, pricingEdit, refundDetails, refundEdit, socialsEdit])
 
   useEffect(() => {
     const dialogOpen = Boolean(activeDialogKey)
@@ -962,6 +977,9 @@ export default function AdminPage() {
     const q = userSearch.toLowerCase()
     return !q || adminUserName(u).toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q) || (u.phone || '').includes(q)
   })
+  const userPages = Math.max(1, Math.ceil(filteredUsers.length / 10))
+  const safeUserPage = Math.min(userPage, userPages)
+  const visibleUsers = filteredUsers.slice((safeUserPage - 1) * 10, safeUserPage * 10)
 
   const enrollmentRows = websiteUsers.flatMap(account => (Array.isArray(account.courses) ? account.courses : [])
     .map((course, index) => ({
@@ -1020,6 +1038,9 @@ export default function AdminPage() {
     const matchesStatus = contactStatusFilter === 'all' || status === contactStatusFilter
     return matchesSearch && matchesStatus
   })
+  const contactPages = Math.max(1, Math.ceil(filteredContacts.length / 10))
+  const safeContactPage = Math.min(contactPage, contactPages)
+  const visibleContacts = filteredContacts.slice((safeContactPage - 1) * 10, safeContactPage * 10)
 
   const filteredLocations = [...locations]
     .filter(location => {
@@ -1029,6 +1050,17 @@ export default function AdminPage() {
         && (locationDistanceFilter === 'all' || distance.toLowerCase() === locationDistanceFilter)
     })
     .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || String(a.name || '').localeCompare(String(b.name || '')))
+  const locationPages = Math.max(1, Math.ceil(filteredLocations.length / 10))
+  const safeLocationPage = Math.min(locationPage, locationPages)
+  const visibleLocations = filteredLocations.slice((safeLocationPage - 1) * 10, safeLocationPage * 10)
+  const filteredAreas = [...areas].filter(area => !areaSearch.trim() || [area.name, area.map].some(value => String(value || '').toLowerCase().includes(areaSearch.trim().toLowerCase())))
+  const areaPages = Math.max(1, Math.ceil(filteredAreas.length / 10))
+  const safeAreaPage = Math.min(areaPage, areaPages)
+  const visibleAreas = filteredAreas.slice((safeAreaPage - 1) * 10, safeAreaPage * 10)
+  const filteredSocials = [...socials].filter(item => !socialSearch.trim() || [socialPlatformLabel(item.platform), item.url].some(value => String(value || '').toLowerCase().includes(socialSearch.trim().toLowerCase())))
+  const socialPages = Math.max(1, Math.ceil(filteredSocials.length / 10))
+  const safeSocialPage = Math.min(socialPage, socialPages)
+  const visibleSocials = filteredSocials.slice((safeSocialPage - 1) * 10, safeSocialPage * 10)
 
   const nearLocationCount = locations.filter(location => locationDistanceLabel(location.distance) === 'Near').length
   const longLocationCount = locations.filter(location => locationDistanceLabel(location.distance) === 'Long').length
@@ -1340,7 +1372,7 @@ export default function AdminPage() {
                       <p style={{ margin: '.35rem 0 0', color: '#334155', fontSize: '.9rem' }}>Every student account created on the website appears here.</p>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      <input className="admin-toolbar-input" aria-label="Search users" type="search" placeholder="Search by name, email, phone…" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} style={{ ...inputStyle, width: '280px' }} />
+                      <input className="admin-toolbar-input" aria-label="Search users" type="search" placeholder="Search by name, email, phone…" value={userSearch} onChange={(e) => { setUserSearch(e.target.value); setUserPage(1) }} style={{ ...inputStyle, width: '280px' }} />
                       {userSearch && <button type="button" onClick={() => setUserSearch('')} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                     </div>
                   </div>
@@ -1355,7 +1387,7 @@ export default function AdminPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredUsers.map(u => (
+                        {visibleUsers.map(u => (
                           <tr key={u.uid}>
                             <td style={tdStyle}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -1378,6 +1410,7 @@ export default function AdminPage() {
                       </tbody>
                     </table>
                   </div>
+                  <TablePager page={safeUserPage} pages={userPages} total={filteredUsers.length} label="users" onChange={setUserPage} />
                 </div>
               )}
 
@@ -1441,6 +1474,7 @@ export default function AdminPage() {
                       </tbody>
                     </table>
                   </div>
+                  <TablePager page={safeBookingPage} pages={bookingPages} total={filteredBookings.length} label="bookings" onChange={setBookingPage} />
                 </div>
               )}
 
@@ -1486,7 +1520,7 @@ export default function AdminPage() {
                   <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.mail} Contact Messages <span style={{ color: '#334155', fontSize: '.9rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>({filteredContacts.length} of {contacts.length})</span></h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      <input className="admin-toolbar-input" aria-label="Search contact messages" type="search" placeholder="Search name, email, message…" value={contactSearch} onChange={(event) => setContactSearch(event.target.value)} style={{ ...inputStyle, width: '280px' }} />
+                      <input className="admin-toolbar-input" aria-label="Search contact messages" type="search" placeholder="Search name, email, message…" value={contactSearch} onChange={(event) => { setContactSearch(event.target.value); setContactPage(1) }} style={{ ...inputStyle, width: '280px' }} />
                       <select aria-label="Filter contact messages by status" value={contactStatusFilter} onChange={(event) => setContactStatusFilter(event.target.value)} style={{ ...inputStyle, width: '145px' }}>
                         <option value="all">All statuses</option>
                         <option value="new">New</option>
@@ -1510,12 +1544,12 @@ export default function AdminPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredContacts.map(c => (
+                        {visibleContacts.map(c => (
                           <tr key={c._id}>
                             <td style={tdStyle}><span style={{ fontWeight: 600 }}>{c.firstName} {c.lastName}</span></td>
                             <td style={tdStyle}>{c.phone}</td>
                             <td style={tdStyle}>{c.email}</td>
-                            <td style={{ ...tdStyle, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.comments}</td>
+                            <td style={{ ...tdStyle, maxWidth: '220px' }}><button type="button" aria-label={`View full message from ${c.firstName || ''} ${c.lastName || ''}`} onClick={() => setDetailsDialog({ title: 'Contact Message', subtitle: `${c.firstName || ''} ${c.lastName || ''}`.trim(), content: c.comments || '—' })} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: 0, background: 'transparent', padding: 0, color: SKY_BLUE, textDecoration: 'underline', cursor: 'pointer', textAlign: 'left' }}>{c.comments || '—'}</button></td>
                             <td style={tdStyle}>
                               <span style={{ padding: '0.2rem 0.5rem', background: normalizeStatus(c.status || 'new') === 'new' ? '#EFF6FF' : normalizeStatus(c.status) === 'read' ? '#FFF7ED' : '#F0FDF4', color: normalizeStatus(c.status || 'new') === 'new' ? SKY_BLUE : normalizeStatus(c.status) === 'read' ? '#B45309' : '#15803D', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>{c.status || 'new'}</span>
                             </td>
@@ -1534,6 +1568,7 @@ export default function AdminPage() {
                       </tbody>
                     </table>
                   </div>
+                  <TablePager page={safeContactPage} pages={contactPages} total={filteredContacts.length} label="messages" onChange={setContactPage} />
                 </div>
               )}
 
@@ -1834,7 +1869,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                     </div>
 
                     <div className="admin-toolbar" style={{ display: 'flex', gap: '.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                      <input className="admin-toolbar-input" type="search" aria-label="Search booking locations" placeholder="Search city..." value={locationSearch} onChange={event => setLocationSearch(event.target.value)} style={inputStyle} />
+                      <input className="admin-toolbar-input" type="search" aria-label="Search booking locations" placeholder="Search city..." value={locationSearch} onChange={event => { setLocationSearch(event.target.value); setLocationPage(1) }} style={inputStyle} />
                       <select aria-label="Filter booking locations by distance" value={locationDistanceFilter} onChange={event => setLocationDistanceFilter(event.target.value)} style={{ ...inputStyle, width: 'auto', minWidth: '170px' }}>
                         <option value="all">All distances</option>
                         <option value="near">Near</option>
@@ -1854,7 +1889,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredLocations.map((location, index) => {
+                          {visibleLocations.map((location, index) => {
                             const distance = locationDistanceLabel(location.distance)
                             const isNear = distance === 'Near'
                             return (
@@ -1881,7 +1916,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                       </table>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginTop: '1rem' }}><span style={{ color: '#334155', fontSize: '.9rem' }}>Page {safeBookingPage} of {bookingPages} · {filteredBookings.length} booking{filteredBookings.length === 1 ? '' : 's'}</span><div style={{ display: 'flex', gap: '.45rem' }}><button type="button" disabled={safeBookingPage <= 1} onClick={() => setBookingPage(value => Math.max(1, value - 1))} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: safeBookingPage <= 1 ? 'not-allowed' : 'pointer' }}>Previous</button><button type="button" disabled={safeBookingPage >= bookingPages} onClick={() => setBookingPage(value => Math.min(bookingPages, value + 1))} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: safeBookingPage >= bookingPages ? 'not-allowed' : 'pointer' }}>Next</button></div></div>
+                  <TablePager page={safeLocationPage} pages={locationPages} total={filteredLocations.length} label="locations" onChange={setLocationPage} />
                 </div>
               )}
 
@@ -1891,6 +1926,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.map} Service Area Maps ({areas.length})</h3>
                     <button onClick={() => { setAreasForm({ name: '', map: '', icon: '', order: 0 }); setAreasEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Map</button>
                   </div>
+                  <div className="admin-toolbar" style={{ marginBottom: '1rem' }}><input type="search" aria-label="Search service area maps" placeholder="Search name or URL…" value={areaSearch} onChange={event => { setAreaSearch(event.target.value); setAreaPage(1) }} style={{ ...inputStyle, maxWidth: '320px' }} /></div>
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
@@ -1902,10 +1938,10 @@ Near and Long pricing is applied automatically from the selected city and verifi
                         </tr>
                       </thead>
                       <tbody>
-                        {areas.map(a => (
+                        {visibleAreas.map(a => (
                           <tr key={a._id}>
                             <td style={{ ...tdStyle, fontWeight: 600 }}>{a.name}</td>
-                            <td style={{ ...tdStyle, maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#334155' }} title={a.map}>{a.map}</td>
+                            <td style={{ ...tdStyle, maxWidth: '280px' }}><button type="button" aria-label={`View full map URL for ${a.name}`} onClick={() => setDetailsDialog({ title: 'Map URL', subtitle: a.name, content: a.map || '—' })} style={{ maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: 0, background: 'transparent', padding: 0, color: SKY_BLUE, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}>{a.map || '—'}</button></td>
                             <td style={tdStyle}>
                               <button
                                 onClick={async () => {
@@ -1948,6 +1984,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                       </tbody>
                     </table>
                   </div>
+                  <TablePager page={safeAreaPage} pages={areaPages} total={filteredAreas.length} label="maps" onChange={setAreaPage} />
                 </div>
               )}
 
@@ -1957,6 +1994,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.share} Social Links Management ({socials.length})</h3>
                     <button onClick={() => { setSocialsForm({ platform: 'facebook', url: '', order: socials.length }); setSocialsEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Social Link</button>
                   </div>
+                  <div className="admin-toolbar" style={{ marginBottom: '1rem' }}><input type="search" aria-label="Search social links" placeholder="Search platform or URL…" value={socialSearch} onChange={event => { setSocialSearch(event.target.value); setSocialPage(1) }} style={{ ...inputStyle, maxWidth: '320px' }} /></div>
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
@@ -1968,7 +2006,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                         </tr>
                       </thead>
                       <tbody>
-                        {socials.map(s => (
+                        {visibleSocials.map(s => (
                           <tr key={s._id || s.platform}>
                             <td style={{ ...tdStyle, fontWeight: 600 }}>
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1976,7 +2014,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                                 {socialPlatformLabel(s.platform)}
                               </span>
                             </td>
-                            <td style={{ ...tdStyle, maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#334155' }} title={s.url}>{s.url || '—'}</td>
+                            <td style={{ ...tdStyle, maxWidth: '300px' }}><button type="button" aria-label={`View full ${socialPlatformLabel(s.platform)} URL`} onClick={() => setDetailsDialog({ title: 'Social Link URL', subtitle: socialPlatformLabel(s.platform), content: s.url || '—' })} style={{ maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: 0, background: 'transparent', padding: 0, color: SKY_BLUE, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}>{s.url || '—'}</button></td>
                             <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>{s.order ?? 0}</td>
                             <td style={tdStyle}>
                               <div style={{ display: 'flex', gap: '0.4rem' }}>
@@ -1992,6 +2030,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                       </tbody>
                     </table>
                   </div>
+                  <TablePager page={safeSocialPage} pages={socialPages} total={filteredSocials.length} label="links" onChange={setSocialPage} />
                 </div>
               )}
 
@@ -2528,6 +2567,15 @@ Near and Long pricing is applied automatically from the selected city and verifi
               <button autoFocus disabled={confirmDialog.busy} onClick={() => setConfirmDialog(null)} style={{ minHeight: '44px', padding: '0.65rem 1rem', border: '1px solid #CBD5E1', borderRadius: '10px', color: '#475569', background: '#fff', fontWeight: 800 }}>Cancel</button>
               <button disabled={confirmDialog.busy} onClick={runConfirmedAction} style={{ minWidth: '126px', minHeight: '44px', padding: '0.65rem 1rem', borderRadius: '10px', color: '#fff', background: '#DC2626', fontWeight: 800, boxShadow: '0 8px 20px rgba(220,38,38,0.2)' }}>{confirmDialog.busy ? 'Processing…' : 'Confirm'}</button>
             </div>
+          </div>
+        </div>
+      )}
+      {detailsDialog && (
+        <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 14000, display: 'grid', placeItems: 'center', padding: '1rem', background: 'rgba(10,22,40,.65)', backdropFilter: 'blur(10px)' }} onClick={event => { if (event.target === event.currentTarget) setDetailsDialog(null) }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="admin-details-title" style={{ width: 'min(100%,620px)', maxHeight: '85vh', overflowY: 'auto', padding: '1.75rem', borderRadius: '18px', background: '#fff', boxShadow: '0 30px 90px rgba(10,22,40,.32)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}><div><h2 id="admin-details-title" style={{ margin: 0, color: DARK, fontSize: '1.3rem' }}>{detailsDialog.title}</h2>{detailsDialog.subtitle && <p style={{ margin: '.3rem 0 0', color: '#475569' }}>{detailsDialog.subtitle}</p>}</div><button autoFocus type="button" aria-label="Close details" onClick={() => setDetailsDialog(null)} style={{ border: 0, background: 'transparent', fontSize: '1.6rem', cursor: 'pointer' }}>&times;</button></div>
+            <div style={{ marginTop: '1.2rem', padding: '1rem', border: '1px solid #E2E8F0', borderRadius: '12px', background: '#F8FAFC', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', lineHeight: 1.7 }}>{detailsDialog.content}</div>
+            <button type="button" onClick={() => setDetailsDialog(null)} style={{ width: '100%', minHeight: '44px', marginTop: '1.2rem', border: 0, borderRadius: '10px', background: SKY_BLUE, color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Close</button>
           </div>
         </div>
       )}
