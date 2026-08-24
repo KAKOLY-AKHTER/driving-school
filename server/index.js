@@ -3526,10 +3526,21 @@ app.put('/api/admin/pricing/:id', async (req, res) => {
 
 app.delete('/api/admin/pricing/:id', async (req, res) => {
   try {
-    await pricingCol.deleteOne({ _id: new ObjectId(req.params.id) })
+    if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid pricing plan id.')
+    const pricingId = new ObjectId(req.params.id)
+    const plan = await pricingCol.findOne({ _id: pricingId }, { projection: { id: 1, planName: 1 } })
+    if (!plan) throw new HttpError(404, 'Pricing plan not found.')
+    const enrolledCount = await usersCol.countDocuments({
+      courses: { $elemMatch: { id: { $in: courseIdCandidates(plan.id) } } },
+    })
+    if (enrolledCount > 0 && req.query.confirmEnrolled !== 'true') {
+      throw new HttpError(409, `This plan is linked to ${enrolledCount} enrolled account${enrolledCount === 1 ? '' : 's'}. Confirm the enrolled-plan warning before deleting it.`)
+    }
+    await pricingCol.deleteOne({ _id: pricingId })
     res.json({ ok: true })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    if (e.status) return res.status(e.status).json({ error: e.message })
+    sendServerError(res, e, 'Pricing plan deletion failed')
   }
 })
 

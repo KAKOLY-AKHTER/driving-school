@@ -130,7 +130,7 @@ export const api = {
   adminDeleteRefund: (id) => request(`/api/admin/refunds/${pathPart(id)}`, { method: 'DELETE' }),
   adminAddPricing: (data) => request('/api/admin/pricing', { method: 'POST', body: JSON.stringify(data) }),
   adminUpdatePricing: (id, data) => request(`/api/admin/pricing/${pathPart(id)}`, { method: 'PUT', body: JSON.stringify(data) }),
-  adminDeletePricing: (id) => request(`/api/admin/pricing/${pathPart(id)}`, { method: 'DELETE' }),
+  adminDeletePricing: (id, confirmedEnrollmentWarning = false) => request(`/api/admin/pricing/${pathPart(id)}${confirmedEnrollmentWarning ? '?confirmEnrolled=true' : ''}`, { method: 'DELETE' }),
   getLocations: () => request('/api/locations'),
   adminAddLocation: (data) => request('/api/admin/locations', { method: 'POST', body: JSON.stringify(data) }),
   adminUpdateLocation: (id, data) => request(`/api/admin/locations/${pathPart(id)}`, { method: 'PUT', body: JSON.stringify(data) }),

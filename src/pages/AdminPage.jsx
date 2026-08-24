@@ -128,6 +128,13 @@ const ADMIN_LESSON_TIMES = [
   '04:00 PM - 06:00 PM',
 ]
 
+const isValidPlanAmount = (value) => {
+  const raw = String(value || '').trim().replace(/[$,\s]/g, '')
+  if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) return false
+  const amount = Number(raw)
+  return Number.isFinite(amount) && amount >= 0 && amount <= 1_000_000
+}
+
 const SVG = {
   dashboard: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" /></svg>,
   users: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>,
@@ -711,13 +718,13 @@ export default function AdminPage() {
     () => deleteContact(id),
   )
 
-  const deletePricing = async (id) => {
+  const deletePricing = async (plan, enrolledCount = 0) => {
     try {
-      await api.adminDeletePricing(id)
-      setPricing(prev => prev.filter(item => item._id !== id))
+      await api.adminDeletePricing(plan._id, enrolledCount > 0)
+      setPricing(prev => prev.filter(item => item._id !== plan._id))
       setMsg('Pricing plan deleted.')
-    } catch {
-      setMsg('Failed to delete pricing plan.')
+    } catch (error) {
+      setMsg(error?.message || 'Failed to delete pricing plan.')
     }
     setTimeout(() => setMsg(''), 2500)
   }
@@ -1073,6 +1080,9 @@ export default function AdminPage() {
         .refund-actions-cell { position:sticky !important; right:0; z-index:2; background:#fff; box-shadow:-8px 0 14px rgba(15,23,42,.06); }
         thead .refund-actions-cell { z-index:5; background:#F7FAFE; }
         .admin-table-wrap tbody tr:hover .refund-actions-cell { background:#F8FBFF; }
+        .pricing-actions-cell { position:sticky !important; right:0; z-index:2; background:#fff; box-shadow:-8px 0 14px rgba(15,23,42,.06); }
+        thead .pricing-actions-cell { z-index:5; background:#F7FAFE; }
+        .admin-table-wrap tbody tr:hover .pricing-actions-cell { background:#F8FBFF; }
         .admin-main input,.admin-main select,.admin-main textarea { background:#fff; transition:border-color .2s ease,box-shadow .2s ease,background-color .2s ease; }
         .admin-main input:focus,.admin-main select:focus,.admin-main textarea:focus { border-color:#0145A8 !important; box-shadow:0 0 0 4px rgba(1,69,168,.09); background:#fff; }
         .admin-toast { position:fixed; top:92px; right:clamp(1rem,3vw,2rem); z-index:12000; width:min(390px,calc(100vw - 2rem)); display:flex; align-items:flex-start; gap:.75rem; padding:1rem 1.1rem; border-radius:14px; box-shadow:0 18px 50px rgba(15,23,42,.2); animation:adminToastIn .3s cubic-bezier(.22,1,.36,1); }
@@ -1524,12 +1534,13 @@ export default function AdminPage() {
                           <th style={thStyle}>Option 3</th>
                           <th style={thStyle}>Option 4</th>
                           <th style={thStyle}>Option 5</th>
-                          <th style={thStyle}>Action</th>
+                          <th className="pricing-actions-cell" style={{ ...thStyle, minWidth: '150px' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {pricing.map(t => {
                           const opts = t.options || []
+                          const enrolledCount = enrollmentRows.filter(({ course }) => String(course?.id || '') === String(t.id || '')).length
                           return (
                             <tr key={t._id}>
                               <td style={tdStyle}><span style={{ padding: '0.15rem 0.4rem', background: 'rgba(1,69,168,0.08)', color: SKY_BLUE, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 700 }}>{t.id}</span></td>
@@ -1538,10 +1549,10 @@ export default function AdminPage() {
                               <td style={tdStyle}>{t.planPriceTwo}</td>
                               {[0,1,2,3,4].map(i => (
                                 <td key={i} style={{ ...tdStyle, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.95rem', color: opts[i]?.permission === 'Included' ? '#16A34A' : opts[i]?.permission === 'Not Included' ? '#DC2626' : '#64748b' }}>
-                                  {opts[i]?.text ? `${opts[i].text.slice(0, 30)}${opts[i].text.length > 30 ? '...' : ''}` : opts[i]?.permission || 'Select'}
+                                  {opts[i]?.text ? `${opts[i].text.slice(0, 30)}${opts[i].text.length > 30 ? '...' : ''}` : opts[i]?.permission && opts[i].permission !== 'Select' ? opts[i].permission : '—'}
                                 </td>
                               ))}
-                              <td style={tdStyle}>
+                              <td className="pricing-actions-cell" style={{ ...tdStyle, minWidth: '150px' }}>
                                 <div style={{ display: 'flex', gap: '0.4rem' }}>
                                   <button onClick={() => {
                                     const opts = t.options || []
@@ -1555,7 +1566,7 @@ export default function AdminPage() {
                                       option5: opts[4]?.text || '', perm5: opts[4]?.permission || 'Select',
                                     }); setPricingEdit(t._id)
                                   }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
-                                  <button onClick={() => requestConfirmation('Delete pricing plan?', `${t.planName || 'This plan'} will be permanently removed.`, () => deletePricing(t._id))} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+                                  <button onClick={() => requestConfirmation(enrolledCount > 0 ? 'Delete enrolled pricing plan?' : 'Delete pricing plan?', enrolledCount > 0 ? `${t.planName || 'This plan'} is linked to ${enrolledCount} enrollment record${enrolledCount === 1 ? '' : 's'}. Deleting it removes the plan from new purchases; historical enrollments remain. Confirm only if this is intentional.` : `${t.planName || 'This plan'} will be permanently removed.`, () => deletePricing(t, enrolledCount))} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
                                 </div>
                               </td>
                             </tr>
@@ -2184,7 +2195,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                             onChange={e => setPricingForm(prev => ({ ...prev, [permKey]: e.target.value }))}
                             style={inputStyle}
                           >
-                            <option value="Select">Select</option>
+                            <option value="Select">—</option>
                             <option value="Included">Included</option>
                             <option value="Optional">Optional</option>
                             <option value="Not Included">Not Included</option>
@@ -2197,6 +2208,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                       <button onClick={() => setPricingEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#334155', cursor: 'pointer' }}>Cancel</button>
                       <button onClick={async () => {
                         if (!pricingForm.planName || !pricingForm.id || !pricingForm.planPrice || !pricingForm.planPriceTwo) { setMsg('Plan Name, ID, Near Price, and Long Price are required.'); setTimeout(() => setMsg(''), 2000); return }
+                        if (!isValidPlanAmount(pricingForm.planPrice) || !isValidPlanAmount(pricingForm.planPriceTwo)) { setMsg('Near Price and Long Price must be valid dollar amounts with up to 2 decimal places.'); setTimeout(() => setMsg(''), 3500); return }
                         const options = [1,2,3,4,5].map(i => ({
                           text: pricingForm[`option${i}`] || '',
                           permission: pricingForm[`perm${i}`] || 'Select',
