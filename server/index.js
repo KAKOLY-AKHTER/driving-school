@@ -451,6 +451,7 @@ function sanitizeRefundRecord(value, { partial = false } = {}) {
   }
   return output
 }
+const isFinalRefundStatus = value => ['refunded', 'denied'].includes(cleanText(value || 'pending', 20).toLowerCase())
 const BOOKING_TIMES = new Set([
   '07:00 AM - 09:00 AM', '09:00 AM - 11:00 AM', '11:00 AM - 01:00 PM', '12:00 PM - 02:00 PM', '02:00 PM - 04:00 PM', '04:00 PM - 06:00 PM',
   '9:00 AM - 11:00 AM', '11:00 AM - 1:00 PM', '2:00 PM - 4:00 PM', '4:00 PM - 6:00 PM',
@@ -4079,7 +4080,22 @@ app.get('/api/admin/refunds', async (req, res) => {
       .skip((p - 1) * l)
       .limit(l)
       .toArray()
-    res.json({ data, total, page: p, limit: l, totalPages: Math.ceil(total / l) })
+    const userIds = [...new Set(data.map(refund => cleanText(refund.uid || refund.User_UID, 160)).filter(Boolean))]
+    const paymentUsers = userIds.length
+      ? await usersCol.find({ uid: { $in: userIds } }, { projection: { uid: 1, payments: 1 } }).toArray()
+      : []
+    const usersById = new Map(paymentUsers.map(user => [user.uid, user]))
+    const enriched = data.map(refund => {
+      const uid = cleanText(refund.uid || refund.User_UID, 160)
+      const paymentMatch = findPayPalPaymentForRefund(usersById.get(uid), refund)
+      const payment = paymentMatch?.payment
+      return {
+        ...refund,
+        PayPal_Reference: cleanText(refund.Provider_Refund_ID || refund.Provider_Payment_Ref || payment?.ref || payment?.providerOrderId, 120),
+        PayPal_Capture_ID: cleanText(refund.Provider_Capture_ID || payment?.providerCaptureId, 120),
+      }
+    })
+    res.json({ data: enriched, total, page: p, limit: l, totalPages: Math.ceil(total / l) })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
@@ -4103,6 +4119,7 @@ app.get('/api/admin/refunds/stats', async (req, res) => {
 app.post('/api/admin/refunds', async (req, res) => {
   try {
     const sanitized = sanitizeRefundRecord(req.body)
+    if (sanitized.Status !== 'pending') throw new HttpError(400, 'New refund records must start as Pending.')
     const doc = {
       ...sanitized,
       created_at: new Date().toISOString().replace('T', ' ').slice(0, 19),
@@ -4122,6 +4139,10 @@ app.put('/api/admin/refunds/:id', async (req, res) => {
     const sanitized = sanitizeRefundRecord(req.body, { partial: true })
     const existingRefund = await refundsCol.findOne({ _id: refundId })
     if (!existingRefund) return res.status(404).json({ error: 'Refund record not found.' })
+    const existingStatus = cleanText(existingRefund.Status || 'pending', 20).toLowerCase()
+    if (isFinalRefundStatus(existingStatus)) {
+      return res.status(409).json({ error: `This refund is already ${existingStatus} and can no longer be changed.` })
+    }
     const requestedStatus = cleanText(sanitized.Status || existingRefund.Status || 'pending', 20).toLowerCase()
 
     let providerRefund = null
@@ -4163,6 +4184,10 @@ app.put('/api/admin/refunds/:id', async (req, res) => {
     const result = await withMongoTransaction(async (session) => {
       const existing = await refundsCol.findOne({ _id: refundId }, { session })
       if (!existing) return { found: false }
+      const currentStatus = cleanText(existing.Status || 'pending', 20).toLowerCase()
+      if (isFinalRefundStatus(currentStatus)) {
+        throw new HttpError(409, `This refund is already ${currentStatus} and can no longer be changed.`)
+      }
       const updatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19)
       const providerStatus = cleanText(providerRefund?.status, 30).toUpperCase()
       const providerRefundId = cleanText(providerRefund?.id || existing.Provider_Refund_ID, 120)
@@ -4232,6 +4257,10 @@ app.delete('/api/admin/refunds/:id', async (req, res) => {
     const result = await withMongoTransaction(async (session) => {
       const existing = await refundsCol.findOne({ _id: refundId }, { session })
       if (!existing) return false
+      const existingStatus = cleanText(existing.Status || 'pending', 20).toLowerCase()
+      if (isFinalRefundStatus(existingStatus)) {
+        throw new HttpError(409, `This refund is already ${existingStatus} and cannot be deleted.`)
+      }
       if (String(existing.Status || 'pending').toLowerCase() === 'pending') {
         const uid = cleanText(existing.uid || existing.User_UID, 160)
         const courseId = cleanText(existing.Course_ID, 120)
@@ -4270,6 +4299,7 @@ app.delete('/api/admin/refunds/:id', async (req, res) => {
     if (!result) return res.status(404).json({ error: 'Refund record not found.' })
     res.json({ ok: true })
   } catch (e) {
+    if (e.status) return res.status(e.status).json({ error: e.message })
     sendServerError(res, e, 'Refund record deletion failed')
   }
 })
@@ -4368,6 +4398,7 @@ export {
   bookingsForEnrollment,
   checkoutFingerprint,
   findPayPalPaymentForRefund,
+  isFinalRefundStatus,
   moneyString,
   normalizePlanPrice,
   normalizeLocationKey,

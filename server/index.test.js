@@ -9,6 +9,7 @@ const {
   bookingsForEnrollment,
   checkoutFingerprint,
   findPayPalPaymentForRefund,
+  isFinalRefundStatus,
   moneyString,
   payableCheckoutAmount,
   pricingForBookingLocation,
@@ -75,6 +76,12 @@ test('PayPal refund matching is enrollment-scoped and tracks previously refunded
     findPayPalPaymentForRefund(user, { ...refund, Enrollment_ID: 'another-enrollment' }),
     null
   )
+})
+
+test('refunded and denied refund decisions are terminal', () => {
+  assert.equal(isFinalRefundStatus('Refunded'), true)
+  assert.equal(isFinalRefundStatus(' denied '), true)
+  assert.equal(isFinalRefundStatus('pending'), false)
 })
 
 test('customer reviews require clear text and constrain rating, order, and visibility', () => {

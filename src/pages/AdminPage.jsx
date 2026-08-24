@@ -475,6 +475,7 @@ export default function AdminPage() {
   const [refundError, setRefundError] = useState('')
   const [refundAttempt, setRefundAttempt] = useState(0)
   const [refundEdit, setRefundEdit] = useState(null)
+  const [refundDetails, setRefundDetails] = useState(null)
   const [refundForm, setRefundForm] = useState({ Full_Name: '', Email: '', Phone: '', Course_Name: '', Amount: '', Reason: '', Status: 'pending' })
   const [accName, setAccName] = useState('')
   const [accPhoto, setAccPhoto] = useState('')
@@ -733,6 +734,65 @@ export default function AdminPage() {
     setTimeout(() => setMsg(''), 2500)
   }
 
+  const persistRefund = async (doc) => {
+    const result = await api.adminUpdateRefund(refundEdit, doc)
+    if (result?.status === 'pending' && result?.providerStatus === 'PENDING') {
+      setMsg('PayPal is processing the refund. Its status remains pending.')
+    } else {
+      setMsg(doc.Status === 'refunded' ? 'PayPal refund completed!' : doc.Status === 'denied' ? 'Refund request denied.' : 'Refund updated!')
+    }
+    setRefundEdit(null)
+    setRefundAttempt(value => value + 1)
+    setTimeout(() => setMsg(''), 4500)
+  }
+
+  const handleSaveRefund = async () => {
+    if (!refundForm.Full_Name || !refundForm.Amount) {
+      setMsg('Student Name and Amount are required.')
+      setTimeout(() => setMsg(''), 2000)
+      return
+    }
+    const doc = { ...refundForm, Status: refundEdit === 'new' ? 'pending' : refundForm.Status }
+    try {
+      if (refundEdit === 'new') {
+        const result = await api.adminAddRefund(doc)
+        if (result.ok) setRefunds(previous => [{ ...doc, _id: result._id }, ...previous])
+        setRefundTotal(previous => previous + 1)
+        setRefundEdit(null)
+        setMsg('Refund added!')
+        setTimeout(() => setMsg(''), 3000)
+        return
+      }
+      const current = refunds.find(refund => String(refund._id) === String(refundEdit))
+      const currentStatus = normalizeStatus(current?.Status || 'pending')
+      if (currentStatus === 'refunded' || currentStatus === 'denied') {
+        setMsg(`This refund is already ${currentStatus} and can no longer be changed.`)
+        return
+      }
+      if (doc.Status === 'refunded') {
+        const reference = current?.PayPal_Reference || current?.PayPal_Capture_ID || 'Not available'
+        requestConfirmation(
+          'Issue PayPal refund?',
+          `This will send ${doc.Amount || 'the approved amount'} through PayPal and cannot be undone here. PayPal reference: ${reference}.`,
+          () => persistRefund(doc).catch(error => { setMsg(error?.message || 'PayPal refund could not be completed.'); setTimeout(() => setMsg(''), 4500) }),
+        )
+        return
+      }
+      if (doc.Status === 'denied') {
+        requestConfirmation(
+          'Deny refund request?',
+          'This closes the refund request without returning funds. The decision cannot be changed from this dashboard.',
+          () => persistRefund(doc).catch(error => { setMsg(error?.message || 'Refund decision could not be saved.'); setTimeout(() => setMsg(''), 4500) }),
+        )
+        return
+      }
+      await persistRefund(doc)
+    } catch (error) {
+      setMsg(error?.message || 'Failed to save refund.')
+      setTimeout(() => setMsg(''), 4500)
+    }
+  }
+
   const deleteLocation = async (id) => {
     try {
       await api.adminDeleteLocation(id)
@@ -766,25 +826,27 @@ export default function AdminPage() {
     setTimeout(() => setMsg(''), 2500)
   }
 
-  const activeDialogKey = contactEdit ? 'contact'
+  const activeDialogKey = confirmDialog ? 'confirmation'
+    : contactEdit ? 'contact'
     : pricingEdit ? 'pricing'
       : locationEdit ? 'location'
         : areasEdit ? 'area'
           : socialsEdit ? 'social'
             : refundEdit ? 'refund'
-              : confirmDialog ? 'confirmation'
+              : refundDetails ? 'refund-details'
                 : ''
 
   const closeActiveDialog = useCallback(() => {
     if (confirmDialog?.busy) return
     if (confirmDialog) setConfirmDialog(null)
+    else if (refundDetails) setRefundDetails(null)
     else if (refundEdit) setRefundEdit(null)
     else if (socialsEdit) setSocialsEdit(null)
     else if (areasEdit) setAreasEdit(null)
     else if (locationEdit) setLocationEdit(null)
     else if (pricingEdit) setPricingEdit(null)
     else if (contactEdit) setContactEdit(null)
-  }, [areasEdit, confirmDialog, contactEdit, locationEdit, pricingEdit, refundEdit, socialsEdit])
+  }, [areasEdit, confirmDialog, contactEdit, locationEdit, pricingEdit, refundDetails, refundEdit, socialsEdit])
 
   useEffect(() => {
     const dialogOpen = Boolean(activeDialogKey)
@@ -1008,6 +1070,9 @@ export default function AdminPage() {
         .admin-table-wrap tbody tr:hover { background:#F8FBFF; }
         .admin-table-wrap tbody tr:last-child td { border-bottom:0 !important; }
         .admin-table-wrap button { min-height:34px; }
+        .refund-actions-cell { position:sticky !important; right:0; z-index:2; background:#fff; box-shadow:-8px 0 14px rgba(15,23,42,.06); }
+        thead .refund-actions-cell { z-index:5; background:#F7FAFE; }
+        .admin-table-wrap tbody tr:hover .refund-actions-cell { background:#F8FBFF; }
         .admin-main input,.admin-main select,.admin-main textarea { background:#fff; transition:border-color .2s ease,box-shadow .2s ease,background-color .2s ease; }
         .admin-main input:focus,.admin-main select:focus,.admin-main textarea:focus { border-color:#0145A8 !important; box-shadow:0 0 0 4px rgba(1,69,168,.09); background:#fff; }
         .admin-toast { position:fixed; top:92px; right:clamp(1rem,3vw,2rem); z-index:12000; width:min(390px,calc(100vw - 2rem)); display:flex; align-items:flex-start; gap:.75rem; padding:1rem 1.1rem; border-radius:14px; box-shadow:0 18px 50px rgba(15,23,42,.2); animation:adminToastIn .3s cubic-bezier(.22,1,.36,1); }
@@ -1654,7 +1719,7 @@ export default function AdminPage() {
                             <th style={thStyle}>Reason</th>
                             <th style={thStyle}>Status</th>
                             <th style={{ ...thStyle, minWidth: '118px', whiteSpace: 'nowrap' }}>Date</th>
-                            <th style={{ ...thStyle, minWidth: '150px', whiteSpace: 'nowrap' }}>Actions</th>
+                            <th className="refund-actions-cell" style={{ ...thStyle, minWidth: '205px', whiteSpace: 'nowrap' }}>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1674,15 +1739,14 @@ export default function AdminPage() {
                               <td style={tdStyle}>{r.Phone || '—'}</td>
                               <td style={{ ...tdStyle, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.Course_Name || '—'}</td>
                               <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '1.05rem', fontWeight: 700 }}>{r.Amount || '—'}</td>
-                              <td style={{ ...tdStyle, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.Reason}>{r.Reason || '—'}</td>
+                              <td style={{ ...tdStyle, maxWidth: '180px', whiteSpace: 'nowrap' }}><button type="button" onClick={() => setRefundDetails(r)} aria-label={`View refund details for ${r.Full_Name || 'student'}`} style={{ maxWidth: '160px', display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: 0, minHeight: 0, border: 0, background: 'transparent', color: SKY_BLUE, textDecoration: 'underline', textUnderlineOffset: '3px', font: 'inherit', cursor: 'pointer' }}>{r.Reason || 'View details'}</button></td>
                               <td style={tdStyle}>
                                 <span style={{ padding: '0.2rem 0.5rem', background: r.Status === 'refunded' ? 'rgba(34,197,94,0.1)' : r.Status === 'denied' ? 'rgba(220,38,38,0.1)' : 'rgba(253,188,1,0.15)', color: r.Status === 'refunded' ? '#16A34A' : r.Status === 'denied' ? '#DC2626' : GOLD_DEEP, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, whiteSpace: 'nowrap' }}>{r.Status || 'pending'}</span>
                               </td>
                               <td style={{ ...tdStyle, minWidth: '118px', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{r.created_at ? r.created_at.slice(0, 10) : '—'}</td>
-                              <td style={{ ...tdStyle, minWidth: '150px', whiteSpace: 'nowrap' }}>
+                              <td className="refund-actions-cell" style={{ ...tdStyle, minWidth: '205px', whiteSpace: 'nowrap' }}>
                                 <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                  <button onClick={() => { setRefundForm({ Full_Name: r.Full_Name || '', Email: r.Email || '', Phone: r.Phone || '', Course_Name: r.Course_Name || '', Amount: r.Amount || '', Reason: r.Reason || '', Status: r.Status || 'pending' }); setRefundEdit(r._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
-                                  <button onClick={() => requestConfirmation('Delete refund record?', `${r.Full_Name || 'This record'} will be permanently removed. No funds are transferred by this action.`, () => deleteRefund(r._id))} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button>
+                                  {['refunded', 'denied'].includes(normalizeStatus(r.Status)) ? <><button type="button" onClick={() => setRefundDetails(r)} style={{ background: '#F8FAFC', border: '1.5px solid #CBD5E1', color: '#475569', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Details</button><span title="Final decisions are read-only" style={{ display: 'inline-flex', alignItems: 'center', color: '#64748B', fontSize: '.75rem', fontWeight: 700 }}>Locked</span></> : <><button onClick={() => { setRefundForm({ Full_Name: r.Full_Name || '', Email: r.Email || '', Phone: r.Phone || '', Course_Name: r.Course_Name || '', Amount: r.Amount || '', Reason: r.Reason || '', Status: r.Status || 'pending' }); setRefundEdit(r._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Review</button><button onClick={() => requestConfirmation('Delete refund record?', `${r.Full_Name || 'This record'} will be permanently removed. No funds are transferred by this action.`, () => deleteRefund(r._id))} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Delete</button></>}
                                 </div>
                               </td>
                             </tr>
@@ -2335,6 +2399,17 @@ Near and Long pricing is applied automatically from the selected city and verifi
                 </div>
               )}
 
+              {refundDetails && (
+                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={event => { if (event.target === event.currentTarget) setRefundDetails(null) }}>
+                  <div role="dialog" aria-modal="true" aria-labelledby="refund-details-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '620px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.25rem' }}><div><h3 id="refund-details-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', color: DARK, fontWeight: 800, margin: 0 }}>Refund Details</h3><p style={{ margin: '.3rem 0 0', color: '#475569' }}>{refundDetails.Full_Name || 'Student'} · {refundDetails.Course_Name || 'Course not recorded'}</p></div><button autoFocus type="button" aria-label="Close refund details" onClick={() => setRefundDetails(null)} style={{ background: 'none', border: 0, fontSize: '1.5rem', color: '#334155', cursor: 'pointer' }}>&times;</button></div>
+                    <div style={{ padding: '1rem', border: '1px solid #E2E8F0', borderRadius: '12px', background: '#F8FAFC', marginBottom: '1rem' }}><div style={{ color: '#475569', fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 800, marginBottom: '.45rem' }}>Full reason</div><p style={{ margin: 0, color: '#1E293B', lineHeight: 1.7, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{refundDetails.Reason || 'No reason was recorded.'}</p></div>
+                    <dl style={{ display: 'grid', gridTemplateColumns: 'minmax(130px,.6fr) minmax(0,1.4fr)', gap: '.65rem 1rem', margin: 0, overflowWrap: 'anywhere' }}><dt style={{ color: '#64748B', fontWeight: 750 }}>Status</dt><dd style={{ margin: 0, fontWeight: 800, textTransform: 'capitalize' }}>{refundDetails.Status || 'pending'}</dd><dt style={{ color: '#64748B', fontWeight: 750 }}>Amount</dt><dd style={{ margin: 0 }}>{refundDetails.Amount || 'Not recorded'}</dd><dt style={{ color: '#64748B', fontWeight: 750 }}>PayPal reference</dt><dd style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: '.85rem' }}>{refundDetails.PayPal_Reference || refundDetails.Provider_Refund_ID || refundDetails.Provider_Payment_Ref || 'Not available'}</dd><dt style={{ color: '#64748B', fontWeight: 750 }}>Capture ID</dt><dd style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: '.85rem' }}>{refundDetails.PayPal_Capture_ID || refundDetails.Provider_Capture_ID || 'Not available'}</dd></dl>
+                    <button type="button" onClick={() => setRefundDetails(null)} style={{ width: '100%', marginTop: '1.4rem', minHeight: '44px', border: 0, borderRadius: '10px', background: SKY_BLUE, color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Close</button>
+                  </div>
+                </div>
+              )}
+
               {refundEdit && (
                 <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) setRefundEdit(null) }}>
                   <div role="dialog" aria-modal="true" aria-labelledby="refund-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
@@ -2365,7 +2440,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                       </div>
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Status</label>
-                        <select value={refundForm.Status} onChange={e => setRefundForm(prev => ({ ...prev, Status: e.target.value }))} style={inputStyle}>
+                        <select aria-label="Refund status" disabled={refundEdit === 'new'} value={refundEdit === 'new' ? 'pending' : refundForm.Status} onChange={e => setRefundForm(prev => ({ ...prev, Status: e.target.value }))} style={{ ...inputStyle, cursor: refundEdit === 'new' ? 'not-allowed' : 'pointer', opacity: refundEdit === 'new' ? .75 : 1 }}>
                           <option value="pending">Pending</option>
                           <option value="refunded">Refunded</option>
                           <option value="denied">Denied</option>
@@ -2378,33 +2453,12 @@ Near and Long pricing is applied automatically from the selected city and verifi
                     </div>
                     {refundEdit !== 'new' && refundForm.Status === 'refunded' && (
                       <div role="alert" style={{ marginBottom: '1.25rem', padding: '.85rem 1rem', border: '1px solid #FCD34D', borderRadius: '12px', background: '#FFFBEB', color: '#92400E', fontSize: '.9rem', lineHeight: 1.55, fontWeight: 650 }}>
-                        Confirm carefully: saving this status will send the linked refund through PayPal. The server verifies the captured payment and prevents the same refund from being submitted twice.
+                        Saving will open a final confirmation before PayPal is called. The confirmation includes the matched PayPal reference.
                       </div>
                     )}
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
                       <button onClick={() => setRefundEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#334155', cursor: 'pointer' }}>Cancel</button>
-                      <button onClick={async () => {
-                        if (!refundForm.Full_Name || !refundForm.Amount) { setMsg('Student Name and Amount are required.'); setTimeout(() => setMsg(''), 2000); return }
-                        const doc = { ...refundForm }
-                        try {
-                          if (refundEdit === 'new') {
-                            const r = await api.adminAddRefund(doc)
-                            if (r.ok) { doc._id = r._id; setRefunds(prev => [doc, ...prev]); setRefundTotal(prev => prev + 1) }
-                          } else {
-                            if (doc.Status === 'refunded' && !window.confirm('Issue this refund through PayPal now? This payment action cannot be undone from this dashboard.')) return
-                            const result = await api.adminUpdateRefund(refundEdit, doc)
-                            if (result?.status === 'pending' && result?.providerStatus === 'PENDING') {
-                              setMsg('PayPal is processing the refund. Its status remains pending.')
-                            } else {
-                              setMsg(doc.Status === 'refunded' ? 'PayPal refund completed!' : 'Refund updated!')
-                            }
-                            setRefundAttempt(value => value + 1)
-                          }
-                          setRefundEdit(null)
-                          if (refundEdit === 'new') setMsg('Refund added!')
-                          setTimeout(() => setMsg(''), 3500)
-                        } catch (error) { setMsg(error?.message || 'Failed to save refund.'); setTimeout(() => setMsg(''), 4500) }
-                      }} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
+                      <button onClick={handleSaveRefund} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
                         {refundEdit === 'new' ? 'Add Refund' : refundForm.Status === 'refunded' ? 'Issue PayPal Refund' : 'Save Changes'}
                       </button>
                     </div>
