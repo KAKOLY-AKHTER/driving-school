@@ -49,6 +49,7 @@ export default function AdminLoginPage() {
         setError('This account does not have administrator access.')
         return
       }
+      navigate('/admin', { replace: true })
     } catch (err) {
       if (auth.currentUser) await signOut(auth).catch(() => {})
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') setError('Incorrect email or password.')
@@ -108,7 +109,7 @@ export default function AdminLoginPage() {
           </div>
 
           <div style={{ background: '#ffffff', borderRadius: 'var(--radius-lg)', border: '1px solid rgba(253,188,1,0.2)', padding: '2.5rem', boxShadow: '0 16px 64px rgba(0,0,0,0.4)' }}>
-            {user && !isAdmin && (
+            {user && !isAdmin && !loading && (
               <div style={{ padding: '0.75rem 1rem', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 'var(--radius-sm)', marginBottom: '1.25rem', fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#C2410C' }}>
                 Signed in as {user.email}. Enter administrator credentials to continue.
               </div>
