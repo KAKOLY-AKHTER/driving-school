@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
 import { useCart } from '../contexts/CartContext'
-import { useSiteSettings } from '../useSiteSettings'
+import { useSiteSettings, phoneHref } from '../useSiteSettings'
 
 const NAV_LINKS = [
   { label: 'Home', href: '/', external: false },
@@ -21,6 +21,8 @@ export default function Nav() {
   const [open, setOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [notice, setNotice] = useState('')
+  const profileButtonRef = useRef(null)
   const location = useLocation()
   const navigate = useNavigate()
   const isHome = location.pathname === '/'
@@ -34,7 +36,40 @@ export default function Nav() {
   // Close mobile menu on route change
   useEffect(() => {
     setOpen(false)
+    setProfileOpen(false)
   }, [location.pathname])
+
+  useEffect(() => {
+    if (!open) return undefined
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const closeOnEscape = event => { if (event.key === 'Escape') setOpen(false) }
+    document.addEventListener('keydown', closeOnEscape)
+    return () => { document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', closeOnEscape) }
+  }, [open])
+
+  useEffect(() => {
+    if (!profileOpen) return undefined
+    const closeOnEscape = event => {
+      if (event.key !== 'Escape') return
+      setProfileOpen(false)
+      profileButtonRef.current?.focus()
+    }
+    document.addEventListener('keydown', closeOnEscape)
+    return () => document.removeEventListener('keydown', closeOnEscape)
+  }, [profileOpen])
+
+  const handleSignOut = async () => {
+    setNotice('')
+    try {
+      await signOut(auth)
+      setOpen(false)
+      setProfileOpen(false)
+      navigate('/')
+    } catch {
+      setNotice('Sign out failed. Please check your connection and try again.')
+    }
+  }
 
   // On non-home pages navbar always has solid dark bg
   const solidBg = !isHome || scrolled
@@ -67,19 +102,19 @@ export default function Nav() {
         display: isOnlineCourse || scrolled ? 'none' : 'block'
       }}>
         <div className="container" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.75rem 2rem', fontSize: '0.9rem', fontWeight: '600' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
+          <a href={phoneHref(settings.phone)} aria-label={`Call or text ${settings.phone}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap', color:'inherit', textDecoration:'none' }}>
             <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.69 2.8a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.33 1.84.56 2.8.69A2 2 0 0 1 22 16.92z" />
             </svg>
             {settings.phone}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+          </a>
+          <a href={`mailto:${settings.email}`} aria-label={`Email ${settings.email}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, color:'inherit', textDecoration:'none' }}>
             <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
               <rect x="3" y="5" width="18" height="14" rx="2" />
               <path d="m3 7 9 6 9-6" />
             </svg>
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{settings.email}</span>
-          </div>
+          </a>
         </div>
       </div>
 
@@ -124,7 +159,7 @@ export default function Nav() {
                       {l.label}
                     </a>
                   ) : (
-                    <Link to={l.href} className={`nav-link-desktop ${location.pathname === l.href ? 'active' : ''}`}>
+                    <Link to={l.href} aria-current={location.pathname === l.href ? 'page' : undefined} className={`nav-link-desktop ${location.pathname === l.href ? 'active' : ''}`}>
                       {l.label}
                     </Link>
                   )}
@@ -146,11 +181,13 @@ export default function Nav() {
                 </Link>
                 <div style={{ position: 'relative' }} className="hidden lg:block">
                 <button
+                  ref={profileButtonRef}
                   type="button"
                   onClick={() => setProfileOpen(!profileOpen)}
                   className={`nav-premium-action nav-profile-action ${isOnlineCourse ? 'on-light' : ''}`}
                   aria-expanded={profileOpen}
                   aria-haspopup="menu"
+                  aria-controls="nav-profile-menu"
                 >
                   <div className="nav-profile-avatar">
                     {user.displayName ? user.displayName[0].toUpperCase() : user.email?.[0].toUpperCase()}
@@ -161,7 +198,7 @@ export default function Nav() {
                 {profileOpen && (
                   <>
                     <div onClick={() => setProfileOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 98 }} />
-                    <div style={{
+                    <div id="nav-profile-menu" role="menu" aria-label="Account options" style={{
                       position: 'absolute', top: 'calc(100% + 8px)', right: 0,
                       background: '#ffffff', borderRadius: 'var(--radius-md)',
                       border: '1px solid #E2EBF5', boxShadow: '0 16px 48px rgba(0,0,0,0.12)',
@@ -171,14 +208,14 @@ export default function Nav() {
                         <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', color: '#1a2332', fontWeight: 700, margin: 0 }}>{user.displayName || 'Student'}</p>
                         <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: '#8899aa', margin: '0.2rem 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.email}</p>
                       </div>
-                      <Link to="/dashboard" onClick={() => setProfileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.75rem 1.25rem', fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#1a2332', textDecoration: 'none', transition: 'background 0.15s' }}
+                      <Link role="menuitem" to="/dashboard" onClick={() => setProfileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.75rem 1.25rem', fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#1a2332', textDecoration: 'none', transition: 'background 0.15s' }}
                         onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafd'}
                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0145A8" strokeWidth="1.5"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                         My Dashboard
                       </Link>
-                      <button onClick={async () => { setProfileOpen(false); await signOut(auth); navigate('/'); }} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.75rem 1.25rem', width: '100%', fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#DC2626', background: 'none', border: 'none', borderTop: '1px solid #f0f2f5', cursor: 'pointer', transition: 'background 0.15s', textAlign: 'left' }}
+                      <button role="menuitem" onClick={handleSignOut} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.75rem 1.25rem', width: '100%', fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#DC2626', background: 'none', border: 'none', borderTop: '1px solid #f0f2f5', cursor: 'pointer', transition: 'background 0.15s', textAlign: 'left' }}
                         onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                       >
@@ -235,6 +272,7 @@ export default function Nav() {
               onClick={() => setOpen(!open)}
               aria-label="Toggle menu"
               aria-expanded={open}
+              aria-controls="mobile-navigation"
               style={{
                 width: '44px', height: '44px',
                 display: isOnlineCourse ? 'none' : 'flex', flexDirection: 'column',
@@ -259,6 +297,9 @@ export default function Nav() {
 
       {/* Mobile Menu */}
       <div
+        id="mobile-navigation"
+        aria-hidden={!open}
+        inert={!open ? true : undefined}
         style={{
           position: 'absolute', top: '100%', left: 0, right: 0,
           background: 'var(--color-ink)',
@@ -285,6 +326,7 @@ export default function Nav() {
                 ) : (
                   <Link
                     to={l.href}
+                    aria-current={location.pathname === l.href ? 'page' : undefined}
                     onClick={() => setOpen(false)}
                     className="nav-mobile-link"
                     style={{
@@ -314,7 +356,7 @@ export default function Nav() {
                   <span>My Cart</span>
                   {cartCount > 0 && <span style={{ background: 'linear-gradient(135deg,#F43F5E,#C8102E)', color: '#fff', border: '2px solid #fff', borderRadius: '999px', minWidth: '26px', height: '26px', padding: '0 7px', fontSize: '0.8rem', lineHeight: 1, fontFamily: 'var(--font-mono)', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(153,27,27,0.42)' }}>{cartCount}</span>}
                 </Link>
-                <button onClick={async () => { setOpen(false); await signOut(auth); }} className="nav-mobile-link" style={{ color: '#DC2626', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', width: '100%' }}>Sign Out</button>
+                <button onClick={handleSignOut} className="nav-mobile-link" style={{ color: '#DC2626', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', width: '100%' }}>Sign Out</button>
               </>
             ) : (
               <>
@@ -325,6 +367,8 @@ export default function Nav() {
           </div>
         </div>
       </div>
+
+      {notice && <div role="alert" className="nav-toast" style={{ position:'fixed', top:'1rem', right:'1rem', zIndex:200, maxWidth:'360px', padding:'.85rem 1rem', border:'1px solid #FCA5A5', borderRadius:'12px', background:'#FEF2F2', color:'#B91C1C', boxShadow:'0 16px 45px rgba(15,23,42,.22)', fontWeight:750 }}>{notice}<button type="button" aria-label="Dismiss sign out error" onClick={() => setNotice('')} style={{ marginLeft:'.75rem', border:0, background:'transparent', color:'inherit', cursor:'pointer', fontWeight:900 }}>&times;</button></div>}
 
       <style>{`
         .nav-premium-action {

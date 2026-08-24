@@ -64,6 +64,7 @@ export default function Footer() {
           color: ${GOLD};
           transform: translateX(4px);
         }
+        .ft-link:focus-visible,.ft-social:focus-visible,.ft-contact-link:focus-visible,.ft-bottom a:focus-visible { outline:3px solid rgba(253,188,1,.72); outline-offset:3px; }
         .ft-link-gold {
           color: ${GOLD};
         }
@@ -143,6 +144,10 @@ export default function Footer() {
         @media (max-width: 600px) {
           .ft-road { height: 78px; padding-inline: 0.5rem; }
           .ft-road-car { width: 76px; height: auto; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .ft-road-car { animation:none !important; }
+          .ft-link,.ft-social { transition:none !important; }
         }
       `}</style>
 
@@ -253,10 +258,14 @@ export default function Footer() {
                     </svg>
                   </div>
                   <div>
-                    <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.88)', fontSize: '0.82rem', lineHeight: 1.6, display: 'block' }}>
+                    <span style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.88)', fontSize: '0.82rem', lineHeight: 1.6, display: 'block', overflowWrap:'anywhere' }}>
                       {settings.address}<br/>{settings.subaddress}
                     </span>
                   </div>
+                </li>
+                <li style={{ display:'flex', gap:'.75rem', alignItems:'center', minWidth:0 }}>
+                  <div aria-hidden="true" style={{ width:'32px', height:'32px', minWidth:'32px', borderRadius:'var(--radius-sm)', background:'rgba(253,188,1,0.06)', border:'1px solid rgba(253,188,1,0.1)', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div>
+                  <a className="ft-contact-link" href={`mailto:${settings.email}`} style={{ color:'#fff', fontFamily:'var(--font-body)', fontSize:'.82rem', textDecoration:'none', overflowWrap:'anywhere', minWidth:0 }}>{settings.email}</a>
                 </li>
                 <li style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                   <div style={{
