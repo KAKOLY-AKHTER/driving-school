@@ -159,6 +159,13 @@ export default function DashboardPage() {
   const [expiryDate, setExpiryDate] = useState('')
   const [courses, setCourses] = useState([])
   const [payments, setPayments] = useState([])
+  const [courseSearch, setCourseSearch] = useState('')
+  const [courseStatusFilter, setCourseStatusFilter] = useState('all')
+  const [coursePage, setCoursePage] = useState(1)
+  const [paymentSearch, setPaymentSearch] = useState('')
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('all')
+  const [paymentPage, setPaymentPage] = useState(1)
+  const [upcomingPage, setUpcomingPage] = useState(1)
   const [supportUnread, setSupportUnread] = useState(0)
   const [sUsername, setSUsername] = useState('')
   const [sPhone, setSPhone] = useState('')
@@ -321,9 +328,13 @@ export default function DashboardPage() {
   const [conversationDeleteConfirm, setConversationDeleteConfirm] = useState(null)
   const [conversationError, setConversationError] = useState('')
   const [conversationVersion, setConversationVersion] = useState(0)
+  const [conversationSearch, setConversationSearch] = useState('')
+  const [conversationPage, setConversationPage] = useState(1)
   const [unsavedConfirm, setUnsavedConfirm] = useState(null)
+  const [textDetails, setTextDetails] = useState(null)
 
   const openModalKey = unsavedConfirm ? 'unsaved-settings'
+    : textDetails ? 'text-details'
     : courseDetail ? 'course-detail'
     : cancelConfirm ? 'cancel-course'
       : refundConfirm ? 'refund-course'
@@ -342,6 +353,7 @@ export default function DashboardPage() {
     setBookingCancelError('')
     setConversationDeleteConfirm(null)
     setUnsavedConfirm(null)
+    setTextDetails(null)
   }, [courseActionLoading, bookingCancelLoading, conversationActionId])
 
   useEffect(() => {
@@ -725,6 +737,34 @@ export default function DashboardPage() {
     .reduce((sum, payment) => sum + netPaymentAmount(payment), 0)
   const pendingRefunds = courses.filter(course => normalizeStatus(course.status) === 'refund pending').length
   const activeCourses = courses.filter(course => !['refund pending', 'refunded', 'cancelled', 'canceled'].includes(normalizeStatus(course.status)))
+  const matchedCourses = [...courses].filter(course => {
+    const query = courseSearch.trim().toLowerCase()
+    const status = normalizeStatus(course.status || 'enrolled')
+    return (!query || [course.title, course.id, course.status, course.price, course.city].some(value => String(value || '').toLowerCase().includes(query)))
+      && (courseStatusFilter === 'all' || status === courseStatusFilter)
+  }).sort((a, b) => {
+    const order = { enrolled: 0, paid: 0, 'in progress': 1, pending: 2, 'refund pending': 3, completed: 4, refunded: 5, cancelled: 6, canceled: 6 }
+    return (order[normalizeStatus(a.status)] ?? 1) - (order[normalizeStatus(b.status)] ?? 1)
+  })
+  const coursePages = Math.max(1, Math.ceil(matchedCourses.length / 10))
+  const safeCoursePage = Math.min(coursePage, coursePages)
+  const visibleCourses = matchedCourses.slice((safeCoursePage - 1) * 10, safeCoursePage * 10)
+  const matchedPayments = payments.filter(payment => {
+    const query = paymentSearch.trim().toLowerCase()
+    const status = normalizeStatus(payment.status)
+    return (!query || [payment.ref, payment.email, payment.item, payment.date, payment.amount].some(value => String(value || '').toLowerCase().includes(query)))
+      && (paymentStatusFilter === 'all' || status === paymentStatusFilter)
+  })
+  const paymentPages = Math.max(1, Math.ceil(matchedPayments.length / 10))
+  const safePaymentPage = Math.min(paymentPage, paymentPages)
+  const visiblePayments = matchedPayments.slice((safePaymentPage - 1) * 10, safePaymentPage * 10)
+  const upcomingPages = Math.max(1, Math.ceil(upcomingBookings.length / 10))
+  const safeUpcomingPage = Math.min(upcomingPage, upcomingPages)
+  const visibleUpcomingBookings = upcomingBookings.slice((safeUpcomingPage - 1) * 10, safeUpcomingPage * 10)
+  const matchedConversations = conversations.filter(conversation => !conversationSearch.trim() || String(conversation.title || '').toLowerCase().includes(conversationSearch.trim().toLowerCase()))
+  const conversationPages = Math.max(1, Math.ceil(matchedConversations.length / 10))
+  const safeConversationPage = Math.min(conversationPage, conversationPages)
+  const visibleConversations = matchedConversations.slice((safeConversationPage - 1) * 10, safeConversationPage * 10)
   const totalSlotUsage = activeCourses.reduce((summary, course) => {
     const usage = courseSlotUsage(course)
     return { used: summary.used + usage.used, maximum: summary.maximum + usage.maximum, remaining: summary.remaining + usage.remaining }
@@ -894,6 +934,7 @@ export default function DashboardPage() {
         .dash-modal-backdrop { animation:dashFadeIn .2s ease both; }
         .dash-confirm-card { animation:dashSlideUp .3s cubic-bezier(.22,1,.36,1) both; }
         .dash-table-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:thin; }
+        .dash-payment-actions { position:sticky; right:0; z-index:2; background:#fff !important; box-shadow:-8px 0 14px rgba(15,23,42,.06); }
         .dash-table-scroll thead th { position:sticky; top:0; z-index:2; }
         .dash-main button:focus-visible,.dash-main a:focus-visible,.dash-sidebar button:focus-visible,.dash-sidebar a:focus-visible { outline:3px solid rgba(253,188,1,.55); outline-offset:3px; }
         @media (max-width:900px) {
@@ -1263,6 +1304,7 @@ export default function DashboardPage() {
                       )}
                     </div>
                     <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:'0 0 1.5rem' }}>Here are your currently enrolled courses... you can add more packages.</p>
+                    <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search enrolled courses" placeholder="Search course, city or price…" value={courseSearch} onChange={event => { setCourseSearch(event.target.value); setCoursePage(1) }} className="dash-input" style={{ flex:'1 1 240px' }} /><select aria-label="Filter courses by status" value={courseStatusFilter} onChange={event => { setCourseStatusFilter(event.target.value); setCoursePage(1) }} className="dash-input" style={{ width:'180px' }}><option value="all">All statuses</option><option value="enrolled">Enrolled</option><option value="in progress">In Progress</option><option value="completed">Completed</option><option value="refund pending">Refund Pending</option><option value="refunded">Refunded</option><option value="cancelled">Cancelled</option></select></div>
                     <button onClick={() => navigate('/pricing')} className="dash-btn-primary" style={{ marginBottom:'2rem' }}>Add more packages</button>
                     <div style={{ display:'flex', flexDirection:'column', gap:'0.75rem' }}>
                       {courses.length === 0 && (
@@ -1272,10 +1314,7 @@ export default function DashboardPage() {
                           <button onClick={() => navigate('/pricing')} className="dash-btn-gold" style={{ fontSize:'0.9rem', padding:'0.7rem 1.5rem' }}>Browse Courses</button>
                         </div>
                       )}
-                      {[...courses].sort((a, b) => {
-                        const order = { 'Enrolled': 0, 'In Progress': 1, 'Paid': 0, 'Pending': 2, 'Refund Pending': 3, 'Completed': 4, 'Refunded': 5, 'Cancelled': 6 }
-                        return (order[a.status] ?? 1) - (order[b.status] ?? 1)
-                      }).map((course, i) => {
+                      {visibleCourses.map((course, i) => {
                         const status = String(course.status || 'Enrolled')
                         const normalizedStatus = normalizeStatus(status)
                         const canRequestAction = !['refund pending', 'refunded', 'cancelled'].includes(normalizedStatus)
@@ -1315,6 +1354,8 @@ export default function DashboardPage() {
                         </div>
                         )
                       })}
+                      {courses.length > 0 && matchedCourses.length === 0 && <p style={{ textAlign:'center', color:'#475569', padding:'1.5rem' }}>No courses match the selected filters.</p>}
+                      {matchedCourses.length > 0 && <div aria-label="Course pagination" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'.75rem', flexWrap:'wrap', paddingTop:'.75rem' }}><span style={{ color:'#475569' }}>Page {safeCoursePage} of {coursePages} · {matchedCourses.length} courses</span><div style={{ display:'flex', gap:'.45rem' }}><button type="button" disabled={safeCoursePage <= 1} onClick={() => setCoursePage(page => Math.max(1, page - 1))}>Previous</button><button type="button" disabled={safeCoursePage >= coursePages} onClick={() => setCoursePage(page => Math.min(coursePages, page + 1))}>Next</button></div></div>}
                     </div>
                   </div>
                 </div>
@@ -1413,6 +1454,7 @@ export default function DashboardPage() {
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT},${GOLD})`, backgroundSize:'200% 100%', animation:'dashShimmer 5s linear infinite' }} />
                     <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600, animation:'dashTextReveal 0.8s ease both' }}>Billing</p>
                     <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'#0F172A', margin:'0 0 1.5rem', fontWeight:800, textTransform:'uppercase' }}>PAYMENT HISTORY</h2>
+                    <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search payments" placeholder="Search reference, item or email…" value={paymentSearch} onChange={event => { setPaymentSearch(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ flex:'1 1 260px' }} /><select aria-label="Filter payments by status" value={paymentStatusFilter} onChange={event => { setPaymentStatusFilter(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ width:'180px' }}><option value="all">All statuses</option><option value="paid">Paid</option><option value="pending">Pending</option><option value="refunded">Refunded</option><option value="partially refunded">Partially Refunded</option></select></div>
                     <div className="dash-stat-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1rem', marginBottom:'2rem' }}>
                       <div style={{ background:'linear-gradient(135deg,rgba(5,150,105,0.04),rgba(5,150,105,0.01))', border:'1px solid rgba(5,150,105,0.1)', borderRadius:'var(--radius-md)', padding:'1.25rem' }}>
                         <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#059669', margin:'0 0 0.25rem', fontWeight:600 }}>Total Paid</p>
@@ -1432,7 +1474,7 @@ export default function DashboardPage() {
                       <thead>
                         <tr>
                           {['Date','Ref','Email','Item','Amount','Status','Receipt'].map((th, i) => (
-                            <th key={th} style={{ textAlign:i===6?'center':'left', padding:'0.85rem 1rem', fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', fontWeight:700, borderBottom:'2px solid #E8EDF4', background:'linear-gradient(135deg,#FAFBFD,#F5F7FB)', ...(i===0?{borderTopLeftRadius:'10px',borderBottomLeftRadius:'10px'}:{}), ...(i===6?{borderTopRightRadius:'10px',borderBottomRightRadius:'10px'}:{}) }}>{th}</th>
+                            <th key={th} className={i===6?'dash-payment-actions':''} style={{ textAlign:i===6?'center':'left', padding:'0.85rem 1rem', fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', fontWeight:700, borderBottom:'2px solid #E8EDF4', background:'linear-gradient(135deg,#FAFBFD,#F5F7FB)', ...(i===0?{borderTopLeftRadius:'10px',borderBottomLeftRadius:'10px'}:{}), ...(i===6?{borderTopRightRadius:'10px',borderBottomRightRadius:'10px'}:{}) }}>{th}</th>
                           ))}
                         </tr>
                       </thead>
@@ -1446,22 +1488,24 @@ export default function DashboardPage() {
                             </td>
                           </tr>
                         )}
-                        {payments.map((p, i) => {
+                        {visiblePayments.map((p, i) => {
                           const refunded = refundedPaymentAmount(p)
                           const statusColors = paymentStatusColors(p.status)
                           return <tr key={p.ref || p._id || `${p.date}-${p.item}-${i}`} className="dash-table-row" style={{ borderBottom:'1px solid #F1F5F9' }}>
                             <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569' }}>{p.date}</td>
-                            <td style={{ padding:'1rem', fontFamily:'var(--font-mono)', fontSize:'1.05rem', color:'#475569', fontWeight:600 }}>{p.ref}</td>
-                            <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569' }}>{p.email}</td>
-                            <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', fontWeight:600 }}>{p.item}</td>
+                            <td style={{ padding:'1rem', maxWidth:'170px' }}><button type="button" aria-label={`View full payment reference ${p.ref || ''}`} onClick={() => setTextDetails({ title:'Payment Reference', content:p.ref || 'Not recorded' })} style={{ maxWidth:'150px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', border:0, padding:0, background:'transparent', color:SKY_BLUE, textDecoration:'underline', cursor:'pointer', fontFamily:'var(--font-mono)', fontWeight:700 }}>{p.ref || '—'}</button></td>
+                            <td style={{ padding:'1rem', maxWidth:'220px' }}><button type="button" aria-label="View full payment email" onClick={() => setTextDetails({ title:'Payment Email', content:p.email || 'Not recorded' })} style={{ maxWidth:'200px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', border:0, padding:0, background:'transparent', color:SKY_BLUE, textDecoration:'underline', cursor:'pointer' }}>{p.email || '—'}</button></td>
+                            <td style={{ padding:'1rem', maxWidth:'240px' }}><button type="button" aria-label="View full payment item" onClick={() => setTextDetails({ title:'Payment Item', content:p.item || 'Not recorded' })} style={{ maxWidth:'220px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', border:0, padding:0, background:'transparent', color:SKY_BLUE, textDecoration:'underline', cursor:'pointer', fontWeight:700 }}>{p.item || '—'}</button></td>
                             <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#0F172A', fontWeight:700 }}>{refunded > 0 ? <><span style={{ display:'block' }}>{formatUSD(netPaymentAmount(p))} net</span><span style={{ display:'block', color:'#A16207', fontSize:'0.82rem', fontWeight:700 }}>{formatUSD(refunded)} refunded</span></> : formatUSD(p.amount)}</td>
                             <td style={{ padding:'1rem' }}><span style={{ padding:'0.25rem 0.7rem', ...statusColors, borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:700 }}>{p.status}</span></td>
-                            <td style={{ padding:'1rem', textAlign:'center' }}><button type="button" aria-label={`Print invoice ${p.ref || ''}`} title="Print invoice" onClick={() => handlePrintPayment(p)} style={{ background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.35rem', borderRadius:'8px', display:'inline-flex' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg></button></td>
+                            <td className="dash-payment-actions" style={{ padding:'1rem', textAlign:'center' }}><button type="button" aria-label={`Print invoice ${p.ref || ''}`} title="Print invoice" onClick={() => handlePrintPayment(p)} style={{ background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.35rem', borderRadius:'8px', display:'inline-flex' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg></button></td>
                           </tr>
                         })}
                       </tbody>
                     </table>
                     </div>
+                    {payments.length > 0 && matchedPayments.length === 0 && <p style={{ textAlign:'center', color:'#475569', padding:'1.25rem' }}>No payments match the selected filters.</p>}
+                    {matchedPayments.length > 0 && <div aria-label="Payment pagination" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'.75rem', flexWrap:'wrap', marginTop:'1rem' }}><span style={{ color:'#475569' }}>Page {safePaymentPage} of {paymentPages} · {matchedPayments.length} payments</span><div style={{ display:'flex', gap:'.45rem' }}><button type="button" disabled={safePaymentPage <= 1} onClick={() => setPaymentPage(page => Math.max(1, page - 1))}>Previous</button><button type="button" disabled={safePaymentPage >= paymentPages} onClick={() => setPaymentPage(page => Math.min(paymentPages, page + 1))}>Next</button></div></div>}
                   </div>
                 </div>
               )}
@@ -1559,6 +1603,7 @@ export default function DashboardPage() {
                       <button type="button" disabled={supportBusy} onClick={handleNewChat} style={{ width:'100%', padding:'0.65rem', background: chatMessages.length === 0 && !activeConvId ? 'rgba(1,69,168,0.06)' : 'transparent', border:'1.5px solid rgba(1,69,168,0.1)', borderRadius:'10px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:600, color:SKY_BLUE, cursor:supportBusy ? 'wait' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem', transition:'all 0.2s', opacity:supportBusy ? .65 : 1 }} onMouseEnter={(e) => { if (!supportBusy && !(chatMessages.length === 0 && !activeConvId)) { e.currentTarget.style.background='rgba(1,69,168,0.04)'; e.currentTarget.style.borderColor='rgba(1,69,168,0.2)' } }} onMouseLeave={(e) => { if (!(chatMessages.length === 0 && !activeConvId)) { e.currentTarget.style.background='transparent'; e.currentTarget.style.borderColor='rgba(1,69,168,0.1)' } }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg> {supportBusy ? 'Please wait…' : 'New Chat'}
                       </button>
+                      <input type="search" aria-label="Search support conversations" placeholder="Search conversations…" value={conversationSearch} onChange={event => { setConversationSearch(event.target.value); setConversationPage(1) }} className="dash-input" style={{ marginTop:'.6rem', width:'100%', padding:'.55rem .65rem' }} />
                     </div>
                     <div style={{ flex:1, overflowY:'auto', padding:'0.5rem' }}>
                       {conversationLoading ? (
@@ -1573,7 +1618,7 @@ export default function DashboardPage() {
                           <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#B0B8C4', margin:0 }}>No conversations yet.</p>
                         </div>
                       ) : (
-                        conversations.map(conv => (
+                        visibleConversations.map(conv => (
                           <div key={conv.id} role="button" tabIndex={0} aria-pressed={activeConvId === conv.id} onClick={() => handleSelectConv(conv.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleSelectConv(conv.id) } }} style={{ padding:'0.6rem 0.75rem', borderRadius:'10px', cursor:'pointer', marginBottom:'0.2rem', background: activeConvId === conv.id ? 'rgba(1,69,168,0.06)' : 'transparent', border: activeConvId === conv.id ? '1px solid rgba(1,69,168,0.1)' : '1px solid transparent', transition:'all 0.15s', display:'flex', alignItems:'center', gap:'0.5rem', position:'relative' }} onMouseEnter={(e) => { if (activeConvId !== conv.id) e.currentTarget.style.background='rgba(0,0,0,0.02)' }} onMouseLeave={(e) => { if (activeConvId !== conv.id) e.currentTarget.style.background='transparent' }}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="1.5" style={{ flexShrink:0 }}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
                             <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color: activeConvId === conv.id ? DARK : '#475569', margin:0, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontWeight: activeConvId === conv.id ? 600 : 400 }}>{conv.title}</p>
@@ -1583,6 +1628,8 @@ export default function DashboardPage() {
                           </div>
                         ))
                       )}
+                      {!conversationLoading && !conversationError && conversations.length > 0 && matchedConversations.length === 0 && <p style={{ textAlign:'center', color:'#475569', padding:'1rem' }}>No conversations match your search.</p>}
+                      {matchedConversations.length > 10 && <div aria-label="Conversation pagination" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'.35rem', padding:'.5rem' }}><button type="button" disabled={safeConversationPage <= 1} onClick={() => setConversationPage(page => Math.max(1, page - 1))}>Previous</button><span style={{ color:'#475569', fontSize:'.78rem' }}>{safeConversationPage}/{conversationPages}</span><button type="button" disabled={safeConversationPage >= conversationPages} onClick={() => setConversationPage(page => Math.min(conversationPages, page + 1))}>Next</button></div>}
                     </div>
                   </div>
                   <div className="dash-anim dash-d1 dash-chat-box" style={{ flex:1, background:'#ffffff', borderRadius:'20px', border:'1px solid rgba(226,235,245,0.6)', boxShadow:'0 1px 3px rgba(0,0,0,0.02), 0 8px 32px rgba(0,0,0,0.04)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
@@ -1676,7 +1723,7 @@ export default function DashboardPage() {
                       <div style={{ display:'flex', flexDirection:'column', gap:'0.75rem', maxHeight:'400px', overflowY:'auto' }}>
                         {upcomingBookings.length > 0 && <>
                           <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', fontWeight:600, margin:'0.25rem 0' }}>Upcoming</p>
-                          {upcomingBookings.map(b => {
+                          {visibleUpcomingBookings.map(b => {
                             const slot = TIME_SLOTS.find(s => s.id === b.timeSlot)
                             const displayedTime = slot?.time || b.timeSlot || b.time || ''
                             const googleUrl = googleCalendarUrl(b, courses, displayedTime)
@@ -1687,7 +1734,7 @@ export default function DashboardPage() {
                                   <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#334155', margin:'0.15rem 0 0' }}>{displayedTime}</p>
                                 </div>
                                 <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:'0.45rem', flexWrap:'wrap', flex:'1 1 260px' }}>
-                                  <span style={{ padding:'0.25rem 0.7rem', background:normalizeStatus(b.status) === 'confirmed' ? 'rgba(1,69,168,.10)' : 'rgba(34,197,94,.10)', color:normalizeStatus(b.status) === 'confirmed' ? SKY_BLUE : '#15803D', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700 }}>{normalizeStatus(b.status) === 'booked' ? 'Booked' : normalizeStatus(b.status) === 'confirmed' ? 'Confirmed' : 'Scheduled'}</span>
+                                  <span style={{ padding:'0.25rem 0.7rem', background:normalizeStatus(b.status) === 'confirmed' ? 'rgba(1,69,168,.10)' : 'rgba(34,197,94,.10)', color:normalizeStatus(b.status) === 'confirmed' ? SKY_BLUE : '#15803D', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700 }}>{normalizeStatus(b.status) === 'confirmed' ? 'Confirmed' : 'Scheduled'}</span>
                                   {googleUrl && <a href={googleUrl} target="_blank" rel="noreferrer" aria-label={`Add ${b.date} lesson to Google Calendar`} title="Open in Google Calendar" style={{ minHeight:'34px', display:'inline-flex', alignItems:'center', gap:'.35rem', padding:'.4rem .65rem', borderRadius:'9px', border:'1px solid rgba(1,69,168,.22)', background:'#fff', color:SKY_BLUE, fontFamily:'var(--font-body)', fontSize:'.78rem', fontWeight:800, textDecoration:'none', whiteSpace:'nowrap' }}><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 10h18"/><path d="m9 15 2 2 4-4"/></svg>Google Calendar</a>}
                                   <button type="button" aria-label={`Add ${b.date} lesson to phone, Apple Calendar, or Outlook`} title="Download calendar event for phone, Apple Calendar, or Outlook" onClick={() => { if (!downloadBookingCalendar(b, courses, displayedTime)) showNotice('This booking does not have a valid date and time for the calendar.', 'error') }} style={{ minHeight:'34px', display:'inline-flex', alignItems:'center', gap:'.35rem', padding:'.4rem .65rem', borderRadius:'9px', border:'1px solid #CBD5E1', background:'#fff', color:'#334155', fontFamily:'var(--font-body)', fontSize:'.78rem', fontWeight:800, cursor:'pointer', whiteSpace:'nowrap' }}><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M5 19h14"/></svg>Phone / Other</button>
                                   <button type="button" aria-label="Cancel booking" title="Cancel booking" onClick={() => handleCancelBooking(b._id)} style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', padding:'0.35rem', borderRadius:'6px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
@@ -1695,6 +1742,7 @@ export default function DashboardPage() {
                               </div>
                             )
                           })}
+                          {upcomingBookings.length > 10 && <div aria-label="Upcoming booking pagination" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'.6rem', flexWrap:'wrap' }}><span style={{ color:'#475569', fontSize:'.85rem' }}>Page {safeUpcomingPage} of {upcomingPages}</span><div style={{ display:'flex', gap:'.4rem' }}><button type="button" disabled={safeUpcomingPage <= 1} onClick={() => setUpcomingPage(page => Math.max(1, page - 1))}>Previous</button><button type="button" disabled={safeUpcomingPage >= upcomingPages} onClick={() => setUpcomingPage(page => Math.min(upcomingPages, page + 1))}>Next</button></div></div>}
                         </>}
                         {pastBookings.length > 0 && <>
                           <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', fontWeight:600, margin:'0.5rem 0 0.25rem' }}>Past</p>
@@ -1816,6 +1864,12 @@ export default function DashboardPage() {
               </>}
 
             </div>
+
+            {textDetails && (
+              <div className="dash-modal-backdrop" role="presentation" style={{ position:'fixed', inset:0, background:'rgba(10,22,40,.68)', backdropFilter:'blur(10px)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }} onClick={event => { if (event.target === event.currentTarget) setTextDetails(null) }}>
+                <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="text-details-title" style={{ width:'100%', maxWidth:'560px', maxHeight:'85vh', overflowY:'auto', background:'#fff', borderRadius:'22px', boxShadow:'0 28px 90px rgba(2,12,27,.35)', padding:'2rem' }}><div style={{ display:'flex', justifyContent:'space-between', gap:'1rem' }}><h2 id="text-details-title" style={{ margin:0, color:DARK }}>{textDetails.title}</h2><button autoFocus type="button" aria-label="Close details" onClick={() => setTextDetails(null)} style={{ border:0, background:'transparent', fontSize:'1.6rem', cursor:'pointer' }}>&times;</button></div><div style={{ marginTop:'1.2rem', padding:'1rem', border:'1px solid #E2E8F0', borderRadius:'12px', background:'#F8FAFC', whiteSpace:'pre-wrap', overflowWrap:'anywhere', lineHeight:1.7 }}>{textDetails.content}</div><button type="button" onClick={() => setTextDetails(null)} className="dash-btn-primary" style={{ width:'100%', marginTop:'1.2rem' }}>Close</button></div>
+              </div>
+            )}
 
             {unsavedConfirm && (
               <div className="dash-modal-backdrop" role="presentation" style={{ position:'fixed', inset:0, background:'rgba(10,22,40,.68)', backdropFilter:'blur(10px)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }} onClick={(event) => { if (event.target === event.currentTarget) setUnsavedConfirm(null) }}>
