@@ -927,7 +927,14 @@ export default function AdminPage() {
   const longLocationCount = locations.filter(location => locationDistanceLabel(location.distance) === 'Long').length
 
   const recentBookings = [...bookings]
-    .sort((a, b) => bookingSortValue(b).localeCompare(bookingSortValue(a)))
+    .sort((a, b) => {
+      const aUpcoming = ['scheduled', 'confirmed'].includes(bookingStatusMeta(a, todayStr).group)
+      const bUpcoming = ['scheduled', 'confirmed'].includes(bookingStatusMeta(b, todayStr).group)
+      if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1
+      return aUpcoming
+        ? bookingSortValue(a).localeCompare(bookingSortValue(b))
+        : bookingSortValue(b).localeCompare(bookingSortValue(a))
+    })
     .slice(0, 5)
 
 
@@ -1154,7 +1161,7 @@ export default function AdminPage() {
                       { num: stats.totalBookings, label: 'Total Bookings', color: '#0F766E', tab: 'bookings' },
                       { num: stats.activeEnrollments, label: 'Active Enrollments', color: '#16A34A', tab: 'enrolled' },
                       { num: stats.upcomingBookings || 0, label: 'Upcoming Lessons', color: '#0755AE', tab: 'bookings' },
-                      { num: stats.pendingContacts || 0, label: 'New Messages', color: GOLD_DEEP, tab: 'contacts' },
+                      { num: stats.pendingContacts || 0, label: 'New Contact Messages', color: GOLD_DEEP, tab: 'contacts' },
                       { num: stats.pendingRefunds || 0, label: 'Pending Refunds', color: '#DC2626', tab: 'refunds' },
                     ].map(s => (
                       <button type="button" aria-label={`View ${s.label}`} onClick={() => switchTab(s.tab)} key={s.label} className="admin-stat" style={{ background: '#fff', borderRadius: 'var(--radius-lg)', border: '1px solid #E2EBF5', textAlign: 'center', padding: '1.5rem 1rem', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', cursor: 'pointer' }}>
@@ -1170,7 +1177,7 @@ export default function AdminPage() {
                         {SVG.users} Recent Users
                       </h3>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {users.slice(0, 5).map(u => (
+                        {websiteUsers.slice(0, 5).map(u => (
                           <div key={u.uid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 0.8rem', background: '#f8fafd', borderRadius: 'var(--radius-sm)', border: '1px solid #f0f2f5' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                               <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', fontWeight: 800, color: '#fff', flexShrink: 0 }}>
@@ -1181,10 +1188,9 @@ export default function AdminPage() {
                                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.95rem', color: '#334155', margin: '0.1rem 0 0' }}>{u.email || 'No email'}</p>
                               </div>
                             </div>
-                            {u.isAdmin && <span style={{ padding: '0.15rem 0.4rem', background: 'rgba(253,188,1,0.15)', color: GOLD_DEEP, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>Admin</span>}
                           </div>
                         ))}
-                        {users.length === 0 && <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#334155', textAlign: 'center', padding: '1rem' }}>No users yet</p>}
+                        {websiteUsers.length === 0 && <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#334155', textAlign: 'center', padding: '1rem' }}>No users yet</p>}
                       </div>
                     </div>
 
@@ -1206,7 +1212,7 @@ export default function AdminPage() {
                             </div>
                           )
                         })}
-                        {bookings.length === 0 && <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#334155', textAlign: 'center', padding: '1rem' }}>No bookings yet</p>}
+                        {recentBookings.length === 0 && <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#334155', textAlign: 'center', padding: '1rem' }}>No bookings yet</p>}
                       </div>
                     </div>
                   </div>
