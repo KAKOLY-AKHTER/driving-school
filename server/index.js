@@ -6,7 +6,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { MongoClient, ObjectId } from 'mongodb'
 import Groq from 'groq-sdk'
-import { createHash, randomUUID } from 'node:crypto'
+import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
 import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 
@@ -682,6 +682,9 @@ const PAYPAL_API_BASE = PAYPAL_ENVIRONMENT === 'live'
   : 'https://api-m.sandbox.paypal.com'
 const PAYPAL_CURRENCY = 'USD'
 const PAYPAL_ORDER_HOLD_MINUTES = Math.max(15, Math.min(60, Number(process.env.PAYPAL_ORDER_HOLD_MINUTES) || 30))
+const GOOGLE_CALENDAR_TIME_ZONE = String(process.env.GOOGLE_CALENDAR_TIME_ZONE || 'America/Los_Angeles').trim()
+const GOOGLE_CALENDAR_SETTING_ID = 'google-calendar'
+const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events'
 
 let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol
 let connectPromise = null
@@ -690,6 +693,279 @@ class HttpError extends Error {
   constructor(status, message) {
     super(message)
     this.status = status
+  }
+}
+
+function googleCalendarConfiguration() {
+  const clientId = String(process.env.GOOGLE_CALENDAR_CLIENT_ID || '').trim()
+  const clientSecret = String(process.env.GOOGLE_CALENDAR_CLIENT_SECRET || '').trim()
+  const redirectUri = String(process.env.GOOGLE_CALENDAR_REDIRECT_URI || '').trim()
+  const tokenSecret = String(process.env.GOOGLE_CALENDAR_TOKEN_SECRET || '').trim()
+  if (!clientId || !clientSecret || !redirectUri || tokenSecret.length < 32) {
+    throw new HttpError(503, 'Google Calendar is not configured yet. Add the OAuth environment variables first.')
+  }
+  try {
+    const parsed = new URL(redirectUri)
+    if (!['https:', 'http:'].includes(parsed.protocol)) throw new Error('Invalid protocol')
+  } catch {
+    throw new HttpError(503, 'GOOGLE_CALENDAR_REDIRECT_URI must be a valid HTTPS URL.')
+  }
+  return { clientId, clientSecret, redirectUri, tokenSecret }
+}
+
+const googleCalendarIsConfigured = () => {
+  try {
+    googleCalendarConfiguration()
+    return true
+  } catch {
+    return false
+  }
+}
+
+function encryptCalendarToken(value, secret) {
+  const iv = randomBytes(12)
+  const key = createHash('sha256').update(secret).digest()
+  const cipher = createCipheriv('aes-256-gcm', key, iv)
+  const ciphertext = Buffer.concat([cipher.update(String(value), 'utf8'), cipher.final()])
+  return {
+    version: 1,
+    iv: iv.toString('base64'),
+    tag: cipher.getAuthTag().toString('base64'),
+    ciphertext: ciphertext.toString('base64'),
+  }
+}
+
+function decryptCalendarToken(payload, secret) {
+  if (!payload?.iv || !payload?.tag || !payload?.ciphertext) throw new Error('Stored Google Calendar token is invalid.')
+  const key = createHash('sha256').update(secret).digest()
+  const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(payload.iv, 'base64'))
+  decipher.setAuthTag(Buffer.from(payload.tag, 'base64'))
+  return Buffer.concat([
+    decipher.update(Buffer.from(payload.ciphertext, 'base64')),
+    decipher.final(),
+  ]).toString('utf8')
+}
+
+async function googleRequest(url, { method = 'GET', accessToken = '', body, form } = {}) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 10_000)
+  try {
+    const headers = { Accept: 'application/json' }
+    let requestBody
+    if (form) {
+      headers['Content-Type'] = 'application/x-www-form-urlencoded'
+      requestBody = new URLSearchParams(form)
+    } else if (body !== undefined) {
+      headers['Content-Type'] = 'application/json'
+      requestBody = JSON.stringify(body)
+    }
+    if (accessToken) headers.Authorization = `Bearer ${accessToken}`
+    const response = await fetch(url, { method, headers, body: requestBody, signal: controller.signal })
+    const text = await response.text()
+    let data = null
+    try { data = text ? JSON.parse(text) : null } catch { data = null }
+    if (!response.ok) {
+      const error = new Error(data?.error_description || data?.error?.message || `Google API request failed (${response.status}).`)
+      error.status = response.status
+      throw error
+    }
+    return data
+  } catch (error) {
+    if (error.name === 'AbortError') throw new Error('Google Calendar took too long to respond.')
+    throw error
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function googleCalendarAccessToken(integration) {
+  const config = googleCalendarConfiguration()
+  const refreshToken = decryptCalendarToken(integration.refreshToken, config.tokenSecret)
+  const token = await googleRequest('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    form: {
+      client_id: config.clientId,
+      client_secret: config.clientSecret,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    },
+  })
+  if (!token?.access_token) throw new Error('Google did not return an access token.')
+  return token.access_token
+}
+
+const bookingClockMinutes = (hour, minute, meridiem) => {
+  let value = Number(hour) % 12
+  if (String(meridiem).toUpperCase() === 'PM') value += 12
+  return value * 60 + Number(minute)
+}
+
+function googleCalendarEventTimes(booking) {
+  const time = normalizeBookingTime(booking?.timeSlot)
+  const matches = [...time.matchAll(/(\d{1,2}):(\d{2})\s*(AM|PM)/gi)]
+  if (!isDateKey(booking?.date) || matches.length === 0) throw new Error('Booking date or time is invalid for Google Calendar.')
+  const startMinutes = bookingClockMinutes(matches[0][1], matches[0][2], matches[0][3])
+  let endMinutes = matches[1]
+    ? bookingClockMinutes(matches[1][1], matches[1][2], matches[1][3])
+    : startMinutes + Math.max(1, Math.min(12, Number(booking?.hours) || 2)) * 60
+  if (endMinutes <= startMinutes) endMinutes += 24 * 60
+  const localDateTime = (date, minutes) => {
+    const base = new Date(`${date}T12:00:00Z`)
+    base.setUTCDate(base.getUTCDate() + Math.floor(minutes / (24 * 60)))
+    const dateKey = base.toISOString().slice(0, 10)
+    const inDay = minutes % (24 * 60)
+    return `${dateKey}T${String(Math.floor(inDay / 60)).padStart(2, '0')}:${String(inDay % 60).padStart(2, '0')}:00`
+  }
+  return {
+    start: { dateTime: localDateTime(booking.date, startMinutes), timeZone: GOOGLE_CALENDAR_TIME_ZONE },
+    end: { dateTime: localDateTime(booking.date, endMinutes), timeZone: GOOGLE_CALENDAR_TIME_ZONE },
+  }
+}
+
+async function googleCalendarEventBody(booking) {
+  const profile = booking?.userId
+    ? await usersCol.findOne({ uid: booking.userId }, { projection: { displayName: 1, name: 1, firstName: 1, lastName: 1, email: 1, phone: 1, courses: 1 } })
+    : null
+  const course = (Array.isArray(profile?.courses) ? profile.courses : []).find(item =>
+    (booking.enrollmentId && String(item?.enrollmentId || '') === String(booking.enrollmentId))
+      || String(item?.id || '') === String(booking.courseId || '')
+  )
+  const studentName = cleanText(profile?.displayName || profile?.name || [profile?.firstName, profile?.lastName].filter(Boolean).join(' '), 160) || 'Student'
+  const studentEmail = normalizeEmail(booking?.email || profile?.email)
+  const plan = cleanText(course?.title || course?.planName, 180) || 'Legacy / Unassigned'
+  const location = cleanText(course?.city || course?.location || booking?.location, 240)
+  const description = [
+    `Student: ${studentName}`,
+    studentEmail ? `Email: ${studentEmail}` : '',
+    profile?.phone ? `Phone: ${cleanText(profile.phone, 40)}` : '',
+    `Plan: ${plan}`,
+    `Booking status: ${normalizedBookingStatus(booking.status) || 'confirmed'}`,
+    `Booking ID: ${String(booking._id)}`,
+  ].filter(Boolean).join('\n')
+  return {
+    summary: `Driving Lesson — ${studentName}`,
+    description,
+    ...(location ? { location } : {}),
+    ...googleCalendarEventTimes(booking),
+    reminders: {
+      useDefault: false,
+      overrides: [
+        { method: 'email', minutes: 24 * 60 },
+        { method: 'popup', minutes: 2 * 60 },
+      ],
+    },
+    extendedProperties: { private: { bookingId: String(booking._id), source: 'aprecision-driving-school' } },
+  }
+}
+
+async function recordCalendarSync(bookingId, values) {
+  if (!bookingId || !ObjectId.isValid(String(bookingId))) return
+  await bookingsCol.updateOne(
+    { _id: new ObjectId(String(bookingId)) },
+    { $set: Object.fromEntries(Object.entries(values).map(([key, value]) => [`googleCalendar.${key}`, value])) }
+  )
+}
+
+async function syncBookingWithGoogleCalendar(booking, { deleted = false, integration, accessToken } = {}) {
+  if (!booking?._id) return { skipped: true }
+  const connection = integration || await settingsCol.findOne({ _id: GOOGLE_CALENDAR_SETTING_ID })
+  if (!connection?.connected || !connection?.refreshToken || !googleCalendarIsConfigured()) return { skipped: true }
+  const calendarId = encodeURIComponent(connection.calendarId || 'primary')
+  const eventId = cleanText(booking?.googleCalendar?.eventId, 1024)
+  const cancelled = deleted || normalizedBookingStatus(booking.status) === 'cancelled'
+  try {
+    const token = accessToken || await googleCalendarAccessToken(connection)
+    if (cancelled) {
+      if (eventId) {
+        try {
+          await googleRequest(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${encodeURIComponent(eventId)}?sendUpdates=all`, { method: 'DELETE', accessToken: token })
+        } catch (error) {
+          if (error.status !== 404 && error.status !== 410) throw error
+        }
+      }
+      if (!deleted) await recordCalendarSync(booking._id, { status: 'removed', eventId: '', htmlLink: '', syncedAt: new Date().toISOString(), lastError: '' })
+      return { removed: true }
+    }
+
+    const eventBody = await googleCalendarEventBody(booking)
+    let event
+    if (eventId) {
+      try {
+        event = await googleRequest(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${encodeURIComponent(eventId)}?sendUpdates=all`, { method: 'PATCH', accessToken: token, body: eventBody })
+      } catch (error) {
+        if (error.status !== 404 && error.status !== 410) throw error
+      }
+    }
+    if (!event) {
+      event = await googleRequest(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?sendUpdates=all`, { method: 'POST', accessToken: token, body: eventBody })
+    }
+    await recordCalendarSync(booking._id, {
+      status: 'synced',
+      eventId: cleanText(event?.id, 1024),
+      htmlLink: cleanText(event?.htmlLink, 2048),
+      connectedEmail: connection.connectedEmail || '',
+      syncedAt: new Date().toISOString(),
+      lastError: '',
+    })
+    return { synced: true, eventId: event?.id }
+  } catch (error) {
+    if (!deleted) await recordCalendarSync(booking._id, {
+      status: 'failed',
+      attemptedAt: new Date().toISOString(),
+      lastError: cleanText(error?.message, 240) || 'Google Calendar sync failed.',
+    })
+    await settingsCol.updateOne(
+      { _id: GOOGLE_CALENDAR_SETTING_ID },
+      { $set: { lastError: cleanText(error?.message, 240), lastErrorAt: new Date().toISOString() } }
+    )
+    console.warn('Google Calendar booking sync failed:', error?.message || error)
+    return { synced: false, error }
+  }
+}
+
+async function syncBookingIdsWithGoogleCalendar(bookingIds = []) {
+  const ids = bookingIds.filter(id => ObjectId.isValid(String(id))).map(id => new ObjectId(String(id)))
+  if (!ids.length || !googleCalendarIsConfigured()) return
+  const integration = await settingsCol.findOne({ _id: GOOGLE_CALENDAR_SETTING_ID })
+  if (!integration?.connected || !integration?.refreshToken) return
+  let accessToken
+  try {
+    accessToken = await googleCalendarAccessToken(integration)
+  } catch (error) {
+    await settingsCol.updateOne({ _id: GOOGLE_CALENDAR_SETTING_ID }, { $set: { lastError: cleanText(error?.message, 240), lastErrorAt: new Date().toISOString() } })
+    return
+  }
+  const bookings = await bookingsCol.find({ _id: { $in: ids } }).toArray()
+  for (const booking of bookings) await syncBookingWithGoogleCalendar(booking, { integration, accessToken })
+}
+
+async function safelySyncBookingIdsWithGoogleCalendar(bookingIds = []) {
+  try {
+    await syncBookingIdsWithGoogleCalendar(bookingIds)
+  } catch (error) {
+    console.warn('Google Calendar batch sync was deferred:', error?.message || error)
+  }
+}
+
+async function safelySyncBookingWithGoogleCalendar(booking, options) {
+  try {
+    await syncBookingWithGoogleCalendar(booking, options)
+  } catch (error) {
+    console.warn('Google Calendar sync was deferred:', error?.message || error)
+  }
+}
+
+async function safelySyncCancelledCourseBookings(uid, cancellationReason) {
+  try {
+    const bookings = await bookingsCol.find({
+      userId: uid,
+      status: 'cancelled',
+      cancellationReason,
+      'googleCalendar.eventId': { $exists: true, $ne: '' },
+    }).toArray()
+    for (const booking of bookings) await safelySyncBookingWithGoogleCalendar(booking)
+  } catch (error) {
+    console.warn('Cancelled course calendar cleanup was deferred:', error?.message || error)
   }
 }
 
@@ -1487,6 +1763,151 @@ async function requireAdmin(req, res, next) {
 app.use('/api/admin', requireAuth, requireAdmin)
 app.use('/api/users/:uid', requireAuth, requireSelf)
 
+app.get('/api/google-calendar/callback', async (req, res) => {
+  const state = cleanText(req.query?.state, 200)
+  const stateId = state ? `google-calendar-oauth-state:${createHash('sha256').update(state).digest('hex')}` : ''
+  let stateRecord = null
+  const fallbackOrigin = configuredClientOrigins[0] || requestOrigins(req).values().next().value || ''
+  const redirectBack = (result, message = '') => {
+    const origin = stateRecord?.returnTo || fallbackOrigin
+    if (!origin) return res.status(result === 'connected' ? 200 : 400).send(result === 'connected' ? 'Google Calendar connected. You may close this page.' : 'Google Calendar connection failed.')
+    const target = new URL('/admin', origin)
+    target.searchParams.set('tab', 'account')
+    target.searchParams.set('calendar', result)
+    if (message) target.searchParams.set('message', cleanText(message, 160))
+    return res.redirect(303, target.toString())
+  }
+  try {
+    if (!stateId) throw new HttpError(400, 'The Google Calendar connection request is invalid or expired.')
+    stateRecord = await settingsCol.findOneAndDelete({ _id: stateId })
+    if (!stateRecord || new Date(stateRecord.expiresAt).getTime() <= Date.now()) throw new HttpError(400, 'The Google Calendar connection request expired. Please start again.')
+    if (req.query?.error) return redirectBack('error', req.query.error === 'access_denied' ? 'Google access was cancelled.' : 'Google authorization failed.')
+    const code = cleanText(req.query?.code, 4096)
+    if (!code) throw new HttpError(400, 'Google did not return an authorization code.')
+    const config = googleCalendarConfiguration()
+    const tokens = await googleRequest('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      form: {
+        code,
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+        redirect_uri: config.redirectUri,
+        grant_type: 'authorization_code',
+      },
+    })
+    if (!tokens?.access_token || !tokens?.refresh_token) throw new Error('Google did not return offline calendar access. Please connect again and approve access.')
+    const identity = await googleRequest('https://openidconnect.googleapis.com/v1/userinfo', { accessToken: tokens.access_token })
+    const connectedEmail = normalizeEmail(identity?.email)
+    await settingsCol.updateOne(
+      { _id: GOOGLE_CALENDAR_SETTING_ID },
+      {
+        $set: {
+          connected: true,
+          connectedEmail,
+          calendarId: 'primary',
+          refreshToken: encryptCalendarToken(tokens.refresh_token, config.tokenSecret),
+          grantedScope: cleanText(tokens.scope, 1024),
+          connectedAt: new Date().toISOString(),
+          connectedBy: stateRecord.adminUid || '',
+          lastError: '',
+        },
+      },
+      { upsert: true }
+    )
+    return redirectBack('connected')
+  } catch (error) {
+    console.warn('Google Calendar OAuth callback failed:', error?.message || error)
+    return redirectBack('error', error?.message || 'Google Calendar connection failed.')
+  }
+})
+
+app.get('/api/admin/google-calendar', async (_req, res) => {
+  const integration = await settingsCol.findOne({ _id: GOOGLE_CALENDAR_SETTING_ID })
+  res.setHeader('Cache-Control', 'no-store')
+  res.json({
+    configured: googleCalendarIsConfigured(),
+    connected: Boolean(integration?.connected && integration?.refreshToken),
+    connectedEmail: integration?.connectedEmail || '',
+    calendarId: integration?.calendarId || 'primary',
+    connectedAt: integration?.connectedAt || '',
+    lastTestAt: integration?.lastTestAt || '',
+    lastError: integration?.lastError || '',
+  })
+})
+
+app.post('/api/admin/google-calendar/connect', async (req, res) => {
+  try {
+    const config = googleCalendarConfiguration()
+    const state = randomBytes(32).toString('hex')
+    const stateHash = createHash('sha256').update(state).digest('hex')
+    const requestOrigin = String(req.get('origin') || '')
+    const returnTo = allowedOrigins.has(requestOrigin)
+      ? requestOrigin
+      : (configuredClientOrigins[0] || requestOrigins(req).values().next().value)
+    await settingsCol.insertOne({
+      _id: `google-calendar-oauth-state:${stateHash}`,
+      adminUid: req.auth.uid,
+      returnTo,
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 10 * 60_000),
+    })
+    const authorizationUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth')
+    authorizationUrl.search = new URLSearchParams({
+      client_id: config.clientId,
+      redirect_uri: config.redirectUri,
+      response_type: 'code',
+      scope: `openid email ${GOOGLE_CALENDAR_SCOPE}`,
+      access_type: 'offline',
+      include_granted_scopes: 'true',
+      prompt: 'consent select_account',
+      state,
+      login_hint: cleanText(req.body?.loginHint, 320) || 'info@aprecision.com',
+    }).toString()
+    res.json({ url: authorizationUrl.toString() })
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error?.message || 'Unable to start Google Calendar connection.' })
+  }
+})
+
+app.post('/api/admin/google-calendar/test', async (_req, res) => {
+  try {
+    const integration = await settingsCol.findOne({ _id: GOOGLE_CALENDAR_SETTING_ID })
+    if (!integration?.connected || !integration?.refreshToken) throw new HttpError(409, 'Connect a Google Calendar account first.')
+    const accessToken = await googleCalendarAccessToken(integration)
+    const calendarId = encodeURIComponent(integration.calendarId || 'primary')
+    await googleRequest(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?maxResults=1&singleEvents=true`, { accessToken })
+    const testedAt = new Date().toISOString()
+    await settingsCol.updateOne({ _id: GOOGLE_CALENDAR_SETTING_ID }, { $set: { lastTestAt: testedAt, lastError: '' } })
+    res.json({ ok: true, testedAt })
+  } catch (error) {
+    await settingsCol.updateOne({ _id: GOOGLE_CALENDAR_SETTING_ID }, { $set: { lastError: cleanText(error?.message, 240), lastErrorAt: new Date().toISOString() } })
+    res.status(error.status || 502).json({ error: error?.message || 'Google Calendar connection test failed.' })
+  }
+})
+
+app.post('/api/admin/google-calendar/sync-upcoming', async (_req, res) => {
+  const bookings = await bookingsCol.find({
+    date: { $gte: californiaDateKey() },
+    status: { $in: ['scheduled', 'confirmed', 'booked'] },
+  }, { projection: { _id: 1 } }).sort({ date: 1 }).limit(250).toArray()
+  await safelySyncBookingIdsWithGoogleCalendar(bookings.map(booking => booking._id))
+  res.json({ ok: true, count: bookings.length })
+})
+
+app.delete('/api/admin/google-calendar', async (_req, res) => {
+  const integration = await settingsCol.findOne({ _id: GOOGLE_CALENDAR_SETTING_ID })
+  if (integration?.refreshToken && googleCalendarIsConfigured()) {
+    try {
+      const accessToken = await googleCalendarAccessToken(integration)
+      await googleRequest(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(accessToken)}`, { method: 'POST' })
+    } catch (error) {
+      console.warn('Google Calendar token revocation could not be confirmed:', error?.message || error)
+    }
+  }
+  await settingsCol.deleteOne({ _id: GOOGLE_CALENDAR_SETTING_ID })
+  res.json({ ok: true })
+})
+
 app.post('/api/contact', rateLimit({ windowMs: 10 * 60_000, max: 5 }), async (req, res) => {
   try {
     const firstName = cleanText(req.body.firstName, 80)
@@ -1762,6 +2183,7 @@ app.post('/api/bookings', requireAuth, requireAdmin, rateLimit({ windowMs: 60_00
       return doc
     })
 
+    await safelySyncBookingIdsWithGoogleCalendar([booking._id])
     res.json(booking)
   } catch (e) {
     res.status(e.status || (isDuplicateKey(e) ? 409 : 500)).json({
@@ -1832,6 +2254,7 @@ app.delete('/api/bookings/:id', requireAuth, async (req, res) => {
       return { found: true, booking: { ...booking, status: 'cancelled', cancelledAt } }
     })
     if (!result.found) return res.status(404).json({ error: 'Booking not found.' })
+    if (!result.duplicate && !result.removedHold) await safelySyncBookingWithGoogleCalendar(result.booking)
     res.json({ ok: true, booking: result.booking, duplicate: Boolean(result.duplicate) })
   } catch (e) {
     res.status(e.status || 500).json({ error: e.status ? e.message : 'Unable to cancel the booking. Please try again.' })
@@ -1993,6 +2416,7 @@ app.delete('/api/users/:uid/courses/:courseId', async (req, res) => {
       return { found: true, course, releasedBookings, unlinkedBookings, courses: nextCourses }
     })
     if (!result.found) return res.status(404).json({ error: 'Course not found.' })
+    await safelySyncCancelledCourseBookings(uid, 'course_cancelled')
     res.json({
       ok: true,
       courses: result.courses,
@@ -2116,6 +2540,7 @@ app.post('/api/users/:uid/courses/:courseId/refund', rateLimit({ windowMs: 10 * 
     })
 
     if (!result.found) return res.status(404).json({ error: 'Course not found.' })
+    if (!result.duplicate) await safelySyncCancelledCourseBookings(uid, 'refund_requested')
     res.status(result.duplicate ? 200 : 201).json({
       ok: true,
       duplicate: Boolean(result.duplicate),
@@ -2600,6 +3025,7 @@ async function processCartCheckout(req, { quoteOnly = false } = {}) {
         enrolled: toAdd.length,
         continued: continuedItems.length,
         newBookings: holds.length,
+        bookingIds: holds.map(({ booking }) => String(booking._id)),
         payment,
         courses: nextCourses,
       }
@@ -2609,7 +3035,9 @@ async function processCartCheckout(req, { quoteOnly = false } = {}) {
 async function checkoutCartHandler(req, res) {
   try {
     const checkout = await processCartCheckout(req)
-    return res.json({ ok: true, ...checkout })
+    await safelySyncBookingIdsWithGoogleCalendar(checkout.bookingIds)
+    const { bookingIds: _bookingIds, ...publicCheckout } = checkout
+    return res.json({ ok: true, ...publicCheckout })
   } catch (error) {
     return res.status(error.status || 500).json({
       ok: false,
@@ -2819,6 +3247,7 @@ app.post('/api/users/:uid/paypal/orders/:orderId/capture', rateLimit({ windowMs:
       paidAt: record.paidAt,
     }
     const checkout = await processCartCheckout(req)
+    await safelySyncBookingIdsWithGoogleCalendar(checkout.bookingIds)
     const checkoutResult = {
       enrolled: checkout.enrolled,
       continued: checkout.continued,
@@ -3541,6 +3970,7 @@ app.delete('/api/admin/bookings/:id', async (req, res) => {
       }
       return booking
     })
+    await safelySyncBookingWithGoogleCalendar(deletedBooking, { deleted: true })
     res.json({ ok: true, booking: deletedBooking })
   } catch (e) {
     if (e instanceof HttpError) return res.status(e.status).json({ error: e.message })
@@ -4519,6 +4949,9 @@ export {
   bookingsForEnrollment,
   checkoutFingerprint,
   findPayPalPaymentForRefund,
+  decryptCalendarToken,
+  encryptCalendarToken,
+  googleCalendarEventTimes,
   isFinalRefundStatus,
   moneyString,
   normalizePlanPrice,

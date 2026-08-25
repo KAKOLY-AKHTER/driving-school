@@ -77,19 +77,26 @@ const courseForBooking = (booking, courses = []) => {
   return courses.find(course => String(course?.id || '') === String(booking?.courseId || '')) || null
 }
 
-export const bookingCalendarDetails = (booking, courses = [], displayTime = '') => {
+export const bookingCalendarDetails = (booking, courses = [], displayTime = '', context = {}) => {
   const dateKey = validDateKey(booking?.date)
   const timeText = String(displayTime || booking?.timeSlot || booking?.time || '').trim()
   const range = timeRange(timeText, booking?.hours)
   if (!dateKey || !range) return null
 
   const course = courseForBooking(booking, courses)
-  const planName = String(course?.title || course?.planName || 'Driving Lesson').trim()
+  const planName = String(course?.title || course?.planName || booking?.courseTitle || 'Driving Lesson').trim()
   const city = String(course?.city || booking?.city || '').trim()
   const location = city ? `${city}, California` : 'A Precision Driving School, California'
   const status = String(booking?.normalizedStatus || booking?.status || 'Confirmed').trim()
   const reference = String(booking?._id || booking?.id || '').trim()
+  const studentName = String(context?.studentName || '').trim()
+  const studentEmail = String(context?.studentEmail || '').trim()
+  const studentPhone = String(context?.studentPhone || '').trim()
+  const adminEvent = context?.audience === 'admin'
   const description = [
+    adminEvent && studentName ? `Student: ${studentName}.` : '',
+    adminEvent && studentEmail ? `Email: ${studentEmail}.` : '',
+    adminEvent && studentPhone ? `Phone: ${studentPhone}.` : '',
     `${planName} booking with A Precision Driving School.`,
     `Lesson time: ${timeText}.`,
     `Status: ${status}.`,
@@ -98,7 +105,7 @@ export const bookingCalendarDetails = (booking, courses = [], displayTime = '') 
   ].filter(Boolean).join('\n')
 
   return {
-    title: `Driving Lesson — ${planName}`,
+    title: adminEvent && studentName ? `Driving Lesson — ${studentName}` : `Driving Lesson — ${planName}`,
     description,
     location,
     dateKey,
@@ -110,8 +117,8 @@ export const bookingCalendarDetails = (booking, courses = [], displayTime = '') 
   }
 }
 
-export const googleCalendarUrl = (booking, courses = [], displayTime = '') => {
-  const event = bookingCalendarDetails(booking, courses, displayTime)
+export const googleCalendarUrl = (booking, courses = [], displayTime = '', context = {}) => {
+  const event = bookingCalendarDetails(booking, courses, displayTime, context)
   if (!event) return ''
   const params = new URLSearchParams({
     action: 'TEMPLATE',
@@ -121,6 +128,8 @@ export const googleCalendarUrl = (booking, courses = [], displayTime = '') => {
     details: event.description,
     location: event.location,
   })
+  const calendarAccount = String(context?.calendarAccount || '').trim().toLowerCase()
+  if (calendarAccount) params.set('authuser', calendarAccount)
   return `https://calendar.google.com/calendar/render?${params.toString()}`
 }
 
@@ -164,4 +173,3 @@ export const downloadBookingCalendar = (booking, courses = [], displayTime = '')
   window.setTimeout(() => URL.revokeObjectURL(url), 1000)
   return true
 }
-

@@ -11,6 +11,7 @@ import { DEFAULT_BOOKING_LOCATIONS, locationDistanceLabel } from '../locations'
 import { AdminLiveSupportPanel } from '../components/LiveSupportPanels'
 import AdminBlogPanel from '../components/AdminBlogPanel'
 import PasswordInput from '../components/PasswordInput'
+import { googleCalendarUrl } from '../utils/bookingCalendar'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -118,6 +119,13 @@ const TIME_SLOT_MAP = {
   slot2: 'Morning 2 (11 AM-1 PM)',
   slot3: 'Afternoon 1 (2-4 PM)',
   slot4: 'Afternoon 2 (4-6 PM)',
+}
+
+const CALENDAR_TIME_SLOT_MAP = {
+  slot1: '09:00 AM - 11:00 AM',
+  slot2: '11:00 AM - 01:00 PM',
+  slot3: '02:00 PM - 04:00 PM',
+  slot4: '04:00 PM - 06:00 PM',
 }
 
 const ADMIN_LESSON_TIMES = [
@@ -557,6 +565,10 @@ export default function AdminPage() {
   const [accMsg, setAccMsg] = useState('')
   const [accErr, setAccErr] = useState('')
   const [accLoading, setAccLoading] = useState(false)
+  const [calendarIntegration, setCalendarIntegration] = useState({ configured: false, connected: false, connectedEmail: '', calendarId: 'primary', connectedAt: '', lastTestAt: '', lastError: '' })
+  const [calendarLoading, setCalendarLoading] = useState(false)
+  const [calendarMsg, setCalendarMsg] = useState('')
+  const [calendarErr, setCalendarErr] = useState('')
   const [confirmDialog, setConfirmDialog] = useState(null)
   const previousFocusRef = useRef(null)
 
@@ -633,6 +645,36 @@ export default function AdminPage() {
       setAccEmail(user.email || '')
     }
   }, [user, authRevision])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('tab') === 'account' || params.has('calendar')) setActiveTab('account')
+    if (params.get('calendar') === 'connected') setCalendarMsg('Google Calendar connected successfully. New confirmed lessons will sync automatically.')
+    if (params.get('calendar') === 'error') setCalendarErr(params.get('message') || 'Google Calendar connection failed. Please try again.')
+    if (params.has('calendar') || params.has('tab')) {
+      params.delete('calendar')
+      params.delete('message')
+      params.delete('tab')
+      const query = params.toString()
+      window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`)
+    }
+  }, [])
+
+  const loadGoogleCalendar = useCallback(async () => {
+    setCalendarLoading(true)
+    setCalendarErr('')
+    try {
+      setCalendarIntegration(await api.adminGoogleCalendar())
+    } catch (error) {
+      setCalendarErr(error?.message || 'Google Calendar status could not be loaded.')
+    } finally {
+      setCalendarLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'account') loadGoogleCalendar()
+  }, [activeTab, loadGoogleCalendar])
 
   const handleSaveProfile = async () => {
     setAccErr(''); setAccMsg(''); setAccLoading(true)
@@ -739,6 +781,75 @@ export default function AdminPage() {
       setTimeout(() => setMsg(''), 2000)
     }
   }
+
+  const handleConnectGoogleCalendar = async () => {
+    setCalendarLoading(true)
+    setCalendarErr('')
+    setCalendarMsg('')
+    try {
+      const result = await api.adminConnectGoogleCalendar(calendarIntegration.connectedEmail || 'info@aprecision.com')
+      if (!result?.url) throw new Error('Google authorization link was not returned.')
+      window.location.assign(result.url)
+    } catch (error) {
+      setCalendarErr(error?.message || 'Google Calendar connection could not be started.')
+      setCalendarLoading(false)
+    }
+  }
+
+  const handleTestGoogleCalendar = async () => {
+    setCalendarLoading(true)
+    setCalendarErr('')
+    setCalendarMsg('')
+    try {
+      const result = await api.adminTestGoogleCalendar()
+      setCalendarIntegration(previous => ({ ...previous, lastTestAt: result.testedAt, lastError: '' }))
+      setCalendarMsg('Connection verified. Google Calendar is ready for new bookings.')
+    } catch (error) {
+      setCalendarErr(error?.message || 'Google Calendar connection test failed.')
+      await loadGoogleCalendar()
+    } finally {
+      setCalendarLoading(false)
+    }
+  }
+
+  const handleSyncUpcomingGoogleCalendar = async () => {
+    setCalendarLoading(true)
+    setCalendarErr('')
+    setCalendarMsg('')
+    try {
+      const result = await api.adminSyncUpcomingGoogleCalendar()
+      setCalendarMsg(`${result.count || 0} upcoming lesson${result.count === 1 ? '' : 's'} checked and synchronized. This also retries any previously failed event.`)
+      await loadGoogleCalendar()
+    } catch (error) {
+      setCalendarErr(error?.message || 'Upcoming lessons could not be synchronized.')
+    } finally {
+      setCalendarLoading(false)
+    }
+  }
+
+  const handleDisconnectGoogleCalendar = () => requestConfirmation(
+    'Disconnect Google Calendar?',
+    'New bookings will stop syncing. Existing events will remain in the Google Calendar and can still be managed there.',
+    async () => {
+      setCalendarLoading(true)
+      setCalendarErr('')
+      try {
+        await api.adminDisconnectGoogleCalendar()
+        setCalendarIntegration({ configured: true, connected: false, connectedEmail: '', calendarId: 'primary', connectedAt: '', lastTestAt: '', lastError: '' })
+        setCalendarMsg('Google Calendar disconnected. Existing calendar events were kept.')
+      } catch (error) {
+        setCalendarErr(error?.message || 'Google Calendar could not be disconnected.')
+      } finally {
+        setCalendarLoading(false)
+      }
+    }
+  )
+
+  const handleSwitchGoogleCalendar = () => requestConfirmation(
+    'Switch Google Calendar account?',
+    'New bookings will sync to the newly approved account. Events already created in the current Google Calendar will remain there, so switch only when the client intentionally changes the school calendar.',
+    handleConnectGoogleCalendar,
+  )
 
   const handleDeleteBooking = (booking) => {
     const linkedUser = users.find(item => item.uid === booking.userId)
@@ -1201,6 +1312,9 @@ export default function AdminPage() {
         .pricing-actions-cell { position:sticky !important; right:0; z-index:2; background:#fff; box-shadow:-8px 0 14px rgba(15,23,42,.06); }
         thead .pricing-actions-cell { z-index:5; background:#F7FAFE; }
         .admin-table-wrap tbody tr:hover .pricing-actions-cell { background:#F8FBFF; }
+        .booking-actions-cell { position:sticky !important; right:0; z-index:2; background:#fff; box-shadow:-8px 0 14px rgba(15,23,42,.06); }
+        thead .booking-actions-cell { z-index:5; background:#F7FAFE; }
+        .admin-table-wrap tbody tr:hover .booking-actions-cell { background:#F8FBFF; }
         .admin-main input,.admin-main select,.admin-main textarea { background:#fff; transition:border-color .2s ease,box-shadow .2s ease,background-color .2s ease; }
         .admin-main input:focus,.admin-main select:focus,.admin-main textarea:focus { border-color:#0145A8 !important; box-shadow:0 0 0 4px rgba(1,69,168,.09); background:#fff; }
         .admin-toast { position:fixed; top:92px; right:clamp(1rem,3vw,2rem); z-index:12000; width:min(390px,calc(100vw - 2rem)); display:flex; align-items:flex-start; gap:.75rem; padding:1rem 1.1rem; border-radius:14px; box-shadow:0 18px 50px rgba(15,23,42,.2); animation:adminToastIn .3s cubic-bezier(.22,1,.36,1); }
@@ -1492,6 +1606,15 @@ export default function AdminPage() {
                       {(bookingSearch || bookingStatusFilter !== 'all') && <button type="button" onClick={() => { setBookingSearch(''); setBookingStatusFilter('all'); setBookingPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                     </div>
                   </div>
+                  <div role="note" style={{ display: 'flex', alignItems: 'flex-start', gap: '.85rem', margin: '0 0 1rem', padding: '1rem 1.1rem', borderRadius: '14px', border: '1px solid #BFDBFE', background: 'linear-gradient(135deg,#EFF6FF,#FFFFFF 62%,#FFFBEA)', color: '#1E3A5F' }}>
+                    <div aria-hidden="true" style={{ width: '38px', height: '38px', display: 'grid', placeItems: 'center', flexShrink: 0, borderRadius: '11px', background: '#fff', border: '1px solid #D9E5F4', boxShadow: '0 5px 15px rgba(15,65,120,.1)' }}>
+                      <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '1.25rem', fontWeight: 900, background: 'conic-gradient(from 10deg,#4285F4,#34A853,#FBBC05,#EA4335,#4285F4)', WebkitBackgroundClip: 'text', color: 'transparent' }}>G</span>
+                    </div>
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 900, color: '#0F3F79' }}>One-click Google Calendar</p>
+                      <p style={{ margin: '.28rem 0 0', lineHeight: 1.55, fontSize: '.88rem' }}>Use <strong>Add to Calendar</strong> for an upcoming lesson, confirm that Google is using <strong>{user?.email || 'info@aprecision.com'}</strong>, then choose <strong>Save</strong>. Student and lesson details are filled automatically—no Google API credentials are required.</p>
+                    </div>
+                  </div>
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
@@ -1500,13 +1623,23 @@ export default function AdminPage() {
                           <th style={thStyle}>Date</th>
                           <th style={thStyle}>Time Slot</th>
                           <th style={thStyle}>Status</th>
-                          <th style={thStyle}>Actions</th>
+                          <th className="booking-actions-cell" style={{ ...thStyle, minWidth: '255px' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {visibleBookings.map(b => {
                           const u = users.find(ux => ux.uid === b.userId)
                           const statusMeta = bookingStatusMeta(b, todayStr)
+                          const displayedTime = TIME_SLOT_MAP[b.timeSlot] || b.timeSlot || b.time || ''
+                          const calendarTime = CALENDAR_TIME_SLOT_MAP[b.timeSlot] || displayedTime
+                          const calendarEligible = ['scheduled', 'confirmed'].includes(statusMeta.group) && String(b.date || '') >= todayStr
+                          const calendarUrl = calendarEligible ? googleCalendarUrl(b, u?.courses || [], calendarTime, {
+                            audience: 'admin',
+                            studentName: adminUserName(u),
+                            studentEmail: u?.email || b.email || '',
+                            studentPhone: u?.phone || '',
+                            calendarAccount: user?.email || 'info@aprecision.com',
+                          }) : ''
                           return (
                             <tr key={b._id}>
                               <td style={tdStyle}>
@@ -1517,14 +1650,27 @@ export default function AdminPage() {
                                 </div>
                               </td>
                               <td style={tdStyle}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                              <td style={tdStyle}>{TIME_SLOT_MAP[b.timeSlot] || b.timeSlot}</td>
+                              <td style={tdStyle}>{displayedTime}</td>
                               <td style={tdStyle}>
                                 <span style={{ padding: '0.2rem 0.5rem', background: statusMeta.background, color: statusMeta.color, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>{statusMeta.label}</span>
                               </td>
-                              <td style={tdStyle}>
-                                <button type="button" aria-label={`Delete ${b.date || ''} booking for ${adminUserName(u) || u?.email || 'student'}`} onClick={() => handleDeleteBooking(b)} style={{ background: 'none', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.7rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
-                                  Delete
-                                </button>
+                              <td className="booking-actions-cell" style={tdStyle}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'nowrap' }}>
+                                  {calendarUrl ? (
+                                    <a href={calendarUrl} target="_blank" rel="noopener noreferrer" aria-label={`Add ${b.date || ''} lesson for ${adminUserName(u) || u?.email || 'student'} to Google Calendar`} title={`Open the prefilled lesson in Google Calendar as ${user?.email || 'the school account'}`} style={{ minHeight: '36px', display: 'inline-flex', alignItems: 'center', gap: '.38rem', padding: '.38rem .68rem', borderRadius: '9px', border: '1px solid #93C5FD', background: 'linear-gradient(135deg,#FFFFFF,#EFF6FF)', color: '#0755AE', fontFamily: 'var(--font-body)', fontSize: '.76rem', fontWeight: 900, textDecoration: 'none', whiteSpace: 'nowrap', boxShadow: '0 3px 10px rgba(11,87,208,.08)' }}>
+                                      <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 10h18"/><path d="m9 15 2 2 4-4"/></svg>
+                                      Add to Calendar
+                                    </a>
+                                  ) : (
+                                    <button type="button" disabled aria-label={`Calendar action unavailable for ${statusMeta.label.toLowerCase()} booking`} title={`Calendar action is unavailable because this booking is ${statusMeta.label.toLowerCase()}.`} style={{ minHeight: '36px', display: 'inline-flex', alignItems: 'center', gap: '.38rem', padding: '.38rem .68rem', borderRadius: '9px', border: '1px solid #E2E8F0', background: '#F8FAFC', color: '#94A3B8', fontSize: '.76rem', fontWeight: 800, cursor: 'not-allowed', whiteSpace: 'nowrap' }}>
+                                      <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 10h18"/></svg>
+                                      Calendar unavailable
+                                    </button>
+                                  )}
+                                  <button type="button" aria-label={`Delete ${b.date || ''} booking for ${adminUserName(u) || u?.email || 'student'}`} onClick={() => handleDeleteBooking(b)} style={{ minHeight: '36px', background: '#fff', border: '1.5px solid #DC2626', color: '#DC2626', borderRadius: '9px', padding: '0.35rem 0.7rem', fontFamily: 'var(--font-mono)', fontSize: '0.72rem', letterSpacing: '0.07em', textTransform: 'uppercase', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>
+                                    Delete
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           )
@@ -2211,6 +2357,79 @@ Near and Long pricing is applied automatically from the selected city and verifi
                       </div>
                     )}
                   </div>
+
+                  <section aria-labelledby="google-calendar-heading" style={{ ...cardStyle, gridColumn: '1 / -1', overflow: 'hidden', position: 'relative', border: '1px solid #BFDBFE', background: 'linear-gradient(135deg, #FFFFFF 0%, #F0F7FF 58%, #FFF8DC 100%)' }}>
+                    <div aria-hidden="true" style={{ position: 'absolute', width: '220px', height: '220px', right: '-80px', top: '-110px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(66,133,244,.18), rgba(253,188,1,0))' }} />
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.25rem', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', minWidth: 0 }}>
+                        <div aria-hidden="true" style={{ width: '52px', height: '52px', borderRadius: '15px', background: '#fff', border: '1px solid #D9E5F4', boxShadow: '0 8px 24px rgba(15,65,120,.12)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                          <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '1.7rem', fontWeight: 900, background: 'conic-gradient(from 10deg, #4285F4, #34A853, #FBBC05, #EA4335, #4285F4)', WebkitBackgroundClip: 'text', color: 'transparent' }}>G</span>
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '.65rem' }}>
+                            <h3 id="google-calendar-heading" style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK }}>{calendarIntegration.configured ? 'Automatic Google Calendar sync' : 'Google Calendar — one-click workflow'}</h3>
+                            {calendarLoading ? (
+                              <span role="status" style={{ color: '#475569', fontWeight: 700, fontSize: '.8rem' }}>Checking…</span>
+                            ) : calendarIntegration.connected ? (
+                              <span style={{ padding: '.28rem .6rem', borderRadius: '999px', color: '#166534', background: '#DCFCE7', border: '1px solid #BBF7D0', fontWeight: 800, fontSize: '.75rem' }}>● Connected</span>
+                            ) : calendarIntegration.configured ? (
+                              <span style={{ padding: '.28rem .6rem', borderRadius: '999px', color: '#92400E', background: '#FEF3C7', border: '1px solid #FDE68A', fontWeight: 800, fontSize: '.75rem' }}>Not connected</span>
+                            ) : (
+                              <span style={{ padding: '.28rem .6rem', borderRadius: '999px', color: '#166534', background: '#DCFCE7', border: '1px solid #BBF7D0', fontWeight: 800, fontSize: '.75rem' }}>● Ready</span>
+                            )}
+                          </div>
+                          <p style={{ margin: '.55rem 0 0', color: '#334155', lineHeight: 1.65, maxWidth: '760px' }}>{calendarIntegration.configured ? 'Every confirmed lesson is added to the connected school calendar automatically. Cancelled or deleted bookings are removed, and each event includes the student, plan, location, and reminders.' : 'No Google API setup is needed. Open Admin Bookings and use Add to Calendar beside an upcoming lesson; Google opens a complete, prefilled event for the school account to review and save.'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {!calendarLoading && !calendarIntegration.configured && (
+                      <div role="note" style={{ marginTop: '1.25rem', padding: '1rem 1.1rem', borderRadius: '14px', color: '#1E3A5F', background: '#EFF6FF', border: '1px solid #BFDBFE', lineHeight: 1.6 }}>
+                        <strong>Professional manual workflow:</strong> the event opens in Google Calendar with student, plan, location, status, date, time, and booking reference already filled. Confirm the Google account and press Save—no password or API credential is stored by this website.
+                      </div>
+                    )}
+
+                    {!calendarLoading && calendarIntegration.configured && calendarIntegration.connected && (
+                      <div style={{ marginTop: '1.25rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '.85rem' }}>
+                        <div style={{ padding: '.9rem 1rem', background: 'rgba(255,255,255,.82)', border: '1px solid #DCE8F5', borderRadius: '13px' }}>
+                          <span style={{ display: 'block', color: '#64748B', fontSize: '.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.08em' }}>Connected account</span>
+                          <strong style={{ display: 'block', marginTop: '.3rem', color: '#0F3F79', overflowWrap: 'anywhere' }}>{calendarIntegration.connectedEmail || 'Google account'}</strong>
+                        </div>
+                        <div style={{ padding: '.9rem 1rem', background: 'rgba(255,255,255,.82)', border: '1px solid #DCE8F5', borderRadius: '13px' }}>
+                          <span style={{ display: 'block', color: '#64748B', fontSize: '.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.08em' }}>Calendar</span>
+                          <strong style={{ display: 'block', marginTop: '.3rem', color: '#0F3F79' }}>{calendarIntegration.calendarId === 'primary' ? 'Primary calendar' : calendarIntegration.calendarId}</strong>
+                        </div>
+                        <div style={{ padding: '.9rem 1rem', background: 'rgba(255,255,255,.82)', border: '1px solid #DCE8F5', borderRadius: '13px' }}>
+                          <span style={{ display: 'block', color: '#64748B', fontSize: '.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.08em' }}>Last connection test</span>
+                          <strong style={{ display: 'block', marginTop: '.3rem', color: '#0F3F79' }}>{calendarIntegration.lastTestAt ? new Date(calendarIntegration.lastTestAt).toLocaleString() : 'Not tested yet'}</strong>
+                        </div>
+                      </div>
+                    )}
+
+                    {(calendarMsg || calendarErr || calendarIntegration.lastError) && (
+                      <div role={calendarErr || calendarIntegration.lastError ? 'alert' : 'status'} aria-live="polite" style={{ marginTop: '1rem', padding: '.8rem 1rem', borderRadius: '12px', fontWeight: 700, color: calendarErr || calendarIntegration.lastError ? '#B91C1C' : '#166534', background: calendarErr || calendarIntegration.lastError ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${calendarErr || calendarIntegration.lastError ? '#FECACA' : '#BBF7D0'}` }}>
+                        {calendarErr || calendarIntegration.lastError || calendarMsg}
+                      </div>
+                    )}
+
+                    <div style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: '.75rem', marginTop: '1.25rem' }}>
+                      {!calendarIntegration.configured && (
+                        <button type="button" onClick={() => switchTab('bookings')} style={{ padding: '.78rem 1.15rem', borderRadius: '11px', border: 0, background: 'linear-gradient(135deg,#0B57D0,#4285F4)', color: '#fff', fontWeight: 800, cursor: 'pointer', boxShadow: '0 5px 16px rgba(11,87,208,.2)' }}>Open Bookings</button>
+                      )}
+                      {calendarIntegration.configured && !calendarIntegration.connected && (
+                        <button type="button" onClick={handleConnectGoogleCalendar} disabled={calendarLoading} style={{ padding: '.78rem 1.15rem', borderRadius: '11px', border: 0, background: 'linear-gradient(135deg,#0B57D0,#4285F4)', color: '#fff', fontWeight: 800, cursor: calendarLoading ? 'wait' : 'pointer', opacity: calendarLoading ? .65 : 1 }}>Connect Google Calendar</button>
+                      )}
+                      {calendarIntegration.configured && calendarIntegration.connected && (
+                        <>
+                          <button type="button" onClick={handleTestGoogleCalendar} disabled={calendarLoading} style={{ padding: '.78rem 1.15rem', borderRadius: '11px', border: 0, background: 'linear-gradient(135deg,#0B57D0,#4285F4)', color: '#fff', fontWeight: 800, cursor: calendarLoading ? 'wait' : 'pointer', opacity: calendarLoading ? .65 : 1 }}>{calendarLoading ? 'Testing…' : 'Test connection'}</button>
+                          <button type="button" onClick={handleSyncUpcomingGoogleCalendar} disabled={calendarLoading} style={{ padding: '.78rem 1.15rem', borderRadius: '11px', border: '1px solid #86EFAC', background: '#F0FDF4', color: '#166534', fontWeight: 800, cursor: calendarLoading ? 'wait' : 'pointer' }}>Sync upcoming lessons</button>
+                          <button type="button" onClick={handleSwitchGoogleCalendar} disabled={calendarLoading} style={{ padding: '.78rem 1.15rem', borderRadius: '11px', border: '1px solid #93C5FD', background: '#fff', color: '#0755AE', fontWeight: 800, cursor: calendarLoading ? 'wait' : 'pointer' }}>Switch Google account</button>
+                          <button type="button" onClick={handleDisconnectGoogleCalendar} disabled={calendarLoading} style={{ padding: '.78rem 1.15rem', borderRadius: '11px', border: '1px solid #FCA5A5', background: '#fff', color: '#B91C1C', fontWeight: 800, cursor: calendarLoading ? 'wait' : 'pointer' }}>Disconnect</button>
+                        </>
+                      )}
+                    </div>
+                    <p style={{ position: 'relative', margin: '1rem 0 0', color: '#475569', fontSize: '.8rem', lineHeight: 1.55 }}>{calendarIntegration.configured ? <>Changing the admin login email does not silently move bookings to another calendar. Use <strong>Switch Google account</strong> and approve the intended school account.</> : <>Google may show an account chooser. Select <strong>{user?.email || 'info@aprecision.com'}</strong> before saving the event.</>}</p>
+                  </section>
 
                   {(accMsg || accErr) && (
                     <div style={{ gridColumn: '1 / -1' }}>

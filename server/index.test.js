@@ -10,6 +10,9 @@ const {
   checkoutFingerprint,
   escapeEmailHtml,
   findPayPalPaymentForRefund,
+  decryptCalendarToken,
+  encryptCalendarToken,
+  googleCalendarEventTimes,
   isFinalRefundStatus,
   moneyString,
   payableCheckoutAmount,
@@ -25,6 +28,28 @@ const {
   validateContinuationSlotCount,
   validateAvailabilitySlot,
 } = await import('./index.js')
+
+test('Google Calendar refresh tokens are encrypted and authenticated at rest', () => {
+  const secret = 'a-production-only-secret-with-more-than-32-characters'
+  const encrypted = encryptCalendarToken('refresh-token-value', secret)
+  assert.notEqual(encrypted.ciphertext, 'refresh-token-value')
+  assert.equal(decryptCalendarToken(encrypted, secret), 'refresh-token-value')
+  assert.throws(() => decryptCalendarToken({ ...encrypted, ciphertext: `${encrypted.ciphertext.slice(0, -2)}AA` }, secret))
+})
+
+test('Google Calendar lesson times preserve California wall time and duration', () => {
+  assert.deepEqual(
+    googleCalendarEventTimes({ date: '2026-09-10', timeSlot: '09:00 AM - 11:00 AM' }),
+    {
+      start: { dateTime: '2026-09-10T09:00:00', timeZone: 'America/Los_Angeles' },
+      end: { dateTime: '2026-09-10T11:00:00', timeZone: 'America/Los_Angeles' },
+    }
+  )
+  assert.equal(
+    googleCalendarEventTimes({ date: '2026-09-10', timeSlot: '04:00 PM', hours: 2 }).end.dateTime,
+    '2026-09-10T18:00:00'
+  )
+})
 
 test('contact email content escapes untrusted HTML', () => {
   assert.equal(
