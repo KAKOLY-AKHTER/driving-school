@@ -628,12 +628,12 @@ export default function AdminBlogPanel({
             >
               <thead>
                 <tr>
-                  <th style={thStyle}>Post</th>
-                  <th style={thStyle}>Category</th>
-                  <th style={thStyle}>Author</th>
-                  <th style={thStyle}>Status</th>
-                  <th style={thStyle}>Published</th>
-                  <th className="admin-actions-cell" style={thStyle}>Actions</th>
+                  <th scope="col" style={thStyle}>Blog Post</th>
+                  <th scope="col" style={thStyle}>Post Category</th>
+                  <th scope="col" style={thStyle}>Written By</th>
+                  <th scope="col" style={thStyle}>Publication Status</th>
+                  <th scope="col" style={thStyle}>Published On</th>
+                  <th scope="col" className="admin-actions-cell" style={thStyle}>Manage Post</th>
                 </tr>
               </thead>
               <tbody>

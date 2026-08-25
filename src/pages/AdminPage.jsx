@@ -269,7 +269,7 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
       <div style={cardStyle}>
         <div className="admin-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Customer Reviews ({filtered.length} of {reviews.length})</h2><div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}><input className="admin-toolbar-input" type="search" aria-label="Search reviews" placeholder="Search reviewer or text…" value={search} onChange={event => setSearch(event.target.value)} style={{ ...inputStyle, width: '240px' }} /><select aria-label="Filter review visibility" value={visibility} onChange={event => setVisibility(event.target.value)} style={{ ...inputStyle, width: '145px' }}><option value="all">All reviews</option><option value="published">Published</option><option value="draft">Draft</option></select></div></div>
         {error && <div role="alert" style={{ padding: '.85rem 1rem', marginBottom: '1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{error} <button type="button" onClick={() => setLoadVersion(value => value + 1)} style={{ marginLeft: '.6rem', border: 0, background: 'transparent', color: '#0755AE', fontWeight: 850, cursor: 'pointer' }}>Retry</button></div>}
-        <div className="admin-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr><th style={thStyle}>Order</th><th style={thStyle}>Reviewer</th><th style={thStyle}>Review</th><th style={thStyle}>Rating</th><th style={thStyle}>Visibility</th><th className="admin-actions-cell" style={thStyle}>Actions</th></tr></thead><tbody>
+        <div className="admin-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr><th scope="col" style={thStyle}>Display Order</th><th scope="col" style={thStyle}>Reviewer Name</th><th scope="col" style={thStyle}>Review Message</th><th scope="col" style={thStyle}>Star Rating</th><th scope="col" style={thStyle}>Website Visibility</th><th scope="col" className="admin-actions-cell" style={thStyle}>Manage Review</th></tr></thead><tbody>
           {filtered.map(review => <tr key={review._id}><td style={tdStyle}>{review.order ?? 0}</td><td style={{ ...tdStyle, fontWeight: 800, whiteSpace: 'nowrap' }}>{review.name}</td><td style={{ ...tdStyle, minWidth: '280px', maxWidth: '520px', lineHeight: 1.5 }}>{review.text}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap', color: GOLD_DEEP, fontWeight: 900 }}>{'★'.repeat(Number(review.rating) || 5)}<span style={{ color: '#CBD5E1' }}>{'★'.repeat(5 - (Number(review.rating) || 5))}</span></td><td style={tdStyle}><button type="button" onClick={() => togglePublished(review)} style={{ padding: '.3rem .6rem', border: `1px solid ${review.published !== false ? '#BBF7D0' : '#CBD5E1'}`, borderRadius: '999px', background: review.published !== false ? '#F0FDF4' : '#F8FAFC', color: review.published !== false ? '#15803D' : '#64748B', fontWeight: 800, cursor: 'pointer' }}>{review.published !== false ? 'Published' : 'Draft'}</button></td><td className="admin-actions-cell" style={tdStyle}><div style={{ display: 'flex', gap: '.4rem' }}><button type="button" onClick={() => startEdit(review)} style={{ padding: '.4rem .65rem', border: `1.5px solid ${SKY_BLUE}`, borderRadius: '8px', background: '#fff', color: SKY_BLUE, fontWeight: 800, cursor: 'pointer' }}>Edit</button><button type="button" onClick={() => requestConfirmation('Delete customer review?', `${review.name}'s testimonial will be permanently removed.`, () => deleteReview(review))} style={{ padding: '.4rem .65rem', border: '1.5px solid #DC2626', borderRadius: '8px', background: '#fff', color: '#DC2626', fontWeight: 800, cursor: 'pointer' }}>Delete</button></div></td></tr>)}
           {!loading && !filtered.length && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{search || visibility !== 'all' ? 'No reviews match the selected filters.' : 'No customer reviews yet.'}</td></tr>}
           {loading && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>Loading reviews…</td></tr>}
@@ -374,7 +374,10 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
     setSaving(true)
     try {
       await api.adminUpdateAvailabilityStatus(selected, bulkStatus)
-      setMessage(`Selected slots marked ${bulkStatus}.`)
+      setMessage(bulkStatus === 'available'
+        ? `${selected.length} selected slot${selected.length === 1 ? '' : 's'} opened for student booking.`
+        : `${selected.length} selected slot${selected.length === 1 ? '' : 's'} blocked from student booking.`)
+      setSelected([])
       setLoadVersion(value => value + 1)
     } catch (updateError) {
       setMessage(updateError?.message || 'Availability status could not be changed.')
@@ -385,7 +388,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
 
   const deleteSlot = async (row) => {
     await api.adminDeleteAvailability(row._id)
-    setMessage('Availability slot deleted.')
+    setMessage('Lesson slot permanently removed from the availability calendar.')
     setLoadVersion(value => value + 1)
   }
 
@@ -396,6 +399,13 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
     booked: { background: '#EFF6FF', color: '#0755AE' },
     expired: { background: '#F1F5F9', color: '#475569' },
   }[value] || { background: '#F1F5F9', color: '#475569' })
+  const statusLabel = (value) => ({
+    available: 'Open for Booking',
+    blocked: 'Closed to Students',
+    held: 'Checkout in Progress',
+    booked: 'Booked by Student',
+    expired: 'Past / Expired',
+  }[value] || value)
   const isManageable = (row) => row.date > localDateKey() && (row.status === 'available' || row.status === 'blocked')
   const selectableRows = rows.filter(isManageable)
   const allSelected = selectableRows.length > 0 && selectableRows.every(row => selected.includes(String(row._id)))
@@ -458,23 +468,25 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
 
       <div style={cardStyle}>
         <div className="admin-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-          <div><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Availability Calendar ({total})</h2><p style={{ margin: '.25rem 0 0', color: '#334155', fontSize: '.9rem' }}>Expired, Held, and Booked slots are read-only. Only future Available or Blocked slots can be managed.</p></div>
+          <div><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Manage Lesson Slots ({total})</h2><p style={{ margin: '.25rem 0 0', color: '#334155', fontSize: '.9rem', lineHeight: 1.5 }}><strong>Open for Booking</strong> slots are visible to students. <strong>Closed to Students</strong> slots stay saved but cannot be booked. Past, checkout-in-progress, and booked slots are read-only.</p></div>
           <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
             <input className="admin-toolbar-input" type="search" aria-label="Search availability" placeholder="Search date or time…" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '220px' }} />
-            <select aria-label="Filter availability status" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '145px' }}><option value="all">All statuses</option><option value="available">Available</option><option value="blocked">Blocked</option><option value="held">Held</option><option value="booked">Booked</option><option value="expired">Expired</option></select>
+            <select aria-label="Filter lesson slots by booking availability" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '210px' }}><option value="all">All slot statuses</option><option value="available">Open for Booking</option><option value="blocked">Closed to Students</option><option value="held">Checkout in Progress</option><option value="booked">Booked by Student</option><option value="expired">Past / Expired</option></select>
             <select aria-label="Availability rows per page" value={limit} onChange={event => { setLimit(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '90px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1rem' }}>
-          <select aria-label="New status for selected slots" value={bulkStatus} onChange={event => setBulkStatus(event.target.value)} style={{ ...inputStyle, width: '155px' }}><option value="available">Mark Available</option><option value="blocked">Mark Blocked</option></select>
-          <button type="button" disabled={saving || !selected.length} onClick={updateSelected} style={{ minHeight: '42px', padding: '.6rem .9rem', border: 0, borderRadius: '9px', background: selected.length ? SKY_BLUE : '#94A3B8', color: '#fff', fontWeight: 800, cursor: selected.length ? 'pointer' : 'not-allowed' }}>Update Selected ({selected.length})</button>
+        <div aria-label="Bulk actions for selected lesson slots" style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '.35rem' }}>
+          <strong style={{ color: '#334155', fontSize: '.88rem' }}>Change selected slots to:</strong>
+          <select aria-label="Choose what students can do with selected lesson slots" value={bulkStatus} onChange={event => setBulkStatus(event.target.value)} style={{ ...inputStyle, width: '265px' }}><option value="available">Open — students can book</option><option value="blocked">Closed — students cannot book</option></select>
+          <button type="button" disabled={saving || !selected.length} onClick={updateSelected} style={{ minHeight: '42px', padding: '.6rem .9rem', border: 0, borderRadius: '9px', background: selected.length ? SKY_BLUE : '#94A3B8', color: '#fff', fontWeight: 800, cursor: selected.length ? 'pointer' : 'not-allowed' }}>{saving ? 'Applying Change…' : `Apply to Selected Slots (${selected.length})`}</button>
         </div>
+        <p style={{ margin: '0 0 1rem', color: '#64748B', fontSize: '.82rem' }}>First tick the checkbox beside one or more future slots, choose whether students can book them, then apply the change.</p>
         {error && <div role="alert" style={{ padding: '.85rem 1rem', marginBottom: '1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{error} <button type="button" onClick={() => setLoadVersion(value => value + 1)} style={{ marginLeft: '.6rem', border: 0, background: 'transparent', color: '#0755AE', fontWeight: 850, cursor: 'pointer' }}>Retry</button></div>}
         <div className="admin-table-wrap">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr><th style={thStyle}><input aria-label="Select all manageable availability rows" type="checkbox" disabled={!selectableRows.length} checked={allSelected} onChange={() => setSelected(allSelected ? [] : selectableRows.map(row => String(row._id)))} /></th><th style={thStyle}>Date</th><th style={thStyle}>Time</th><th style={thStyle}>Status</th><th className="admin-actions-cell" style={thStyle}>Action</th></tr></thead>
+            <thead><tr><th scope="col" aria-label="Select lesson slots" style={thStyle}><input aria-label="Select all editable lesson slots on this page" type="checkbox" disabled={!selectableRows.length} checked={allSelected} onChange={() => setSelected(allSelected ? [] : selectableRows.map(row => String(row._id)))} /></th><th scope="col" style={thStyle}>Lesson Date</th><th scope="col" style={thStyle}>Lesson Time</th><th scope="col" style={thStyle}>Can Students Book?</th><th scope="col" className="admin-actions-cell" style={thStyle}>Remove Slot</th></tr></thead>
             <tbody>
-              {rows.map(row => { const meta = statusStyle(row.status); const manageable = isManageable(row); return <tr key={row._id}><td style={tdStyle}><input aria-label={`Select ${row.date} ${row.time}`} type="checkbox" disabled={!manageable} checked={selected.includes(String(row._id))} onChange={() => setSelected(current => current.includes(String(row._id)) ? current.filter(id => id !== String(row._id)) : [...current, String(row._id)])} /></td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{new Date(`${row.date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{row.time}</td><td style={tdStyle}><span style={{ ...meta, display: 'inline-flex', padding: '.25rem .55rem', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 800 }}>{row.status}</span></td><td className="admin-actions-cell" style={tdStyle}><button type="button" disabled={!manageable} title={manageable ? 'Delete availability' : 'This slot is read-only'} onClick={() => requestConfirmation('Delete availability?', `${row.date} at ${row.time} will no longer appear in the student calendar.`, () => deleteSlot(row))} style={{ padding: '.4rem .7rem', border: `1.5px solid ${manageable ? '#DC2626' : '#CBD5E1'}`, borderRadius: '8px', background: '#fff', color: manageable ? '#DC2626' : '#94A3B8', fontWeight: 800, cursor: manageable ? 'pointer' : 'not-allowed' }}>Delete</button></td></tr> })}
+              {rows.map(row => { const meta = statusStyle(row.status); const manageable = isManageable(row); return <tr key={row._id}><td style={tdStyle}><input aria-label={`Select lesson slot on ${row.date} at ${row.time}`} type="checkbox" disabled={!manageable} checked={selected.includes(String(row._id))} onChange={() => setSelected(current => current.includes(String(row._id)) ? current.filter(id => id !== String(row._id)) : [...current, String(row._id)])} /></td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{new Date(`${row.date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{row.time}</td><td style={tdStyle}><span style={{ ...meta, display: 'inline-flex', padding: '.25rem .55rem', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 800, whiteSpace: 'nowrap' }}>{statusLabel(row.status)}</span></td><td className="admin-actions-cell" style={tdStyle}><button type="button" disabled={!manageable} title={manageable ? 'Permanently remove this future lesson slot' : 'Past, checkout-in-progress, and booked slots cannot be removed'} onClick={() => requestConfirmation('Permanently remove this lesson slot?', `${row.date} at ${row.time} will be removed and will no longer appear in the student booking calendar.`, () => deleteSlot(row))} style={{ padding: '.4rem .7rem', border: `1.5px solid ${manageable ? '#DC2626' : '#CBD5E1'}`, borderRadius: '8px', background: '#fff', color: manageable ? '#DC2626' : '#94A3B8', fontWeight: 800, cursor: manageable ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>Remove Slot</button></td></tr> })}
               {!loading && !rows.length && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{search || status !== 'all' ? 'No availability matches the filters.' : 'No lesson availability has been created yet.'}</td></tr>}
               {loading && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>Loading availability…</td></tr>}
             </tbody>
@@ -1627,10 +1639,10 @@ export default function AdminPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr>
-                          <th style={thStyle}>User</th>
-                          <th style={thStyle}>Email</th>
-                          <th style={thStyle}>Phone</th>
-                          <th style={thStyle}>Account</th>
+                          <th scope="col" style={thStyle}>Student Name</th>
+                          <th scope="col" style={thStyle}>Login Email</th>
+                          <th scope="col" style={thStyle}>Phone Number</th>
+                          <th scope="col" style={thStyle}>Account Status</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1697,11 +1709,11 @@ export default function AdminPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr>
-                          <th style={thStyle}>Student</th>
-                          <th style={thStyle}>Date</th>
-                          <th style={thStyle}>Time Slot</th>
-                          <th style={thStyle}>Status</th>
-                          <th className="booking-actions-cell" style={{ ...thStyle, minWidth: '255px' }}>Actions</th>
+                          <th scope="col" style={thStyle}>Student &amp; Plan</th>
+                          <th scope="col" style={thStyle}>Lesson Date</th>
+                          <th scope="col" style={thStyle}>Lesson Time</th>
+                          <th scope="col" style={thStyle}>Booking Status</th>
+                          <th scope="col" className="booking-actions-cell" style={{ ...thStyle, minWidth: '255px' }}>Calendar / Delete</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1819,13 +1831,13 @@ export default function AdminPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr>
-                          <th style={thStyle}>Name</th>
-                          <th style={thStyle}>Phone</th>
-                          <th style={thStyle}>Email</th>
-                          <th style={thStyle}>Comments</th>
-                          <th style={thStyle}>Status</th>
-                          <th style={thStyle}>Date</th>
-                          <th className="admin-actions-cell" style={thStyle}>Actions</th>
+                          <th scope="col" style={thStyle}>Contact Name</th>
+                          <th scope="col" style={thStyle}>Phone Number</th>
+                          <th scope="col" style={thStyle}>Email Address</th>
+                          <th scope="col" style={thStyle}>Contact Message</th>
+                          <th scope="col" style={thStyle}>Message Status</th>
+                          <th scope="col" style={thStyle}>Received On</th>
+                          <th scope="col" className="admin-actions-cell" style={thStyle}>Manage Message</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1871,16 +1883,16 @@ export default function AdminPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr>
-                          <th style={thStyle}>ID</th>
-                          <th style={thStyle}>Plan Name</th>
-                          <th style={thStyle}>Near Price</th>
-                          <th style={thStyle}>Long Price</th>
-                          <th style={thStyle}>Option 1</th>
-                          <th style={thStyle}>Option 2</th>
-                          <th style={thStyle}>Option 3</th>
-                          <th style={thStyle}>Option 4</th>
-                          <th style={thStyle}>Option 5</th>
-                          <th className="pricing-actions-cell" style={{ ...thStyle, minWidth: '150px' }}>Actions</th>
+                          <th scope="col" style={thStyle}>Plan ID</th>
+                          <th scope="col" style={thStyle}>Pricing Plan</th>
+                          <th scope="col" style={thStyle}>Near-Area Price</th>
+                          <th scope="col" style={thStyle}>Long-Distance Price</th>
+                          <th scope="col" style={thStyle}>Included Feature 1</th>
+                          <th scope="col" style={thStyle}>Included Feature 2</th>
+                          <th scope="col" style={thStyle}>Included Feature 3</th>
+                          <th scope="col" style={thStyle}>Included Feature 4</th>
+                          <th scope="col" style={thStyle}>Included Feature 5</th>
+                          <th scope="col" className="pricing-actions-cell" style={{ ...thStyle, minWidth: '150px' }}>Manage Plan</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1969,15 +1981,15 @@ export default function AdminPage() {
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem', minWidth: '1280px' }}>
                         <thead>
                           <tr>
-                            <th style={thStyle}>Student</th>
-                            <th style={thStyle}>Email</th>
-                            <th style={thStyle}>Phone</th>
-                            <th style={{ ...thStyle, minWidth: '240px', whiteSpace: 'nowrap' }}>Course</th>
-                            <th style={thStyle}>Location</th>
-                            <th style={thStyle}>Price</th>
-                            <th style={thStyle}>Slots</th>
-                            <th style={thStyle}>Status</th>
-                            <th style={thStyle}>Enrolled On</th>
+                            <th scope="col" style={thStyle}>Student Name</th>
+                            <th scope="col" style={thStyle}>Email Address</th>
+                            <th scope="col" style={thStyle}>Phone Number</th>
+                            <th scope="col" style={{ ...thStyle, minWidth: '240px', whiteSpace: 'nowrap' }}>Enrolled Course</th>
+                            <th scope="col" style={thStyle}>Pickup Location</th>
+                            <th scope="col" style={thStyle}>Paid Price</th>
+                            <th scope="col" style={thStyle}>Lesson Slots</th>
+                            <th scope="col" style={thStyle}>Enrollment Status</th>
+                            <th scope="col" style={thStyle}>Enrollment Date</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2074,15 +2086,15 @@ export default function AdminPage() {
                       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                           <tr>
-                            <th style={thStyle}>Student</th>
-                            <th style={thStyle}>Email</th>
-                            <th style={thStyle}>Phone</th>
-                            <th style={thStyle}>Course</th>
-                            <th style={thStyle}>Amount</th>
-                            <th style={thStyle}>Reason</th>
-                            <th style={thStyle}>Status</th>
-                            <th style={{ ...thStyle, minWidth: '118px', whiteSpace: 'nowrap' }}>Date</th>
-                            <th className="refund-actions-cell" style={{ ...thStyle, minWidth: '205px', whiteSpace: 'nowrap' }}>Actions</th>
+                            <th scope="col" style={thStyle}>Student Name</th>
+                            <th scope="col" style={thStyle}>Email Address</th>
+                            <th scope="col" style={thStyle}>Phone Number</th>
+                            <th scope="col" style={thStyle}>Refunded Course</th>
+                            <th scope="col" style={thStyle}>Refund Amount</th>
+                            <th scope="col" style={thStyle}>Request Reason</th>
+                            <th scope="col" style={thStyle}>Refund Status</th>
+                            <th scope="col" style={{ ...thStyle, minWidth: '138px', whiteSpace: 'nowrap' }}>Requested On</th>
+                            <th scope="col" className="refund-actions-cell" style={{ ...thStyle, minWidth: '205px', whiteSpace: 'nowrap' }}>Review / Details</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2173,12 +2185,12 @@ Near and Long pricing is applied automatically from the selected city and verifi
                       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '680px' }}>
                         <thead>
                           <tr>
-                            <th style={thStyle}>Order</th>
-                            <th style={thStyle}>City</th>
-                            <th style={thStyle}>ZIP Code</th>
-                            <th style={thStyle}>Package Distance</th>
-                            <th style={thStyle}>Pricing Group</th>
-                            <th className="admin-actions-cell" style={thStyle}>Actions</th>
+                            <th scope="col" style={thStyle}>Display Order</th>
+                            <th scope="col" style={thStyle}>Service City</th>
+                            <th scope="col" style={thStyle}>ZIP Code</th>
+                            <th scope="col" style={thStyle}>Distance Type</th>
+                            <th scope="col" style={thStyle}>Applied Pricing</th>
+                            <th scope="col" className="admin-actions-cell" style={thStyle}>Manage Location</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2225,10 +2237,10 @@ Near and Long pricing is applied automatically from the selected city and verifi
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr>
-                          <th style={thStyle}>Name</th>
-                          <th style={thStyle}>Map URL</th>
-                          <th style={thStyle}>Embed Code</th>
-                          <th className="admin-actions-cell" style={thStyle}>Actions</th>
+                          <th scope="col" style={thStyle}>Service Area</th>
+                          <th scope="col" style={thStyle}>Google Maps URL</th>
+                          <th scope="col" style={thStyle}>Website Embed</th>
+                          <th scope="col" className="admin-actions-cell" style={thStyle}>Manage Map</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2293,10 +2305,10 @@ Near and Long pricing is applied automatically from the selected city and verifi
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr>
-                          <th style={thStyle}>Platform</th>
-                          <th style={thStyle}>URL</th>
-                          <th style={thStyle}>Order</th>
-                          <th className="admin-actions-cell" style={thStyle}>Actions</th>
+                          <th scope="col" style={thStyle}>Social Platform</th>
+                          <th scope="col" style={thStyle}>Profile / Page URL</th>
+                          <th scope="col" style={thStyle}>Display Order</th>
+                          <th scope="col" className="admin-actions-cell" style={thStyle}>Manage Link</th>
                         </tr>
                       </thead>
                       <tbody>
