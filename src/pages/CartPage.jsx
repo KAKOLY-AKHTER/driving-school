@@ -146,7 +146,7 @@ export default function CartPage() {
                   )}
                   {it.holdExpired && <div role="alert" style={{ margin:'0 0 0.65rem', padding:'0.55rem 0.7rem', borderRadius:'8px', background:'#FEF2F2', border:'1px solid #FECACA', color:'#B91C1C', fontFamily:'var(--font-body)', fontSize:'0.78rem', fontWeight:800 }}>This time-slot reservation expired. Remove it and select the lesson times again.</div>}
                   <div style={{ display: 'grid', gap: '0.4rem', color: '#475569', fontFamily: 'var(--font-body)', fontSize: '0.82rem', lineHeight: 1.45 }}>
-                    {it.city && <div><strong style={{ color: DARK }}>City:</strong> {it.city}{it.cityDistance ? ` · ${it.cityDistance} location` : ''}</div>}
+                    {it.city && <div><strong style={{ color: DARK }}>Location:</strong> {it.city}{it.cityZip ? `, CA ${it.cityZip}` : ''}{it.cityDistance ? ` · ${it.cityDistance} location` : ''}</div>}
                     {!it.continuation && it.priceBasis && <div><strong style={{ color: DARK }}>Applied price:</strong> {it.priceBasis} rate · {it.price}</div>}
                     {it.slotAllowance && (
                       <div><strong style={{ color: DARK }}>Package slots:</strong> {it.slotAllowance.used} used + {it.slotAllowance.selected || it.pickupSlots?.length || 0} selected / {it.slotAllowance.maximum} maximum</div>

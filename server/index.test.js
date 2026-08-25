@@ -231,10 +231,15 @@ test('booking locations match the approved Near and Long city groups', () => {
 
 test('booking location input is normalized and constrained to Near or Long', () => {
   assert.deepEqual(
-    sanitizeLocation({ name: '  Redwood   CITY ', distance: 'long', order: 10 }),
-    { name: 'Redwood City', key: 'redwood city', distance: 'Long', order: 10 }
+    sanitizeLocation({ name: '  Redwood   CITY ', zipCode: '94063', distance: 'long', order: 10 }),
+    { name: 'Redwood City', key: 'redwood city', zipCode: '94063', distance: 'Long', order: 10 }
   )
   assert.equal(sanitizeLocation({ name: 'REDWOOD city', distance: 'Near' }).key, 'redwood city')
+  assert.equal(sanitizeLocation({ name: 'Fremont', zipCode: '94536-1234', distance: 'Near' }).zipCode, '94536-1234')
+  assert.throws(
+    () => sanitizeLocation({ name: 'Fremont', zipCode: '9453', distance: 'Near' }),
+    error => error.status === 400 && /ZIP code/.test(error.message)
+  )
   assert.throws(
     () => sanitizeLocation({ name: 'Fremont', distance: 'medium' }),
     error => error.status === 400 && /Near or Long/.test(error.message)

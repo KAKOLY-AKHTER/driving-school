@@ -86,7 +86,8 @@ export const bookingCalendarDetails = (booking, courses = [], displayTime = '', 
   const course = courseForBooking(booking, courses)
   const planName = String(course?.title || course?.planName || booking?.courseTitle || 'Driving Lesson').trim()
   const city = String(course?.city || booking?.city || '').trim()
-  const location = city ? `${city}, California` : 'A Precision Driving School, California'
+  const cityZip = String(course?.cityZip || booking?.cityZip || '').trim()
+  const location = city ? `${city}, California${cityZip ? ` ${cityZip}` : ''}` : 'A Precision Driving School, California'
   const status = String(booking?.normalizedStatus || booking?.status || 'Confirmed').trim()
   const reference = String(booking?._id || booking?.id || '').trim()
   const studentName = String(context?.studentName || '').trim()

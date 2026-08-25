@@ -633,7 +633,7 @@ export default function AdminBlogPanel({
                   <th style={thStyle}>Author</th>
                   <th style={thStyle}>Status</th>
                   <th style={thStyle}>Published</th>
-                  <th style={thStyle}>Actions</th>
+                  <th className="admin-actions-cell" style={thStyle}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -692,7 +692,7 @@ export default function AdminBlogPanel({
                     <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                       {displayDate(post.publishedAt)}
                     </td>
-                    <td style={tdStyle}>
+                    <td className="admin-actions-cell" style={tdStyle}>
                       <div
                         style={{
                           display: "flex",

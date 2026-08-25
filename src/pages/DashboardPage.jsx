@@ -740,7 +740,7 @@ export default function DashboardPage() {
   const matchedCourses = [...courses].filter(course => {
     const query = courseSearch.trim().toLowerCase()
     const status = normalizeStatus(course.status || 'enrolled')
-    return (!query || [course.title, course.id, course.status, course.price, course.city].some(value => String(value || '').toLowerCase().includes(query)))
+    return (!query || [course.title, course.id, course.status, course.price, course.city, course.cityZip].some(value => String(value || '').toLowerCase().includes(query)))
       && (courseStatusFilter === 'all' || status === courseStatusFilter)
   }).sort((a, b) => {
     const order = { enrolled: 0, paid: 0, 'in progress': 1, pending: 2, 'refund pending': 3, completed: 4, refunded: 5, cancelled: 6, canceled: 6 }
@@ -1392,6 +1392,10 @@ export default function DashboardPage() {
                         <div style={{ background:'#F8FAFD', borderRadius:'12px', padding:'1rem', border:'1px solid #E8EDF4' }}>
                           <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Progress</p>
                           <p style={{ fontFamily:'var(--font-display)', fontSize:'1rem', color:DARK, fontWeight:800, margin:0 }}>{courseDetail.progress || 0}%</p>
+                        </div>
+                        <div style={{ background:'#F8FAFD', borderRadius:'12px', padding:'1rem', border:'1px solid #E8EDF4', gridColumn:'1 / -1' }}>
+                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Location</p>
+                          <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:DARK, fontWeight:700, margin:0 }}>{courseDetail.city ? `${courseDetail.city}${courseDetail.cityZip ? `, CA ${courseDetail.cityZip}` : ''}` : 'Not recorded · Legacy record'}</p>
                         </div>
                       </div>
                       {courseDetail.enrolledAt && (

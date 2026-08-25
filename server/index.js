@@ -394,11 +394,15 @@ function sanitizeLocation(value) {
     .toLowerCase()
     .replace(/(^|[\s'-])([a-z])/g, (_match, boundary, letter) => `${boundary}${letter.toUpperCase()}`)
   const key = normalizeLocationKey(name)
+  const zipCode = cleanText(value.zipCode, 10)
   const rawDistance = cleanText(value.distance, 20).toLowerCase()
   const distance = rawDistance === 'near' ? 'Near' : rawDistance === 'long' ? 'Long' : ''
   if (!name || !key) throw new HttpError(400, 'City name is required.')
+  if (zipCode && !/^\d{5}(?:-\d{4})?$/.test(zipCode)) {
+    throw new HttpError(400, 'ZIP code must contain 5 digits or use ZIP+4 format.')
+  }
   if (!distance) throw new HttpError(400, 'Package distance must be Near or Long.')
-  return { name, key, distance, order: cleanInteger(value.order, 0, 0, 10_000) }
+  return { name, key, zipCode, distance, order: cleanInteger(value.order, 0, 0, 10_000) }
 }
 
 async function locationUsage(location) {
@@ -833,7 +837,9 @@ async function googleCalendarEventBody(booking) {
   const studentName = cleanText(profile?.displayName || profile?.name || [profile?.firstName, profile?.lastName].filter(Boolean).join(' '), 160) || 'Student'
   const studentEmail = normalizeEmail(booking?.email || profile?.email)
   const plan = cleanText(course?.title || course?.planName, 180) || 'Legacy / Unassigned'
-  const location = cleanText(course?.city || course?.location || booking?.location, 240)
+  const city = cleanText(course?.city || course?.location || booking?.location, 200)
+  const cityZip = cleanText(course?.cityZip || booking?.cityZip, 10)
+  const location = city ? `${city}, California${cityZip ? ` ${cityZip}` : ''}` : ''
   const description = [
     `Student: ${studentName}`,
     studentEmail ? `Email: ${studentEmail}` : '',
@@ -978,6 +984,7 @@ function checkoutFingerprint(items = []) {
     enrollmentId: cleanText(item.enrollmentId, 160),
     title: cleanText(item.title, 180),
     city: cleanText(item.city, 120),
+    cityZip: cleanText(item.cityZip, 10),
     cityDistance: cleanText(item.cityDistance, 20),
     continuation: item.continuation === true,
     chargeAmount: moneyString(item.chargeAmount),
@@ -2664,6 +2671,7 @@ app.post('/api/users/:uid/cart', async (req, res) => {
         priceBasis: locationPrice.distance,
         chargeAmount: activeCourse ? 0 : locationPrice.amount,
         city: bookingLocation.name,
+        cityZip: bookingLocation.zipCode || '',
         cityDistance: bookingLocation.distance,
         pickupSlots: slots.map(slot => ({ date: slot.date, time: slot.timeSlot })),
         continuation: Boolean(activeCourse),
@@ -2825,6 +2833,7 @@ async function processCartCheckout(req, { quoteOnly = false } = {}) {
           priceBasis: locationPrice.distance,
           chargeAmount: continuation ? 0 : locationPrice.amount,
           city: bookingLocation.name,
+          cityZip: bookingLocation.zipCode || '',
           cityDistance: bookingLocation.distance,
           continuation,
           activeCourseIndex,
@@ -2927,6 +2936,7 @@ async function processCartCheckout(req, { quoteOnly = false } = {}) {
           title: item.title,
           price: item.price,
           city: item.city || '',
+          cityZip: item.cityZip || '',
           cityDistance: item.cityDistance || '',
           preferredDate: item.preferredDate || '',
           pickupTime: item.pickupTime || '',
@@ -3760,7 +3770,7 @@ app.get('/api/admin/users', async (req, res) => {
     const users = await usersCol.find().sort({ _id: -1 }).toArray()
     res.json(users)
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Admin user lookup failed')
   }
 })
 
@@ -4615,10 +4625,17 @@ app.delete('/api/admin/enrollments/:id', async (req, res) => {
 
 app.get('/api/admin/refunds', async (req, res) => {
   try {
-    const { search, page = 1, limit = 10 } = req.query
+    const { search, status, page = 1, limit = 10 } = req.query
     const p = Math.max(1, parseInt(page))
     const l = Math.min(100, Math.max(1, parseInt(limit)))
     const filter = {}
+    const normalizedStatusFilter = cleanText(status, 30).toLowerCase()
+    if (normalizedStatusFilter && normalizedStatusFilter !== 'all') {
+      if (!['pending', 'refunded', 'denied'].includes(normalizedStatusFilter)) {
+        throw new HttpError(400, 'Invalid refund status filter.')
+      }
+      filter.Status = { $regex: `^${normalizedStatusFilter}$`, $options: 'i' }
+    }
     if (search) {
       const r = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
       filter.$or = [{ Full_Name: r }, { Email: r }, { Phone: r }, { Course_Name: r }, { Reason: r }]
@@ -4646,7 +4663,7 @@ app.get('/api/admin/refunds', async (req, res) => {
     })
     res.json({ data: enriched, total, page: p, limit: l, totalPages: Math.ceil(total / l) })
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    sendServerError(res, e, 'Refund record lookup failed')
   }
 })
 

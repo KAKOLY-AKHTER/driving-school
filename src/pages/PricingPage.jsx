@@ -184,9 +184,9 @@ export default function PricingPage() {
   }, [user, enrollmentLoadVersion])
 
   const enrollmentForPlan = (tier) => activeEnrollmentFor(enrolledCourses, tier)
-  const distanceForCity = (city) => locationDistanceLabel(
-    bookingLocations.find(item => item.name === city)?.distance || 'Near'
-  )
+  const locationForCity = city => bookingLocations.find(item => item.name === city)
+  const distanceForCity = (city) => locationDistanceLabel(locationForCity(city)?.distance || 'Near')
+  const zipForCity = city => String(locationForCity(city)?.zipCode || '').trim()
   const planLocationPrice = (tier, city) => locationPlanPrice(tier, distanceForCity(city))
   const selectionLimitForPlan = (tier) => {
     const maximum = slotLimitForPlan(tier)
@@ -355,6 +355,7 @@ export default function PricingPage() {
           title: plan.tier.planName,
           price: planLocationPrice(plan.tier, plan.city),
           cityDistance: distanceForCity(plan.city),
+          cityZip: zipForCity(plan.city),
           priceBasis: distanceForCity(plan.city),
           nearPrice: locationPlanPrice(plan.tier, 'Near'),
           longPrice: locationPlanPrice(plan.tier, 'Long'),
@@ -409,6 +410,7 @@ export default function PricingPage() {
         title: selectedTier.planName,
         price: planLocationPrice(selectedTier, selectedCity),
         cityDistance: distanceForCity(selectedCity),
+        cityZip: zipForCity(selectedCity),
         priceBasis: distanceForCity(selectedCity),
         nearPrice: locationPlanPrice(selectedTier, 'Near'),
         longPrice: locationPlanPrice(selectedTier, 'Long'),
@@ -612,7 +614,7 @@ export default function PricingPage() {
                   const group = bookingLocations.filter(item => locationDistanceLabel(item.distance) === distance)
                   return group.length ? (
                     <optgroup key={distance} label={`${distance} pickup locations`}>
-                      {group.map(item => <option key={item._id || item.name} value={item.name}>{item.name}</option>)}
+                      {group.map(item => <option key={item._id || item.name} value={item.name}>{item.name}{item.zipCode ? `, CA ${item.zipCode}` : ''}</option>)}
                     </optgroup>
                   ) : null
                 })}
@@ -849,7 +851,7 @@ export default function PricingPage() {
                   )
                 })}
               </div>
-              {selectedCity && <p style={{ margin: '-.75rem 0 1.25rem', color: '#0755AE', fontFamily: 'var(--font-body)', fontSize: '.82rem', fontWeight: 800 }}>{selectedCity} is a {distanceForCity(selectedCity)} location. Your price is {planLocationPrice(selectedTier, selectedCity)}.</p>}
+              {selectedCity && <p style={{ margin: '-.75rem 0 1.25rem', color: '#0755AE', fontFamily: 'var(--font-body)', fontSize: '.82rem', fontWeight: 800 }}>{selectedCity}{zipForCity(selectedCity) ? `, CA ${zipForCity(selectedCity)}` : ''} is a {distanceForCity(selectedCity)} location. Your price is {planLocationPrice(selectedTier, selectedCity)}.</p>}
 
               <div style={{ width: '100%', height: '1px', background: '#E2EBF5', marginBottom: '1.25rem' }} />
 

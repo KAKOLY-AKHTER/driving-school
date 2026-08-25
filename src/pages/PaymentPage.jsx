@@ -259,7 +259,7 @@ export default function PaymentPage() {
                   <div className="payment-item" key={item.id}>
                     <div>
                       <strong>{item.title}</strong>
-                      <small>{item.city || 'Selected location'}{item.cityDistance ? ` · ${item.cityDistance} rate` : ''}</small>
+                      <small>{item.city || 'Selected location'}{item.cityZip ? `, CA ${item.cityZip}` : ''}{item.cityDistance ? ` · ${item.cityDistance} rate` : ''}</small>
                     </div>
                     <span className="payment-item-price">{item.continuation ? 'Included' : formatUSD(Number.isFinite(Number(item.chargeAmount)) ? Number(item.chargeAmount) : amountNumber(item.price))}</span>
                   </div>
