@@ -363,6 +363,69 @@ function sanitizePricing(value) {
   }))
   return { id, planName, planPrice, planPriceTwo, options, order: cleanInteger(value.order, 0, 0, 10_000) }
 }
+const normalizeCouponCode = value => cleanText(value, 32).toUpperCase().replace(/\s+/g, '')
+function sanitizeCoupon(value) {
+  if (!isPlainObject(value)) throw new HttpError(400, 'A valid coupon is required.')
+  const code = normalizeCouponCode(value.code)
+  if (!/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(code)) {
+    throw new HttpError(400, 'Coupon code must be 3–32 characters using letters, numbers, hyphens, or underscores.')
+  }
+  const discountType = cleanText(value.discountType, 20).toLowerCase()
+  if (!['fixed', 'percentage'].includes(discountType)) {
+    throw new HttpError(400, 'Choose Fixed Amount or Percentage discount.')
+  }
+  const discountValue = Number(value.discountValue)
+  const validValue = Number.isFinite(discountValue)
+    && discountValue > 0
+    && discountValue <= (discountType === 'percentage' ? 100 : 1_000_000)
+    && Math.round(discountValue * 100) === discountValue * 100
+  if (!validValue) {
+    throw new HttpError(400, discountType === 'percentage'
+      ? 'Percentage discount must be between 0.01 and 100.'
+      : 'Fixed discount must be a valid dollar amount greater than zero.')
+  }
+  const startsAt = cleanText(value.startsAt, 10)
+  const expiresAt = cleanText(value.expiresAt, 10)
+  if (startsAt && !isDateKey(startsAt)) throw new HttpError(400, 'Start date must be a valid date.')
+  if (expiresAt && !isDateKey(expiresAt)) throw new HttpError(400, 'Expiry date must be a valid date.')
+  if (startsAt && expiresAt && expiresAt < startsAt) throw new HttpError(400, 'Expiry date cannot be before the start date.')
+  return {
+    code,
+    discountType,
+    discountValue: Number(discountValue.toFixed(2)),
+    startsAt,
+    expiresAt,
+    isActive: value.isActive !== false,
+  }
+}
+function couponDiscountQuote(subtotal, coupon, dateKey = californiaDateKey()) {
+  const subtotalCents = moneyCents(subtotal)
+  if (!coupon || !coupon.code) return { subtotal: subtotalCents / 100, discount: 0, total: subtotalCents / 100, coupon: null }
+  if (coupon.isActive === false) throw new HttpError(400, 'This coupon is currently paused.')
+  if (coupon.startsAt && dateKey < coupon.startsAt) throw new HttpError(400, `This coupon starts on ${coupon.startsAt}.`)
+  if (coupon.expiresAt && dateKey > coupon.expiresAt) throw new HttpError(400, 'This coupon has expired.')
+  if (subtotalCents <= 0) throw new HttpError(400, 'This order does not qualify for a coupon discount.')
+  const requestedDiscountCents = coupon.discountType === 'percentage'
+    ? Math.round(subtotalCents * Number(coupon.discountValue) / 100)
+    : moneyCents(coupon.discountValue)
+  // PayPal requires a positive capture amount. A coupon can discount the order
+  // down to one cent, but never create a zero or negative payment.
+  const discountCents = Math.max(0, Math.min(requestedDiscountCents, subtotalCents - 1))
+  if (discountCents <= 0) throw new HttpError(400, 'This coupon does not reduce the current order total.')
+  return {
+    subtotal: subtotalCents / 100,
+    discount: discountCents / 100,
+    total: (subtotalCents - discountCents) / 100,
+    coupon: {
+      code: coupon.code,
+      discountType: coupon.discountType,
+      discountValue: Number(coupon.discountValue),
+    },
+  }
+}
+const couponCheckoutFingerprint = (cartFingerprint, quote) => quote?.coupon
+  ? createHash('sha256').update(`${cartFingerprint}|${quote.coupon.code}|${moneyString(quote.discount)}|${moneyString(quote.total)}`).digest('hex')
+  : cartFingerprint
 function sanitizeArea(value) {
   if (!isPlainObject(value)) throw new HttpError(400, 'A valid service area is required.')
   const name = cleanText(value.name, 120)
@@ -690,7 +753,7 @@ const GOOGLE_CALENDAR_TIME_ZONE = String(process.env.GOOGLE_CALENDAR_TIME_ZONE |
 const GOOGLE_CALENDAR_SETTING_ID = 'google-calendar'
 const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events'
 
-let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol
+let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, couponsCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol
 let connectPromise = null
 
 class HttpError extends Error {
@@ -999,6 +1062,16 @@ const payableCheckoutAmount = (items = []) => items.reduce(
   (sum, item) => sum + (item.continuation === true ? 0 : Number(item.chargeAmount || 0)),
   0
 )
+
+async function resolveCouponQuote(code, subtotal, session, snapshot = null) {
+  const normalizedCode = normalizeCouponCode(code || snapshot?.code)
+  if (!normalizedCode) return couponDiscountQuote(subtotal, null)
+  const coupon = snapshot?.code
+    ? { ...snapshot, code: normalizedCode, isActive: true, startsAt: '', expiresAt: '' }
+    : await couponsCol.findOne({ code: normalizedCode }, { session })
+  if (!coupon) throw new HttpError(400, 'Coupon code was not found. Check the code and try again.')
+  return couponDiscountQuote(subtotal, coupon)
+}
 
 let paypalAccessToken = ''
 let paypalAccessTokenExpiresAt = 0
@@ -1695,6 +1768,7 @@ async function connectDB() {
     contactCol = db.collection('contact')
     settingsCol = db.collection('settings')
     pricingCol = db.collection('pricing')
+    couponsCol = db.collection('coupons')
     enrollmentsCol = db.collection('enrollments')
     areasCol = db.collection('areas')
     locationsCol = db.collection('locations')
@@ -1712,6 +1786,8 @@ async function connectDB() {
     await availabilityCol.createIndex({ slotKey: 1 }, { unique: true, name: 'unique_admin_availability_slot' })
     await availabilityCol.createIndex({ date: 1, timeOrder: 1 })
     await cartsCol.createIndex({ uid: 1 }, { unique: true })
+    await couponsCol.createIndex({ code: 1 }, { unique: true, name: 'unique_coupon_code' })
+    await couponsCol.createIndex({ isActive: 1, expiresAt: 1 })
     await paypalOrdersCol.createIndex({ uid: 1, createdAt: -1 })
     await paypalOrdersCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, name: 'expire_unfinished_paypal_orders' })
     await refundsCol.createIndex({ requestKey: 1 }, { unique: true, sparse: true, name: 'unique_user_refund_request' })
@@ -2493,7 +2569,9 @@ app.post('/api/users/:uid/courses/:courseId/refund', rateLimit({ windowMs: 10 * 
         Email: normalizeEmail(req.auth.email || user.email),
         Phone: cleanText(user.phone, 40),
         Course_Name: cleanText(course.title || course.planName || 'Driving course', 200),
-        Amount: cleanText(course.price, 40) || '$0',
+        Amount: course.paidAmount !== undefined
+          ? `$${moneyString(course.paidAmount)}`
+          : (cleanText(course.price, 40) || '$0'),
         Reason: reason,
         Status: 'pending',
         created_at: requestedAt.toISOString().replace('T', ' ').slice(0, 19),
@@ -2746,7 +2824,7 @@ app.delete('/api/users/:uid/cart/:courseId', async (req, res) => {
   }
 })
 
-async function processCartCheckout(req, { quoteOnly = false } = {}) {
+async function processCartCheckout(req, { quoteOnly = false, couponCode = '', couponSnapshot = null } = {}) {
   const uid = req.auth.uid
   await cleanupExpiredHolds()
   return withMongoTransaction(async (session) => {
@@ -2870,8 +2948,12 @@ async function processCartCheckout(req, { quoteOnly = false } = {}) {
           holds.push({ lock, booking: heldBooking, enrollmentId })
         }
       }
-      const quoteAmount = payableCheckoutAmount(verifiedItems)
-      const cartFingerprint = checkoutFingerprint(verifiedItems)
+      const subtotalAmount = payableCheckoutAmount(verifiedItems)
+      const effectiveCouponSnapshot = couponSnapshot || (!quoteOnly ? req.verifiedPayment?.couponSnapshot : null)
+      const effectiveCouponCode = couponCode || (!quoteOnly ? req.verifiedPayment?.couponCode : '')
+      const couponQuote = await resolveCouponQuote(effectiveCouponCode, subtotalAmount, session, effectiveCouponSnapshot)
+      const quoteAmount = couponQuote.total
+      const cartFingerprint = couponCheckoutFingerprint(checkoutFingerprint(verifiedItems), couponQuote)
       if (quoteOnly) {
         if (quoteAmount <= 0) {
           throw new HttpError(400, 'No PayPal payment is required for this booking.')
@@ -2907,6 +2989,9 @@ async function processCartCheckout(req, { quoteOnly = false } = {}) {
         return {
           quoteOnly: true,
           amount: quoteAmount,
+          subtotal: couponQuote.subtotal,
+          discount: couponQuote.discount,
+          coupon: couponQuote.coupon,
           currency: PAYPAL_CURRENCY,
           cartFingerprint,
           description: verifiedItems.filter(item => !item.continuation).map(item => item.title).join(' + ').slice(0, 127),
@@ -2931,7 +3016,14 @@ async function processCartCheckout(req, { quoteOnly = false } = {}) {
       const enrolledAt = new Date().toISOString()
       const { newItems, continuationItems: continuedItems } = splitCheckoutItems(verifiedItems)
       const toAdd = newItems
-        .map(item => ({
+        .map(item => {
+          const originalAmountCents = moneyCents(item.chargeAmount)
+          const subtotalCents = moneyCents(couponQuote.subtotal)
+          const discountCents = moneyCents(couponQuote.discount)
+          const allocatedDiscountCents = subtotalCents > 0
+            ? Math.floor(discountCents * originalAmountCents / subtotalCents)
+            : 0
+          return ({
           id: item.id,
           title: item.title,
           price: item.price,
@@ -2948,7 +3040,14 @@ async function processCartCheckout(req, { quoteOnly = false } = {}) {
           enrollmentId: item.enrollmentId,
           enrolledAt,
           email: normalizeEmail(req.auth.email) || user?.email || '',
-        }))
+          paidAmount: (originalAmountCents - allocatedDiscountCents) / 100,
+          couponCode: couponQuote.coupon?.code || '',
+        })})
+
+      if (toAdd.length) {
+        const previousPaidCents = toAdd.slice(0, -1).reduce((sum, item) => sum + moneyCents(item.paidAmount), 0)
+        toAdd[toAdd.length - 1].paidAmount = Math.max(0, moneyCents(quoteAmount) - previousPaidCents) / 100
+      }
 
       const nextCourses = [...existingCourses, ...toAdd]
       for (const item of continuedItems) {
@@ -2984,12 +3083,16 @@ async function processCartCheckout(req, { quoteOnly = false } = {}) {
         email: normalizeEmail(req.auth.email) || user?.email || '',
         item: toAdd.map(course => course.title).join(' + '),
         amount: quoteAmount,
+        subtotal: couponQuote.subtotal,
+        discount: couponQuote.discount,
+        coupon: couponQuote.coupon,
+        couponCode: couponQuote.coupon?.code || '',
         enrollmentIds: toAdd.map(course => cleanText(course.enrollmentId, 160)).filter(Boolean),
         courseBreakdown: toAdd.map(course => ({
           courseId: String(course.id || ''),
           enrollmentId: cleanText(course.enrollmentId, 160),
           title: cleanText(course.title, 200),
-          amount: planPriceAmount(course.price) || 0,
+          amount: Number(course.paidAmount || 0),
         })),
         refundedAmount: 0,
         providerRefundIds: [],
@@ -3013,6 +3116,14 @@ async function processCartCheckout(req, { quoteOnly = false } = {}) {
         userUpdate,
         { upsert: true, session }
       )
+
+      if (couponQuote.coupon) {
+        await couponsCol.updateOne(
+          { code: couponQuote.coupon.code },
+          { $inc: { redemptionCount: 1 }, $set: { lastRedeemedAt: enrolledAt } },
+          { session }
+        )
+      }
 
       for (const { lock, booking, enrollmentId } of holds) {
         const lockResult = await bookingSlotsCol.updateOne(
@@ -3056,6 +3167,26 @@ async function checkoutCartHandler(req, res) {
   }
 }
 
+app.post('/api/users/:uid/coupons/validate', rateLimit({ windowMs: 60_000, max: 20 }), async (req, res) => {
+  try {
+    const quote = await processCartCheckout(req, { quoteOnly: true, couponCode: req.body?.code })
+    if (!quote.coupon) throw new HttpError(400, 'Enter a coupon code first.')
+    return res.json({
+      ok: true,
+      coupon: quote.coupon,
+      subtotal: moneyString(quote.subtotal),
+      discount: moneyString(quote.discount),
+      total: moneyString(quote.amount),
+      message: `${quote.coupon.code} applied successfully. You save $${moneyString(quote.discount)}.`,
+    })
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      ok: false,
+      error: error.status ? error.message : 'Coupon could not be verified. Please try again.',
+    })
+  }
+})
+
 app.get('/api/paypal/config', requireAuth, (_req, res) => {
   try {
     const { clientId } = paypalConfiguration()
@@ -3074,7 +3205,7 @@ app.get('/api/paypal/config', requireAuth, (_req, res) => {
 
 app.post('/api/users/:uid/paypal/orders', rateLimit({ windowMs: 60_000, max: 10 }), async (req, res) => {
   try {
-    const quote = await processCartCheckout(req, { quoteOnly: true })
+    const quote = await processCartCheckout(req, { quoteOnly: true, couponCode: req.body?.couponCode })
     const reusableOrder = await paypalOrdersCol.findOne({
       uid: req.auth.uid,
       cartFingerprint: quote.cartFingerprint,
@@ -3123,6 +3254,10 @@ app.post('/api/users/:uid/paypal/orders', rateLimit({ windowMs: 60_000, max: 10 
           uid: req.auth.uid,
           status: 'CREATED',
           amount: Number(moneyString(quote.amount)),
+          subtotal: Number(moneyString(quote.subtotal)),
+          discount: Number(moneyString(quote.discount)),
+          couponCode: quote.coupon?.code || '',
+          couponSnapshot: quote.coupon || null,
           currency: PAYPAL_CURRENCY,
           cartFingerprint: quote.cartFingerprint,
           requestId,
@@ -3137,6 +3272,9 @@ app.post('/api/users/:uid/paypal/orders', rateLimit({ windowMs: 60_000, max: 10 
       id: orderId,
       status: order.status || 'CREATED',
       amount: moneyString(quote.amount),
+      subtotal: moneyString(quote.subtotal),
+      discount: moneyString(quote.discount),
+      coupon: quote.coupon,
       currency: PAYPAL_CURRENCY,
       environment: PAYPAL_ENVIRONMENT,
     })
@@ -3174,7 +3312,7 @@ app.post('/api/users/:uid/paypal/orders/:orderId/capture', rateLimit({ windowMs:
       // The buyer can leave the PayPal approval window open for several minutes.
       // Revalidate the authoritative cart and refresh its slot holds immediately
       // before capture so an expired or changed booking is never charged.
-      const refreshedQuote = await processCartCheckout(req, { quoteOnly: true })
+      const refreshedQuote = await processCartCheckout(req, { quoteOnly: true, couponCode: record.couponCode })
       if (
         refreshedQuote.currency !== record.currency
         || moneyCents(refreshedQuote.amount) !== moneyCents(record.amount)
@@ -3255,6 +3393,8 @@ app.post('/api/users/:uid/paypal/orders/:orderId/capture', rateLimit({ windowMs:
       captureId: record.captureId,
       payerEmail: record.payerEmail,
       paidAt: record.paidAt,
+      couponCode: record.couponCode || '',
+      couponSnapshot: record.couponSnapshot || null,
     }
     const checkout = await processCartCheckout(req)
     await safelySyncBookingIdsWithGoogleCalendar(checkout.bookingIds)
@@ -4070,6 +4210,70 @@ app.delete('/api/admin/pricing/:id', async (req, res) => {
   } catch (e) {
     if (e.status) return res.status(e.status).json({ error: e.message })
     sendServerError(res, e, 'Pricing plan deletion failed')
+  }
+})
+
+app.get('/api/admin/coupons', async (_req, res) => {
+  try {
+    const today = californiaDateKey()
+    const coupons = await couponsCol.find().sort({ createdAt: -1, code: 1 }).toArray()
+    res.json(coupons.map(coupon => ({
+      ...coupon,
+      effectiveStatus: coupon.isActive === false
+        ? 'paused'
+        : coupon.startsAt && today < coupon.startsAt
+          ? 'scheduled'
+          : coupon.expiresAt && today > coupon.expiresAt
+            ? 'expired'
+            : 'active',
+    })))
+  } catch (error) {
+    sendServerError(res, error, 'Coupon list lookup failed')
+  }
+})
+
+app.post('/api/admin/coupons', async (req, res) => {
+  try {
+    const now = new Date().toISOString()
+    const doc = { ...sanitizeCoupon(req.body), redemptionCount: 0, createdAt: now, updatedAt: now }
+    const result = await couponsCol.insertOne(doc)
+    res.status(201).json({ ok: true, coupon: { ...doc, _id: result.insertedId } })
+  } catch (error) {
+    if (isDuplicateKey(error)) return res.status(409).json({ error: 'That coupon code already exists.' })
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Coupon creation failed')
+  }
+})
+
+app.put('/api/admin/coupons/:id', async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid coupon id.')
+    const existing = await couponsCol.findOne({ _id: new ObjectId(req.params.id) })
+    if (!existing) throw new HttpError(404, 'Coupon not found.')
+    const doc = { ...sanitizeCoupon(req.body), updatedAt: new Date().toISOString() }
+    await couponsCol.updateOne({ _id: existing._id }, { $set: doc })
+    res.json({ ok: true, coupon: { ...existing, ...doc } })
+  } catch (error) {
+    if (isDuplicateKey(error)) return res.status(409).json({ error: 'That coupon code already exists.' })
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Coupon update failed')
+  }
+})
+
+app.delete('/api/admin/coupons/:id', async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid coupon id.')
+    const coupon = await couponsCol.findOne({ _id: new ObjectId(req.params.id) })
+    if (!coupon) throw new HttpError(404, 'Coupon not found.')
+    const used = Number(coupon.redemptionCount || 0)
+    if (used > 0 && req.query.confirmUsed !== 'true') {
+      throw new HttpError(409, `This coupon has been used ${used} time${used === 1 ? '' : 's'}. Confirm the usage-history warning before deleting it.`)
+    }
+    await couponsCol.deleteOne({ _id: coupon._id })
+    res.json({ ok: true })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Coupon deletion failed')
   }
 })
 
@@ -4965,6 +5169,8 @@ export {
   canonicalAdminBookingStatus,
   bookingsForEnrollment,
   checkoutFingerprint,
+  couponCheckoutFingerprint,
+  couponDiscountQuote,
   findPayPalPaymentForRefund,
   decryptCalendarToken,
   encryptCalendarToken,
@@ -4979,6 +5185,7 @@ export {
   refundedPaymentCents,
   sanitizeLocation,
   sanitizeBlog,
+  sanitizeCoupon,
   sanitizePricing,
   sanitizeReview,
   payableCheckoutAmount,

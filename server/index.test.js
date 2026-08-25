@@ -8,6 +8,8 @@ const {
   canonicalAdminBookingStatus,
   bookingsForEnrollment,
   checkoutFingerprint,
+  couponCheckoutFingerprint,
+  couponDiscountQuote,
   escapeEmailHtml,
   findPayPalPaymentForRefund,
   decryptCalendarToken,
@@ -22,12 +24,47 @@ const {
   sanitizePricing,
   sanitizeReview,
   sanitizeBlog,
+  sanitizeCoupon,
   packageSlotAllowance,
   pickupSlotsFromCourse,
   splitCheckoutItems,
   validateContinuationSlotCount,
   validateAvailabilitySlot,
 } = await import('./index.js')
+
+test('coupon validation normalizes codes and accepts fixed or percentage discounts', () => {
+  assert.deepEqual(
+    sanitizeCoupon({ code: ' save-15 ', discountType: 'fixed', discountValue: '15', startsAt: '', expiresAt: '2026-12-31', isActive: true }),
+    { code: 'SAVE-15', discountType: 'fixed', discountValue: 15, startsAt: '', expiresAt: '2026-12-31', isActive: true }
+  )
+  assert.throws(() => sanitizeCoupon({ code: 'x', discountType: 'percentage', discountValue: 10 }), /3–32 characters/)
+  assert.throws(() => sanitizeCoupon({ code: 'SAVE10', discountType: 'percentage', discountValue: 101 }), /between 0.01 and 100/)
+})
+
+test('coupon quotes calculate fixed and percentage savings without creating a zero PayPal amount', () => {
+  const fixed = couponDiscountQuote(210, { code: 'SAVE15', discountType: 'fixed', discountValue: 15, isActive: true }, '2026-08-25')
+  assert.deepEqual(fixed, { subtotal: 210, discount: 15, total: 195, coupon: { code: 'SAVE15', discountType: 'fixed', discountValue: 15 } })
+  const percentage = couponDiscountQuote(599, { code: 'SUMMER10', discountType: 'percentage', discountValue: 10, isActive: true }, '2026-08-25')
+  assert.equal(percentage.discount, 59.9)
+  assert.equal(percentage.total, 539.1)
+  const full = couponDiscountQuote(20, { code: 'FREE100', discountType: 'percentage', discountValue: 100, isActive: true }, '2026-08-25')
+  assert.equal(full.discount, 19.99)
+  assert.equal(full.total, 0.01)
+})
+
+test('paused, scheduled, and expired coupons cannot be used', () => {
+  assert.throws(() => couponDiscountQuote(100, { code: 'PAUSED', discountType: 'fixed', discountValue: 10, isActive: false }, '2026-08-25'), /paused/)
+  assert.throws(() => couponDiscountQuote(100, { code: 'LATER', discountType: 'fixed', discountValue: 10, isActive: true, startsAt: '2026-08-26' }, '2026-08-25'), /starts on/)
+  assert.throws(() => couponDiscountQuote(100, { code: 'OLD', discountType: 'fixed', discountValue: 10, isActive: true, expiresAt: '2026-08-24' }, '2026-08-25'), /expired/)
+})
+
+test('coupon changes the checkout fingerprint while identical quotes stay stable', () => {
+  const base = 'cart-fingerprint'
+  const quote = { discount: 15, total: 195, coupon: { code: 'SAVE15' } }
+  assert.equal(couponCheckoutFingerprint(base, null), base)
+  assert.equal(couponCheckoutFingerprint(base, quote), couponCheckoutFingerprint(base, quote))
+  assert.notEqual(couponCheckoutFingerprint(base, quote), couponCheckoutFingerprint(base, { discount: 10, total: 200, coupon: { code: 'SAVE10' } }))
+})
 
 test('Google Calendar refresh tokens are encrypted and authenticated at rest', () => {
   const secret = 'a-production-only-secret-with-more-than-32-characters'

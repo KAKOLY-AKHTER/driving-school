@@ -68,6 +68,8 @@ export default function PaymentPage() {
   const { user } = useAuth()
   const { items, loading, syncError, refreshCart } = useCart()
   const [coupon, setCoupon] = useState('')
+  const [appliedCoupon, setAppliedCoupon] = useState(null)
+  const [couponLoading, setCouponLoading] = useState(false)
   const [notice, setNotice] = useState('')
   const [paymentState, setPaymentState] = useState('idle')
   const [paymentError, setPaymentError] = useState('')
@@ -83,17 +85,44 @@ export default function PaymentPage() {
     const charge = Number(item.chargeAmount)
     return sum + (Number.isFinite(charge) ? charge : amountNumber(item.price))
   }, 0), [items])
+  const discount = Number(appliedCoupon?.discount || 0)
+  const total = Math.max(0, Number(appliedCoupon?.total ?? subtotal))
 
   const selectedSlots = useMemo(() => items.flatMap(item => {
     const slots = Array.isArray(item.pickupSlots) ? item.pickupSlots : []
     return slots.map(slot => ({ ...slot, plan: item.title, city: item.city }))
   }), [items])
 
-  const applyCoupon = event => {
+  const applyCoupon = async event => {
     event.preventDefault()
-    setNotice(coupon.trim()
-      ? 'Coupon verification will be activated with the payment provider. The total has not been changed.'
-      : 'Enter a coupon code before selecting Apply Coupon.')
+    const code = coupon.trim().toUpperCase()
+    if (!code) {
+      setNotice('Enter a coupon code before selecting Apply Coupon.')
+      return
+    }
+    if (!user) {
+      setNotice('Please sign in before applying a coupon.')
+      return
+    }
+    setCouponLoading(true)
+    setPaymentError('')
+    try {
+      const result = await api.validateCoupon(user.uid, code)
+      setCoupon(code)
+      setAppliedCoupon({ ...result.coupon, subtotal: Number(result.subtotal), discount: Number(result.discount), total: Number(result.total) })
+      setNotice(result.message || `${code} applied successfully.`)
+    } catch (error) {
+      setAppliedCoupon(null)
+      setNotice(error.message || 'Coupon could not be applied.')
+    } finally {
+      setCouponLoading(false)
+    }
+  }
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null)
+    setCoupon('')
+    setNotice('Coupon removed. The regular order total has been restored.')
   }
 
   useEffect(() => {
@@ -122,7 +151,7 @@ export default function PaymentPage() {
           createOrder: async () => {
             setPaymentState('processing')
             setPaymentError('')
-            const order = await api.createPayPalOrder(user.uid)
+            const order = await api.createPayPalOrder(user.uid, appliedCoupon?.code || '')
             if (!order?.id) throw new Error('PayPal did not return an order number.')
             return order.id
           },
@@ -172,7 +201,7 @@ export default function PaymentPage() {
       cancelled = true
       try { buttons?.close() } catch { /* PayPal may already have removed its iframe. */ }
     }
-  }, [items, paymentResult, refreshCart, subtotal, user])
+  }, [appliedCoupon?.code, items, paymentResult, refreshCart, subtotal, user])
 
   return (
     <section className="payment-page">
@@ -193,7 +222,7 @@ export default function PaymentPage() {
         .payment-reference{padding:1rem;border-radius:12px;background:#F7FAFE;border:1px solid #E0E9F3;margin-bottom:1.2rem}.payment-reference span{display:block;color:#334155;font-size:.76rem;text-transform:uppercase;letter-spacing:.12em;font-weight:800}.payment-reference strong{display:block;margin-top:.25rem;overflow-wrap:anywhere;color:${DARK}}
         .payment-items{display:grid;gap:.75rem;margin:0 0 1.2rem}.payment-item{padding:.9rem 0;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between;gap:1rem}.payment-item:last-child{border-bottom:0}.payment-item strong{display:block}.payment-item small{display:block;margin-top:.25rem;color:#334155;line-height:1.45}.payment-item-price{font-weight:900;color:${BLUE};white-space:nowrap}
         .payment-slot-list{padding:.8rem 1rem;border-radius:10px;background:#F8FAFC;margin-bottom:1.2rem;color:#475569;font-size:.82rem}.payment-slot-list strong{color:${DARK}}.payment-slot-list div+div{margin-top:.4rem}
-        .payment-coupon{display:flex;gap:.65rem;margin-bottom:1rem}.payment-coupon input{min-width:0;flex:1;min-height:48px;padding:.75rem .9rem;border:1.5px solid #D8E2EE;border-radius:10px;font:500 .9rem var(--font-body);outline:none}.payment-coupon input:focus{border-color:${BLUE};box-shadow:0 0 0 4px rgba(1,69,168,.08)}.payment-coupon button{border:0;border-radius:10px;background:${BLUE};color:#fff;font-weight:800;padding:.75rem 1rem;cursor:pointer}
+        .payment-coupon{display:flex;gap:.65rem;margin-bottom:.65rem}.payment-coupon input{min-width:0;flex:1;min-height:48px;padding:.75rem .9rem;border:1.5px solid #D8E2EE;border-radius:10px;font:500 .9rem var(--font-body);outline:none;text-transform:uppercase}.payment-coupon input:focus{border-color:${BLUE};box-shadow:0 0 0 4px rgba(1,69,168,.08)}.payment-coupon button{border:0;border-radius:10px;background:${BLUE};color:#fff;font-weight:800;padding:.75rem 1rem;cursor:pointer}.payment-coupon button:disabled{cursor:not-allowed;opacity:.62}.payment-coupon-applied{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.7rem .85rem;margin:0 0 1rem;border:1px solid #86EFAC;border-radius:10px;background:#F0FDF4;color:#166534;font-size:.84rem;font-weight:800}.payment-coupon-applied button{border:0;background:transparent;color:#B91C1C;font-weight:900;cursor:pointer}
         .payment-total{display:grid;gap:.55rem;padding:1rem 0;border-top:1px solid #DCE5EF;border-bottom:1px solid #DCE5EF;margin-bottom:1.15rem}.payment-total-row{display:flex;justify-content:space-between;gap:1rem;color:#475569}.payment-total-row.final{font-size:1.15rem;color:${DARK};font-weight:900}.payment-total-row.final strong{color:${BLUE}}
         .payment-notice{padding:.8rem .9rem;border:1px solid #FCD34D;border-radius:10px;background:#FFFBEB;color:#92400E;font-size:.82rem;line-height:1.5;margin:0 0 1rem}
         .paypal-checkout{min-height:52px;position:relative}.paypal-loading{min-height:52px;display:grid;place-items:center;border-radius:999px;background:#F1F5F9;color:#334155;font-weight:800}.paypal-processing{padding:.75rem 1rem;border-radius:10px;background:#EFF6FF;color:#1D4ED8;text-align:center;font-weight:800;margin-bottom:.75rem}.paypal-error{padding:.8rem .9rem;border:1px solid #FCA5A5;border-radius:10px;background:#FEF2F2;color:#B91C1C;font-size:.84rem;line-height:1.5;margin-bottom:.85rem}.payment-powered{text-align:center;margin:.85rem 0 0;color:#475569;font-size:.72rem}.payment-powered strong{color:#087CC1}
@@ -276,15 +305,16 @@ export default function PaymentPage() {
 
               <form className="payment-coupon" onSubmit={applyCoupon}>
                 <label htmlFor="payment-coupon" className="sr-only">Coupon code</label>
-                <input id="payment-coupon" value={coupon} onChange={event => { setCoupon(event.target.value); setNotice('') }} maxLength="80" placeholder="Enter coupon code" />
-                <button type="submit">Apply Coupon</button>
+                <input id="payment-coupon" value={coupon} disabled={couponLoading || paymentState === 'processing'} onChange={event => { setCoupon(event.target.value.toUpperCase()); setNotice('') }} maxLength="32" autoComplete="off" placeholder="Enter coupon code" />
+                <button type="submit" disabled={couponLoading || paymentState === 'processing'}>{couponLoading ? 'Checking…' : appliedCoupon ? 'Reapply' : 'Apply Coupon'}</button>
               </form>
+              {appliedCoupon && <div className="payment-coupon-applied" role="status"><span>✓ {appliedCoupon.code} applied — you save {formatUSD(discount)}</span><button type="button" onClick={removeCoupon} disabled={paymentState === 'processing'}>Remove</button></div>}
 
               <div className="payment-total">
                 <div className="payment-total-row"><span>Subtotal</span><strong>{formatUSD(subtotal)}</strong></div>
-                <div className="payment-total-row"><span>Discount</span><strong>{formatUSD(0)}</strong></div>
+                <div className="payment-total-row"><span>Coupon Discount{appliedCoupon ? ` (${appliedCoupon.code})` : ''}</span><strong>{discount > 0 ? `−${formatUSD(discount)}` : formatUSD(0)}</strong></div>
                 <div className="payment-total-row"><span>Tax</span><strong>{formatUSD(0)}</strong></div>
-                <div className="payment-total-row final"><span>Total</span><strong>{formatUSD(subtotal)}</strong></div>
+                <div className="payment-total-row final"><span>Total Due</span><strong>{formatUSD(total)}</strong></div>
               </div>
 
               {syncError && <div className="payment-notice" role="alert">{syncError} <button type="button" onClick={refreshCart} style={{ border: 0, background: 'transparent', color: BLUE, fontWeight: 900, cursor: 'pointer' }}>Retry</button></div>}
