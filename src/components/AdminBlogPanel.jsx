@@ -35,6 +35,17 @@ const displayDate = (value) => {
       });
 };
 
+const publicationState = (post) => {
+  if (!post?.published) {
+    return { label: "Draft", live: false, background: "#F1F5F9", color: "#64748B" };
+  }
+  const publicationTime = Date.parse(post.publishedAt);
+  if (Number.isFinite(publicationTime) && publicationTime > Date.now()) {
+    return { label: "Scheduled", live: false, background: "#FEF3C7", color: "#A16207" };
+  }
+  return { label: "Live", live: true, background: "#DCFCE7", color: "#15803D" };
+};
+
 export default function AdminBlogPanel({
   cardStyle,
   inputStyle,
@@ -632,12 +643,14 @@ export default function AdminBlogPanel({
                   <th scope="col" style={thStyle}>Post Category</th>
                   <th scope="col" style={thStyle}>Written By</th>
                   <th scope="col" style={thStyle}>Publication Status</th>
-                  <th scope="col" style={thStyle}>Published On</th>
+                  <th scope="col" style={thStyle}>Live / Scheduled Date</th>
                   <th scope="col" className="admin-actions-cell" style={thStyle}>Manage Post</th>
                 </tr>
               </thead>
               <tbody>
-                {visiblePosts.map((post) => (
+                {visiblePosts.map((post) => {
+                  const publication = publicationState(post);
+                  return (
                   <tr key={post._id}>
                     <td style={{ ...tdStyle, minWidth: 260 }}>
                       <strong style={{ display: "block", color: "#10213A" }}>
@@ -678,15 +691,15 @@ export default function AdminBlogPanel({
                           display: "inline-block",
                           padding: ".25rem .5rem",
                           borderRadius: 999,
-                          background: post.published ? "#DCFCE7" : "#F1F5F9",
-                          color: post.published ? "#15803D" : "#64748B",
+                          background: publication.background,
+                          color: publication.color,
                           textTransform: "uppercase",
                           letterSpacing: ".07em",
                           fontSize: ".68rem",
                           fontWeight: 900,
                         }}
                       >
-                        {post.published ? "Published" : "Draft"}
+                        {publication.label}
                       </span>
                     </td>
                     <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
@@ -700,7 +713,7 @@ export default function AdminBlogPanel({
                           flexWrap: "wrap",
                         }}
                       >
-                        {post.published && (
+                        {publication.live ? (
                           <Link
                             to={`/blog/${post.slug}`}
                             target="_blank"
@@ -717,7 +730,25 @@ export default function AdminBlogPanel({
                           >
                             View
                           </Link>
-                        )}
+                        ) : post.published ? (
+                          <button
+                            type="button"
+                            disabled
+                            title={`This article will become public on ${displayDate(post.publishedAt)}.`}
+                            style={{
+                              padding: ".38rem .6rem",
+                              border: "1px solid #E2E8F0",
+                              borderRadius: 8,
+                              background: "#F8FAFC",
+                              color: "#94A3B8",
+                              fontSize: ".75rem",
+                              fontWeight: 850,
+                              cursor: "not-allowed",
+                            }}
+                          >
+                            Not Live Yet
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => editPost(post)}
@@ -751,7 +782,8 @@ export default function AdminBlogPanel({
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {!filtered.length && (
                   <tr>
                     <td
