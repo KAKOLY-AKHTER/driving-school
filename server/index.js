@@ -3952,9 +3952,11 @@ app.get('/api/admin/availability', async (req, res) => {
       ...slot,
       status: adminAvailabilityStatus(slot, today),
     }))
-    const filtered = ['available', 'blocked', 'held', 'booked', 'expired'].includes(statusFilter)
-      ? effective.filter(slot => slot.status === statusFilter)
-      : effective
+    const filtered = statusFilter === 'manageable'
+      ? effective.filter(slot => slot.status === 'available' || slot.status === 'blocked')
+      : ['available', 'blocked', 'held', 'booked', 'expired'].includes(statusFilter)
+        ? effective.filter(slot => slot.status === statusFilter)
+        : effective
     const total = filtered.length
     const pages = Math.max(1, Math.ceil(total / limit))
     const safePage = Math.min(page, pages)
