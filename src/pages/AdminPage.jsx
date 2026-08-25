@@ -1346,7 +1346,7 @@ export default function AdminPage() {
 
   const cardStyle = { background: '#ffffff', borderRadius: 'var(--radius-lg)', border: '1px solid #E2EBF5', padding: '1.75rem', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }
   const labelStyle = { fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#334155', fontWeight: 600, display: 'block', marginBottom: '0.3rem' }
-  const thStyle = { fontFamily: 'var(--font-body)', fontSize: '0.82rem', letterSpacing: '0.025em', textTransform: 'none', lineHeight: 1.3, color: '#163A63', fontWeight: 800, padding: '0.9rem 1rem', textAlign: 'left', borderBottom: '1px solid #D8E4F0', WebkitFontSmoothing: 'antialiased' }
+  const thStyle = { fontFamily: 'var(--font-body)', fontSize: '0.95rem', letterSpacing: '0.01em', textTransform: 'none', lineHeight: 1.35, color: '#102F55', fontWeight: 900, padding: '1rem', textAlign: 'left', borderBottom: '1px solid #D8E4F0', WebkitFontSmoothing: 'antialiased' }
   const tdStyle = { fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#1a2332', padding: '0.75rem 1rem', borderBottom: '1px solid #f0f2f5' }
   const inputStyle = { width: '100%', padding: '0.65rem 0.8rem', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#1a2332', outline: 'none', boxSizing: 'border-box' }
 
