@@ -480,19 +480,20 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
         <div aria-label="Bulk actions for selected lesson slots" style={{ padding: '.85rem', marginBottom: '1rem', border: '1px solid #D8E4F0', borderRadius: '12px', background: '#F8FBFF' }}>
           <div style={{ display: 'flex', gap: '.65rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div style={{ display: 'grid', gap: '.35rem' }}>
-              <strong style={{ color: '#334155', fontSize: '.78rem' }}>1. Select lesson slots</strong>
-              <button type="button" disabled={!selectableRows.length} onClick={() => setSelected(allSelected ? [] : selectableRows.map(row => String(row._id)))} style={{ minHeight: '42px', padding: '.6rem .9rem', border: '1px solid #93C5FD', borderRadius: '9px', background: allSelected ? '#EFF6FF' : '#fff', color: selectableRows.length ? '#0755AE' : '#94A3B8', fontWeight: 800, cursor: selectableRows.length ? 'pointer' : 'not-allowed' }}>{allSelected ? 'Clear Page Selection' : `Select All Editable (${selectableRows.length})`}</button>
+              <strong style={{ color: '#334155', fontSize: '.78rem' }}>1. Choose slots to open or close</strong>
+              <button type="button" disabled={!selectableRows.length} onClick={() => setSelected(allSelected ? [] : selectableRows.map(row => String(row._id)))} style={{ minHeight: '42px', padding: '.6rem .9rem', border: '1px solid #93C5FD', borderRadius: '9px', background: allSelected ? '#EFF6FF' : '#fff', color: selectableRows.length ? '#0755AE' : '#94A3B8', fontWeight: 800, cursor: selectableRows.length ? 'pointer' : 'not-allowed' }}>{allSelected ? 'Clear Selected Slots' : `Select All Future Slots (${selectableRows.length})`}</button>
             </div>
             <div style={{ display: 'grid', gap: '.35rem' }}>
-              <strong style={{ color: '#334155', fontSize: '.78rem' }}>2. Choose booking access</strong>
-              <select aria-label="Choose what students can do with selected lesson slots" value={bulkStatus} onChange={event => setBulkStatus(event.target.value)} style={{ ...inputStyle, width: '265px' }}><option value="available">Open — students can book</option><option value="blocked">Closed — students cannot book</option></select>
+              <strong style={{ color: '#334155', fontSize: '.78rem' }}>2. Decide what students can do</strong>
+              <select aria-label="Choose what students can do with selected lesson slots" value={bulkStatus} onChange={event => setBulkStatus(event.target.value)} style={{ ...inputStyle, width: '285px' }}><option value="available">Allow students to book</option><option value="blocked">Temporarily stop student booking</option></select>
             </div>
             <div style={{ display: 'grid', gap: '.35rem' }}>
-              <strong style={{ color: '#334155', fontSize: '.78rem' }}>3. Save the change</strong>
-              <button type="button" disabled={saving || !selected.length} onClick={updateSelected} style={{ minHeight: '42px', padding: '.6rem .9rem', border: 0, borderRadius: '9px', background: selected.length ? SKY_BLUE : '#94A3B8', color: '#fff', fontWeight: 800, cursor: selected.length ? 'pointer' : 'not-allowed' }}>{saving ? 'Applying Change…' : `Apply Change (${selected.length} Selected)`}</button>
+              <strong style={{ color: '#334155', fontSize: '.78rem' }}>3. Save booking access</strong>
+              <button type="button" disabled={saving || !selected.length} onClick={updateSelected} style={{ minHeight: '42px', padding: '.6rem .9rem', border: 0, borderRadius: '9px', background: selected.length ? SKY_BLUE : '#94A3B8', color: '#fff', fontWeight: 800, cursor: selected.length ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving Booking Access…' : `Save Booking Access (${selected.length})`}</button>
             </div>
           </div>
-          <p style={{ margin: '.65rem 0 0', color: selected.length ? '#166534' : '#64748B', fontSize: '.82rem', fontWeight: selected.length ? 800 : 600 }}>{selected.length ? `${selected.length} slot${selected.length === 1 ? '' : 's'} selected and ready to update.` : selectableRows.length ? 'Select all editable slots above, or tick individual rows in the table.' : 'No editable slots are available on this page.'}</p>
+          <p style={{ margin: '.65rem 0 0', color: selected.length ? '#166534' : '#64748B', fontSize: '.82rem', fontWeight: selected.length ? 800 : 600 }}>{selected.length ? `${selected.length} slot${selected.length === 1 ? '' : 's'} selected. Saving will only change whether students can book them.` : selectableRows.length ? 'Use this section only to allow or stop student booking. It does not change lesson dates or times.' : 'No editable slots are available on this page.'}</p>
+          <p style={{ margin: '.35rem 0 0', color: '#475569', fontSize: '.8rem' }}><strong>Need to change a date or time?</strong> Remove the incorrect future slot, then create the correct slot in “Open Lesson Availability” above.</p>
         </div>
         {error && <div role="alert" style={{ padding: '.85rem 1rem', marginBottom: '1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{error} <button type="button" onClick={() => setLoadVersion(value => value + 1)} style={{ marginLeft: '.6rem', border: 0, background: 'transparent', color: '#0755AE', fontWeight: 850, cursor: 'pointer' }}>Retry</button></div>}
         <div className="admin-table-wrap">
