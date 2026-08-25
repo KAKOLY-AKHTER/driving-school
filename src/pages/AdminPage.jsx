@@ -477,13 +477,23 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
             <select aria-label="Availability rows per page" value={limit} onChange={event => { setLimit(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '90px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
           </div>
         </div>
-        <div aria-label="Bulk actions for selected lesson slots" style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '.35rem' }}>
-          <strong style={{ color: '#334155', fontSize: '.88rem' }}>Change selected slots to:</strong>
-          <select aria-label="Choose what students can do with selected lesson slots" value={bulkStatus} onChange={event => setBulkStatus(event.target.value)} style={{ ...inputStyle, width: '265px' }}><option value="available">Open — students can book</option><option value="blocked">Closed — students cannot book</option></select>
-          <button type="button" disabled={saving || !selected.length} onClick={updateSelected} style={{ minHeight: '42px', padding: '.6rem .9rem', border: 0, borderRadius: '9px', background: selected.length ? SKY_BLUE : '#94A3B8', color: '#fff', fontWeight: 800, cursor: selected.length ? 'pointer' : 'not-allowed' }}>{saving ? 'Applying Change…' : `Apply to Selected Slots (${selected.length})`}</button>
-          <span style={{ color: selectableRows.length ? '#166534' : '#B45309', fontSize: '.8rem', fontWeight: 800 }}>{selectableRows.length ? `${selectableRows.length} editable slot${selectableRows.length === 1 ? '' : 's'} on this page` : 'No editable slots on this page'}</span>
+        <div aria-label="Bulk actions for selected lesson slots" style={{ padding: '.85rem', marginBottom: '1rem', border: '1px solid #D8E4F0', borderRadius: '12px', background: '#F8FBFF' }}>
+          <div style={{ display: 'flex', gap: '.65rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div style={{ display: 'grid', gap: '.35rem' }}>
+              <strong style={{ color: '#334155', fontSize: '.78rem' }}>1. Select lesson slots</strong>
+              <button type="button" disabled={!selectableRows.length} onClick={() => setSelected(allSelected ? [] : selectableRows.map(row => String(row._id)))} style={{ minHeight: '42px', padding: '.6rem .9rem', border: '1px solid #93C5FD', borderRadius: '9px', background: allSelected ? '#EFF6FF' : '#fff', color: selectableRows.length ? '#0755AE' : '#94A3B8', fontWeight: 800, cursor: selectableRows.length ? 'pointer' : 'not-allowed' }}>{allSelected ? 'Clear Page Selection' : `Select All Editable (${selectableRows.length})`}</button>
+            </div>
+            <div style={{ display: 'grid', gap: '.35rem' }}>
+              <strong style={{ color: '#334155', fontSize: '.78rem' }}>2. Choose booking access</strong>
+              <select aria-label="Choose what students can do with selected lesson slots" value={bulkStatus} onChange={event => setBulkStatus(event.target.value)} style={{ ...inputStyle, width: '265px' }}><option value="available">Open — students can book</option><option value="blocked">Closed — students cannot book</option></select>
+            </div>
+            <div style={{ display: 'grid', gap: '.35rem' }}>
+              <strong style={{ color: '#334155', fontSize: '.78rem' }}>3. Save the change</strong>
+              <button type="button" disabled={saving || !selected.length} onClick={updateSelected} style={{ minHeight: '42px', padding: '.6rem .9rem', border: 0, borderRadius: '9px', background: selected.length ? SKY_BLUE : '#94A3B8', color: '#fff', fontWeight: 800, cursor: selected.length ? 'pointer' : 'not-allowed' }}>{saving ? 'Applying Change…' : `Apply Change (${selected.length} Selected)`}</button>
+            </div>
+          </div>
+          <p style={{ margin: '.65rem 0 0', color: selected.length ? '#166534' : '#64748B', fontSize: '.82rem', fontWeight: selected.length ? 800 : 600 }}>{selected.length ? `${selected.length} slot${selected.length === 1 ? '' : 's'} selected and ready to update.` : selectableRows.length ? 'Select all editable slots above, or tick individual rows in the table.' : 'No editable slots are available on this page.'}</p>
         </div>
-        <p style={{ margin: '0 0 1rem', color: '#64748B', fontSize: '.82rem' }}>First tick the checkbox beside one or more future slots, choose whether students can book them, then apply the change.</p>
         {error && <div role="alert" style={{ padding: '.85rem 1rem', marginBottom: '1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{error} <button type="button" onClick={() => setLoadVersion(value => value + 1)} style={{ marginLeft: '.6rem', border: 0, background: 'transparent', color: '#0755AE', fontWeight: 850, cursor: 'pointer' }}>Retry</button></div>}
         <div className="admin-table-wrap">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
