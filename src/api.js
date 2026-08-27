@@ -4,6 +4,27 @@ const API_URL = import.meta.env.VITE_API_URL || ''
 const REQUEST_TIMEOUT_MS = 20_000
 const pathPart = (value) => encodeURIComponent(String(value ?? ''))
 
+export function readableErrorMessage(value, fallback = 'Something went wrong. Please try again.') {
+  const visited = new Set()
+
+  const extract = (candidate) => {
+    if (typeof candidate === 'string') {
+      const message = candidate.trim()
+      return message && message !== '[object Object]' ? message : ''
+    }
+    if (!candidate || typeof candidate !== 'object' || visited.has(candidate)) return ''
+    visited.add(candidate)
+
+    for (const key of ['message', 'error_description', 'description', 'detail', 'error']) {
+      const message = extract(candidate[key])
+      if (message) return message
+    }
+    return ''
+  }
+
+  return extract(value) || fallback
+}
+
 async function request(path, options = {}) {
   const { timeoutMs = REQUEST_TIMEOUT_MS, ...fetchOptions } = options
   const headers = new Headers(options.headers || {})
@@ -60,7 +81,10 @@ async function request(path, options = {}) {
   const contentType = res.headers.get('content-type') || ''
   const data = contentType.includes('application/json') ? await res.json() : null
   if (!res.ok) {
-    const error = new Error(data?.error || `Request failed with status ${res.status}`)
+    const error = new Error(readableErrorMessage(
+      data?.error ?? data?.message ?? data,
+      `Request failed with status ${res.status}`,
+    ))
     error.status = res.status
     error.code = data?.issue || data?.code || ''
     throw error

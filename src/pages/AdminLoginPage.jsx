@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth'
 import { auth } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
-import { api } from '../api'
+import { api, readableErrorMessage } from '../api'
 import { usePageMeta } from '../usePageMeta'
 import PasswordInput from '../components/PasswordInput'
 
@@ -12,6 +12,19 @@ const GOLD_DEEP = '#C8960C'
 const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
+
+function adminLoginErrorMessage(error) {
+  const code = typeof error?.code === 'string' ? error.code : ''
+  if (['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password'].includes(code)) {
+    return 'Incorrect email or password.'
+  }
+  if (code === 'auth/invalid-email') return 'Enter a valid email address.'
+  if (code === 'auth/user-disabled') return 'This account has been disabled. Contact the site administrator.'
+  if (code === 'auth/too-many-requests') return 'Too many sign-in attempts. Wait a few minutes and try again.'
+  if (code === 'auth/network-request-failed') return 'The sign-in service could not be reached. Check your connection and try again.'
+
+  return readableErrorMessage(error, 'Admin sign-in failed. Please try again.')
+}
 
 export default function AdminLoginPage() {
   usePageMeta('Admin Login — A Precision Driving School', 'Admin login for A Precision Driving School.')
@@ -52,10 +65,7 @@ export default function AdminLoginPage() {
       navigate('/admin', { replace: true })
     } catch (err) {
       if (auth.currentUser) await signOut(auth).catch(() => {})
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') setError('Incorrect email or password.')
-      else if (err.code === 'auth/invalid-email') setError('Invalid email address.')
-      else if (err.code === 'auth/too-many-requests') setError('Too many attempts. Please wait a few minutes and try again.')
-      else setError(err.message || 'Login failed. Please try again.')
+      setError(adminLoginErrorMessage(err))
     } finally {
       setLoading(false)
     }
