@@ -84,6 +84,7 @@ export const api = {
   adminUpdateAvailabilityStatus: (ids, status) => request('/api/admin/availability/status', { method: 'PUT', body: JSON.stringify({ ids, status }) }),
   adminDeleteAvailability: (id) => request(`/api/admin/availability/${pathPart(id)}`, { method: 'DELETE' }),
   adminSetRole: (uid, isAdmin) => request(`/api/admin/users/${pathPart(uid)}/role`, { method: 'PUT', body: JSON.stringify({ isAdmin }) }),
+  adminUpdateBookingStatus: (id, status) => request(`/api/admin/bookings/${pathPart(id)}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
   adminDeleteBooking: (id) => request(`/api/admin/bookings/${pathPart(id)}`, { method: 'DELETE' }),
   adminGoogleCalendar: () => request('/api/admin/google-calendar'),
   adminConnectGoogleCalendar: (loginHint = '') => request('/api/admin/google-calendar/connect', { method: 'POST', body: JSON.stringify({ loginHint }) }),

@@ -31,6 +31,13 @@ const localDateKey = (date = new Date()) => new Intl.DateTimeFormat('en-CA', {
 
 const normalizeStatus = (value) => String(value || '').trim().toLowerCase().replace(/[\s_-]+/g, ' ')
 
+const BOOKING_STATUS_LABELS = {
+  scheduled: 'Pending',
+  confirmed: 'Upcoming',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+}
+
 const adminUserName = (account) => {
   const fullName = [account?.firstName, account?.middleName, account?.lastName]
     .map(value => String(value || '').trim())
@@ -58,10 +65,10 @@ const bookingSortValue = (booking) => {
 
 const bookingStatusMeta = (booking, today = localDateKey()) => {
   const status = normalizeStatus(booking?.status)
-  if (status === 'cancelled' || status === 'canceled') return { label: 'Lesson Cancelled', color: '#B91C1C', background: '#FEF2F2', group: 'cancelled' }
-  if (status === 'completed' || String(booking?.date || '') < today) return { label: 'Lesson Completed', color: '#475569', background: '#F1F5F9', group: 'completed' }
-  if (status === 'confirmed') return { label: 'Lesson Confirmed', color: '#0755AE', background: '#EFF6FF', group: 'confirmed' }
-  return { label: 'Awaiting Confirmation', color: '#9A6700', background: '#FFFBEB', group: 'scheduled' }
+  if (status === 'cancelled' || status === 'canceled') return { label: BOOKING_STATUS_LABELS.cancelled, color: '#B91C1C', background: '#FEF2F2', group: 'cancelled' }
+  if (status === 'completed' || String(booking?.date || '') < today) return { label: BOOKING_STATUS_LABELS.completed, color: '#475569', background: '#F1F5F9', group: 'completed' }
+  if (status === 'confirmed') return { label: BOOKING_STATUS_LABELS.confirmed, color: '#0755AE', background: '#EFF6FF', group: 'confirmed' }
+  return { label: BOOKING_STATUS_LABELS.scheduled, color: '#9A6700', background: '#FFFBEB', group: 'scheduled' }
 }
 
 const courseStatusMeta = (course) => {
@@ -532,6 +539,7 @@ export default function AdminPage() {
   const [bookingDataFilter, setBookingDataFilter] = useState('all')
   const [bookingPage, setBookingPage] = useState(1)
   const [bookingLimit, setBookingLimit] = useState('10')
+  const [bookingStatusUpdating, setBookingStatusUpdating] = useState('')
   const [contactSearch, setContactSearch] = useState('')
   const [contactStatusFilter, setContactStatusFilter] = useState('all')
   const [contactPage, setContactPage] = useState(1)
@@ -857,6 +865,37 @@ export default function AdminPage() {
       setMsg('Failed to delete booking.')
       setTimeout(() => setMsg(''), 2000)
     }
+  }
+
+  const updateBookingStatus = async (booking, status) => {
+    const bookingId = String(booking?._id || '')
+    if (!bookingId) return
+    setBookingStatusUpdating(bookingId)
+    try {
+      const result = await api.adminUpdateBookingStatus(bookingId, status)
+      setBookings(previous => previous.map(item => String(item._id) === bookingId
+        ? { ...item, ...(result?.booking || {}), status }
+        : item))
+      const refreshedStats = await api.adminStats().catch(() => null)
+      if (refreshedStats) setStats(refreshedStats)
+      setMsg(`Booking status changed to “${BOOKING_STATUS_LABELS[status]}”.`)
+    } catch (error) {
+      setMsg(error?.message || 'Booking status could not be changed.')
+    } finally {
+      setBookingStatusUpdating('')
+      setTimeout(() => setMsg(''), 3500)
+    }
+  }
+
+  const handleBookingStatusChange = (booking, nextStatus) => {
+    const current = bookingStatusMeta(booking, todayStr).group
+    if (!nextStatus || nextStatus === current) return
+    const linkedUser = users.find(item => item.uid === booking.userId)
+    requestConfirmation(
+      `Change status to “${BOOKING_STATUS_LABELS[nextStatus]}”?`,
+      `${adminUserName(linkedUser)}’s lesson on ${booking.date || 'the selected date'} will be updated. ${nextStatus === 'cancelled' ? 'Cancelling is final and releases this lesson time for another student.' : nextStatus === 'completed' ? 'Completed lessons become final and cannot be reopened.' : 'The lesson time remains reserved for this student.'}`,
+      () => updateBookingStatus(booking, nextStatus),
+    )
   }
 
   const handleConnectGoogleCalendar = async () => {
@@ -1725,10 +1764,10 @@ export default function AdminPage() {
                       <input className="admin-toolbar-input" aria-label="Search bookings" type="search" placeholder="Search student, plan, date, time…" value={bookingSearch} onChange={(e) => { setBookingSearch(e.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '280px' }} />
                       <select aria-label="Filter bookings by status" value={bookingStatusFilter} onChange={(event) => { setBookingStatusFilter(event.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '210px' }}>
                         <option value="all">All Booking Statuses</option>
-                        <option value="scheduled">Awaiting Confirmation</option>
-                        <option value="confirmed">Lesson Confirmed</option>
-                        <option value="completed">Lesson Completed</option>
-                        <option value="cancelled">Lesson Cancelled</option>
+                        <option value="scheduled">Pending</option>
+                        <option value="confirmed">Upcoming</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
                       </select>
                       <select aria-label="Filter production and potential test bookings" value={bookingDataFilter} onChange={event => { setBookingDataFilter(event.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '190px' }}>
                         <option value="all">All data</option>
@@ -1738,6 +1777,17 @@ export default function AdminPage() {
                       <select aria-label="Booking rows per page" value={bookingLimit} onChange={event => { setBookingLimit(event.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '105px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
                       {(bookingSearch || bookingStatusFilter !== 'all' || bookingDataFilter !== 'all') && <button type="button" onClick={() => { setBookingSearch(''); setBookingStatusFilter('all'); setBookingDataFilter('all'); setBookingPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                     </div>
+                  </div>
+                  <div role="note" aria-label="Booking status guide" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: '.65rem', margin: '0 0 1rem', padding: '.85rem 1rem', border: '1px solid #D9E5F2', borderRadius: '13px', background: '#F8FBFF' }}>
+                    {[
+                      ['scheduled', 'Booking exists and is waiting for final confirmation.'],
+                      ['confirmed', 'Lesson is confirmed, upcoming, and reserved.'],
+                      ['completed', 'Lesson date has passed or the lesson is finished.'],
+                      ['cancelled', 'Booking is closed and the lesson time is released.'],
+                    ].map(([status, description]) => {
+                      const meta = bookingStatusMeta({ status, date: status === 'completed' ? '2000-01-01' : '2999-01-01' }, todayStr)
+                      return <div key={status} style={{ minWidth: 0 }}><span style={{ display: 'inline-flex', padding: '.22rem .5rem', borderRadius: '999px', color: meta.color, background: meta.background, fontSize: '.68rem', fontWeight: 900, letterSpacing: '.035em', textTransform: 'uppercase' }}>{BOOKING_STATUS_LABELS[status]}</span><p style={{ margin: '.3rem 0 0', color: '#51677F', fontSize: '.76rem', lineHeight: 1.4 }}>{description}</p></div>
+                    })}
                   </div>
                   <div role="note" style={{ display: 'flex', alignItems: 'flex-start', gap: '.85rem', margin: '0 0 1rem', padding: '1rem 1.1rem', borderRadius: '14px', border: '1px solid #BFDBFE', background: 'linear-gradient(135deg,#EFF6FF,#FFFFFF 62%,#FFFBEA)', color: '#1E3A5F' }}>
                     <div aria-hidden="true" style={{ width: '38px', height: '38px', display: 'grid', placeItems: 'center', flexShrink: 0, borderRadius: '11px', background: '#fff', border: '1px solid #D9E5F4', boxShadow: '0 5px 15px rgba(15,65,120,.1)' }}>
@@ -1786,7 +1836,19 @@ export default function AdminPage() {
                               <td style={tdStyle}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</td>
                               <td style={tdStyle}>{displayedTime}</td>
                               <td style={tdStyle}>
-                                <span style={{ padding: '0.2rem 0.5rem', background: statusMeta.background, color: statusMeta.color, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>{statusMeta.label}</span>
+                                <select
+                                  aria-label={`Change booking status for ${adminUserName(u)} on ${b.date || ''}`}
+                                  title={['completed', 'cancelled'].includes(statusMeta.group) ? `${statusMeta.label} is a final status.` : 'Change this booking status'}
+                                  value={statusMeta.group}
+                                  disabled={bookingStatusUpdating === String(b._id) || ['completed', 'cancelled'].includes(statusMeta.group)}
+                                  onChange={event => handleBookingStatusChange(b, event.target.value)}
+                                  style={{ width: '100%', minWidth: '205px', minHeight: '40px', padding: '.45rem 2rem .45rem .65rem', border: `1px solid ${statusMeta.color}33`, borderRadius: '9px', background: statusMeta.background, color: statusMeta.color, fontSize: '.76rem', fontWeight: 900, cursor: ['completed', 'cancelled'].includes(statusMeta.group) ? 'not-allowed' : 'pointer' }}
+                                >
+                                  <option value="scheduled">Pending</option>
+                                  <option value="confirmed">Upcoming</option>
+                                  <option value="completed" disabled={String(b.date || '') > todayStr}>Completed</option>
+                                  <option value="cancelled">Cancelled</option>
+                                </select>
                               </td>
                               <td className="booking-actions-cell" style={tdStyle}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'nowrap' }}>

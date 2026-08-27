@@ -1386,6 +1386,27 @@ function canonicalAdminBookingStatus(booking, today = californiaDateKey()) {
   if (status === 'confirmed') return 'confirmed'
   return 'scheduled'
 }
+function validateAdminBookingStatusChange(booking, requestedStatus, today = californiaDateKey()) {
+  const nextStatus = normalizedBookingStatus(requestedStatus)
+  if (!['scheduled', 'confirmed', 'completed', 'cancelled'].includes(nextStatus)) {
+    throw new HttpError(400, 'Choose Pending, Confirmed, Completed, or Cancelled.')
+  }
+  const currentStatus = canonicalAdminBookingStatus(booking, today)
+  if (currentStatus === 'cancelled' && nextStatus !== 'cancelled') {
+    throw new HttpError(409, 'A cancelled booking is final and cannot be reopened. Create a new lesson booking instead.')
+  }
+  if (currentStatus === 'completed' && nextStatus !== 'completed') {
+    throw new HttpError(409, 'A completed or past lesson is final and cannot be changed.')
+  }
+  const bookingDate = cleanText(booking?.date, 10)
+  if (['scheduled', 'confirmed'].includes(nextStatus) && bookingDate < today) {
+    throw new HttpError(409, 'A past lesson cannot be changed back to Pending or Confirmed.')
+  }
+  if (nextStatus === 'completed' && bookingDate > today) {
+    throw new HttpError(409, 'A future lesson cannot be marked Completed before its lesson date.')
+  }
+  return nextStatus
+}
 const normalizedCourseStatus = (value) => cleanText(value || 'Enrolled', 40).toLowerCase()
 const courseCanAcceptMoreBookings = (course) => {
   const status = normalizedCourseStatus(course?.status)
@@ -4237,6 +4258,98 @@ app.put('/api/admin/users/:uid/role', async (req, res) => {
   }
 })
 
+app.put('/api/admin/bookings/:id/status', async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid booking id.')
+    const bookingId = new ObjectId(req.params.id)
+    const updatedBooking = await withMongoTransaction(async (session) => {
+      const booking = await bookingsCol.findOne({ _id: bookingId }, { session })
+      if (!booking) throw new HttpError(404, 'Booking not found.')
+      const status = validateAdminBookingStatusChange(booking, req.body?.status)
+      const now = new Date().toISOString()
+      const set = { status, updatedAt: now, statusUpdatedBy: req.auth.uid }
+      const unset = {}
+
+      if (status === 'confirmed') {
+        set.confirmedAt = booking.confirmedAt || now
+        unset.completedAt = ''
+        unset.cancelledAt = ''
+        unset.cancellationReason = ''
+      } else if (status === 'scheduled') {
+        unset.confirmedAt = ''
+        unset.completedAt = ''
+        unset.cancelledAt = ''
+        unset.cancellationReason = ''
+      } else if (status === 'completed') {
+        set.completedAt = booking.completedAt || now
+        unset.cancelledAt = ''
+        unset.cancellationReason = ''
+      } else if (status === 'cancelled') {
+        set.cancelledAt = booking.cancelledAt || now
+        set.cancellationReason = 'admin_status_change'
+        await bookingSlotsCol.deleteMany({ bookingId }, { session })
+
+        if (booking.userId && booking.courseId !== undefined && booking.courseId !== null && booking.courseId !== '') {
+          const profile = await usersCol.findOne({ uid: booking.userId }, { session, projection: { courses: 1 } })
+          const courses = Array.isArray(profile?.courses) ? profile.courses : []
+          let courseIndex = booking.enrollmentId
+            ? courses.findIndex(course => String(course?.enrollmentId || '') === String(booking.enrollmentId))
+            : -1
+          if (courseIndex < 0) courseIndex = findCourseEnrollmentIndex(courses, booking.courseId)
+          if (courseIndex >= 0) {
+            const targetSlotKey = bookingSlotKey(booking.date, booking.timeSlot)
+            const nextCourses = courses.map((course, index) => {
+              if (index !== courseIndex) return course
+              const pickupSlots = (Array.isArray(course?.pickupSlots) ? course.pickupSlots : []).filter(slot => {
+                const safeSlot = safeStoredPickupSlot(slot)
+                return !safeSlot || bookingSlotKey(safeSlot.date, safeSlot.time) !== targetSlotKey
+              })
+              return { ...course, pickupSlots, slotUsed: pickupSlots.length, slotMaximum: slotLimitForTier(course) }
+            })
+            await usersCol.updateOne({ uid: booking.userId }, { $set: { courses: nextCourses } }, { session })
+          }
+        }
+      }
+
+      if (['scheduled', 'confirmed'].includes(status)) {
+        const key = bookingSlotKey(booking.date, booking.timeSlot)
+        const existingLock = await bookingSlotsCol.findOne({ _id: key }, { session })
+        if (existingLock && String(existingLock.bookingId || '') !== String(bookingId)) {
+          throw new HttpError(409, 'This lesson time is already assigned to another booking.')
+        }
+        await bookingSlotsCol.updateOne(
+          { _id: key },
+          {
+            $set: {
+              date: booking.date,
+              timeSlot: booking.timeSlot,
+              userId: booking.userId,
+              courseId: booking.courseId,
+              bookingId,
+              status,
+              updatedAt: new Date(),
+            },
+            $setOnInsert: { createdAt: new Date() },
+          },
+          { upsert: true, session }
+        )
+      }
+
+      await bookingsCol.updateOne(
+        { _id: bookingId },
+        { $set: set, ...(Object.keys(unset).length ? { $unset: unset } : {}) },
+        { session }
+      )
+      return { ...booking, ...set, status }
+    })
+    await safelySyncBookingWithGoogleCalendar(updatedBooking)
+    res.json({ ok: true, booking: { ...updatedBooking, status: canonicalAdminBookingStatus(updatedBooking) } })
+  } catch (error) {
+    if (error instanceof HttpError) return res.status(error.status).json({ error: error.message })
+    return sendServerError(res, error, 'Admin booking status update failed')
+  }
+})
+
 app.delete('/api/admin/bookings/:id', async (req, res) => {
   try {
     if (!ObjectId.isValid(req.params.id)) return res.status(400).json({ error: 'Invalid booking id.' })
@@ -5347,6 +5460,7 @@ export {
   splitCheckoutItems,
   validateContinuationSlotCount,
   validateAvailabilitySlot,
+  validateAdminBookingStatusChange,
   slotLimitForTier,
 }
 export default app

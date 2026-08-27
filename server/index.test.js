@@ -31,6 +31,7 @@ const {
   splitCheckoutItems,
   validateContinuationSlotCount,
   validateAvailabilitySlot,
+  validateAdminBookingStatusChange,
 } = await import('./index.js')
 
 test('admin user details expose profile fields without passwords or private account data', () => {
@@ -245,6 +246,16 @@ test('admin bookings expose only the four canonical dashboard statuses', () => {
   assert.equal(canonicalAdminBookingStatus({ date: '2026-08-25', status: 'confirmed' }, today), 'confirmed')
   assert.equal(canonicalAdminBookingStatus({ date: '2026-08-23', status: 'confirmed' }, today), 'completed')
   assert.equal(canonicalAdminBookingStatus({ date: '2026-08-25', status: 'canceled' }, today), 'cancelled')
+})
+
+test('admin booking status changes protect final and future lesson states', () => {
+  const today = '2026-08-27'
+  assert.equal(validateAdminBookingStatusChange({ date: '2026-08-28', status: 'scheduled' }, 'confirmed', today), 'confirmed')
+  assert.equal(validateAdminBookingStatusChange({ date: today, status: 'confirmed' }, 'completed', today), 'completed')
+  assert.equal(validateAdminBookingStatusChange({ date: '2026-08-28', status: 'confirmed' }, 'cancelled', today), 'cancelled')
+  assert.throws(() => validateAdminBookingStatusChange({ date: '2026-08-28', status: 'confirmed' }, 'completed', today), /future lesson/i)
+  assert.throws(() => validateAdminBookingStatusChange({ date: '2026-08-26', status: 'confirmed' }, 'confirmed', today), /completed or past/i)
+  assert.throws(() => validateAdminBookingStatusChange({ date: '2026-08-28', status: 'cancelled' }, 'confirmed', today), /cancelled booking is final/i)
 })
 
 test('only the two DMV rental plans accept exact appointment times', () => {
