@@ -721,7 +721,7 @@ export default function AdminPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('tab') === 'account' || params.has('calendar')) setActiveTab('account')
-    if (params.get('calendar') === 'connected') setCalendarMsg('Google Calendar connected successfully. New confirmed lessons will sync automatically.')
+    if (params.get('calendar') === 'connected') setCalendarMsg('Google Calendar connected successfully. New active lessons will sync automatically.')
     if (params.get('calendar') === 'error') setCalendarErr(params.get('message') || 'Google Calendar connection failed. Please try again.')
     if (params.has('calendar') || params.has('tab')) {
       params.delete('calendar')

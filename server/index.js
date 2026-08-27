@@ -954,19 +954,46 @@ async function googleCalendarEventBody(booking) {
   const city = cleanText(course?.city || course?.location || booking?.location, 200)
   const cityZip = cleanText(course?.cityZip || booking?.cityZip, 10)
   const location = city ? `${city}, California${cityZip ? ` ${cityZip}` : ''}` : ''
+  const status = canonicalAdminBookingStatus(booking)
+  const statusMeta = {
+    scheduled: { label: 'Pending', title: '⏳ Pending Lesson', colorId: '5' },
+    confirmed: { label: 'Upcoming', title: '🚘 Driving Lesson', colorId: '9' },
+    completed: { label: 'Completed', title: '✅ Completed Lesson', colorId: '10' },
+    cancelled: { label: 'Cancelled', title: '❌ Cancelled Lesson', colorId: '11' },
+  }[status] || { label: 'Upcoming', title: '🚘 Driving Lesson', colorId: '9' }
+  const lessonDate = new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${booking.date}T12:00:00Z`))
+  const lessonTime = normalizeBookingTime(booking?.timeSlot)
   const description = [
+    'A PRECISION DRIVING SCHOOL',
+    '',
+    'STUDENT DETAILS',
     `Student: ${studentName}`,
-    studentEmail ? `Email: ${studentEmail}` : '',
-    profile?.phone ? `Phone: ${cleanText(profile.phone, 40)}` : '',
+    studentEmail ? `Email: ${studentEmail}` : null,
+    profile?.phone ? `Phone: ${cleanText(profile.phone, 40)}` : null,
+    '',
+    'LESSON DETAILS',
     `Plan: ${plan}`,
-    `Booking status: ${normalizedBookingStatus(booking.status) || 'confirmed'}`,
-    `Booking ID: ${String(booking._id)}`,
-  ].filter(Boolean).join('\n')
+    `Status: ${statusMeta.label}`,
+    `Date: ${lessonDate}`,
+    `Time: ${lessonTime} (Pacific Time)`,
+    location ? `Location: ${location}` : null,
+    '',
+    `Booking reference: ${String(booking._id)}`,
+    'Managed automatically by the A Precision admin dashboard.',
+  ].filter(line => line !== null).join('\n')
   return {
-    summary: `Driving Lesson — ${studentName}`,
+    summary: `${statusMeta.title} • ${studentName}`,
     description,
     ...(location ? { location } : {}),
     ...googleCalendarEventTimes(booking),
+    colorId: statusMeta.colorId,
+    transparency: 'opaque',
     reminders: {
       useDefault: false,
       overrides: [
