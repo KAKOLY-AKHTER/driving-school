@@ -177,6 +177,12 @@ export const api = {
   adminAddReview: (data) => request('/api/admin/reviews', { method: 'POST', body: JSON.stringify(data) }),
   adminUpdateReview: (id, data) => request(`/api/admin/reviews/${pathPart(id)}`, { method: 'PUT', body: JSON.stringify(data) }),
   adminDeleteReview: (id) => request(`/api/admin/reviews/${pathPart(id)}`, { method: 'DELETE' }),
+  adminUploadReviewImage: (file) => request('/api/admin/review-images', {
+    method: 'POST',
+    headers: { 'Content-Type': file.type },
+    body: file,
+    timeoutMs: 60_000,
+  }),
   getBlogs: (params = {}) => request(`/api/blogs?${new URLSearchParams(params)}`),
   getBlog: (slug) => request(`/api/blogs/${pathPart(slug)}`),
   adminBlogs: () => request('/api/admin/blogs'),

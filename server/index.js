@@ -560,6 +560,21 @@ function sanitizeReview(value, { partial = false } = {}) {
   if (!partial || value.rating !== undefined) output.rating = cleanInteger(value.rating, 5, 1, 5)
   if (!partial || value.order !== undefined) output.order = cleanInteger(value.order, 0, 0, 10_000)
   if (!partial || value.published !== undefined) output.published = value.published !== false
+  if (!partial || value.imageUrl !== undefined || value.imagePublicId !== undefined) {
+    const imageUrl = cleanHttpUrl(value.imageUrl)
+    const imagePublicId = normalizeReviewImagePublicId(value.imagePublicId)
+    if (imageUrl || imagePublicId) {
+      let isCloudinaryImage = false
+      try {
+        isCloudinaryImage = new URL(imageUrl).hostname === 'res.cloudinary.com'
+      } catch {}
+      if (!imageUrl || !imagePublicId || !isCloudinaryImage) {
+        throw new HttpError(400, 'Reviewer photos must be uploaded through the secure image uploader.')
+      }
+    }
+    output.imageUrl = imageUrl
+    output.imagePublicId = imagePublicId
+  }
   if (!partial && (!output.name || !output.text)) throw new HttpError(400, 'Reviewer name and review text are required.')
   if (partial && value.name !== undefined && !output.name) throw new HttpError(400, 'Reviewer name is required.')
   if (partial && value.text !== undefined && !output.text) throw new HttpError(400, 'Review text is required.')
@@ -574,10 +589,16 @@ const normalizeBlogSlug = value => cleanText(value, 180)
   .slice(0, 160)
 
 const CLOUDINARY_BLOG_FOLDER = 'a-precision-driving-school/blog'
+const CLOUDINARY_REVIEW_FOLDER = 'a-precision-driving-school/reviews'
 const normalizeBlogImagePublicId = (value) => {
   const publicId = cleanText(value, 500)
   if (!publicId) return ''
   return /^a-precision-driving-school\/blog\/[A-Za-z0-9_-]+$/.test(publicId) ? publicId : ''
+}
+const normalizeReviewImagePublicId = (value) => {
+  const publicId = cleanText(value, 500)
+  if (!publicId) return ''
+  return /^a-precision-driving-school\/reviews\/[A-Za-z0-9_-]+$/.test(publicId) ? publicId : ''
 }
 
 const BLOG_CONTENT_TAGS = [
@@ -4749,7 +4770,7 @@ app.get('/api/reviews', async (_req, res) => {
   try {
     const reviews = await reviewsCol.find({ published: true })
       .sort({ order: 1, createdAt: 1 })
-      .project({ name: 1, text: 1, rating: 1, order: 1 })
+      .project({ name: 1, text: 1, rating: 1, order: 1, imageUrl: 1 })
       .toArray()
     res.json(reviews)
   } catch (error) {
@@ -4781,13 +4802,19 @@ app.post('/api/admin/reviews', async (req, res) => {
 app.put('/api/admin/reviews/:id', async (req, res) => {
   try {
     if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid review id.')
+    const id = new ObjectId(req.params.id)
+    const existing = await reviewsCol.findOne({ _id: id })
+    if (!existing) return res.status(404).json({ error: 'Review not found.' })
     const doc = { ...sanitizeReview(req.body), updatedAt: new Date().toISOString(), updatedBy: req.auth.uid }
     const review = await reviewsCol.findOneAndUpdate(
-      { _id: new ObjectId(req.params.id) },
+      { _id: id },
       { $set: doc },
       { returnDocument: 'after' }
     )
-    if (!review) return res.status(404).json({ error: 'Review not found.' })
+    if (existing.imagePublicId && existing.imagePublicId !== doc.imagePublicId) {
+      deleteCloudinaryReviewImage(existing.imagePublicId)
+        .catch(error => console.warn('Replaced review image cleanup failed:', error?.message || error))
+    }
     res.json({ ok: true, review })
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message })
@@ -4798,8 +4825,12 @@ app.put('/api/admin/reviews/:id', async (req, res) => {
 app.delete('/api/admin/reviews/:id', async (req, res) => {
   try {
     if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid review id.')
-    const result = await reviewsCol.deleteOne({ _id: new ObjectId(req.params.id) })
-    if (!result.deletedCount) return res.status(404).json({ error: 'Review not found.' })
+    const deleted = await reviewsCol.findOneAndDelete({ _id: new ObjectId(req.params.id) })
+    if (!deleted) return res.status(404).json({ error: 'Review not found.' })
+    if (deleted.imagePublicId) {
+      deleteCloudinaryReviewImage(deleted.imagePublicId)
+        .catch(error => console.warn('Deleted review image cleanup failed:', error?.message || error))
+    }
     res.json({ ok: true })
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message })
@@ -4905,17 +4936,17 @@ const cloudinaryUploadError = (status) => {
   return 'Cloudinary could not store this image. Please try again.'
 }
 
-async function uploadBlogImageToCloudinary(buffer, contentType) {
+async function uploadImageToCloudinary(buffer, contentType, { folder, prefix, normalizePublicId }) {
   const config = getCloudinaryConfig()
   const extension = BLOG_IMAGE_TYPES[contentType]
   const params = {
     overwrite: 'false',
-    public_id: `${CLOUDINARY_BLOG_FOLDER}/blog-${randomUUID()}`,
+    public_id: `${folder}/${prefix}-${randomUUID()}`,
     timestamp: Math.floor(Date.now() / 1000),
     unique_filename: 'false',
   }
   const form = new FormData()
-  form.append('file', new Blob([buffer], { type: contentType }), `blog-image.${extension}`)
+  form.append('file', new Blob([buffer], { type: contentType }), `${prefix}-image.${extension}`)
   appendSignedCloudinaryParams(form, params, config)
 
   const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(config.cloudName)}/image/upload`, {
@@ -4932,15 +4963,15 @@ async function uploadBlogImageToCloudinary(buffer, contentType) {
   }
 
   const imageUrl = cleanHttpUrl(data.secure_url)
-  const imagePublicId = normalizeBlogImagePublicId(data.public_id)
+  const imagePublicId = normalizePublicId(data.public_id)
   if (!imageUrl || !imagePublicId || new URL(imageUrl).hostname !== 'res.cloudinary.com') {
     throw new Error('Cloudinary returned an invalid image response.')
   }
   return { imageUrl, imagePublicId }
 }
 
-async function deleteCloudinaryBlogImage(publicId) {
-  const imagePublicId = normalizeBlogImagePublicId(publicId)
+async function deleteCloudinaryImage(publicId, normalizePublicId) {
+  const imagePublicId = normalizePublicId(publicId)
   if (!imagePublicId) return false
   const config = getCloudinaryConfig()
   const params = {
@@ -4961,6 +4992,19 @@ async function deleteCloudinaryBlogImage(publicId) {
   }
   return data.result === 'ok'
 }
+
+const uploadBlogImageToCloudinary = (buffer, contentType) => uploadImageToCloudinary(buffer, contentType, {
+  folder: CLOUDINARY_BLOG_FOLDER,
+  prefix: 'blog',
+  normalizePublicId: normalizeBlogImagePublicId,
+})
+const uploadReviewImageToCloudinary = (buffer, contentType) => uploadImageToCloudinary(buffer, contentType, {
+  folder: CLOUDINARY_REVIEW_FOLDER,
+  prefix: 'review',
+  normalizePublicId: normalizeReviewImagePublicId,
+})
+const deleteCloudinaryBlogImage = publicId => deleteCloudinaryImage(publicId, normalizeBlogImagePublicId)
+const deleteCloudinaryReviewImage = publicId => deleteCloudinaryImage(publicId, normalizeReviewImagePublicId)
 
 function detectBlogImageType(buffer) {
   if (!Buffer.isBuffer(buffer)) return ''
@@ -4989,6 +5033,29 @@ app.post(
       if (error.status) return res.status(error.status).json({ error: error.message })
       console.error('Blog image upload failed:', error?.message || error)
       res.status(502).json({ error: error?.publicMessage || 'Cloudinary could not store this image. Please try again.' })
+    }
+  },
+)
+
+app.post(
+  '/api/admin/review-images',
+  express.raw({ type: Object.keys(BLOG_IMAGE_TYPES), limit: '4mb' }),
+  async (req, res) => {
+    try {
+      if (!Buffer.isBuffer(req.body) || !req.body.length) throw new HttpError(400, 'Choose a JPG, PNG, or WebP reviewer photo to upload.')
+
+      const detectedType = detectBlogImageType(req.body)
+      const requestedType = String(req.get('content-type') || '').split(';')[0].trim().toLowerCase()
+      if (!detectedType || detectedType !== requestedType || !BLOG_IMAGE_TYPES[detectedType]) {
+        throw new HttpError(400, 'The selected reviewer photo is not a valid JPG, PNG, or WebP image.')
+      }
+
+      const uploaded = await uploadReviewImageToCloudinary(req.body, detectedType)
+      res.status(201).json({ ok: true, ...uploaded })
+    } catch (error) {
+      if (error.status) return res.status(error.status).json({ error: error.message })
+      console.error('Review image upload failed:', error?.message || error)
+      res.status(502).json({ error: error?.publicMessage || 'Cloudinary could not store this reviewer photo. Please try again.' })
     }
   },
 )

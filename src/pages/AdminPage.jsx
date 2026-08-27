@@ -176,9 +176,11 @@ function TablePager({ page, pages, total, label, onChange }) {
 }
 
 function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle, requestConfirmation, setMessage }) {
-  const emptyForm = { name: '', text: '', rating: 5, order: 0, published: true }
+  const emptyForm = { name: '', text: '', rating: 5, order: 0, published: true, imageUrl: '', imagePublicId: '' }
   const [reviews, setReviews] = useState([])
   const [form, setForm] = useState(emptyForm)
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState('')
   const [editingId, setEditingId] = useState('')
   const [search, setSearch] = useState('')
   const [visibility, setVisibility] = useState('all')
@@ -200,7 +202,36 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
     return () => { active = false }
   }, [loadVersion])
 
-  const resetForm = () => { setForm(emptyForm); setEditingId('') }
+  const resetForm = () => {
+    setForm(emptyForm)
+    setEditingId('')
+    setImageFile(null)
+    setImagePreview('')
+  }
+
+  const chooseReviewImage = event => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setMessage('Choose a JPG, PNG, or WebP reviewer photo.')
+      return
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      setMessage('Reviewer photo must be 4 MB or smaller.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => setImagePreview(String(reader.result || ''))
+    reader.readAsDataURL(file)
+    setImageFile(file)
+  }
+
+  const removeReviewImage = () => {
+    setImageFile(null)
+    setImagePreview('')
+    setForm(current => ({ ...current, imageUrl: '', imagePublicId: '' }))
+  }
 
   const saveReview = async event => {
     event.preventDefault()
@@ -210,7 +241,17 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
     }
     setSaving(true)
     try {
-      const payload = { ...form, name: form.name.trim(), text: form.text.trim(), rating: Number(form.rating), order: Number(form.order), published: Boolean(form.published) }
+      let uploadedImage = null
+      if (imageFile) uploadedImage = await api.adminUploadReviewImage(imageFile)
+      const payload = {
+        ...form,
+        ...(uploadedImage ? { imageUrl: uploadedImage.imageUrl, imagePublicId: uploadedImage.imagePublicId } : {}),
+        name: form.name.trim(),
+        text: form.text.trim(),
+        rating: Number(form.rating),
+        order: Number(form.order),
+        published: Boolean(form.published),
+      }
       if (editingId) await api.adminUpdateReview(editingId, payload)
       else await api.adminAddReview(payload)
       setMessage(editingId ? 'Customer review updated.' : 'Customer review added.')
@@ -225,7 +266,9 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
 
   const startEdit = review => {
     setEditingId(String(review._id))
-    setForm({ name: review.name || '', text: review.text || '', rating: Number(review.rating) || 5, order: Number(review.order) || 0, published: review.published !== false })
+    setForm({ name: review.name || '', text: review.text || '', rating: Number(review.rating) || 5, order: Number(review.order) || 0, published: review.published !== false, imageUrl: review.imageUrl || '', imagePublicId: review.imagePublicId || '' })
+    setImageFile(null)
+    setImagePreview(review.imageUrl || '')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -263,6 +306,19 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
           <div><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>{editingId ? 'Edit Customer Review' : 'Add Customer Review'}</h2><p style={{ margin: '.35rem 0 0', color: '#334155' }}>Published reviews appear automatically in the Home page testimonial carousel.</p></div>
           <span style={{ padding: '.35rem .65rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontSize: '.8rem', fontWeight: 800 }}>{publishedCount} Published</span>
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', marginBottom: '1rem', border: '1px solid #D9E4F2', borderRadius: '14px', background: 'linear-gradient(135deg,#F8FBFF,#FFFDF5)', flexWrap: 'wrap' }}>
+          {imagePreview || form.imageUrl
+            ? <img src={imagePreview || form.imageUrl} alt={`${form.name || 'Reviewer'} preview`} style={{ width: '78px', height: '78px', borderRadius: '50%', objectFit: 'cover', border: `3px solid ${GOLD}`, boxShadow: '0 8px 24px rgba(1,69,168,.14)' }} />
+            : <div aria-label="Reviewer photo placeholder" style={{ width: '78px', height: '78px', borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg,#0755AE,#0A2A5E)', color: '#fff', border: `3px solid ${GOLD}`, fontSize: '1.2rem', fontWeight: 900 }}>{form.name.trim().split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase() || '?'}</div>}
+          <div style={{ flex: '1 1 260px' }}>
+            <div style={{ ...labelStyle, marginBottom: '.3rem' }}>Reviewer Photo</div>
+            <div style={{ color: '#475569', fontSize: '.9rem', lineHeight: 1.5 }}>Upload a clear square portrait. JPG, PNG or WebP, maximum 4 MB.</div>
+            <div style={{ display: 'flex', gap: '.55rem', marginTop: '.65rem', flexWrap: 'wrap' }}>
+              <label style={{ minHeight: '40px', padding: '.55rem .85rem', border: `1.5px solid ${SKY_BLUE}`, borderRadius: '9px', background: '#fff', color: SKY_BLUE, fontWeight: 850, cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}><input type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" onChange={chooseReviewImage} style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0 }} />{imagePreview || form.imageUrl ? 'Replace Photo' : 'Upload Photo'}</label>
+              {(imagePreview || form.imageUrl) && <button type="button" onClick={removeReviewImage} style={{ minHeight: '40px', padding: '.55rem .85rem', border: '1px solid #FCA5A5', borderRadius: '9px', background: '#fff', color: '#B91C1C', fontWeight: 800, cursor: 'pointer' }}>Remove Photo</button>}
+            </div>
+          </div>
+        </div>
         <div className="admin-grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 180px 180px', gap: '1rem' }}>
           <div><label htmlFor="review-name" style={labelStyle}>Reviewer Name</label><input id="review-name" maxLength={120} required value={form.name} onChange={event => setForm(current => ({ ...current, name: event.target.value }))} placeholder="Customer name" style={inputStyle} /></div>
           <div><label htmlFor="review-rating" style={labelStyle}>Rating</label><select id="review-rating" value={form.rating} onChange={event => setForm(current => ({ ...current, rating: Number(event.target.value) }))} style={inputStyle}>{[5,4,3,2,1].map(rating => <option key={rating} value={rating}>{rating} Star{rating === 1 ? '' : 's'}</option>)}</select></div>
@@ -276,8 +332,8 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
       <div style={cardStyle}>
         <div className="admin-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Customer Reviews ({filtered.length} of {reviews.length})</h2><div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}><input className="admin-toolbar-input" type="search" aria-label="Search reviews" placeholder="Search reviewer or text…" value={search} onChange={event => setSearch(event.target.value)} style={{ ...inputStyle, width: '240px' }} /><select aria-label="Filter review visibility" value={visibility} onChange={event => setVisibility(event.target.value)} style={{ ...inputStyle, width: '145px' }}><option value="all">All reviews</option><option value="published">Published</option><option value="draft">Draft</option></select></div></div>
         {error && <div role="alert" style={{ padding: '.85rem 1rem', marginBottom: '1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{error} <button type="button" onClick={() => setLoadVersion(value => value + 1)} style={{ marginLeft: '.6rem', border: 0, background: 'transparent', color: '#0755AE', fontWeight: 850, cursor: 'pointer' }}>Retry</button></div>}
-        <div className="admin-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr><th scope="col" style={thStyle}>Display Order</th><th scope="col" style={thStyle}>Reviewer Name</th><th scope="col" style={thStyle}>Review Message</th><th scope="col" style={thStyle}>Star Rating</th><th scope="col" style={thStyle}>Website Visibility</th><th scope="col" className="admin-actions-cell" style={thStyle}>Manage Review</th></tr></thead><tbody>
-          {filtered.map(review => <tr key={review._id}><td style={tdStyle}>{review.order ?? 0}</td><td style={{ ...tdStyle, fontWeight: 800, whiteSpace: 'nowrap' }}>{review.name}</td><td style={{ ...tdStyle, minWidth: '280px', maxWidth: '520px', lineHeight: 1.5 }}>{review.text}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap', color: GOLD_DEEP, fontWeight: 900 }}>{'★'.repeat(Number(review.rating) || 5)}<span style={{ color: '#CBD5E1' }}>{'★'.repeat(5 - (Number(review.rating) || 5))}</span></td><td style={tdStyle}><button type="button" onClick={() => togglePublished(review)} style={{ padding: '.3rem .6rem', border: `1px solid ${review.published !== false ? '#BBF7D0' : '#CBD5E1'}`, borderRadius: '999px', background: review.published !== false ? '#F0FDF4' : '#F8FAFC', color: review.published !== false ? '#15803D' : '#64748B', fontWeight: 800, cursor: 'pointer' }}>{review.published !== false ? 'Published' : 'Draft'}</button></td><td className="admin-actions-cell" style={tdStyle}><div style={{ display: 'flex', gap: '.4rem' }}><button type="button" onClick={() => startEdit(review)} style={{ padding: '.4rem .65rem', border: `1.5px solid ${SKY_BLUE}`, borderRadius: '8px', background: '#fff', color: SKY_BLUE, fontWeight: 800, cursor: 'pointer' }}>Edit</button><AdminDeleteIconButton label={`Delete customer review from ${review.name || 'customer'}`} title="Delete customer review" onClick={() => requestConfirmation('Delete customer review?', `${review.name}'s testimonial will be permanently removed.`, () => deleteReview(review))} /></div></td></tr>)}
+        <div className="admin-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr><th scope="col" style={thStyle}>Display Order</th><th scope="col" style={thStyle}>Reviewer</th><th scope="col" style={thStyle}>Review Message</th><th scope="col" style={thStyle}>Star Rating</th><th scope="col" style={thStyle}>Website Visibility</th><th scope="col" className="admin-actions-cell" style={thStyle}>Manage Review</th></tr></thead><tbody>
+          {filtered.map(review => <tr key={review._id}><td style={tdStyle}>{review.order ?? 0}</td><td style={{ ...tdStyle, fontWeight: 800, whiteSpace: 'nowrap' }}><div style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>{review.imageUrl ? <img src={review.imageUrl} alt={`${review.name} reviewer`} loading="lazy" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #D9E4F2', boxShadow: '0 5px 14px rgba(15,45,87,.1)' }} /> : <span aria-hidden="true" style={{ width: '48px', height: '48px', borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg,#0755AE,#0A2A5E)', color: '#fff', border: `2px solid ${GOLD}`, fontWeight: 900 }}>{String(review.name || '?').trim().split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase()}</span>}<span>{review.name}</span></div></td><td style={{ ...tdStyle, minWidth: '280px', maxWidth: '520px', lineHeight: 1.5 }}>{review.text}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap', color: GOLD_DEEP, fontWeight: 900 }}>{'★'.repeat(Number(review.rating) || 5)}<span style={{ color: '#CBD5E1' }}>{'★'.repeat(5 - (Number(review.rating) || 5))}</span></td><td style={tdStyle}><button type="button" onClick={() => togglePublished(review)} style={{ padding: '.3rem .6rem', border: `1px solid ${review.published !== false ? '#BBF7D0' : '#CBD5E1'}`, borderRadius: '999px', background: review.published !== false ? '#F0FDF4' : '#F8FAFC', color: review.published !== false ? '#15803D' : '#64748B', fontWeight: 800, cursor: 'pointer' }}>{review.published !== false ? 'Published' : 'Draft'}</button></td><td className="admin-actions-cell" style={tdStyle}><div style={{ display: 'flex', gap: '.4rem' }}><button type="button" onClick={() => startEdit(review)} style={{ padding: '.4rem .65rem', border: `1.5px solid ${SKY_BLUE}`, borderRadius: '8px', background: '#fff', color: SKY_BLUE, fontWeight: 800, cursor: 'pointer' }}>Edit</button><AdminDeleteIconButton label={`Delete customer review from ${review.name || 'customer'}`} title="Delete customer review" onClick={() => requestConfirmation('Delete customer review?', `${review.name}'s testimonial will be permanently removed.`, () => deleteReview(review))} /></div></td></tr>)}
           {!loading && !filtered.length && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{search || visibility !== 'all' ? 'No reviews match the selected filters.' : 'No customer reviews yet.'}</td></tr>}
           {loading && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>Loading reviews…</td></tr>}
         </tbody></table></div><TablePager page={safeReviewPage} pages={reviewPages} total={matchedReviews.length} label="reviews" onChange={setReviewPage} />

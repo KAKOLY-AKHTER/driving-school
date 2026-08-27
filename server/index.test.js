@@ -198,10 +198,22 @@ test('customer reviews require clear text and constrain rating, order, and visib
     rating: 5,
     order: 0,
     published: false,
+    imageUrl: '',
+    imagePublicId: '',
   })
   assert.throws(
     () => sanitizeReview({ name: '', text: 'Helpful', rating: 5 }),
     error => error.status === 400 && /name and review text/i.test(error.message)
+  )
+  assert.deepEqual(sanitizeReview({
+    name: 'Jane Doe',
+    text: 'Excellent instructor.',
+    imageUrl: 'https://res.cloudinary.com/demo/image/upload/reviewer.jpg',
+    imagePublicId: 'a-precision-driving-school/reviews/review-123',
+  }).imagePublicId, 'a-precision-driving-school/reviews/review-123')
+  assert.throws(
+    () => sanitizeReview({ name: 'Jane Doe', text: 'Helpful', imageUrl: 'https://example.com/reviewer.jpg', imagePublicId: 'a-precision-driving-school/reviews/review-123' }),
+    error => error.status === 400 && /secure image uploader/i.test(error.message)
   )
 })
 

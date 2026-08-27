@@ -53,6 +53,18 @@ function getIndices(active, total) {
   return [prev, active, next]
 }
 
+function ReviewerAvatar({ review, size = 42 }) {
+  const [imageFailed, setImageFailed] = useState(false)
+  useEffect(() => setImageFailed(false), [review?.imageUrl])
+  const initials = String(review?.name || '?').trim().split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase()
+
+  if (review?.imageUrl && !imageFailed) {
+    return <img src={review.imageUrl} alt={`${review.name} customer`} loading="lazy" onError={() => setImageFailed(true)} style={{ width: `${size}px`, height: `${size}px`, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${GOLD}`, boxShadow: '0 7px 18px rgba(1,69,168,.14)', flexShrink: 0 }} />
+  }
+
+  return <span aria-hidden="true" style={{ width: `${size}px`, height: `${size}px`, borderRadius: '50%', display: 'grid', placeItems: 'center', background: `linear-gradient(135deg,${SKY_BLUE},#0A2A5E)`, color: '#fff', border: `2px solid ${GOLD}`, fontFamily: 'var(--font-body)', fontSize: `${Math.max(11, size * .3)}px`, fontWeight: 850, letterSpacing: '.04em', flexShrink: 0 }}>{initials}</span>
+}
+
 function CoverCard({ review, position, isPaused }) {
   const isCenter = position === 'center'
 
@@ -171,17 +183,21 @@ function CoverCard({ review, position, isPaused }) {
         />
       )}
 
-      <div
-        style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: isCenter ? '0.7rem' : '0.58rem',
-          letterSpacing: '0.2em',
-          textTransform: 'uppercase',
-          color: isCenter ? GOLD_DEEP : '#8899aa',
-          fontWeight: 700,
-        }}
-      >
-        {review.name}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isCenter ? '.7rem' : '.5rem' }}>
+        <ReviewerAvatar review={review} size={isCenter ? 46 : 34} />
+        <div
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: isCenter ? '0.7rem' : '0.58rem',
+            letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+            color: isCenter ? GOLD_DEEP : '#8899aa',
+            fontWeight: 700,
+            textAlign: 'left',
+          }}
+        >
+          {review.name}
+        </div>
       </div>
     </div>
   )
