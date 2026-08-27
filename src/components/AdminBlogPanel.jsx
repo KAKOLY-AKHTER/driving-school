@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import AdminDeleteIconButton from "./AdminDeleteIconButton";
 
 const emptyForm = {
   title: "",
@@ -764,21 +765,11 @@ export default function AdminBlogPanel({
                         >
                           Edit
                         </button>
-                        <button
-                          type="button"
+                        <AdminDeleteIconButton
+                          label={`Delete blog post ${post.title || ""}`.trim()}
+                          title="Delete blog post"
                           onClick={() => deletePost(post)}
-                          style={{
-                            padding: ".38rem .6rem",
-                            border: "1px solid #DC2626",
-                            borderRadius: 8,
-                            background: "#fff",
-                            color: "#DC2626",
-                            fontWeight: 850,
-                            cursor: "pointer",
-                          }}
-                        >
-                          Delete
-                        </button>
+                        />
                       </div>
                     </td>
                   </tr>

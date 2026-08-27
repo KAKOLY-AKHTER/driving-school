@@ -51,14 +51,14 @@ const statusStyle = (status) => {
 
 function StatusChip({ children }) {
   const style = statusStyle(children)
-  return <span style={{ ...style, display: 'inline-flex', maxWidth: '100%', padding: '.28rem .58rem', borderRadius: '999px', fontSize: '.72rem', lineHeight: 1.25, fontWeight: 900, letterSpacing: '.045em', textTransform: 'uppercase', whiteSpace: 'normal' }}>{displayValue(children)}</span>
+  return <span style={{ ...style, display: 'inline-flex', maxWidth: '100%', padding: '.32rem .68rem', borderRadius: '999px', fontSize: '.82rem', lineHeight: 1.3, fontWeight: 900, letterSpacing: '.035em', textTransform: 'uppercase', whiteSpace: 'normal' }}>{displayValue(children)}</span>
 }
 
 function InfoField({ label, value, mono = false, wide = false }) {
   return (
     <div style={{ minWidth: 0, gridColumn: wide ? '1 / -1' : undefined, display: 'grid', gridTemplateColumns: 'minmax(125px, .7fr) minmax(0, 1.3fr)', alignItems: 'start', gap: '.8rem', padding: '.78rem .2rem', borderBottom: '1px solid #E7EDF4' }}>
-      <div style={{ color: '#58708C', fontSize: '.78rem', fontWeight: 800 }}>{label}</div>
-      <div style={{ color: '#102F55', fontSize: '.92rem', fontWeight: 700, fontFamily: mono ? 'var(--font-mono)' : 'var(--font-body)', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{displayValue(value)}</div>
+      <div style={{ color: '#496581', fontSize: '.88rem', lineHeight: 1.45, fontWeight: 800 }}>{label}</div>
+      <div style={{ color: '#102F55', fontSize: '1rem', lineHeight: 1.5, fontWeight: 750, fontFamily: mono ? 'var(--font-mono)' : 'var(--font-body)', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{displayValue(value)}</div>
     </div>
   )
 }
@@ -67,8 +67,8 @@ function Section({ title, subtitle, children }) {
   return (
     <section style={{ border: '1px solid #DCE7F3', borderRadius: '14px', background: '#fff', overflow: 'hidden', boxShadow: '0 8px 24px rgba(10,42,94,.045)' }}>
       <div style={{ padding: '1rem 1.15rem', borderBottom: '1px solid #DCE7F3', background: '#fff' }}>
-        <h3 style={{ margin: 0, color: '#0A2A5E', fontFamily: 'var(--font-display)', fontSize: '1.08rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '.55rem' }}><span aria-hidden="true" style={{ width: '5px', height: '22px', borderRadius: '99px', background: GOLD }} />{title}</h3>
-        {subtitle && <p style={{ margin: '.25rem 0 0 .85rem', color: '#58708C', fontSize: '.8rem' }}>{subtitle}</p>}
+        <h3 style={{ margin: 0, color: '#0A2A5E', fontFamily: 'var(--font-display)', fontSize: '1.2rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '.55rem' }}><span aria-hidden="true" style={{ width: '5px', height: '24px', borderRadius: '99px', background: GOLD }} />{title}</h3>
+        {subtitle && <p style={{ margin: '.3rem 0 0 .85rem', color: '#526C88', fontSize: '.9rem', lineHeight: 1.45 }}>{subtitle}</p>}
       </div>
       <div style={{ padding: '1rem' }}>{children}</div>
     </section>
@@ -85,12 +85,12 @@ function HistoryTable({ columns, rows, empty }) {
     <div style={{ width: '100%', overflowX: 'auto', border: '1px solid #E2E8F0', borderRadius: '12px' }}>
       <table style={{ width: '100%', minWidth: '680px', borderCollapse: 'collapse' }}>
         <thead>
-          <tr>{columns.map(column => <th key={column.label} scope="col" style={{ padding: '.75rem', color: '#102F55', background: '#F1F6FC', borderBottom: '1px solid #D8E4F0', fontSize: '.8rem', fontWeight: 900, textAlign: 'left', whiteSpace: 'nowrap' }}>{column.label}</th>)}</tr>
+          <tr>{columns.map(column => <th key={column.label} scope="col" style={{ padding: '.8rem', color: '#102F55', background: '#F1F6FC', borderBottom: '1px solid #D8E4F0', fontSize: '.9rem', fontWeight: 900, textAlign: 'left', whiteSpace: 'nowrap' }}>{column.label}</th>)}</tr>
         </thead>
         <tbody>
           {rows.map((row, index) => (
             <tr key={row.id || row.enrollmentId || row.providerCaptureId || `${index}`}>
-              {columns.map(column => <td key={column.label} style={{ padding: '.78rem', color: '#263F5F', borderBottom: index === rows.length - 1 ? 0 : '1px solid #E8EEF5', fontSize: '.86rem', verticalAlign: 'top', overflowWrap: 'anywhere' }}>{column.render(row)}</td>)}
+              {columns.map(column => <td key={column.label} style={{ padding: '.82rem', color: '#263F5F', borderBottom: index === rows.length - 1 ? 0 : '1px solid #E8EEF5', fontSize: '.95rem', lineHeight: 1.5, verticalAlign: 'top', overflowWrap: 'anywhere' }}>{column.render(row)}</td>)}
             </tr>
           ))}
         </tbody>
@@ -148,8 +148,8 @@ export default function AdminUserDetailsModal({ dialog, onClose, onRetry }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '.85rem', minWidth: 0 }}>
             <div aria-hidden="true" style={{ width: '48px', height: '48px', flex: '0 0 auto', display: 'grid', placeItems: 'center', borderRadius: '50%', color: NAVY, background: `linear-gradient(135deg,#FFF4B8,${GOLD})`, fontSize: '1.05rem', fontWeight: 900 }}>{initials}</div>
             <div style={{ minWidth: 0 }}>
-              <h2 id="student-details-title" style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: 'clamp(1.15rem,2vw,1.55rem)', color: '#fff' }}>Complete Student Profile</h2>
-              <p style={{ margin: '.2rem 0 0', color: '#D9E9FF', overflowWrap: 'anywhere' }}>{name} · {profile.email || user.email || 'Email not recorded'}</p>
+              <h2 id="student-details-title" style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: 'clamp(1.35rem,2.2vw,1.75rem)', lineHeight: 1.2, color: '#fff' }}>Complete Student Profile</h2>
+              <p style={{ margin: '.25rem 0 0', color: '#D9E9FF', fontSize: '1rem', lineHeight: 1.45, overflowWrap: 'anywhere' }}>{name} · {profile.email || user.email || 'Email not recorded'}</p>
             </div>
           </div>
           <button autoFocus type="button" aria-label="Close complete student profile" onClick={onClose} style={{ width: '42px', height: '42px', flex: '0 0 auto', borderRadius: '50%', border: '1px solid rgba(255,255,255,.45)', background: 'rgba(255,255,255,.12)', color: '#fff', fontSize: '1.65rem', lineHeight: 1, cursor: 'pointer' }}>&times;</button>
@@ -170,7 +170,7 @@ export default function AdminUserDetailsModal({ dialog, onClose, onRetry }) {
                 {[
                   ['Courses', summary.courses], ['Bookings', summary.bookings], ['Payments', summary.payments],
                   ['Refunds', summary.refunds], ['Cart Items', summary.cartItems], ['Support Threads', summary.supportThreads],
-                ].map(([label, value], index) => <div key={label} style={{ minWidth: '125px', flex: '1 1 125px', padding: '.8rem 1rem', borderRight: index < 5 ? '1px solid #E6EDF5' : 0, textAlign: 'center' }}><strong style={{ display: 'block', color: BLUE, fontFamily: 'var(--font-display)', fontSize: '1.3rem' }}>{Number(value || 0)}</strong><span style={{ color: '#526A86', fontSize: '.74rem', fontWeight: 800 }}>{label}</span></div>)}
+                ].map(([label, value], index) => <div key={label} style={{ minWidth: '125px', flex: '1 1 125px', padding: '.9rem 1rem', borderRight: index < 5 ? '1px solid #E6EDF5' : 0, textAlign: 'center' }}><strong style={{ display: 'block', color: BLUE, fontFamily: 'var(--font-display)', fontSize: '1.45rem', lineHeight: 1.2 }}>{Number(value || 0)}</strong><span style={{ display: 'block', marginTop: '.2rem', color: '#496581', fontSize: '.84rem', lineHeight: 1.35, fontWeight: 800 }}>{label}</span></div>)}
               </div>
 
               <nav aria-label="Student profile sections" style={{ display: 'flex', gap: '.35rem', overflowX: 'auto', padding: '.35rem', border: '1px solid #DCE7F3', borderRadius: '12px', background: '#EDF3F9' }}>
@@ -182,7 +182,7 @@ export default function AdminUserDetailsModal({ dialog, onClose, onRetry }) {
                   ['activity', 'Activity'],
                 ].map(([key, label]) => {
                   const selected = activeTab === key
-                  return <button key={key} type="button" aria-pressed={selected} onClick={() => setActiveTab(key)} style={{ minHeight: '42px', flex: '0 0 auto', padding: '.58rem .9rem', border: selected ? `1px solid ${BLUE}` : '1px solid transparent', borderRadius: '9px', background: selected ? '#fff' : 'transparent', color: selected ? BLUE : '#49627E', boxShadow: selected ? '0 4px 13px rgba(1,69,168,.1)' : 'none', fontSize: '.84rem', fontWeight: 900, cursor: 'pointer' }}>{label}</button>
+                  return <button key={key} type="button" aria-pressed={selected} onClick={() => setActiveTab(key)} style={{ minHeight: '46px', flex: '0 0 auto', padding: '.65rem 1rem', border: selected ? `1px solid ${BLUE}` : '1px solid transparent', borderRadius: '9px', background: selected ? '#fff' : 'transparent', color: selected ? BLUE : '#49627E', boxShadow: selected ? '0 4px 13px rgba(1,69,168,.1)' : 'none', fontSize: '.95rem', lineHeight: 1.35, fontWeight: 900, cursor: 'pointer' }}>{label}</button>
                 })}
               </nav>
 
