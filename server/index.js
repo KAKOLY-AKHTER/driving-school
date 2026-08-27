@@ -6,6 +6,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { MongoClient, ObjectId } from 'mongodb'
 import Groq from 'groq-sdk'
+import sanitizeHtml from 'sanitize-html'
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
 import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
@@ -579,11 +580,59 @@ const normalizeBlogImagePublicId = (value) => {
   return /^a-precision-driving-school\/blog\/[A-Za-z0-9_-]+$/.test(publicId) ? publicId : ''
 }
 
+const BLOG_CONTENT_TAGS = [
+  'p', 'br', 'h2', 'h3', 'strong', 'b', 'em', 'i', 'u', 's', 'strike',
+  'ul', 'ol', 'li', 'blockquote', 'a', 'hr', 'code', 'pre',
+]
+
+const sanitizeBlogContent = (value) => sanitizeHtml(String(value || '').trim(), {
+  allowedTags: BLOG_CONTENT_TAGS,
+  allowedAttributes: {
+    '*': ['style'],
+    a: ['href', 'target', 'rel'],
+  },
+  allowedStyles: {
+    '*': {
+      'text-align': [/^(?:left|center|right)$/],
+    },
+  },
+  allowedSchemes: ['http', 'https', 'mailto', 'tel'],
+  allowProtocolRelative: false,
+  enforceHtmlBoundary: true,
+  transformTags: {
+    a: (_tagName, attributes) => ({
+      tagName: 'a',
+      attribs: {
+        ...attributes,
+        target: '_blank',
+        rel: 'noopener noreferrer nofollow',
+      },
+    }),
+  },
+})
+
+const blogContentText = (value) => sanitizeHtml(
+  String(value || '').replace(/<\/(?:p|h2|h3|li|blockquote|pre)>|<br\s*\/?\s*>/gi, ' '),
+  {
+  allowedTags: [],
+  allowedAttributes: {},
+  },
+).replace(/\s+/g, ' ').trim()
+
+const safeBlogDocument = (value) => ({
+  ...value,
+  content: sanitizeBlogContent(value?.content),
+})
+
 function sanitizeBlog(value) {
   if (!isPlainObject(value)) throw new HttpError(400, 'A valid blog post is required.')
   const title = cleanText(value.title, 180).replace(/\s+/g, ' ')
-  const content = cleanText(value.content, 30_000)
-  const excerpt = cleanText(value.excerpt, 420) || content.slice(0, 260).trim()
+  const rawContent = String(value.content || '').trim()
+  if (rawContent.length > 100_000) throw new HttpError(400, 'Blog content is too large.')
+  const content = sanitizeBlogContent(rawContent)
+  const contentText = blogContentText(content)
+  if (contentText.length > 30_000) throw new HttpError(400, 'Blog content must be 30,000 characters or fewer.')
+  const excerpt = cleanText(value.excerpt, 420) || contentText.slice(0, 260).trim()
   const category = cleanText(value.category, 80).replace(/\s+/g, ' ') || 'Driving Tips'
   const author = cleanText(value.author, 120).replace(/\s+/g, ' ') || 'A Precision Driving School'
   const imageUrl = cleanHttpUrl(value.imageUrl)
@@ -599,7 +648,7 @@ function sanitizeBlog(value) {
     if (Number.isNaN(parsed.getTime())) throw new HttpError(400, 'Please enter a valid publication date.')
     publishedAt = parsed.toISOString()
   }
-  if (!title || !content) throw new HttpError(400, 'Blog title and content are required.')
+  if (!title || !contentText) throw new HttpError(400, 'Blog title and content are required.')
   if (value.imageUrl && !imageUrl) throw new HttpError(400, 'Blog image must use a secure HTTPS URL.')
   if (value.imagePublicId && !imagePublicId) throw new HttpError(400, 'Blog image reference is invalid.')
   return {
@@ -615,7 +664,7 @@ function sanitizeBlog(value) {
     featured,
     order,
     publishedAt,
-    readingMinutes: Math.max(1, Math.ceil(content.split(/\s+/).filter(Boolean).length / 200)),
+    readingMinutes: Math.max(1, Math.ceil(contentText.split(/\s+/).filter(Boolean).length / 200)),
   }
 }
 function sanitizeSettings(value) {
@@ -4800,7 +4849,7 @@ app.get('/api/blogs/:slug', async (req, res) => {
       publishedAt: { $lte: new Date().toISOString() },
     }, { projection: { updatedBy: 0 } })
     if (!post) return res.status(404).json({ error: 'Blog post not found.' })
-    res.json(post)
+    res.json(safeBlogDocument(post))
   } catch (error) {
     sendServerError(res, error, 'Blog post lookup failed')
   }
@@ -4809,7 +4858,7 @@ app.get('/api/blogs/:slug', async (req, res) => {
 app.get('/api/admin/blogs', async (_req, res) => {
   try {
     const posts = await blogsCol.find().sort({ featured: -1, order: 1, publishedAt: -1, createdAt: -1 }).toArray()
-    res.json(posts)
+    res.json(posts.map(safeBlogDocument))
   } catch (error) {
     sendServerError(res, error, 'Admin blog lookup failed')
   }

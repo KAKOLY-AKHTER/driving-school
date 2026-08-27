@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import AdminDeleteIconButton from "./AdminDeleteIconButton";
+import AdminRichTextEditor from "./AdminRichTextEditor";
 
 const emptyForm = {
   title: "",
@@ -540,33 +541,17 @@ export default function AdminBlogPanel({
           <label htmlFor="blog-content" style={labelStyle}>
             Article content *
           </label>
-          <textarea
+          <AdminRichTextEditor
             id="blog-content"
-            rows="12"
-            maxLength={30000}
-            style={{ ...inputStyle, resize: "vertical", lineHeight: 1.65 }}
             value={form.content}
-            onChange={(event) =>
+            onChange={(content) =>
               setForm((current) => ({
                 ...current,
-                content: event.target.value,
+                content,
               }))
-            }
-            placeholder={
-              "Write the full article here.\n\nUse a blank line between paragraphs."
             }
             required
           />
-          <small
-            style={{
-              display: "block",
-              marginTop: ".35rem",
-              color: "#334155",
-              textAlign: "right",
-            }}
-          >
-            {form.content.length.toLocaleString()} / 30,000
-          </small>
         </div>
         <div
           className="admin-grid-responsive"

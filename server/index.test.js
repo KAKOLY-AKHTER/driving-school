@@ -235,6 +235,20 @@ test('blog posts sanitize publish data and require secure images', () => {
     () => sanitizeBlog({ title: 'Unsafe image id', content: 'Text', imagePublicId: 'another-folder/image' }),
     error => error.status === 400 && /image reference is invalid/i.test(error.message)
   )
+
+  const richPost = sanitizeBlog({
+    title: 'Formatted article',
+    content: '<h2 style="text-align: center" onclick="alert(1)">Safe heading</h2><p><strong>Useful</strong> advice <a href="javascript:alert(1)">here</a>.</p><script>alert(1)</script>',
+  })
+  assert.match(richPost.content, /<h2 style="text-align:center">Safe heading<\/h2>/)
+  assert.match(richPost.content, /<strong>Useful<\/strong>/)
+  assert.doesNotMatch(richPost.content, /onclick|javascript:|<script/i)
+  assert.equal(richPost.excerpt, 'Safe heading Useful advice here.')
+
+  assert.throws(
+    () => sanitizeBlog({ title: 'Empty formatted article', content: '<p><br></p>' }),
+    error => error.status === 400 && /title and content are required/i.test(error.message)
+  )
 })
 
 test('blog image uploads accept real JPG, PNG, and WebP signatures only', () => {
