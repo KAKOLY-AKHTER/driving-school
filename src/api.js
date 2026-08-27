@@ -156,6 +156,12 @@ export const api = {
   getBlogs: (params = {}) => request(`/api/blogs?${new URLSearchParams(params)}`),
   getBlog: (slug) => request(`/api/blogs/${pathPart(slug)}`),
   adminBlogs: () => request('/api/admin/blogs'),
+  adminUploadBlogImage: (file) => request('/api/admin/blog-images', {
+    method: 'POST',
+    headers: { 'Content-Type': file.type },
+    body: file,
+    timeoutMs: 60_000,
+  }),
   adminAddBlog: (data) => request('/api/admin/blogs', { method: 'POST', body: JSON.stringify(data) }),
   adminUpdateBlog: (id, data) => request(`/api/admin/blogs/${pathPart(id)}`, { method: 'PUT', body: JSON.stringify(data) }),
   adminDeleteBlog: (id) => request(`/api/admin/blogs/${pathPart(id)}`, { method: 'DELETE' }),

@@ -9,6 +9,7 @@ import Groq from 'groq-sdk'
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
 import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
+import { getStorage } from 'firebase-admin/storage'
 
 const serverDirectory = path.dirname(fileURLToPath(import.meta.url))
 // Resolve configuration relative to this file so local authentication works
@@ -731,7 +732,9 @@ function getFirebaseAdminAuth() {
     || process.env.VITE_FIREBASE_PROJECT_ID
   if (!projectId) throw new Error('FIREBASE_PROJECT_ID is required for API authentication.')
 
+  const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET
   const options = { projectId }
+  if (storageBucket) options.storageBucket = storageBucket
   if (serviceAccount) {
     options.credential = cert({
       projectId,
@@ -4805,6 +4808,68 @@ app.get('/api/admin/blogs', async (_req, res) => {
   }
 })
 
+const BLOG_IMAGE_TYPES = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+}
+
+function detectBlogImageType(buffer) {
+  if (!Buffer.isBuffer(buffer)) return ''
+  if (buffer.length >= 3 && buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) return 'image/jpeg'
+  if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))) return 'image/png'
+  if (buffer.length >= 12 && buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP') return 'image/webp'
+  return ''
+}
+
+app.post(
+  '/api/admin/blog-images',
+  express.raw({ type: Object.keys(BLOG_IMAGE_TYPES), limit: '4mb' }),
+  async (req, res) => {
+    try {
+      if (!Buffer.isBuffer(req.body) || !req.body.length) throw new HttpError(400, 'Choose a JPG, PNG, or WebP image to upload.')
+
+      const detectedType = detectBlogImageType(req.body)
+      const requestedType = String(req.get('content-type') || '').split(';')[0].trim().toLowerCase()
+      if (!detectedType || detectedType !== requestedType || !BLOG_IMAGE_TYPES[detectedType]) {
+        throw new HttpError(400, 'The selected file is not a valid JPG, PNG, or WebP image.')
+      }
+
+      getFirebaseAdminAuth()
+      const firebaseApp = getApps()[0]
+      const configuredBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET
+      if (!configuredBucket) throw new HttpError(503, 'Firebase Storage is not configured for blog images.')
+
+      const bucket = getStorage(firebaseApp).bucket(configuredBucket)
+      const extension = BLOG_IMAGE_TYPES[detectedType]
+      const objectPath = `blog-images/${new Date().toISOString().slice(0, 10)}/${randomUUID()}.${extension}`
+      const downloadToken = randomUUID()
+      const file = bucket.file(objectPath)
+
+      await file.save(req.body, {
+        resumable: false,
+        validation: 'crc32c',
+        metadata: {
+          contentType: detectedType,
+          cacheControl: 'public, max-age=31536000, immutable',
+          metadata: {
+            firebaseStorageDownloadTokens: downloadToken,
+            uploadedBy: req.auth.uid,
+          },
+        },
+      })
+
+      const encodedBucket = encodeURIComponent(bucket.name)
+      const encodedPath = encodeURIComponent(objectPath)
+      const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${encodedBucket}/o/${encodedPath}?alt=media&token=${downloadToken}`
+      res.status(201).json({ ok: true, imageUrl })
+    } catch (error) {
+      if (error.status) return res.status(error.status).json({ error: error.message })
+      sendServerError(res, error, 'Blog image upload failed')
+    }
+  },
+)
+
 app.post('/api/admin/blogs', async (req, res) => {
   try {
     const now = new Date().toISOString()
@@ -5477,6 +5542,7 @@ export {
   refundedPaymentCents,
   sanitizeLocation,
   sanitizeBlog,
+  detectBlogImageType,
   sanitizeCoupon,
   sanitizePricing,
   sanitizeReview,

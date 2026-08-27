@@ -14,6 +14,7 @@ const {
   escapeEmailHtml,
   findPayPalPaymentForRefund,
   decryptCalendarToken,
+  detectBlogImageType,
   encryptCalendarToken,
   googleCalendarEventTimes,
   isFinalRefundStatus,
@@ -215,6 +216,13 @@ test('blog posts sanitize publish data and require secure images', () => {
     () => sanitizeBlog({ title: 'Unsafe image', content: 'Text', imageUrl: 'http://example.com/image.jpg' }),
     error => error.status === 400 && /secure HTTPS URL/i.test(error.message)
   )
+})
+
+test('blog image uploads accept real JPG, PNG, and WebP signatures only', () => {
+  assert.equal(detectBlogImageType(Buffer.from([0xFF, 0xD8, 0xFF, 0xE0])), 'image/jpeg')
+  assert.equal(detectBlogImageType(Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])), 'image/png')
+  assert.equal(detectBlogImageType(Buffer.from('RIFF0000WEBP', 'ascii')), 'image/webp')
+  assert.equal(detectBlogImageType(Buffer.from('<script>alert(1)</script>')), '')
 })
 
 test('admin availability accepts only valid future dates and the five public lesson times', () => {

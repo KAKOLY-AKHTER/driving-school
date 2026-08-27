@@ -17,6 +17,9 @@ const emptyForm = {
   order: 0,
 };
 
+const MAX_BLOG_IMAGE_BYTES = 4 * 1024 * 1024;
+const BLOG_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
 const localDateTimeValue = (value) => {
   if (!value) return "";
   const date = new Date(value);
@@ -65,6 +68,10 @@ export default function AdminBlogPanel({
   const [limit, setLimit] = useState(10);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
+  const [imageInputKey, setImageInputKey] = useState(0);
   const [error, setError] = useState("");
   const [version, setVersion] = useState(0);
 
@@ -88,6 +95,12 @@ export default function AdminBlogPanel({
       active = false;
     };
   }, [version]);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
+    };
+  }, [imagePreview]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -113,7 +126,34 @@ export default function AdminBlogPanel({
   const reset = () => {
     setEditingId("");
     setForm(emptyForm);
+    setImageFile(null);
+    setImagePreview("");
+    setImageInputKey((current) => current + 1);
     setError("");
+  };
+
+  const selectImage = (file) => {
+    if (!file) return;
+    if (!BLOG_IMAGE_TYPES.has(file.type)) {
+      setError("Choose a JPG, PNG, or WebP image.");
+      setImageInputKey((current) => current + 1);
+      return;
+    }
+    if (file.size > MAX_BLOG_IMAGE_BYTES) {
+      setError("The blog image must be 4 MB or smaller.");
+      setImageInputKey((current) => current + 1);
+      return;
+    }
+    setError("");
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview("");
+    setImageInputKey((current) => current + 1);
+    setForm((current) => ({ ...current, imageUrl: "" }));
   };
 
   const editPost = (post) => {
@@ -131,6 +171,9 @@ export default function AdminBlogPanel({
       publishedAt: localDateTimeValue(post.publishedAt),
       order: Number(post.order) || 0,
     });
+    setImageFile(null);
+    setImagePreview(post.imageUrl || "");
+    setImageInputKey((current) => current + 1);
     setError("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -144,6 +187,13 @@ export default function AdminBlogPanel({
     setSaving(true);
     setError("");
     try {
+      let imageUrl = form.imageUrl.trim();
+      if (imageFile) {
+        setUploadingImage(true);
+        const uploaded = await api.adminUploadBlogImage(imageFile);
+        imageUrl = uploaded?.imageUrl || "";
+        if (!imageUrl) throw new Error("The image upload did not return a usable image.");
+      }
       const payload = {
         ...form,
         title: form.title.trim(),
@@ -152,7 +202,7 @@ export default function AdminBlogPanel({
         content: form.content.trim(),
         category: form.category.trim(),
         author: form.author.trim(),
-        imageUrl: form.imageUrl.trim(),
+        imageUrl,
         publishedAt: form.publishedAt
           ? new Date(form.publishedAt).toISOString()
           : "",
@@ -166,6 +216,7 @@ export default function AdminBlogPanel({
     } catch (saveError) {
       setError(saveError?.message || "Blog post could not be saved.");
     } finally {
+      setUploadingImage(false);
       setSaving(false);
     }
   };
@@ -360,27 +411,106 @@ export default function AdminBlogPanel({
           </div>
         </div>
         <div style={{ marginTop: "1rem" }}>
-          <label htmlFor="blog-image" style={labelStyle}>
-            Secure image URL
-          </label>
-          <input
-            id="blog-image"
-            type="url"
-            style={inputStyle}
-            value={form.imageUrl}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                imageUrl: event.target.value,
-              }))
-            }
-            placeholder="https://example.com/driving-photo.jpg"
-          />
-          <small
-            style={{ display: "block", marginTop: ".35rem", color: "#334155" }}
+          <span style={labelStyle}>Featured image</span>
+          <div
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              selectImage(event.dataTransfer.files?.[0]);
+            }}
+            style={{
+              marginTop: ".45rem",
+              display: "grid",
+              gridTemplateColumns: imagePreview ? "minmax(180px, 300px) 1fr" : "1fr",
+              gap: "1rem",
+              alignItems: "center",
+              padding: "1rem",
+              border: "1.5px dashed #9DB8D8",
+              borderRadius: 14,
+              background: "linear-gradient(135deg,#F8FBFF,#FFFFFF 65%,#FFFBEB)",
+            }}
           >
-            Optional. Use a clear landscape image hosted at an HTTPS address.
-          </small>
+            {imagePreview && (
+              <img
+                src={imagePreview}
+                alt="Selected blog preview"
+                style={{
+                  width: "100%",
+                  aspectRatio: "16 / 9",
+                  display: "block",
+                  objectFit: "cover",
+                  borderRadius: 11,
+                  border: "1px solid #D7E3F0",
+                  background: "#E2E8F0",
+                }}
+              />
+            )}
+            <div>
+              <input
+                key={imageInputKey}
+                id="blog-image"
+                type="file"
+                disabled={saving}
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(event) => selectImage(event.target.files?.[0])}
+                style={{
+                  position: "absolute",
+                  width: 1,
+                  height: 1,
+                  padding: 0,
+                  margin: -1,
+                  overflow: "hidden",
+                  clip: "rect(0, 0, 0, 0)",
+                  whiteSpace: "nowrap",
+                  border: 0,
+                }}
+              />
+              <p style={{ margin: "0 0 .7rem", color: "#1E3A5F", fontWeight: 800 }}>
+                {imageFile ? imageFile.name : imagePreview ? "Current blog image" : "Upload a landscape image"}
+              </p>
+              <p style={{ margin: "0 0 .85rem", color: "#52677F", fontSize: ".88rem", lineHeight: 1.5 }}>
+                JPG, PNG or WebP · maximum 4 MB · 16:9 landscape recommended. You may also drag and drop the file here.
+              </p>
+              <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap" }}>
+                <label
+                  htmlFor="blog-image"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minHeight: 42,
+                    padding: ".6rem .9rem",
+                    borderRadius: 9,
+                    background: "#0145A8",
+                    color: "#fff",
+                    fontWeight: 850,
+                    cursor: saving ? "wait" : "pointer",
+                  }}
+                >
+                  {imagePreview ? "Replace image" : "Choose image"}
+                </label>
+                {imagePreview && (
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={removeImage}
+                    style={{
+                      minHeight: 42,
+                      padding: ".6rem .9rem",
+                      border: "1px solid #CBD5E1",
+                      borderRadius: 9,
+                      background: "#fff",
+                      color: "#475569",
+                      fontWeight: 800,
+                      cursor: saving ? "wait" : "pointer",
+                    }}
+                  >
+                    Remove image
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
         <div style={{ marginTop: "1rem" }}>
           <label htmlFor="blog-excerpt" style={labelStyle}>
@@ -545,7 +675,7 @@ export default function AdminBlogPanel({
               opacity: saving ? 0.65 : 1,
             }}
           >
-            {saving ? "Saving…" : editingId ? "Update post" : "Create post"}
+            {uploadingImage ? "Uploading image…" : saving ? "Saving…" : editingId ? "Update post" : "Create post"}
           </button>
           <button
             type="button"
