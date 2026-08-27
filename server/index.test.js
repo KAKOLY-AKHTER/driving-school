@@ -199,6 +199,7 @@ test('blog posts sanitize publish data and require secure images', () => {
     category: '  Driving Tips  ',
     author: '  School Team  ',
     imageUrl: 'https://example.com/driving.jpg',
+    imagePublicId: 'a-precision-driving-school/blog/blog-123',
     published: true,
     featured: true,
     order: -10,
@@ -212,9 +213,14 @@ test('blog posts sanitize publish data and require secure images', () => {
   assert.equal(post.order, 0)
   assert.equal(post.published, true)
   assert.equal(post.featured, true)
+  assert.equal(post.imagePublicId, 'a-precision-driving-school/blog/blog-123')
   assert.throws(
     () => sanitizeBlog({ title: 'Unsafe image', content: 'Text', imageUrl: 'http://example.com/image.jpg' }),
     error => error.status === 400 && /secure HTTPS URL/i.test(error.message)
+  )
+  assert.throws(
+    () => sanitizeBlog({ title: 'Unsafe image id', content: 'Text', imagePublicId: 'another-folder/image' }),
+    error => error.status === 400 && /image reference is invalid/i.test(error.message)
   )
 })
 

@@ -9,7 +9,6 @@ import Groq from 'groq-sdk'
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
 import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
-import { getStorage } from 'firebase-admin/storage'
 
 const serverDirectory = path.dirname(fileURLToPath(import.meta.url))
 // Resolve configuration relative to this file so local authentication works
@@ -573,6 +572,13 @@ const normalizeBlogSlug = value => cleanText(value, 180)
   .replace(/^-+|-+$/g, '')
   .slice(0, 160)
 
+const CLOUDINARY_BLOG_FOLDER = 'a-precision-driving-school/blog'
+const normalizeBlogImagePublicId = (value) => {
+  const publicId = cleanText(value, 500)
+  if (!publicId) return ''
+  return /^a-precision-driving-school\/blog\/[A-Za-z0-9_-]+$/.test(publicId) ? publicId : ''
+}
+
 function sanitizeBlog(value) {
   if (!isPlainObject(value)) throw new HttpError(400, 'A valid blog post is required.')
   const title = cleanText(value.title, 180).replace(/\s+/g, ' ')
@@ -581,6 +587,7 @@ function sanitizeBlog(value) {
   const category = cleanText(value.category, 80).replace(/\s+/g, ' ') || 'Driving Tips'
   const author = cleanText(value.author, 120).replace(/\s+/g, ' ') || 'A Precision Driving School'
   const imageUrl = cleanHttpUrl(value.imageUrl)
+  const imagePublicId = normalizeBlogImagePublicId(value.imagePublicId)
   const slug = normalizeBlogSlug(value.slug)
   const published = value.published === true
   const featured = value.featured === true
@@ -594,6 +601,7 @@ function sanitizeBlog(value) {
   }
   if (!title || !content) throw new HttpError(400, 'Blog title and content are required.')
   if (value.imageUrl && !imageUrl) throw new HttpError(400, 'Blog image must use a secure HTTPS URL.')
+  if (value.imagePublicId && !imagePublicId) throw new HttpError(400, 'Blog image reference is invalid.')
   return {
     title,
     slug,
@@ -602,6 +610,7 @@ function sanitizeBlog(value) {
     category,
     author,
     imageUrl,
+    imagePublicId,
     published,
     featured,
     order,
@@ -732,9 +741,7 @@ function getFirebaseAdminAuth() {
     || process.env.VITE_FIREBASE_PROJECT_ID
   if (!projectId) throw new Error('FIREBASE_PROJECT_ID is required for API authentication.')
 
-  const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET
   const options = { projectId }
-  if (storageBucket) options.storageBucket = storageBucket
   if (serviceAccount) {
     options.credential = cert({
       projectId,
@@ -4814,6 +4821,68 @@ const BLOG_IMAGE_TYPES = {
   'image/webp': 'webp',
 }
 
+const getCloudinaryConfig = () => {
+  const cloudName = String(process.env.CLOUDINARY_CLOUD_NAME || '').trim()
+  const apiKey = String(process.env.CLOUDINARY_API_KEY || '').trim()
+  const apiSecret = String(process.env.CLOUDINARY_API_SECRET || '').trim()
+  if (!cloudName || !apiKey || !apiSecret) {
+    throw new HttpError(503, 'Blog image storage is not configured. Add the Cloudinary environment variables and redeploy.')
+  }
+  if (!/^[a-z0-9_-]+$/i.test(cloudName)) throw new HttpError(503, 'The configured Cloudinary cloud name is invalid.')
+  return { cloudName, apiKey, apiSecret }
+}
+
+const cloudinaryAuthorization = ({ apiKey, apiSecret }) => `Basic ${Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')}`
+
+async function uploadBlogImageToCloudinary(buffer, contentType) {
+  const config = getCloudinaryConfig()
+  const extension = BLOG_IMAGE_TYPES[contentType]
+  const form = new FormData()
+  form.append('file', new Blob([buffer], { type: contentType }), `blog-image.${extension}`)
+  form.append('public_id', `${CLOUDINARY_BLOG_FOLDER}/blog-${randomUUID()}`)
+  form.append('overwrite', 'false')
+  form.append('unique_filename', 'false')
+
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(config.cloudName)}/image/upload`, {
+    method: 'POST',
+    headers: { Authorization: cloudinaryAuthorization(config) },
+    body: form,
+    signal: AbortSignal.timeout(45_000),
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok || !data.secure_url || !data.public_id) {
+    const reason = cleanText(data?.error?.message, 300) || `Cloudinary returned status ${response.status}.`
+    throw new Error(`Cloudinary upload rejected: ${reason}`)
+  }
+
+  const imageUrl = cleanHttpUrl(data.secure_url)
+  const imagePublicId = normalizeBlogImagePublicId(data.public_id)
+  if (!imageUrl || !imagePublicId || new URL(imageUrl).hostname !== 'res.cloudinary.com') {
+    throw new Error('Cloudinary returned an invalid image response.')
+  }
+  return { imageUrl, imagePublicId }
+}
+
+async function deleteCloudinaryBlogImage(publicId) {
+  const imagePublicId = normalizeBlogImagePublicId(publicId)
+  if (!imagePublicId) return false
+  const config = getCloudinaryConfig()
+  const form = new FormData()
+  form.append('public_id', imagePublicId)
+  form.append('invalidate', 'true')
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(config.cloudName)}/image/destroy`, {
+    method: 'POST',
+    headers: { Authorization: cloudinaryAuthorization(config) },
+    body: form,
+    signal: AbortSignal.timeout(30_000),
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok || !['ok', 'not found'].includes(data.result)) {
+    throw new Error(cleanText(data?.error?.message, 300) || `Cloudinary deletion returned status ${response.status}.`)
+  }
+  return data.result === 'ok'
+}
+
 function detectBlogImageType(buffer) {
   if (!Buffer.isBuffer(buffer)) return ''
   if (buffer.length >= 3 && buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) return 'image/jpeg'
@@ -4835,37 +4904,12 @@ app.post(
         throw new HttpError(400, 'The selected file is not a valid JPG, PNG, or WebP image.')
       }
 
-      getFirebaseAdminAuth()
-      const firebaseApp = getApps()[0]
-      const configuredBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET
-      if (!configuredBucket) throw new HttpError(503, 'Firebase Storage is not configured for blog images.')
-
-      const bucket = getStorage(firebaseApp).bucket(configuredBucket)
-      const extension = BLOG_IMAGE_TYPES[detectedType]
-      const objectPath = `blog-images/${new Date().toISOString().slice(0, 10)}/${randomUUID()}.${extension}`
-      const downloadToken = randomUUID()
-      const file = bucket.file(objectPath)
-
-      await file.save(req.body, {
-        resumable: false,
-        validation: 'crc32c',
-        metadata: {
-          contentType: detectedType,
-          cacheControl: 'public, max-age=31536000, immutable',
-          metadata: {
-            firebaseStorageDownloadTokens: downloadToken,
-            uploadedBy: req.auth.uid,
-          },
-        },
-      })
-
-      const encodedBucket = encodeURIComponent(bucket.name)
-      const encodedPath = encodeURIComponent(objectPath)
-      const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${encodedBucket}/o/${encodedPath}?alt=media&token=${downloadToken}`
-      res.status(201).json({ ok: true, imageUrl })
+      const uploaded = await uploadBlogImageToCloudinary(req.body, detectedType)
+      res.status(201).json({ ok: true, ...uploaded })
     } catch (error) {
       if (error.status) return res.status(error.status).json({ error: error.message })
-      sendServerError(res, error, 'Blog image upload failed')
+      console.error('Blog image upload failed:', error?.message || error)
+      res.status(502).json({ error: 'Cloudinary could not store this image. Verify the Cloudinary key permissions and try again.' })
     }
   },
 )
@@ -4911,6 +4955,10 @@ app.put('/api/admin/blogs/:id', async (req, res) => {
       updatedBy: req.auth.uid,
     }
     const post = await blogsCol.findOneAndUpdate({ _id: id }, { $set: doc }, { returnDocument: 'after' })
+    if (existing.imagePublicId && existing.imagePublicId !== doc.imagePublicId) {
+      deleteCloudinaryBlogImage(existing.imagePublicId)
+        .catch(error => console.warn('Replaced blog image cleanup failed:', error?.message || error))
+    }
     res.json({ ok: true, post })
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message })
@@ -4922,8 +4970,12 @@ app.put('/api/admin/blogs/:id', async (req, res) => {
 app.delete('/api/admin/blogs/:id', async (req, res) => {
   try {
     if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid blog post id.')
-    const result = await blogsCol.deleteOne({ _id: new ObjectId(req.params.id) })
-    if (!result.deletedCount) return res.status(404).json({ error: 'Blog post not found.' })
+    const deleted = await blogsCol.findOneAndDelete({ _id: new ObjectId(req.params.id) })
+    if (!deleted) return res.status(404).json({ error: 'Blog post not found.' })
+    if (deleted.imagePublicId) {
+      deleteCloudinaryBlogImage(deleted.imagePublicId)
+        .catch(error => console.warn('Deleted blog image cleanup failed:', error?.message || error))
+    }
     res.json({ ok: true })
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message })

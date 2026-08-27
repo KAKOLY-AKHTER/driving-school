@@ -11,6 +11,7 @@ const emptyForm = {
   category: "Driving Tips",
   author: "A Precision Driving School",
   imageUrl: "",
+  imagePublicId: "",
   published: false,
   featured: false,
   publishedAt: "",
@@ -153,7 +154,7 @@ export default function AdminBlogPanel({
     setImageFile(null);
     setImagePreview("");
     setImageInputKey((current) => current + 1);
-    setForm((current) => ({ ...current, imageUrl: "" }));
+    setForm((current) => ({ ...current, imageUrl: "", imagePublicId: "" }));
   };
 
   const editPost = (post) => {
@@ -166,6 +167,7 @@ export default function AdminBlogPanel({
       category: post.category || "Driving Tips",
       author: post.author || "A Precision Driving School",
       imageUrl: post.imageUrl || "",
+      imagePublicId: post.imagePublicId || "",
       published: Boolean(post.published),
       featured: Boolean(post.featured),
       publishedAt: localDateTimeValue(post.publishedAt),
@@ -188,11 +190,13 @@ export default function AdminBlogPanel({
     setError("");
     try {
       let imageUrl = form.imageUrl.trim();
+      let imagePublicId = form.imagePublicId.trim();
       if (imageFile) {
         setUploadingImage(true);
         const uploaded = await api.adminUploadBlogImage(imageFile);
         imageUrl = uploaded?.imageUrl || "";
-        if (!imageUrl) throw new Error("The image upload did not return a usable image.");
+        imagePublicId = uploaded?.imagePublicId || "";
+        if (!imageUrl || !imagePublicId) throw new Error("The image upload did not return a usable image.");
       }
       const payload = {
         ...form,
@@ -203,6 +207,7 @@ export default function AdminBlogPanel({
         category: form.category.trim(),
         author: form.author.trim(),
         imageUrl,
+        imagePublicId,
         publishedAt: form.publishedAt
           ? new Date(form.publishedAt).toISOString()
           : "",
