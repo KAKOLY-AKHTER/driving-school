@@ -1683,7 +1683,7 @@ export default function AdminPage() {
                           <th scope="col" style={thStyle}>Login Email</th>
                           <th scope="col" style={thStyle}>Phone Number</th>
                           <th scope="col" style={thStyle}>Account Status</th>
-                          <th scope="col" className="admin-actions-cell" style={thStyle}>Student Profile</th>
+                          <th scope="col" className="admin-actions-cell" style={thStyle}>User Details</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1703,7 +1703,7 @@ export default function AdminPage() {
                               <span style={{ display: 'inline-flex', padding: '.28rem .6rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 800 }}>Registered</span>
                             </td>
                             <td className="admin-actions-cell" style={tdStyle}>
-                              <button type="button" onClick={() => openUserDetails(u)} aria-label={`View complete profile for ${adminUserName(u)}`} style={{ minHeight: '40px', padding: '.52rem .78rem', border: `1.5px solid ${SKY_BLUE}`, borderRadius: '9px', background: '#fff', color: SKY_BLUE, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 5px 14px rgba(1,69,168,.08)' }}>View Full Profile</button>
+                              <button type="button" onClick={() => openUserDetails(u)} aria-label={`View details for ${adminUserName(u)}`} style={{ minHeight: '40px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '.48rem', padding: '.52rem .82rem', border: `1.5px solid ${SKY_BLUE}`, borderRadius: '9px', background: '#fff', color: SKY_BLUE, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 5px 14px rgba(1,69,168,.08)' }}>View Details <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button>
                             </td>
                           </tr>
                         ))}

@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 const BLUE = '#0145A8'
 const NAVY = '#0A2A5E'
 const GOLD = '#FDBC01'
@@ -54,19 +56,19 @@ function StatusChip({ children }) {
 
 function InfoField({ label, value, mono = false, wide = false }) {
   return (
-    <div style={{ minWidth: 0, gridColumn: wide ? '1 / -1' : undefined, padding: '.8rem .9rem', border: '1px solid #E1EAF4', borderRadius: '12px', background: '#F8FBFF' }}>
-      <div style={{ color: '#55708F', fontSize: '.72rem', fontWeight: 900, letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: '.28rem' }}>{label}</div>
-      <div style={{ color: '#102F55', fontSize: '.95rem', fontWeight: 700, fontFamily: mono ? 'var(--font-mono)' : 'var(--font-body)', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{displayValue(value)}</div>
+    <div style={{ minWidth: 0, gridColumn: wide ? '1 / -1' : undefined, display: 'grid', gridTemplateColumns: 'minmax(125px, .7fr) minmax(0, 1.3fr)', alignItems: 'start', gap: '.8rem', padding: '.78rem .2rem', borderBottom: '1px solid #E7EDF4' }}>
+      <div style={{ color: '#58708C', fontSize: '.78rem', fontWeight: 800 }}>{label}</div>
+      <div style={{ color: '#102F55', fontSize: '.92rem', fontWeight: 700, fontFamily: mono ? 'var(--font-mono)' : 'var(--font-body)', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{displayValue(value)}</div>
     </div>
   )
 }
 
 function Section({ title, subtitle, children }) {
   return (
-    <section style={{ border: '1px solid #DCE7F3', borderRadius: '16px', background: '#fff', overflow: 'hidden' }}>
-      <div style={{ padding: '1rem 1.1rem', borderBottom: '1px solid #DCE7F3', background: 'linear-gradient(135deg,#F8FBFF,#FFFDF5)' }}>
-        <h3 style={{ margin: 0, color: '#0A2A5E', fontFamily: 'var(--font-display)', fontSize: '1.08rem', fontWeight: 800 }}>{title}</h3>
-        {subtitle && <p style={{ margin: '.25rem 0 0', color: '#58708C', fontSize: '.8rem' }}>{subtitle}</p>}
+    <section style={{ border: '1px solid #DCE7F3', borderRadius: '14px', background: '#fff', overflow: 'hidden', boxShadow: '0 8px 24px rgba(10,42,94,.045)' }}>
+      <div style={{ padding: '1rem 1.15rem', borderBottom: '1px solid #DCE7F3', background: '#fff' }}>
+        <h3 style={{ margin: 0, color: '#0A2A5E', fontFamily: 'var(--font-display)', fontSize: '1.08rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '.55rem' }}><span aria-hidden="true" style={{ width: '5px', height: '22px', borderRadius: '99px', background: GOLD }} />{title}</h3>
+        {subtitle && <p style={{ margin: '.25rem 0 0 .85rem', color: '#58708C', fontSize: '.8rem' }}>{subtitle}</p>}
       </div>
       <div style={{ padding: '1rem' }}>{children}</div>
     </section>
@@ -107,6 +109,8 @@ function LoadingState() {
 }
 
 export default function AdminUserDetailsModal({ dialog, onClose, onRetry }) {
+  const [activeTab, setActiveTab] = useState('overview')
+  useEffect(() => setActiveTab('overview'), [dialog?.user?.uid])
   if (!dialog) return null
   const { user = {}, data, loading, error } = dialog
   const profile = data?.profile || user
@@ -162,33 +166,50 @@ export default function AdminUserDetailsModal({ dialog, onClose, onRetry }) {
           )}
           {!loading && !error && data && (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: '.7rem' }}>
+              <div style={{ display: 'flex', alignItems: 'stretch', flexWrap: 'wrap', border: '1px solid #DCE7F3', borderRadius: '14px', background: '#fff', overflow: 'hidden', boxShadow: '0 8px 24px rgba(10,42,94,.045)' }}>
                 {[
                   ['Courses', summary.courses], ['Bookings', summary.bookings], ['Payments', summary.payments],
                   ['Refunds', summary.refunds], ['Cart Items', summary.cartItems], ['Support Threads', summary.supportThreads],
-                ].map(([label, value]) => <div key={label} style={{ padding: '.85rem', border: '1px solid #DCE7F3', borderRadius: '13px', background: '#fff', textAlign: 'center' }}><strong style={{ display: 'block', color: BLUE, fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>{Number(value || 0)}</strong><span style={{ color: '#526A86', fontSize: '.76rem', fontWeight: 900 }}>{label}</span></div>)}
+                ].map(([label, value], index) => <div key={label} style={{ minWidth: '125px', flex: '1 1 125px', padding: '.8rem 1rem', borderRight: index < 5 ? '1px solid #E6EDF5' : 0, textAlign: 'center' }}><strong style={{ display: 'block', color: BLUE, fontFamily: 'var(--font-display)', fontSize: '1.3rem' }}>{Number(value || 0)}</strong><span style={{ color: '#526A86', fontSize: '.74rem', fontWeight: 800 }}>{label}</span></div>)}
               </div>
 
-              <Section title="Personal, Contact & Driving Information" subtitle="All profile information currently recorded for this student.">
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: '.7rem' }}>
-                  {profileFields.map(([label, value, mono, wide]) => <InfoField key={label} label={label} value={value} mono={mono} wide={wide} />)}
-                </div>
-              </Section>
+              <nav aria-label="Student profile sections" style={{ display: 'flex', gap: '.35rem', overflowX: 'auto', padding: '.35rem', border: '1px solid #DCE7F3', borderRadius: '12px', background: '#EDF3F9' }}>
+                {[
+                  ['overview', 'Overview'],
+                  ['courses', `Courses (${summary.courses || 0})`],
+                  ['bookings', `Bookings (${summary.bookings || 0})`],
+                  ['finance', 'Payments & Refunds'],
+                  ['activity', 'Activity'],
+                ].map(([key, label]) => {
+                  const selected = activeTab === key
+                  return <button key={key} type="button" aria-pressed={selected} onClick={() => setActiveTab(key)} style={{ minHeight: '42px', flex: '0 0 auto', padding: '.58rem .9rem', border: selected ? `1px solid ${BLUE}` : '1px solid transparent', borderRadius: '9px', background: selected ? '#fff' : 'transparent', color: selected ? BLUE : '#49627E', boxShadow: selected ? '0 4px 13px rgba(1,69,168,.1)' : 'none', fontSize: '.84rem', fontWeight: 900, cursor: 'pointer' }}>{label}</button>
+                })}
+              </nav>
 
-              <Section title="Account & Sign-in Information" subtitle="Read-only Firebase authentication metadata. Passwords and security tokens are never displayed.">
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: '.7rem' }}>
-                  <InfoField label="Account Created" value={formatDateTime(auth.creationTime || profile.createdAt)} />
-                  <InfoField label="Last Sign-in" value={formatDateTime(auth.lastSignInTime)} />
-                  <InfoField label="Last Token Refresh" value={formatDateTime(auth.lastRefreshTime)} />
-                  <InfoField label="Email Verified" value={auth.available ? auth.emailVerified : 'Unavailable'} />
-                  <InfoField label="Account Enabled" value={auth.available ? !auth.disabled : 'Unavailable'} />
-                  <InfoField label="Sign-in Providers" value={auth.providerIds} />
-                  <InfoField label="Profile Last Updated" value={formatDateTime(profile.updatedAt)} />
-                  <InfoField label="AI Conversation Count" value={summary.aiConversations || 0} />
-                </div>
-              </Section>
+              {activeTab === 'overview' && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(360px,1fr))', gap: '1rem', alignItems: 'start' }}>
+                  <Section title="Student Information" subtitle="Contact, address, pickup, and driving details.">
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(290px,1fr))', columnGap: '1.4rem' }}>
+                      {profileFields.map(([label, value, mono, wide]) => <InfoField key={label} label={label} value={value} mono={mono} wide={wide} />)}
+                    </div>
+                  </Section>
 
-              <Section title="Course & Enrollment History">
+                  <Section title="Account Information" subtitle="Read-only sign-in data. Passwords and security tokens are never displayed.">
+                    <div>
+                      <InfoField label="Account Created" value={formatDateTime(auth.creationTime || profile.createdAt)} />
+                      <InfoField label="Last Sign-in" value={formatDateTime(auth.lastSignInTime)} />
+                      <InfoField label="Last Token Refresh" value={formatDateTime(auth.lastRefreshTime)} />
+                      <InfoField label="Email Verified" value={auth.available ? auth.emailVerified : 'Unavailable'} />
+                      <InfoField label="Account Enabled" value={auth.available ? !auth.disabled : 'Unavailable'} />
+                      <InfoField label="Sign-in Providers" value={auth.providerIds} />
+                      <InfoField label="Profile Last Updated" value={formatDateTime(profile.updatedAt)} />
+                      <InfoField label="AI Conversation Count" value={summary.aiConversations || 0} />
+                    </div>
+                  </Section>
+                </div>
+              )}
+
+              {activeTab === 'courses' && <Section title="Course & Enrollment History">
                 <HistoryTable
                   rows={data.courses}
                   empty="No enrolled courses are recorded for this student."
@@ -201,9 +222,9 @@ export default function AdminUserDetailsModal({ dialog, onClose, onRetry }) {
                     { label: 'Enrollment ID', render: row => displayValue(row.enrollmentId) },
                   ]}
                 />
-              </Section>
+              </Section>}
 
-              <Section title="Lesson Booking History">
+              {activeTab === 'bookings' && <Section title="Lesson Booking History">
                 <HistoryTable
                   rows={data.bookings}
                   empty="No lesson bookings are recorded for this student."
@@ -216,9 +237,9 @@ export default function AdminUserDetailsModal({ dialog, onClose, onRetry }) {
                     { label: 'Booking Reference', render: row => displayValue(row.id) },
                   ]}
                 />
-              </Section>
+              </Section>}
 
-              <Section title="Payment History">
+              {activeTab === 'finance' && <div style={{ display: 'grid', gap: '1rem' }}><Section title="Payment History">
                 <HistoryTable
                   rows={data.payments}
                   empty="No successful or recorded payments were found."
@@ -246,15 +267,15 @@ export default function AdminUserDetailsModal({ dialog, onClose, onRetry }) {
                     { label: 'PayPal Refund Reference', render: row => displayValue(row.Provider_Refund_ID) },
                   ]}
                 />
-              </Section>
+              </Section></div>}
 
-              <Section title="Other Account Activity" subtitle="Current cart, checkout, and support activity summaries.">
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: '.8rem' }}>
+              {activeTab === 'activity' && <Section title="Other Account Activity" subtitle="Current cart, checkout, and support activity summaries.">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', columnGap: '1.4rem' }}>
                   <InfoField label="Courses Waiting in Cart" value={(data.cartItems || []).map(item => item.title || item.planName || item.id).filter(Boolean)} />
                   <InfoField label="PayPal Checkout Attempts" value={(data.checkoutOrders || []).length} />
                   <InfoField label="Support Subjects" value={(data.supportThreads || []).map(thread => thread.subject).filter(Boolean)} />
                 </div>
-              </Section>
+              </Section>}
             </>
           )}
         </div>
