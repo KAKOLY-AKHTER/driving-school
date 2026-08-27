@@ -13,7 +13,6 @@ import AdminBlogPanel from '../components/AdminBlogPanel'
 import AdminCouponsPanel from '../components/AdminCouponsPanel'
 import AdminUserDetailsModal from '../components/AdminUserDetailsModal'
 import PasswordInput from '../components/PasswordInput'
-import { googleCalendarUrl } from '../utils/bookingCalendar'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -70,6 +69,20 @@ const bookingStatusMeta = (booking, today = localDateKey()) => {
   if (status === 'confirmed') return { label: BOOKING_STATUS_LABELS.confirmed, color: '#0755AE', background: '#EFF6FF', group: 'confirmed' }
   return { label: BOOKING_STATUS_LABELS.scheduled, color: '#9A6700', background: '#FFFBEB', group: 'scheduled' }
 }
+
+const bookingCalendarSyncMeta = (booking, integration) => {
+  const syncStatus = normalizeStatus(booking?.googleCalendar?.status)
+  if (syncStatus === 'synced') return { label: 'Auto-synced', color: '#166534', background: '#F0FDF4', border: '#BBF7D0' }
+  if (syncStatus === 'removed') return { label: 'Event removed', color: '#475569', background: '#F8FAFC', border: '#CBD5E1' }
+  if (syncStatus === 'failed') return { label: 'Sync failed', color: '#B91C1C', background: '#FEF2F2', border: '#FECACA' }
+  if (!integration?.configured) return { label: 'Setup required', color: '#92400E', background: '#FFFBEB', border: '#FDE68A' }
+  if (!integration?.connected) return { label: 'Calendar not connected', color: '#92400E', background: '#FFFBEB', border: '#FDE68A' }
+  return { label: 'Waiting to sync', color: '#0755AE', background: '#EFF6FF', border: '#BFDBFE' }
+}
+
+// Kept as inert compatibility values while the former manual calendar action is hidden.
+const calendarOpenedBookings = []
+const openBookingCalendar = () => {}
 
 const courseStatusMeta = (course) => {
   const status = normalizeStatus(course?.status || 'enrolled')
@@ -128,13 +141,6 @@ const TIME_SLOT_MAP = {
   slot2: 'Morning 2 (11 AM-1 PM)',
   slot3: 'Afternoon 1 (2-4 PM)',
   slot4: 'Afternoon 2 (4-6 PM)',
-}
-
-const CALENDAR_TIME_SLOT_MAP = {
-  slot1: '09:00 AM - 11:00 AM',
-  slot2: '11:00 AM - 01:00 PM',
-  slot3: '02:00 PM - 04:00 PM',
-  slot4: '04:00 PM - 06:00 PM',
 }
 
 const ADMIN_LESSON_TIMES = [
@@ -608,15 +614,6 @@ export default function AdminPage() {
   const [calendarMsg, setCalendarMsg] = useState('')
   const [calendarErr, setCalendarErr] = useState('')
   const [confirmDialog, setConfirmDialog] = useState(null)
-  const [calendarOpenedBookings, setCalendarOpenedBookings] = useState(() => {
-    if (typeof window === 'undefined') return []
-    try {
-      const stored = JSON.parse(window.localStorage.getItem('admin-calendar-opened-bookings') || '[]')
-      return Array.isArray(stored) ? stored.map(String) : []
-    } catch {
-      return []
-    }
-  })
   const previousFocusRef = useRef(null)
   const userDetailsRequestRef = useRef(0)
 
@@ -758,7 +755,7 @@ export default function AdminPage() {
   }, [])
 
   useEffect(() => {
-    if (activeTab === 'account') loadGoogleCalendar()
+    if (activeTab === 'account' || activeTab === 'bookings') loadGoogleCalendar()
   }, [activeTab, loadGoogleCalendar])
 
   const handleSaveProfile = async () => {
@@ -903,7 +900,7 @@ export default function AdminPage() {
     setCalendarErr('')
     setCalendarMsg('')
     try {
-      const result = await api.adminConnectGoogleCalendar(calendarIntegration.connectedEmail || 'info@aprecision.com')
+      const result = await api.adminConnectGoogleCalendar(calendarIntegration.connectedEmail || user?.email || 'info@aprecision.com')
       if (!result?.url) throw new Error('Google authorization link was not returned.')
       window.location.assign(result.url)
     } catch (error) {
@@ -974,32 +971,6 @@ export default function AdminPage() {
       `${linkedUser?.displayName || linkedUser?.email || 'This student'}'s ${booking.date || ''} ${TIME_SLOT_MAP[booking.timeSlot] || booking.timeSlot || ''} booking will be permanently removed and the package slot will become available again.`,
       () => deleteBooking(booking._id),
     )
-  }
-
-  const openBookingCalendar = (booking, calendarUrl) => {
-    const bookingId = String(booking?._id || booking?.id || '')
-    const openCalendar = () => {
-      window.open(calendarUrl, '_blank', 'noopener,noreferrer')
-      if (!bookingId) return
-      setCalendarOpenedBookings(previous => {
-        const next = previous.includes(bookingId) ? previous : [...previous, bookingId].slice(-500)
-        try {
-          window.localStorage.setItem('admin-calendar-opened-bookings', JSON.stringify(next))
-        } catch {
-          // Calendar opening still works when browser storage is unavailable.
-        }
-        return next
-      })
-    }
-    if (bookingId && calendarOpenedBookings.includes(bookingId)) {
-      requestConfirmation(
-        'Open this calendar event again?',
-        'This booking was already opened in Google Calendar on this browser. If it was previously saved, saving it again may create a duplicate event.',
-        openCalendar,
-      )
-      return
-    }
-    openCalendar()
   }
 
   const handleEditContact = (contact) => {
@@ -1486,6 +1457,8 @@ export default function AdminPage() {
         .admin-main button:focus-visible,.admin-sidebar button:focus-visible { outline:3px solid rgba(253,188,1,.75); outline-offset:3px; }
         .admin-modal-backdrop button:focus-visible,.admin-confirm-dialog button:focus-visible { outline:3px solid rgba(1,69,168,.32); outline-offset:3px; }
         .admin-toolbar-input { width:min(100%,280px) !important; }
+        .booking-toolbar-controls { flex-wrap:nowrap !important; flex:1 1 600px; min-width:0; }
+        .booking-actions-cell button:disabled { display:none !important; }
         @keyframes adminBackdropIn { from { opacity:0; } to { opacity:1; } }
         @keyframes adminModalIn { from { opacity:0; transform:translateY(18px) scale(.98); } to { opacity:1; transform:none; } }
         @keyframes adminToastIn { from { opacity:0; transform:translate3d(20px,-8px,0); } to { opacity:1; transform:none; } }
@@ -1512,6 +1485,7 @@ export default function AdminPage() {
           .admin-brand-subtitle,.admin-user-copy { display:none !important; }
           .admin-header-inner { padding-inline:.75rem !important; }
           .admin-toolbar,.admin-toolbar > div { align-items:stretch !important; width:100%; }
+          .booking-toolbar-controls { flex-wrap:wrap !important; }
           .admin-toolbar-input { width:100% !important; }
           .admin-toolbar input,.admin-toolbar select,.admin-toolbar button { max-width:100%; }
         }
@@ -1754,8 +1728,8 @@ export default function AdminPage() {
                 <div style={cardStyle}>
                   <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.calendar} Bookings <span style={{ color: '#334155', fontSize: '.9rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>({filteredBookings.length} of {bookings.length})</span></h3>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      <input className="admin-toolbar-input" aria-label="Search bookings" type="search" placeholder="Search student, plan, date, time…" value={bookingSearch} onChange={(e) => { setBookingSearch(e.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '280px' }} />
+                    <div className="booking-toolbar-controls" style={{ display: 'flex', alignItems: 'center', gap: '.5rem', justifyContent: 'flex-end' }}>
+                      <input className="admin-toolbar-input" aria-label="Search bookings" type="search" placeholder="Search student, plan, date, time…" value={bookingSearch} onChange={(e) => { setBookingSearch(e.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '260px', minWidth: '200px', flex: '1 1 260px' }} />
                       <select aria-label="Filter bookings by status" value={bookingStatusFilter} onChange={(event) => { setBookingStatusFilter(event.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '210px' }}>
                         <option value="all">All Booking Statuses</option>
                         <option value="scheduled">Pending</option>
@@ -1783,8 +1757,8 @@ export default function AdminPage() {
                       <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '1.25rem', fontWeight: 900, background: 'conic-gradient(from 10deg,#4285F4,#34A853,#FBBC05,#EA4335,#4285F4)', WebkitBackgroundClip: 'text', color: 'transparent' }}>G</span>
                     </div>
                     <div>
-                      <p style={{ margin: 0, fontWeight: 900, color: '#0F3F79' }}>One-click Google Calendar</p>
-                      <p style={{ margin: '.28rem 0 0', lineHeight: 1.55, fontSize: '.88rem' }}>Use <strong>Add to Calendar</strong> for an upcoming lesson, confirm that Google is using <strong>{user?.email || 'info@aprecision.com'}</strong>, then choose <strong>Save</strong>. Student and lesson details are filled automatically—no Google API credentials are required.</p>
+                      <p style={{ margin: 0, fontWeight: 900, color: '#0F3F79' }}>Automatic Google Calendar Sync</p>
+                      <p style={{ margin: '.28rem 0 0', lineHeight: 1.55, fontSize: '.88rem' }}>{calendarIntegration.connected ? <>New bookings are added automatically to <strong>{calendarIntegration.connectedEmail}</strong>. Status changes update the event, while cancellation or deletion removes it.</> : <>Connect the school Google account once from <strong>Admin Account → Automatic Google Calendar Sync</strong>. No per-booking calendar button is required.</>}</p>
                     </div>
                   </div>
                   {bookingDataFilter === 'test' && <div role="note" style={{ margin: '0 0 1rem', padding: '.8rem 1rem', borderRadius: '12px', border: '1px solid #FED7AA', background: '#FFF7ED', color: '#9A3412', lineHeight: 1.55 }}><strong>Safe test-data review:</strong> these rows are potential admin, sandbox or example-account bookings. Verify each student and payment first, then use its individual Delete action; no bulk deletion is performed.</div>}
@@ -1793,10 +1767,10 @@ export default function AdminPage() {
                       <thead>
                         <tr>
                           <th scope="col" style={thStyle}>Student &amp; Plan</th>
-                          <th scope="col" style={thStyle}>Lesson Date</th>
-                          <th scope="col" style={thStyle}>Lesson Time</th>
+                          <th scope="col" style={{ ...thStyle, minWidth: '190px', whiteSpace: 'nowrap' }}>Lesson Date</th>
+                          <th scope="col" style={{ ...thStyle, minWidth: '190px', whiteSpace: 'nowrap' }}>Lesson Time</th>
                           <th scope="col" style={thStyle}>Booking Status</th>
-                          <th scope="col" className="booking-actions-cell" style={{ ...thStyle, minWidth: '255px' }}>Calendar / Delete</th>
+                          <th scope="col" className="booking-actions-cell" style={{ ...thStyle, minWidth: '245px' }}>Calendar Sync / Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1804,15 +1778,8 @@ export default function AdminPage() {
                           const u = users.find(ux => ux.uid === b.userId)
                           const statusMeta = bookingStatusMeta(b, todayStr)
                           const displayedTime = TIME_SLOT_MAP[b.timeSlot] || b.timeSlot || b.time || ''
-                          const calendarTime = CALENDAR_TIME_SLOT_MAP[b.timeSlot] || displayedTime
-                          const calendarEligible = ['scheduled', 'confirmed'].includes(statusMeta.group) && String(b.date || '') >= todayStr
-                          const calendarUrl = calendarEligible ? googleCalendarUrl(b, u?.courses || [], calendarTime, {
-                            audience: 'admin',
-                            studentName: adminUserName(u),
-                            studentEmail: u?.email || b.email || '',
-                            studentPhone: u?.phone || '',
-                            calendarAccount: user?.email || 'info@aprecision.com',
-                          }) : ''
+                          const calendarSyncMeta = bookingCalendarSyncMeta(b, calendarIntegration)
+                          const calendarUrl = ''
                           return (
                             <tr key={b._id}>
                               <td style={tdStyle}>
@@ -1822,8 +1789,8 @@ export default function AdminPage() {
                                   <p style={{ fontSize: '0.85rem', color: SKY_BLUE, margin: '0.16rem 0 0', fontWeight: 700 }}>{COURSE_MAP[b.courseId] || b.courseTitle || (b.courseId ? `Plan ${b.courseId}` : 'Legacy / Unassigned')}</p>
                                 </div>
                               </td>
-                              <td style={tdStyle}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                              <td style={tdStyle}>{displayedTime}</td>
+                              <td style={{ ...tdStyle, minWidth: '190px', whiteSpace: 'nowrap' }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                              <td style={{ ...tdStyle, minWidth: '190px', whiteSpace: 'nowrap' }}>{displayedTime}</td>
                               <td style={tdStyle}>
                                 <select
                                   aria-label={`Change booking status for ${adminUserName(u)} on ${b.date || ''}`}
@@ -1841,6 +1808,10 @@ export default function AdminPage() {
                               </td>
                               <td className="booking-actions-cell" style={tdStyle}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'nowrap' }}>
+                                  <span title={b?.googleCalendar?.lastError || calendarSyncMeta.label} style={{ minHeight: '36px', display: 'inline-flex', alignItems: 'center', gap: '.38rem', padding: '.38rem .68rem', borderRadius: '9px', border: `1px solid ${calendarSyncMeta.border}`, background: calendarSyncMeta.background, color: calendarSyncMeta.color, fontSize: '.76rem', fontWeight: 850, whiteSpace: 'nowrap' }}>
+                                    <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 10h18"/><path d="m9 15 2 2 4-4"/></svg>
+                                    {calendarSyncMeta.label}
+                                  </span>
                                   {calendarUrl ? (
                                     <button type="button" onClick={() => openBookingCalendar(b, calendarUrl)} aria-label={`Add ${b.date || ''} lesson for ${adminUserName(u) || u?.email || 'student'} to Google Calendar`} title={calendarOpenedBookings.includes(String(b._id || b.id || '')) ? 'This event was already opened on this browser. Opening again may create a duplicate.' : `Open the prefilled lesson in Google Calendar as ${user?.email || 'the school account'}`} style={{ minHeight: '36px', display: 'inline-flex', alignItems: 'center', gap: '.38rem', padding: '.38rem .68rem', borderRadius: '9px', border: '1px solid #93C5FD', background: calendarOpenedBookings.includes(String(b._id || b.id || '')) ? '#F8FAFC' : 'linear-gradient(135deg,#FFFFFF,#EFF6FF)', color: '#0755AE', fontFamily: 'var(--font-body)', fontSize: '.76rem', fontWeight: 900, textDecoration: 'none', whiteSpace: 'nowrap', boxShadow: '0 3px 10px rgba(11,87,208,.08)', cursor: 'pointer' }}>
                                       <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 10h18"/><path d="m9 15 2 2 4-4"/></svg>
@@ -2566,7 +2537,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                         </div>
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '.65rem' }}>
-                            <h3 id="google-calendar-heading" style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK }}>{calendarIntegration.configured ? 'Automatic Google Calendar sync' : 'Google Calendar — one-click workflow'}</h3>
+                            <h3 id="google-calendar-heading" style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK }}>Automatic Google Calendar Sync</h3>
                             {calendarLoading ? (
                               <span role="status" style={{ color: '#475569', fontWeight: 700, fontSize: '.8rem' }}>Checking…</span>
                             ) : calendarIntegration.connected ? (
@@ -2574,17 +2545,17 @@ Near and Long pricing is applied automatically from the selected city and verifi
                             ) : calendarIntegration.configured ? (
                               <span style={{ padding: '.28rem .6rem', borderRadius: '999px', color: '#92400E', background: '#FEF3C7', border: '1px solid #FDE68A', fontWeight: 800, fontSize: '.75rem' }}>Not connected</span>
                             ) : (
-                              <span style={{ padding: '.28rem .6rem', borderRadius: '999px', color: '#166534', background: '#DCFCE7', border: '1px solid #BBF7D0', fontWeight: 800, fontSize: '.75rem' }}>● Ready</span>
+                              <span style={{ padding: '.28rem .6rem', borderRadius: '999px', color: '#92400E', background: '#FEF3C7', border: '1px solid #FDE68A', fontWeight: 800, fontSize: '.75rem' }}>Setup required</span>
                             )}
                           </div>
-                          <p style={{ margin: '.55rem 0 0', color: '#334155', lineHeight: 1.65, maxWidth: '760px' }}>{calendarIntegration.configured ? 'Every confirmed lesson is added to the connected school calendar automatically. Cancelled or deleted bookings are removed, and each event includes the student, plan, location, and reminders.' : 'No Google API setup is needed. Open Admin Bookings and use Add to Calendar beside an upcoming lesson; Google opens a complete, prefilled event for the school account to review and save.'}</p>
+                          <p style={{ margin: '.55rem 0 0', color: '#334155', lineHeight: 1.65, maxWidth: '760px' }}>Every new lesson is added to the connected school calendar automatically. Status changes update the event; cancellation or deletion removes it. Each event includes the student, plan, location, and reminders.</p>
                         </div>
                       </div>
                     </div>
 
                     {!calendarLoading && !calendarIntegration.configured && (
                       <div role="note" style={{ marginTop: '1.25rem', padding: '1rem 1.1rem', borderRadius: '14px', color: '#1E3A5F', background: '#EFF6FF', border: '1px solid #BFDBFE', lineHeight: 1.6 }}>
-                        <strong>Professional manual workflow:</strong> the event opens in Google Calendar with student, plan, location, status, date, time, and booking reference already filled. Confirm the Google account and press Save—no password or API credential is stored by this website.
+                        <strong>Google setup required:</strong> add the Google OAuth environment variables, redeploy, then return here and connect the Google account that should receive every booking automatically.
                       </div>
                     )}
 
@@ -2612,9 +2583,6 @@ Near and Long pricing is applied automatically from the selected city and verifi
                     )}
 
                     <div style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: '.75rem', marginTop: '1.25rem' }}>
-                      {!calendarIntegration.configured && (
-                        <button type="button" onClick={() => switchTab('bookings')} style={{ padding: '.78rem 1.15rem', borderRadius: '11px', border: 0, background: 'linear-gradient(135deg,#0B57D0,#4285F4)', color: '#fff', fontWeight: 800, cursor: 'pointer', boxShadow: '0 5px 16px rgba(11,87,208,.2)' }}>Open Bookings</button>
-                      )}
                       {calendarIntegration.configured && !calendarIntegration.connected && (
                         <button type="button" onClick={handleConnectGoogleCalendar} disabled={calendarLoading} style={{ padding: '.78rem 1.15rem', borderRadius: '11px', border: 0, background: 'linear-gradient(135deg,#0B57D0,#4285F4)', color: '#fff', fontWeight: 800, cursor: calendarLoading ? 'wait' : 'pointer', opacity: calendarLoading ? .65 : 1 }}>Connect Google Calendar</button>
                       )}
@@ -2627,7 +2595,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                         </>
                       )}
                     </div>
-                    <p style={{ position: 'relative', margin: '1rem 0 0', color: '#475569', fontSize: '.8rem', lineHeight: 1.55 }}>{calendarIntegration.configured ? <>Changing the admin login email does not silently move bookings to another calendar. Use <strong>Switch Google account</strong> and approve the intended school account.</> : <>Google may show an account chooser. Select <strong>{user?.email || 'info@aprecision.com'}</strong> before saving the event.</>}</p>
+                    <p style={{ position: 'relative', margin: '1rem 0 0', color: '#475569', fontSize: '.8rem', lineHeight: 1.55 }}>{calendarIntegration.configured ? <>Changing the admin login email does not silently move bookings to another calendar. Use <strong>Switch Google account</strong> and approve the intended school account.</> : <>For testing, connect your own Google email first. Later use <strong>Switch Google account</strong> to connect the client’s school calendar without changing the admin login.</>}</p>
                   </section>
 
                   {(accMsg || accErr) && (
