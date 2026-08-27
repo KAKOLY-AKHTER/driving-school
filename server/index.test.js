@@ -253,8 +253,10 @@ test('admin booking status changes protect final and future lesson states', () =
   assert.equal(validateAdminBookingStatusChange({ date: '2026-08-28', status: 'scheduled' }, 'confirmed', today), 'confirmed')
   assert.equal(validateAdminBookingStatusChange({ date: today, status: 'confirmed' }, 'completed', today), 'completed')
   assert.equal(validateAdminBookingStatusChange({ date: '2026-08-28', status: 'confirmed' }, 'cancelled', today), 'cancelled')
+  assert.equal(validateAdminBookingStatusChange({ date: '2026-08-26', status: 'completed' }, 'cancelled', today), 'cancelled')
+  assert.equal(validateAdminBookingStatusChange({ date: today, status: 'completed' }, 'confirmed', today), 'confirmed')
   assert.throws(() => validateAdminBookingStatusChange({ date: '2026-08-28', status: 'confirmed' }, 'completed', today), /future lesson/i)
-  assert.throws(() => validateAdminBookingStatusChange({ date: '2026-08-26', status: 'confirmed' }, 'confirmed', today), /completed or past/i)
+  assert.throws(() => validateAdminBookingStatusChange({ date: '2026-08-26', status: 'confirmed' }, 'confirmed', today), /past lesson/i)
   assert.throws(() => validateAdminBookingStatusChange({ date: '2026-08-28', status: 'cancelled' }, 'confirmed', today), /cancelled booking is final/i)
 })
 

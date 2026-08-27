@@ -893,7 +893,7 @@ export default function AdminPage() {
     const linkedUser = users.find(item => item.uid === booking.userId)
     requestConfirmation(
       `Change status to “${BOOKING_STATUS_LABELS[nextStatus]}”?`,
-      `${adminUserName(linkedUser)}’s lesson on ${booking.date || 'the selected date'} will be updated. ${nextStatus === 'cancelled' ? 'Cancelling is final and releases this lesson time for another student.' : nextStatus === 'completed' ? 'Completed lessons become final and cannot be reopened.' : 'The lesson time remains reserved for this student.'}`,
+      `${adminUserName(linkedUser)}’s lesson on ${booking.date || 'the selected date'} will be updated. ${nextStatus === 'cancelled' ? 'Cancelling is final and releases this lesson time for another student.' : nextStatus === 'completed' ? 'This records that the lesson has been completed.' : 'The lesson time remains reserved for this student.'}`,
       () => updateBookingStatus(booking, nextStatus),
     )
   }
@@ -1838,11 +1838,11 @@ export default function AdminPage() {
                               <td style={tdStyle}>
                                 <select
                                   aria-label={`Change booking status for ${adminUserName(u)} on ${b.date || ''}`}
-                                  title={['completed', 'cancelled'].includes(statusMeta.group) ? `${statusMeta.label} is a final status.` : 'Change this booking status'}
+                                  title={statusMeta.group === 'cancelled' ? 'Cancelled is final because the lesson slot has been released.' : 'Change this booking status'}
                                   value={statusMeta.group}
-                                  disabled={bookingStatusUpdating === String(b._id) || ['completed', 'cancelled'].includes(statusMeta.group)}
+                                  disabled={bookingStatusUpdating === String(b._id) || statusMeta.group === 'cancelled'}
                                   onChange={event => handleBookingStatusChange(b, event.target.value)}
-                                  style={{ width: '100%', minWidth: '205px', minHeight: '40px', padding: '.45rem 2rem .45rem .65rem', border: `1px solid ${statusMeta.color}33`, borderRadius: '9px', background: statusMeta.background, color: statusMeta.color, fontSize: '.76rem', fontWeight: 900, cursor: ['completed', 'cancelled'].includes(statusMeta.group) ? 'not-allowed' : 'pointer' }}
+                                  style={{ width: '100%', minWidth: '205px', minHeight: '40px', padding: '.45rem 2rem .45rem .65rem', border: `1px solid ${statusMeta.color}33`, borderRadius: '9px', background: statusMeta.background, color: statusMeta.color, fontSize: '.76rem', fontWeight: 900, cursor: statusMeta.group === 'cancelled' ? 'not-allowed' : bookingStatusUpdating === String(b._id) ? 'wait' : 'pointer' }}
                                 >
                                   <option value="scheduled">Pending</option>
                                   <option value="confirmed">Upcoming</option>

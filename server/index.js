@@ -1395,12 +1395,9 @@ function validateAdminBookingStatusChange(booking, requestedStatus, today = cali
   if (currentStatus === 'cancelled' && nextStatus !== 'cancelled') {
     throw new HttpError(409, 'A cancelled booking is final and cannot be reopened. Create a new lesson booking instead.')
   }
-  if (currentStatus === 'completed' && nextStatus !== 'completed') {
-    throw new HttpError(409, 'A completed or past lesson is final and cannot be changed.')
-  }
   const bookingDate = cleanText(booking?.date, 10)
   if (['scheduled', 'confirmed'].includes(nextStatus) && bookingDate < today) {
-    throw new HttpError(409, 'A past lesson cannot be changed back to Pending or Confirmed.')
+    throw new HttpError(409, 'A past lesson cannot be changed back to Pending or Upcoming. Choose Completed or Cancelled.')
   }
   if (nextStatus === 'completed' && bookingDate > today) {
     throw new HttpError(409, 'A future lesson cannot be marked Completed before its lesson date.')
