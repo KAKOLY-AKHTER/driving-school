@@ -536,7 +536,7 @@ export default function AdminPage() {
   const [userDetailsDialog, setUserDetailsDialog] = useState(null)
   const [bookingSearch, setBookingSearch] = useState('')
   const [bookingStatusFilter, setBookingStatusFilter] = useState('all')
-  const [bookingDataFilter, setBookingDataFilter] = useState('all')
+  const bookingDataFilter = 'all'
   const [bookingPage, setBookingPage] = useState(1)
   const [bookingLimit, setBookingLimit] = useState('10')
   const [bookingStatusUpdating, setBookingStatusUpdating] = useState('')
@@ -1346,13 +1346,7 @@ export default function AdminPage() {
     const matchesSearch = !q || name.includes(q) || email.includes(q) || course.includes(q) || String(b.date || '').toLowerCase().includes(q) || String(TIME_SLOT_MAP[b.timeSlot] || b.timeSlot || '').toLowerCase().includes(q)
     const group = bookingStatusMeta(b, todayStr).group
     const matchesStatus = bookingStatusFilter === 'all' || group === bookingStatusFilter
-    const potentialTestRecord = u?.isAdmin === true
-      || /@(?:[^@]+\.)?example\.com$/i.test(email)
-      || b.isTest === true
-      || ['sandbox', 'test'].includes(normalizeStatus(b.paymentEnvironment || b.paypalEnvironment))
-    const matchesData = bookingDataFilter === 'all'
-      || (bookingDataFilter === 'test' ? potentialTestRecord : !potentialTestRecord)
-    return matchesSearch && matchesStatus && matchesData
+    return matchesSearch && matchesStatus
   }).sort((a, b) => bookingSortValue(a).localeCompare(bookingSortValue(b)))
   const bookingPages = Math.max(1, Math.ceil(filteredBookings.length / Number(bookingLimit)))
   const safeBookingPage = Math.min(bookingPage, bookingPages)
@@ -1769,13 +1763,8 @@ export default function AdminPage() {
                         <option value="completed">Completed</option>
                         <option value="cancelled">Cancelled</option>
                       </select>
-                      <select aria-label="Filter production and potential test bookings" value={bookingDataFilter} onChange={event => { setBookingDataFilter(event.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '190px' }}>
-                        <option value="all">All data</option>
-                        <option value="production">Student data only</option>
-                        <option value="test">Potential test/admin data</option>
-                      </select>
                       <select aria-label="Booking rows per page" value={bookingLimit} onChange={event => { setBookingLimit(event.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '105px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
-                      {(bookingSearch || bookingStatusFilter !== 'all' || bookingDataFilter !== 'all') && <button type="button" onClick={() => { setBookingSearch(''); setBookingStatusFilter('all'); setBookingDataFilter('all'); setBookingPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
+                      {(bookingSearch || bookingStatusFilter !== 'all') && <button type="button" onClick={() => { setBookingSearch(''); setBookingStatusFilter('all'); setBookingPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                     </div>
                   </div>
                   <div role="note" aria-label="Booking status guide" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: '.65rem', margin: '0 0 1rem', padding: '.85rem 1rem', border: '1px solid #D9E5F2', borderRadius: '13px', background: '#F8FBFF' }}>
