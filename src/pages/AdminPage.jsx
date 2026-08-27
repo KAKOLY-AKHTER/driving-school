@@ -70,16 +70,6 @@ const bookingStatusMeta = (booking, today = localDateKey()) => {
   return { label: BOOKING_STATUS_LABELS.scheduled, color: '#9A6700', background: '#FFFBEB', group: 'scheduled' }
 }
 
-const bookingCalendarSyncMeta = (booking, integration) => {
-  const syncStatus = normalizeStatus(booking?.googleCalendar?.status)
-  if (syncStatus === 'synced') return { label: 'Auto-synced', color: '#166534', background: '#F0FDF4', border: '#BBF7D0' }
-  if (syncStatus === 'removed') return { label: 'Event removed', color: '#475569', background: '#F8FAFC', border: '#CBD5E1' }
-  if (syncStatus === 'failed') return { label: 'Sync failed', color: '#B91C1C', background: '#FEF2F2', border: '#FECACA' }
-  if (!integration?.configured) return { label: 'Setup required', color: '#92400E', background: '#FFFBEB', border: '#FDE68A' }
-  if (!integration?.connected) return { label: 'Calendar not connected', color: '#92400E', background: '#FFFBEB', border: '#FDE68A' }
-  return { label: 'Waiting to sync', color: '#0755AE', background: '#EFF6FF', border: '#BFDBFE' }
-}
-
 // Kept as inert compatibility values while the former manual calendar action is hidden.
 const calendarOpenedBookings = []
 const openBookingCalendar = () => {}
@@ -1770,7 +1760,7 @@ export default function AdminPage() {
                           <th scope="col" style={{ ...thStyle, minWidth: '190px', whiteSpace: 'nowrap' }}>Lesson Date</th>
                           <th scope="col" style={{ ...thStyle, minWidth: '190px', whiteSpace: 'nowrap' }}>Lesson Time</th>
                           <th scope="col" style={thStyle}>Booking Status</th>
-                          <th scope="col" className="booking-actions-cell" style={{ ...thStyle, minWidth: '245px' }}>Calendar Sync / Actions</th>
+                          <th scope="col" className="booking-actions-cell" style={{ ...thStyle, minWidth: '120px' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1778,7 +1768,6 @@ export default function AdminPage() {
                           const u = users.find(ux => ux.uid === b.userId)
                           const statusMeta = bookingStatusMeta(b, todayStr)
                           const displayedTime = TIME_SLOT_MAP[b.timeSlot] || b.timeSlot || b.time || ''
-                          const calendarSyncMeta = bookingCalendarSyncMeta(b, calendarIntegration)
                           const calendarUrl = ''
                           return (
                             <tr key={b._id}>
@@ -1808,10 +1797,6 @@ export default function AdminPage() {
                               </td>
                               <td className="booking-actions-cell" style={tdStyle}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'nowrap' }}>
-                                  <span title={b?.googleCalendar?.lastError || calendarSyncMeta.label} style={{ minHeight: '36px', display: 'inline-flex', alignItems: 'center', gap: '.38rem', padding: '.38rem .68rem', borderRadius: '9px', border: `1px solid ${calendarSyncMeta.border}`, background: calendarSyncMeta.background, color: calendarSyncMeta.color, fontSize: '.76rem', fontWeight: 850, whiteSpace: 'nowrap' }}>
-                                    <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 10h18"/><path d="m9 15 2 2 4-4"/></svg>
-                                    {calendarSyncMeta.label}
-                                  </span>
                                   {calendarUrl ? (
                                     <button type="button" onClick={() => openBookingCalendar(b, calendarUrl)} aria-label={`Add ${b.date || ''} lesson for ${adminUserName(u) || u?.email || 'student'} to Google Calendar`} title={calendarOpenedBookings.includes(String(b._id || b.id || '')) ? 'This event was already opened on this browser. Opening again may create a duplicate.' : `Open the prefilled lesson in Google Calendar as ${user?.email || 'the school account'}`} style={{ minHeight: '36px', display: 'inline-flex', alignItems: 'center', gap: '.38rem', padding: '.38rem .68rem', borderRadius: '9px', border: '1px solid #93C5FD', background: calendarOpenedBookings.includes(String(b._id || b.id || '')) ? '#F8FAFC' : 'linear-gradient(135deg,#FFFFFF,#EFF6FF)', color: '#0755AE', fontFamily: 'var(--font-body)', fontSize: '.76rem', fontWeight: 900, textDecoration: 'none', whiteSpace: 'nowrap', boxShadow: '0 3px 10px rgba(11,87,208,.08)', cursor: 'pointer' }}>
                                       <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 10h18"/><path d="m9 15 2 2 4-4"/></svg>
