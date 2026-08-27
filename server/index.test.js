@@ -7,6 +7,7 @@ const {
   adminAvailabilityStatus,
   adminUserProfileDetails,
   canonicalAdminBookingStatus,
+  cloudinarySignature,
   bookingsForEnrollment,
   checkoutFingerprint,
   couponCheckoutFingerprint,
@@ -34,6 +35,18 @@ const {
   validateAvailabilitySlot,
   validateAdminBookingStatusChange,
 } = await import('./index.js')
+
+test('Cloudinary request signatures use stable sorted upload parameters', () => {
+  assert.equal(
+    cloudinarySignature({
+      unique_filename: 'false',
+      timestamp: 1787846400,
+      public_id: 'a-precision-driving-school/blog/blog-test',
+      overwrite: 'false',
+    }, 'secret-value'),
+    '82f32c16c24d7dcb7afa4f60819db35e84af0243'
+  )
+})
 
 test('admin user details expose profile fields without passwords or private account data', () => {
   const profile = adminUserProfileDetails({

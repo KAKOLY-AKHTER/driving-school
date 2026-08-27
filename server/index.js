@@ -4832,27 +4832,54 @@ const getCloudinaryConfig = () => {
   return { cloudName, apiKey, apiSecret }
 }
 
-const cloudinaryAuthorization = ({ apiKey, apiSecret }) => `Basic ${Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')}`
+const cloudinarySignature = (params, apiSecret) => {
+  const canonical = Object.entries(params)
+    .filter(([, value]) => value !== undefined && value !== null && value !== '')
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => `${key}=${Array.isArray(value) ? value.join(',') : String(value)}`)
+    .join('&')
+  return createHash('sha1').update(`${canonical}${apiSecret}`).digest('hex')
+}
+
+const appendSignedCloudinaryParams = (form, params, config) => {
+  Object.entries(params).forEach(([key, value]) => form.append(key, String(value)))
+  form.append('api_key', config.apiKey)
+  form.append('signature', cloudinarySignature(params, config.apiSecret))
+}
+
+const cloudinaryUploadError = (status) => {
+  if (status === 400) return 'Cloudinary rejected the upload settings. Check the configured cloud name and try again.'
+  if (status === 401) return 'Cloudinary rejected the API key or secret. Make sure both values come from the same API key.'
+  if (status === 403) return 'The Cloudinary API key does not have permission to upload images.'
+  if (status === 404) return 'The configured Cloudinary cloud name could not be found.'
+  if (status === 429) return 'The Cloudinary usage limit has been reached. Check the Cloudinary usage dashboard.'
+  return 'Cloudinary could not store this image. Please try again.'
+}
 
 async function uploadBlogImageToCloudinary(buffer, contentType) {
   const config = getCloudinaryConfig()
   const extension = BLOG_IMAGE_TYPES[contentType]
+  const params = {
+    overwrite: 'false',
+    public_id: `${CLOUDINARY_BLOG_FOLDER}/blog-${randomUUID()}`,
+    timestamp: Math.floor(Date.now() / 1000),
+    unique_filename: 'false',
+  }
   const form = new FormData()
   form.append('file', new Blob([buffer], { type: contentType }), `blog-image.${extension}`)
-  form.append('public_id', `${CLOUDINARY_BLOG_FOLDER}/blog-${randomUUID()}`)
-  form.append('overwrite', 'false')
-  form.append('unique_filename', 'false')
+  appendSignedCloudinaryParams(form, params, config)
 
   const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(config.cloudName)}/image/upload`, {
     method: 'POST',
-    headers: { Authorization: cloudinaryAuthorization(config) },
     body: form,
     signal: AbortSignal.timeout(45_000),
   })
   const data = await response.json().catch(() => ({}))
   if (!response.ok || !data.secure_url || !data.public_id) {
     const reason = cleanText(data?.error?.message, 300) || `Cloudinary returned status ${response.status}.`
-    throw new Error(`Cloudinary upload rejected: ${reason}`)
+    const error = new Error(`Cloudinary upload rejected (${response.status}): ${reason}`)
+    error.publicMessage = cloudinaryUploadError(response.status)
+    throw error
   }
 
   const imageUrl = cleanHttpUrl(data.secure_url)
@@ -4867,12 +4894,15 @@ async function deleteCloudinaryBlogImage(publicId) {
   const imagePublicId = normalizeBlogImagePublicId(publicId)
   if (!imagePublicId) return false
   const config = getCloudinaryConfig()
+  const params = {
+    invalidate: 'true',
+    public_id: imagePublicId,
+    timestamp: Math.floor(Date.now() / 1000),
+  }
   const form = new FormData()
-  form.append('public_id', imagePublicId)
-  form.append('invalidate', 'true')
+  appendSignedCloudinaryParams(form, params, config)
   const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(config.cloudName)}/image/destroy`, {
     method: 'POST',
-    headers: { Authorization: cloudinaryAuthorization(config) },
     body: form,
     signal: AbortSignal.timeout(30_000),
   })
@@ -4909,7 +4939,7 @@ app.post(
     } catch (error) {
       if (error.status) return res.status(error.status).json({ error: error.message })
       console.error('Blog image upload failed:', error?.message || error)
-      res.status(502).json({ error: 'Cloudinary could not store this image. Verify the Cloudinary key permissions and try again.' })
+      res.status(502).json({ error: error?.publicMessage || 'Cloudinary could not store this image. Please try again.' })
     }
   },
 )
@@ -5598,6 +5628,7 @@ export {
   sanitizeCoupon,
   sanitizePricing,
   sanitizeReview,
+  cloudinarySignature,
   payableCheckoutAmount,
   splitCheckoutItems,
   validateContinuationSlotCount,
