@@ -5,6 +5,7 @@ process.env.VERCEL = '1'
 const {
   DEFAULT_LOCATIONS,
   adminAvailabilityStatus,
+  adminUserProfileDetails,
   canonicalAdminBookingStatus,
   bookingsForEnrollment,
   checkoutFingerprint,
@@ -31,6 +32,27 @@ const {
   validateContinuationSlotCount,
   validateAvailabilitySlot,
 } = await import('./index.js')
+
+test('admin user details expose profile fields without passwords or private account data', () => {
+  const profile = adminUserProfileDetails({
+    uid: 'student-1',
+    firstName: 'Ava',
+    email: 'ava@example.com',
+    phone: '+1 555 0100',
+    address: '123 Main Street',
+    password: 'never-return-this',
+    refreshToken: 'never-return-this-either',
+    messages: [{ text: 'private support content' }],
+    payments: [{ providerCaptureId: 'CAPTURE' }],
+  })
+  assert.deepEqual(profile, {
+    uid: 'student-1',
+    firstName: 'Ava',
+    email: 'ava@example.com',
+    phone: '+1 555 0100',
+    address: '123 Main Street',
+  })
+})
 
 test('coupon validation normalizes codes and accepts fixed or percentage discounts', () => {
   assert.deepEqual(

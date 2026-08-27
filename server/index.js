@@ -309,6 +309,57 @@ const safeRecord = (value, depth = 0) => {
   }
   return output
 }
+const ADMIN_USER_PROFILE_FIELDS = [
+  'uid', 'firstName', 'middleName', 'lastName', 'displayName', 'name', 'username',
+  'email', 'phone', 'dob', 'gender', 'address', 'city', 'state', 'zipCode',
+  'pickupAddress', 'parentPhone', 'permit', 'issueDate', 'expiryDate', 'courseType',
+  'medications', 'notes', 'termsAcceptedAt', 'submittedAt', 'photoURL',
+  'completedModules', 'createdAt', 'updatedAt', 'isAdmin',
+]
+const ADMIN_COURSE_FIELDS = [
+  'id', 'enrollmentId', 'title', 'planName', 'status', 'refundStatus', 'enrolledAt',
+  'createdAt', 'updatedAt', 'paidAmount', 'price', 'city', 'location', 'distance',
+  'pickupAddress', 'pickupSlots', 'slotMaximum', 'slotUsed', 'lastBookingAt',
+  'couponCode', 'paymentRef', 'completedModules',
+]
+const ADMIN_PAYMENT_FIELDS = [
+  'date', 'paidAt', 'ref', 'email', 'item', 'amount', 'subtotal', 'discount',
+  'couponCode', 'status', 'provider', 'providerEnvironment', 'providerOrderId',
+  'providerCaptureId', 'payerEmail', 'refundedAmount', 'providerRefundIds',
+  'enrollmentIds', 'courseBreakdown',
+]
+const ADMIN_BOOKING_FIELDS = [
+  'date', 'timeSlot', 'time', 'courseId', 'enrollmentId', 'courseName', 'planName',
+  'status', 'city', 'location', 'pickupAddress', 'createdAt', 'updatedAt',
+  'confirmedAt', 'completedAt', 'cancelledAt', 'cancellationReason',
+  'googleCalendarEventId', 'googleCalendarStatus',
+]
+const ADMIN_REFUND_FIELDS = [
+  'Course_ID', 'Enrollment_ID', 'Course_Name', 'Amount', 'Reason', 'Status',
+  'createdAt', 'created_at', 'updatedAt', 'updated_at', 'Provider',
+  'Provider_Environment', 'Provider_Order_ID', 'Provider_Capture_ID',
+  'Provider_Refund_ID', 'Provider_Refund_Status',
+]
+const ADMIN_CHECKOUT_FIELDS = [
+  'orderId', 'status', 'amount', 'currency', 'environment', 'captureId',
+  'payerEmail', 'couponCode', 'subtotal', 'discount', 'createdAt', 'updatedAt',
+  'capturedAt',
+]
+const adminDetailValue = (value) => {
+  if (value instanceof Date) return value.toISOString()
+  return safeRecord(value)
+}
+const pickAdminDetailFields = (record, fields, { includeId = false } = {}) => {
+  const output = {}
+  if (includeId && record?._id !== undefined) output.id = String(record._id)
+  for (const field of fields) {
+    if (record?.[field] === undefined) continue
+    const value = adminDetailValue(record[field])
+    if (value !== undefined) output[field] = value
+  }
+  return output
+}
+const adminUserProfileDetails = (record) => pickAdminDetailFields(record, ADMIN_USER_PROFILE_FIELDS)
 const sendServerError = (res, error, context = 'Request failed') => {
   console.error(`${context}:`, error?.message || error)
   return res.status(500).json({ error: 'Something went wrong. Please try again.' })
@@ -3907,10 +3958,111 @@ app.get('/api/admin/stats', async (req, res) => {
 
 app.get('/api/admin/users', async (req, res) => {
   try {
-    const users = await usersCol.find().sort({ _id: -1 }).toArray()
+    const users = await usersCol.find({}, {
+      projection: {
+        uid: 1,
+        firstName: 1,
+        middleName: 1,
+        lastName: 1,
+        displayName: 1,
+        name: 1,
+        username: 1,
+        email: 1,
+        phone: 1,
+        photoURL: 1,
+        isAdmin: 1,
+        createdAt: 1,
+        submittedAt: 1,
+        courses: 1,
+      },
+    }).sort({ _id: -1 }).toArray()
     res.json(users)
   } catch (e) {
     sendServerError(res, e, 'Admin user lookup failed')
+  }
+})
+
+app.get('/api/admin/users/:uid/details', async (req, res) => {
+  try {
+    const uid = cleanText(req.params.uid, 160)
+    if (!uid) throw new HttpError(400, 'User id is required.')
+
+    const [student, bookingRows, refundRows, cart, checkoutRows] = await Promise.all([
+      usersCol.findOne({ uid }),
+      bookingsCol.find({ userId: uid, status: { $ne: 'held' } }).sort({ date: -1, createdAt: -1 }).limit(250).toArray(),
+      refundsCol.find({ $or: [{ User_UID: uid }, { uid }] }).sort({ createdAt: -1, created_at: -1 }).limit(250).toArray(),
+      cartsCol.findOne({ uid }),
+      paypalOrdersCol.find({ uid }).sort({ createdAt: -1 }).limit(100).toArray(),
+    ])
+    if (!student) throw new HttpError(404, 'Student account was not found.')
+
+    let authentication = { available: false }
+    try {
+      const account = await getFirebaseAdminAuth().getUser(uid)
+      authentication = {
+        available: true,
+        email: cleanText(account.email, 320),
+        emailVerified: account.emailVerified === true,
+        disabled: account.disabled === true,
+        displayName: cleanText(account.displayName, 160),
+        photoURL: cleanHttpUrl(account.photoURL),
+        phoneNumber: cleanText(account.phoneNumber, 30),
+        providerIds: [...new Set((account.providerData || []).map(provider => cleanText(provider.providerId, 80)).filter(Boolean))],
+        creationTime: cleanText(account.metadata?.creationTime, 80),
+        lastSignInTime: cleanText(account.metadata?.lastSignInTime, 80),
+        lastRefreshTime: cleanText(account.metadata?.lastRefreshTime, 80),
+      }
+    } catch (error) {
+      console.warn('Firebase account metadata unavailable for admin user details:', error?.code || error?.message || error)
+    }
+
+    const courses = (Array.isArray(student.courses) ? student.courses : [])
+      .map(course => pickAdminDetailFields(course, ADMIN_COURSE_FIELDS))
+    const payments = (Array.isArray(student.payments) ? student.payments : [])
+      .map(payment => pickAdminDetailFields(payment, ADMIN_PAYMENT_FIELDS))
+    const bookings = bookingRows.map(booking => ({
+      ...pickAdminDetailFields(booking, ADMIN_BOOKING_FIELDS, { includeId: true }),
+      status: canonicalAdminBookingStatus(booking),
+    }))
+    const refunds = refundRows.map(refund => pickAdminDetailFields(refund, ADMIN_REFUND_FIELDS, { includeId: true }))
+    const checkoutOrders = checkoutRows.map(order => pickAdminDetailFields(order, ADMIN_CHECKOUT_FIELDS, { includeId: true }))
+    const cartItems = (Array.isArray(cart?.items) ? cart.items : [])
+      .map(item => pickAdminDetailFields(item, ADMIN_COURSE_FIELDS))
+    const supportThreads = (Array.isArray(student.messages) ? student.messages : []).map(thread => ({
+      id: cleanText(thread?.id, 160),
+      subject: cleanText(thread?.subject, 240),
+      status: cleanText(thread?.status, 40),
+      messageCount: Array.isArray(thread?.messages) ? thread.messages.length : 0,
+      unreadByAdmin: thread?.unreadByAdmin === true,
+      unreadByStudent: thread?.unreadByStudent === true,
+      createdAt: cleanText(thread?.createdAt, 80),
+      updatedAt: cleanText(thread?.updatedAt, 80),
+    }))
+
+    res.setHeader('Cache-Control', 'no-store')
+    res.json({
+      profile: adminUserProfileDetails(student),
+      authentication,
+      summary: {
+        courses: courses.length,
+        bookings: bookings.length,
+        payments: payments.length,
+        refunds: refunds.length,
+        cartItems: cartItems.length,
+        supportThreads: supportThreads.length,
+        aiConversations: Array.isArray(student.conversations) ? student.conversations.length : 0,
+      },
+      courses,
+      bookings,
+      payments,
+      refunds,
+      cartItems,
+      checkoutOrders,
+      supportThreads,
+    })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    return sendServerError(res, error, 'Admin user details lookup failed')
   }
 })
 
@@ -5168,6 +5320,7 @@ export {
   deliverContactEmails,
   escapeEmailHtml,
   adminAvailabilityStatus,
+  adminUserProfileDetails,
   canonicalAdminBookingStatus,
   bookingsForEnrollment,
   checkoutFingerprint,

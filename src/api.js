@@ -77,6 +77,7 @@ export const api = {
   deleteBooking: (id) => request(`/api/bookings/${pathPart(id)}`, { method: 'DELETE' }),
   adminStats: () => request('/api/admin/stats'),
   adminUsers: () => request('/api/admin/users'),
+  adminUserDetails: (uid) => request(`/api/admin/users/${pathPart(uid)}/details`),
   adminBookings: () => request('/api/admin/bookings'),
   adminAvailability: (params) => request(`/api/admin/availability?${new URLSearchParams(params)}`),
   adminAddAvailability: (dates, times) => request('/api/admin/availability', { method: 'POST', body: JSON.stringify({ dates, times }) }),

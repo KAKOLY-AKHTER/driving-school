@@ -11,6 +11,7 @@ import { DEFAULT_BOOKING_LOCATIONS, locationDistanceLabel } from '../locations'
 import { AdminLiveSupportPanel } from '../components/LiveSupportPanels'
 import AdminBlogPanel from '../components/AdminBlogPanel'
 import AdminCouponsPanel from '../components/AdminCouponsPanel'
+import AdminUserDetailsModal from '../components/AdminUserDetailsModal'
 import PasswordInput from '../components/PasswordInput'
 import { googleCalendarUrl } from '../utils/bookingCalendar'
 
@@ -525,6 +526,7 @@ export default function AdminPage() {
   const [contacts, setContacts] = useState([])
   const [userSearch, setUserSearch] = useState('')
   const [userPage, setUserPage] = useState(1)
+  const [userDetailsDialog, setUserDetailsDialog] = useState(null)
   const [bookingSearch, setBookingSearch] = useState('')
   const [bookingStatusFilter, setBookingStatusFilter] = useState('all')
   const [bookingDataFilter, setBookingDataFilter] = useState('all')
@@ -608,11 +610,32 @@ export default function AdminPage() {
     }
   })
   const previousFocusRef = useRef(null)
+  const userDetailsRequestRef = useRef(0)
 
   const requestConfirmation = (title, message, action) => {
     setConfirmDialog({ title, message, action, busy: false })
   }
   const requestEditorClose = useCallback((label, close) => setConfirmDialog({ title: 'Discard unsaved changes?', message: `Close the ${label}? Any unsaved changes will be lost.`, action: close, busy: false }), [])
+
+  const closeUserDetails = useCallback(() => {
+    userDetailsRequestRef.current += 1
+    setUserDetailsDialog(null)
+  }, [])
+
+  const openUserDetails = useCallback(async (account) => {
+    if (!account?.uid) return
+    const requestId = userDetailsRequestRef.current + 1
+    userDetailsRequestRef.current = requestId
+    setUserDetailsDialog({ user: account, data: null, loading: true, error: '' })
+    try {
+      const data = await api.adminUserDetails(account.uid)
+      if (userDetailsRequestRef.current !== requestId) return
+      setUserDetailsDialog({ user: account, data, loading: false, error: '' })
+    } catch (error) {
+      if (userDetailsRequestRef.current !== requestId) return
+      setUserDetailsDialog({ user: account, data: null, loading: false, error: error?.message || 'The complete student profile could not be loaded.' })
+    }
+  }, [])
 
   const runConfirmedAction = async () => {
     if (!confirmDialog?.action || confirmDialog.busy) return
@@ -1122,7 +1145,8 @@ export default function AdminPage() {
   }
 
   const activeDialogKey = confirmDialog ? 'confirmation'
-    : detailsDialog ? 'details'
+    : userDetailsDialog ? 'user-details'
+      : detailsDialog ? 'details'
     : contactEdit ? 'contact'
     : pricingEdit ? 'pricing'
       : locationEdit ? 'location'
@@ -1135,6 +1159,7 @@ export default function AdminPage() {
   const closeActiveDialog = useCallback(() => {
     if (confirmDialog?.busy) return
     if (confirmDialog) setConfirmDialog(null)
+    else if (userDetailsDialog) closeUserDetails()
     else if (detailsDialog) setDetailsDialog(null)
     else if (refundDetails) setRefundDetails(null)
     else if (refundEdit) requestEditorClose('refund editor', () => setRefundEdit(null))
@@ -1143,7 +1168,7 @@ export default function AdminPage() {
     else if (locationEdit) requestEditorClose('location editor', () => setLocationEdit(null))
     else if (pricingEdit) requestEditorClose('pricing editor', () => setPricingEdit(null))
     else if (contactEdit) requestEditorClose('contact editor', () => setContactEdit(null))
-  }, [areasEdit, confirmDialog, contactEdit, detailsDialog, locationEdit, pricingEdit, refundDetails, refundEdit, requestEditorClose, socialsEdit])
+  }, [areasEdit, closeUserDetails, confirmDialog, contactEdit, detailsDialog, locationEdit, pricingEdit, refundDetails, refundEdit, requestEditorClose, socialsEdit, userDetailsDialog])
 
   useEffect(() => {
     const dialogOpen = Boolean(activeDialogKey)
@@ -1658,6 +1683,7 @@ export default function AdminPage() {
                           <th scope="col" style={thStyle}>Login Email</th>
                           <th scope="col" style={thStyle}>Phone Number</th>
                           <th scope="col" style={thStyle}>Account Status</th>
+                          <th scope="col" className="admin-actions-cell" style={thStyle}>Student Profile</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1676,10 +1702,13 @@ export default function AdminPage() {
                             <td style={tdStyle}>
                               <span style={{ display: 'inline-flex', padding: '.28rem .6rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 800 }}>Registered</span>
                             </td>
+                            <td className="admin-actions-cell" style={tdStyle}>
+                              <button type="button" onClick={() => openUserDetails(u)} aria-label={`View complete profile for ${adminUserName(u)}`} style={{ minHeight: '40px', padding: '.52rem .78rem', border: `1.5px solid ${SKY_BLUE}`, borderRadius: '9px', background: '#fff', color: SKY_BLUE, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 5px 14px rgba(1,69,168,.08)' }}>View Full Profile</button>
+                            </td>
                           </tr>
                         ))}
                         {filteredUsers.length === 0 && (
-                          <tr><td colSpan={4} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{userSearch ? 'No users match your search.' : 'No registered website users yet.'}</td></tr>
+                          <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{userSearch ? 'No users match your search.' : 'No registered website users yet.'}</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -2963,6 +2992,12 @@ Near and Long pricing is applied automatically from the selected city and verifi
           </div>
         </div>
       </div>
+
+      <AdminUserDetailsModal
+        dialog={userDetailsDialog}
+        onClose={closeUserDetails}
+        onRetry={() => userDetailsDialog?.user && openUserDetails(userDetailsDialog.user)}
+      />
 
       {confirmDialog && (
         <div role="presentation" style={{ position: 'fixed', inset: 0, zIndex: 15000, display: 'grid', placeItems: 'center', padding: '1rem', background: 'rgba(10,22,40,0.68)', backdropFilter: 'blur(10px)' }} onClick={(event) => { if (event.target === event.currentTarget && !confirmDialog.busy) setConfirmDialog(null) }}>
