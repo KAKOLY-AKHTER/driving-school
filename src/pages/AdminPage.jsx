@@ -495,6 +495,8 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
   const [limit, setLimit] = useState('10')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [bookingLeadTimeDays, setBookingLeadTimeDays] = useState(0)
+  const [leadTimeSaving, setLeadTimeSaving] = useState(false)
   const [loadVersion, setLoadVersion] = useState(0)
   const [error, setError] = useState('')
 
@@ -505,8 +507,9 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
     Promise.all([
       api.adminAvailability({ page, limit, search, status }),
       api.adminClosedDates(),
+      api.adminBookingLeadTime(),
     ])
-      .then(([data, closureData]) => {
+      .then(([data, closureData, leadTimeData]) => {
         if (!active) return
         setRows(Array.isArray(data?.items) ? data.items : [])
         setTotal(Number(data?.total) || 0)
@@ -516,6 +519,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
         const closureKeys = new Set(closureItems.map(item => item.date))
         setClosedDates(closureItems)
         setDates(current => current.filter(date => !closureKeys.has(date)))
+        setBookingLeadTimeDays(Number.isInteger(Number(leadTimeData?.days)) ? Number(leadTimeData.days) : 0)
         setSelected([])
       })
       .catch(loadError => { if (active) setError(loadError?.message || 'Availability could not be loaded.') })
@@ -587,6 +591,28 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
       setMessage(saveError?.message || 'Availability could not be saved.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const saveBookingLeadTime = async () => {
+    const days = Number(bookingLeadTimeDays)
+    if (!Number.isInteger(days) || days < 0 || days > 31) {
+      setMessage('Choose a whole number from 0 to 31 days.')
+      return
+    }
+    setLeadTimeSaving(true)
+    try {
+      const result = await api.adminUpdateBookingLeadTime(days)
+      const blockedThrough = result?.bookingBlockedThrough
+      setBookingLeadTimeDays(Number(result?.days) || 0)
+      setMessage(days
+        ? `Advance booking notice saved. Students cannot select lesson dates through ${new Date(`${blockedThrough}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`
+        : 'Advance booking notice removed. Students can book the next available future date.')
+      setLoadVersion(value => value + 1)
+    } catch (saveError) {
+      setMessage(saveError?.message || 'Advance booking notice could not be saved.')
+    } finally {
+      setLeadTimeSaving(false)
     }
   }
 
@@ -680,6 +706,22 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
             <p style={{ margin: '.35rem 0 0', color: '#334155', lineHeight: 1.55 }}>Choose one or more future dates, select the lesson times, then save. Every lesson is 2 hours, followed by a protected 30-minute break.</p>
           </div>
           <span style={{ padding: '.35rem .65rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontWeight: 800, fontSize: '.8rem' }}>Pacific Time (California)</span>
+        </div>
+        <div style={{ marginBottom: '1.25rem', padding: '1rem', border: '1px solid #BFDBFE', borderRadius: '12px', background: 'linear-gradient(135deg,#EFF6FF,#F8FBFF)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '1rem', flexWrap: 'wrap' }}>
+            <div style={{ maxWidth: '670px' }}>
+              <strong style={{ display: 'block', color: '#0A2A5E', fontSize: '1rem' }}>Minimum Advance Booking Notice</strong>
+              <span style={{ display: 'block', marginTop: '.25rem', color: '#334155', fontSize: '.88rem', lineHeight: 1.5 }}>Block students from booking too close to today. For example, choose 5 to keep today through the next 5 calendar days unavailable. This does not change your saved lesson slots or selected days off.</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '.55rem', flexWrap: 'wrap' }}>
+              <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontSize: '.76rem', fontWeight: 850, letterSpacing: '.05em', textTransform: 'uppercase' }}>
+                Days to block (0–31)
+                <input type="number" min="0" max="31" step="1" value={bookingLeadTimeDays} onChange={event => setBookingLeadTimeDays(event.target.value === '' ? '' : Number(event.target.value))} style={{ ...inputStyle, width: '132px', minHeight: '42px' }} />
+              </label>
+              <button type="button" disabled={leadTimeSaving} onClick={saveBookingLeadTime} style={{ minHeight: '42px', padding: '.65rem .95rem', border: 0, borderRadius: '9px', background: leadTimeSaving ? '#94A3B8' : '#0755AE', color: '#fff', fontWeight: 850, cursor: leadTimeSaving ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}>{leadTimeSaving ? 'Saving…' : 'Save Notice'}</button>
+            </div>
+          </div>
+          <p style={{ margin: '.65rem 0 0', color: '#475569', fontSize: '.8rem' }}><strong>0 days</strong> means no additional notice: students can choose the next available future date.</p>
         </div>
         <div className="admin-grid-responsive" style={{ display: 'grid', gridTemplateColumns: 'minmax(240px,.8fr) minmax(320px,1.2fr)', gap: '1.25rem' }}>
           <div>
