@@ -129,7 +129,7 @@ const I = {
 
 export default function DashboardPage() {
   usePageMeta('Student Dashboard — A Precision Driving School', 'Manage your driving courses, lesson bookings, profile and support with A Precision Driving School.')
-  const { user, refreshProfile, refreshAuthUser } = useAuth()
+  const { user, isAdmin, refreshProfile, refreshAuthUser } = useAuth()
   const { count: cartCount } = useCart()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -1047,7 +1047,7 @@ export default function DashboardPage() {
                   <img className="dash-header-logo" src="/driving-logo.png" alt="A Precision Driving School Logo" style={{ height:'52px', width:'auto', objectFit:'contain', filter:'drop-shadow(0 0 18px rgba(255,255,255,0.95)) drop-shadow(0 0 6px rgba(255,255,255,0.8))' }} />
                 </Link>
                 <div className="dash-brand-copy">
-                  <p style={{ fontFamily:'var(--font-display)', fontSize:'1.05rem', color:'#fff', margin:0, fontWeight:800, lineHeight:1.2, textShadow:'0 1px 2px rgba(0,0,0,0.2)' }}>Dashboard</p>
+                  <p style={{ fontFamily:'var(--font-display)', fontSize:'1.05rem', color:'#fff', margin:0, fontWeight:800, lineHeight:1.2, textShadow:'0 1px 2px rgba(0,0,0,0.2)' }}>{isAdmin ? 'Student Portal Preview' : 'Dashboard'}</p>
                   <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.65rem', letterSpacing:'0.15em', textTransform:'uppercase', color:GOLD_BRIGHT, margin:0, fontWeight:700, textShadow:'0 0 8px rgba(253,188,1,0.3)' }}>A Precision Driving School</p>
                 </div>
               </div>
@@ -1115,6 +1115,7 @@ export default function DashboardPage() {
                 <div style={{ minWidth:0 }}>
                   <p style={{ fontFamily:'var(--font-display)', fontSize:'0.95rem', color:'#fff', margin:0, fontWeight:700, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{user?.displayName || 'Student'}</p>
                   <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'rgba(255,255,255,0.88)', margin:'0.2rem 0 0', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{user?.email}</p>
+                  {isAdmin && <p style={{ fontFamily:'var(--font-mono)', fontSize:'.62rem', letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(253,188,1,.95)', margin:'.3rem 0 0', fontWeight:800 }}>Administrator preview</p>}
                 </div>
               </div>
             </div>
@@ -1161,6 +1162,12 @@ export default function DashboardPage() {
               </div>
             )}
             <div style={{ padding:'clamp(1rem,3vw,2.5rem)' }}>
+              {isAdmin && (
+                <div role="status" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'1rem', flexWrap:'wrap', padding:'.85rem 1rem', marginBottom:'1rem', border:'1px solid #BFDBFE', borderRadius:'14px', background:'linear-gradient(135deg,#EFF6FF,#F8FBFF)', color:'#174A8B', fontFamily:'var(--font-body)', lineHeight:1.45 }}>
+                  <span><strong>Administrator preview:</strong> You are viewing the student portal layout. Your account is still an administrator account and its permissions have not changed.</span>
+                  <button type="button" onClick={() => navigate('/admin')} style={{ padding:'.55rem .85rem', border:'1px solid #0759C7', borderRadius:'9px', background:'#0759C7', color:'#fff', fontWeight:850, cursor:'pointer', whiteSpace:'nowrap' }}>Return to Admin Dashboard</button>
+                </div>
+              )}
               {visibleLoadError && (
                 <div role="alert" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'1rem', flexWrap:'wrap', padding:'0.9rem 1rem', marginBottom:'1rem', border:'1px solid #FECACA', borderRadius:'12px', background:'#FEF2F2', color:'#B91C1C', fontFamily:'var(--font-body)' }}>
                   <span>{visibleLoadError}</span>
@@ -1181,7 +1188,7 @@ export default function DashboardPage() {
                 <div className="dash-content-width dash-overview-page">
                   <div className="dash-overview-header">
                     <div className="dash-overview-header-copy">
-                      <p className="dash-overview-kicker">Student dashboard</p>
+                      <p className="dash-overview-kicker">{isAdmin ? 'Administrator preview · Student portal' : 'Student dashboard'}</p>
                       <h2>Welcome back, {(user?.displayName || 'Student').trim().split(/\s+/)[0]}</h2>
                       <p>Everything you need for your courses, lessons, and account—in one place.</p>
                     </div>

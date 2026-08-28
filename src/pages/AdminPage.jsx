@@ -1899,9 +1899,9 @@ export default function AdminPage() {
 
             <div style={{ padding: '0.75rem', marginTop: 'auto' }}>
               <div className="admin-gold-line" />
-              <button onClick={() => navigate('/dashboard')} className="admin-nav-item" style={{ marginBottom: '4px', marginTop: '0.5rem' }}>
+              <button type="button" onClick={() => navigate('/dashboard?adminPreview=1')} aria-label="Preview the student portal while remaining signed in as administrator" className="admin-nav-item" style={{ marginBottom: '4px', marginTop: '0.5rem' }}>
                 <div style={{ flexShrink: 0, width: '34px', height: '34px', borderRadius: '10px', background: 'linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{SVG.home}</div>
-                <span>Student Dashboard</span>
+                <span>Preview Student Portal</span>
               </button>
               <button onClick={handleLogout} className="admin-nav-item admin-logout-item" style={{ marginBottom: '1rem', background: 'linear-gradient(135deg,rgba(220,38,38,0.22),rgba(220,38,38,0.10))', border: '1px solid rgba(220,38,38,0.35)', color: '#FCA5A5' }}>
                 <div style={{ flexShrink: 0, width: '34px', height: '34px', borderRadius: '10px', background: 'linear-gradient(135deg,#DC2626,#B91C1C)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(220,38,38,0.35)' }}>{SVG.logout}</div>
