@@ -2821,6 +2821,13 @@ Near and Long pricing is applied automatically from the selected city and verifi
 
               {!loading && !loadError && activeTab === 'account' && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }} className="admin-grid-responsive">
+                  {(accMsg || accErr) && (
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <div role={accErr ? 'alert' : 'status'} aria-live="polite" style={{ padding: '0.85rem 1.1rem', background: accErr ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${accErr ? '#FECACA' : '#BBF7D0'}`, borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-body)', fontSize: '0.95rem', fontWeight: 700, color: accErr ? '#B91C1C' : '#15803D' }}>
+                        {accErr || accMsg}
+                      </div>
+                    </div>
+                  )}
                   <div style={cardStyle}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>{SVG.shield} Profile</h3>
                     <ProfilePhotoUploader photoURL={accPhoto} fallbackURL={DEFAULT_ADMIN_PHOTO_URL} name={accName || user?.displayName || 'Administrator'} initials={initials} onUpload={handleUploadProfilePhoto} onRemove={handleRemoveProfilePhoto} disabled={accLoading} />
@@ -2931,13 +2938,6 @@ Near and Long pricing is applied automatically from the selected city and verifi
                     <p style={{ position: 'relative', margin: '1rem 0 0', color: '#475569', fontSize: '.8rem', lineHeight: 1.55 }}>{calendarIntegration.configured ? <>Changing the admin login email does not silently move bookings to another calendar. Use <strong>Switch Google account</strong> and approve the intended school account.</> : <>For testing, connect your own Google email first. Later use <strong>Switch Google account</strong> to connect the client’s school calendar without changing the admin login.</>}</p>
                   </section>
 
-                  {(accMsg || accErr) && (
-                    <div style={{ gridColumn: '1 / -1' }}>
-                      <div role={accErr ? 'alert' : 'status'} aria-live="polite" style={{ padding: '0.85rem 1.1rem', background: accErr ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${accErr ? '#FECACA' : '#BBF7D0'}`, borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-body)', fontSize: '0.95rem', fontWeight: 700, color: accErr ? '#B91C1C' : '#15803D' }}>
-                        {accErr || accMsg}
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
