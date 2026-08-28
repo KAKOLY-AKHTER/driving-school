@@ -2328,7 +2328,16 @@ app.put('/api/users/:uid', async (req, res) => {
     const { uid } = req.params
     const requestedAdminBootstrap = req.body?.isAdmin === true
     const data = sanitizeUserProfile(req.body)
-    const authenticatedEmail = normalizeEmail(req.auth?.email)
+    // An ID token can be issued immediately before a user changes their email.
+    // Read Firebase's current account record so a profile save can never put a
+    // stale email back into MongoDB after the browser reloads.
+    let authenticatedEmail = normalizeEmail(req.auth?.email)
+    try {
+      const authenticatedUser = await getFirebaseAdminAuth().getUser(req.auth.uid)
+      authenticatedEmail = normalizeEmail(authenticatedUser?.email) || authenticatedEmail
+    } catch (error) {
+      console.warn('Could not refresh Firebase email while saving profile:', error?.code || error?.message)
+    }
     if (authenticatedEmail) data.email = authenticatedEmail
 
     if (requestedAdminBootstrap) {

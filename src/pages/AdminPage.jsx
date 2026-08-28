@@ -1121,7 +1121,6 @@ export default function AdminPage() {
       if (accNewPass === accPass) throw new Error('New password must be different from your current password.')
       await reauthenticateWithCredential(cur, EmailAuthProvider.credential(cur.email, accPass))
       await updatePassword(cur, accNewPass)
-      await reauthenticateWithCredential(cur, EmailAuthProvider.credential(cur.email, accNewPass))
       await refreshAuthUser()
       setAccPass(''); setAccNewPass('')
       setAccMsg('Password changed successfully. Use the new password the next time you sign in.')
@@ -1147,6 +1146,10 @@ export default function AdminPage() {
       if (nextEmail === String(cur.email || '').toLowerCase()) throw new Error('Enter a different email address to make a change.')
       await reauthenticateWithCredential(cur, EmailAuthProvider.credential(cur.email, accPass))
       await updateEmail(cur, nextEmail)
+      await cur.reload()
+      if (String(cur.email || '').toLowerCase() !== nextEmail) {
+        throw new Error('Firebase did not confirm the new email. Please try again.')
+      }
       await cur.getIdToken(true)
       await api.saveUser(user.uid, { email: nextEmail })
       const refreshedUser = await refreshAuthUser()
