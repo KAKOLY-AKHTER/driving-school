@@ -590,6 +590,7 @@ const normalizeBlogSlug = value => cleanText(value, 180)
 
 const CLOUDINARY_BLOG_FOLDER = 'a-precision-driving-school/blog'
 const CLOUDINARY_REVIEW_FOLDER = 'a-precision-driving-school/reviews'
+const CLOUDINARY_PROFILE_FOLDER = 'a-precision-driving-school/profiles'
 const normalizeBlogImagePublicId = (value) => {
   const publicId = cleanText(value, 500)
   if (!publicId) return ''
@@ -599,6 +600,11 @@ const normalizeReviewImagePublicId = (value) => {
   const publicId = cleanText(value, 500)
   if (!publicId) return ''
   return /^a-precision-driving-school\/reviews\/[A-Za-z0-9_-]+$/.test(publicId) ? publicId : ''
+}
+const normalizeProfileImagePublicId = (value) => {
+  const publicId = cleanText(value, 500)
+  if (!publicId) return ''
+  return /^a-precision-driving-school\/profiles\/[A-Za-z0-9_-]+$/.test(publicId) ? publicId : ''
 }
 
 const BLOG_CONTENT_TAGS = [
@@ -5136,8 +5142,14 @@ const uploadReviewImageToCloudinary = (buffer, contentType) => uploadImageToClou
   prefix: 'review',
   normalizePublicId: normalizeReviewImagePublicId,
 })
+const uploadProfileImageToCloudinary = (buffer, contentType) => uploadImageToCloudinary(buffer, contentType, {
+  folder: CLOUDINARY_PROFILE_FOLDER,
+  prefix: 'profile',
+  normalizePublicId: normalizeProfileImagePublicId,
+})
 const deleteCloudinaryBlogImage = publicId => deleteCloudinaryImage(publicId, normalizeBlogImagePublicId)
 const deleteCloudinaryReviewImage = publicId => deleteCloudinaryImage(publicId, normalizeReviewImagePublicId)
+const deleteCloudinaryProfileImage = publicId => deleteCloudinaryImage(publicId, normalizeProfileImagePublicId)
 
 function detectBlogImageType(buffer) {
   if (!Buffer.isBuffer(buffer)) return ''
@@ -5192,6 +5204,95 @@ app.post(
     }
   },
 )
+
+app.post(
+  '/api/users/:uid/profile-image',
+  express.raw({ type: Object.keys(BLOG_IMAGE_TYPES), limit: '4mb' }),
+  async (req, res) => {
+    let uploaded = null
+    let existing = null
+    let firebasePhotoUpdated = false
+    try {
+      if (!Buffer.isBuffer(req.body) || !req.body.length) throw new HttpError(400, 'Choose a JPG, PNG, or WebP profile photo to upload.')
+
+      const detectedType = detectBlogImageType(req.body)
+      const requestedType = String(req.get('content-type') || '').split(';')[0].trim().toLowerCase()
+      if (!detectedType || detectedType !== requestedType || !BLOG_IMAGE_TYPES[detectedType]) {
+        throw new HttpError(400, 'The selected profile photo is not a valid JPG, PNG, or WebP image.')
+      }
+
+      existing = await usersCol.findOne(
+        { uid: req.params.uid },
+        { projection: { profileImagePublicId: 1, photoURL: 1 } },
+      )
+      uploaded = await uploadProfileImageToCloudinary(req.body, detectedType)
+      await getFirebaseAdminAuth().updateUser(req.params.uid, { photoURL: uploaded.imageUrl })
+      firebasePhotoUpdated = true
+      const updatedAt = new Date().toISOString()
+      await usersCol.updateOne(
+        { uid: req.params.uid },
+        {
+          $set: {
+            photoURL: uploaded.imageUrl,
+            profileImagePublicId: uploaded.imagePublicId,
+            profileImageUpdatedAt: updatedAt,
+          },
+          $setOnInsert: { uid: req.params.uid, createdAt: updatedAt },
+        },
+        { upsert: true },
+      )
+      if (existing?.profileImagePublicId && existing.profileImagePublicId !== uploaded.imagePublicId) {
+        deleteCloudinaryProfileImage(existing.profileImagePublicId)
+          .catch(error => console.warn('Replaced profile photo cleanup failed:', error?.message || error))
+      }
+      res.status(201).json({ ok: true, photoURL: uploaded.imageUrl })
+    } catch (error) {
+      if (firebasePhotoUpdated) {
+        getFirebaseAdminAuth().updateUser(req.params.uid, { photoURL: cleanHttpUrl(existing?.photoURL) || null })
+          .catch(rollbackError => console.warn('Profile photo authentication rollback failed:', rollbackError?.message || rollbackError))
+      }
+      if (uploaded?.imagePublicId) {
+        deleteCloudinaryProfileImage(uploaded.imagePublicId)
+          .catch(cleanupError => console.warn('Failed profile photo cleanup failed:', cleanupError?.message || cleanupError))
+      }
+      if (error.status) return res.status(error.status).json({ error: error.message })
+      console.error('Profile photo upload failed:', error?.message || error)
+      res.status(502).json({ error: error?.publicMessage || 'The profile photo could not be stored. Please try again.' })
+    }
+  },
+)
+
+app.delete('/api/users/:uid/profile-image', async (req, res) => {
+  let existing = null
+  let firebasePhotoCleared = false
+  try {
+    existing = await usersCol.findOne(
+      { uid: req.params.uid },
+      { projection: { profileImagePublicId: 1, photoURL: 1 } },
+    )
+    await getFirebaseAdminAuth().updateUser(req.params.uid, { photoURL: null })
+    firebasePhotoCleared = true
+    await usersCol.updateOne(
+      { uid: req.params.uid },
+      {
+        $unset: { photoURL: '', profileImagePublicId: '', profileImageUpdatedAt: '' },
+        $set: { updatedAt: new Date().toISOString() },
+      },
+    )
+    if (existing?.profileImagePublicId) {
+      deleteCloudinaryProfileImage(existing.profileImagePublicId)
+        .catch(error => console.warn('Removed profile photo cleanup failed:', error?.message || error))
+    }
+    res.json({ ok: true, photoURL: '' })
+  } catch (error) {
+    if (firebasePhotoCleared && cleanHttpUrl(existing?.photoURL)) {
+      getFirebaseAdminAuth().updateUser(req.params.uid, { photoURL: cleanHttpUrl(existing.photoURL) })
+        .catch(rollbackError => console.warn('Profile photo removal rollback failed:', rollbackError?.message || rollbackError))
+    }
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Profile photo removal failed')
+  }
+})
 
 app.post('/api/admin/blogs', async (req, res) => {
   try {

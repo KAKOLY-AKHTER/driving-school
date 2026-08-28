@@ -14,6 +14,7 @@ import AdminCouponsPanel from '../components/AdminCouponsPanel'
 import AdminUserDetailsModal from '../components/AdminUserDetailsModal'
 import PasswordInput from '../components/PasswordInput'
 import AdminDeleteIconButton from '../components/AdminDeleteIconButton'
+import ProfilePhotoUploader from '../components/ProfilePhotoUploader'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -871,7 +872,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (user) {
       setAccName(user.displayName || '')
-      setAccPhoto(user.photoURL || DEFAULT_ADMIN_PHOTO_URL)
+      setAccPhoto(user.photoURL || '')
       setAccEmail(user.email || '')
     }
   }, [user, authRevision])
@@ -913,15 +914,13 @@ export default function AdminPage() {
       const displayName = accName.trim()
       if (!cur || !user?.uid) throw new Error('Your session has expired. Please sign in again.')
       if (!displayName) throw new Error('Display name is required.')
-      const photoResult = validateHttpsUrl(accPhoto, { required: false })
-      if (photoResult.error) throw new Error(`Profile photo: ${photoResult.error}`)
-      const photoURL = photoResult.value || DEFAULT_ADMIN_PHOTO_URL
-      await updateProfile(cur, { displayName, photoURL })
+      const photoURL = accPhoto || cur.photoURL || ''
+      await updateProfile(cur, { displayName })
       await api.saveUser(user.uid, {
         displayName,
         name: displayName,
         email: cur.email || accEmail.trim(),
-        photoURL,
+        ...(photoURL ? { photoURL } : {}),
       })
       const refreshedUser = await refreshAuthUser()
       await refreshProfile(refreshedUser)
@@ -934,6 +933,46 @@ export default function AdminPage() {
       setTimeout(() => setAccMsg(''), 2500)
     } catch (e) {
       setAccErr(e.message || 'Failed to update profile.')
+    } finally {
+      setAccLoading(false)
+    }
+  }
+
+  const handleUploadProfilePhoto = async (file) => {
+    setAccErr(''); setAccMsg(''); setAccLoading(true)
+    try {
+      if (!user?.uid) throw new Error('Your session has expired. Please sign in again.')
+      const result = await api.uploadProfileImage(user.uid, file)
+      const photoURL = result?.photoURL || ''
+      if (!photoURL) throw new Error('The image service did not return a profile photo.')
+      const refreshedUser = await refreshAuthUser()
+      await refreshProfile(refreshedUser)
+      setAccPhoto(photoURL)
+      setUsers(previous => previous.map(account => account.uid === user.uid ? { ...account, photoURL } : account))
+      setAccMsg('Profile photo uploaded successfully.')
+      setTimeout(() => setAccMsg(''), 2500)
+    } catch (error) {
+      setAccErr(error?.message || 'The profile photo could not be uploaded.')
+      throw error
+    } finally {
+      setAccLoading(false)
+    }
+  }
+
+  const handleRemoveProfilePhoto = async () => {
+    setAccErr(''); setAccMsg(''); setAccLoading(true)
+    try {
+      if (!user?.uid) throw new Error('Your session has expired. Please sign in again.')
+      await api.removeProfileImage(user.uid)
+      const refreshedUser = await refreshAuthUser()
+      await refreshProfile(refreshedUser)
+      setAccPhoto('')
+      setUsers(previous => previous.map(account => account.uid === user.uid ? { ...account, photoURL: '' } : account))
+      setAccMsg('Profile photo removed.')
+      setTimeout(() => setAccMsg(''), 2500)
+    } catch (error) {
+      setAccErr(error?.message || 'The profile photo could not be removed.')
+      throw error
     } finally {
       setAccLoading(false)
     }
@@ -2629,21 +2668,13 @@ Near and Long pricing is applied automatically from the selected city and verifi
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }} className="admin-grid-responsive">
                   <div style={cardStyle}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>{SVG.shield} Profile</h3>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                      {profilePhotoPreview ? <img src={profilePhotoPreview} alt="Profile preview" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.35)', flexShrink: 0 }} /> : <div aria-label="Profile preview" style={{ width: '72px', height: '72px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', fontWeight: 800, color: DARK, border: '2.5px solid #FDBC01', flexShrink: 0 }}>{initials}</div>}
-                      <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#334155', margin: 0, lineHeight: 1.5 }}>Use a direct HTTPS image URL. The saved photo will appear in both the navbar and sidebar.</p>
-                    </div>
+                    <ProfilePhotoUploader photoURL={accPhoto} fallbackURL={DEFAULT_ADMIN_PHOTO_URL} name={accName || user?.displayName || 'Administrator'} initials={initials} onUpload={handleUploadProfilePhoto} onRemove={handleRemoveProfilePhoto} disabled={accLoading} />
                     <div style={{ marginBottom: '1.25rem' }}>
                       <label style={labelStyle}>Display Name</label>
                       <input aria-label="Administrator display name" type="text" autoComplete="name" value={accName} onChange={e => setAccName(e.target.value)} style={inputStyle} />
                     </div>
-                    <div style={{ marginBottom: '1.5rem' }}>
-                      <label htmlFor="admin-profile-photo-url" style={labelStyle}>Secure Profile Image URL</label>
-                      <input id="admin-profile-photo-url" type="url" inputMode="url" autoComplete="url" value={accPhoto} onChange={e => setAccPhoto(e.target.value)} style={inputStyle} placeholder={DEFAULT_ADMIN_PHOTO_URL} />
-                      <p style={{ margin: '.45rem 0 0', color: '#334155', fontSize: '.78rem', lineHeight: 1.5 }}>Leave this blank to use the default administrator image. Only HTTPS links are accepted.</p>
-                    </div>
                     <button type="button" onClick={handleSaveProfile} disabled={accLoading} style={{ padding: '0.75rem 2rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: accLoading ? 'wait' : 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)', opacity: accLoading ? 0.6 : 1 }}>
-                      {accLoading ? 'Saving…' : 'Save Profile'}
+                      {accLoading ? 'Saving…' : 'Save Display Name'}
                     </button>
                   </div>
 

@@ -13,6 +13,7 @@ import { ONLINE_COURSE_CURRICULUM } from '../data/onlineCourseCurriculum'
 import { UserLiveSupportPanel } from '../components/LiveSupportPanels'
 import PasswordInput from '../components/PasswordInput'
 import ChatMessageContent from '../components/ChatMessageContent'
+import ProfilePhotoUploader from '../components/ProfilePhotoUploader'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -128,7 +129,7 @@ const I = {
 
 export default function DashboardPage() {
   usePageMeta('Student Dashboard — A Precision Driving School', 'Manage your driving courses, lesson bookings, profile and support with A Precision Driving School.')
-  const { user } = useAuth()
+  const { user, refreshProfile, refreshAuthUser } = useAuth()
   const { count: cartCount } = useCart()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -168,6 +169,7 @@ export default function DashboardPage() {
   const [upcomingPage, setUpcomingPage] = useState(1)
   const [supportUnread, setSupportUnread] = useState(0)
   const [sUsername, setSUsername] = useState('')
+  const [sPhotoURL, setSPhotoURL] = useState(user?.photoURL || '')
   const [sPhone, setSPhone] = useState('')
   const [sAddress, setSAddress] = useState('')
   const [sPermit, setSPermit] = useState('')
@@ -246,6 +248,7 @@ export default function DashboardPage() {
           setPayments(Array.isArray(profile.payments) ? profile.payments : [])
           setSupportUnread((Array.isArray(profile.messages) ? profile.messages : []).filter(thread => thread?.unreadByUser).length)
           setSUsername(profile.username || profile.displayName || '')
+          setSPhotoURL(profile.photoURL || user.photoURL || '')
           setSPhone(profile.phone || '')
           setSAddress(profile.address || '')
           setSPermit(profile.permit || '')
@@ -613,6 +616,42 @@ export default function DashboardPage() {
               ? 'Your password was updated, but the profile changes could not be saved. Please retry.'
               : e.message || 'Failed to save settings.'
       showNotice(message, 'error')
+    } finally {
+      setSSaving(false)
+    }
+  }
+
+  const handleUploadProfilePhoto = async (file) => {
+    setSSaving(true)
+    try {
+      if (!user?.uid) throw new Error('Your session has expired. Please sign in again.')
+      const result = await api.uploadProfileImage(user.uid, file)
+      const photoURL = result?.photoURL || ''
+      if (!photoURL) throw new Error('The image service did not return a profile photo.')
+      const refreshedUser = await refreshAuthUser()
+      await refreshProfile(refreshedUser)
+      setSPhotoURL(photoURL)
+      showNotice('Profile photo uploaded successfully.')
+    } catch (error) {
+      showNotice(error?.message || 'The profile photo could not be uploaded.', 'error')
+      throw error
+    } finally {
+      setSSaving(false)
+    }
+  }
+
+  const handleRemoveProfilePhoto = async () => {
+    setSSaving(true)
+    try {
+      if (!user?.uid) throw new Error('Your session has expired. Please sign in again.')
+      await api.removeProfileImage(user.uid)
+      const refreshedUser = await refreshAuthUser()
+      await refreshProfile(refreshedUser)
+      setSPhotoURL('')
+      showNotice('Profile photo removed.')
+    } catch (error) {
+      showNotice(error?.message || 'The profile photo could not be removed.', 'error')
+      throw error
     } finally {
       setSSaving(false)
     }
@@ -1026,7 +1065,7 @@ export default function DashboardPage() {
                     <p style={{ fontFamily:'var(--font-body)', fontSize:'0.8rem', color:'rgba(255,255,255,0.88)', margin:'0.1rem 0 0', maxWidth:'160px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
                   </div>
                   <div style={{ position:'relative' }}>
-                    {user?.photoURL ? <img src={user.photoURL} alt="" style={{ width:'42px', height:'42px', borderRadius:'50%', objectFit:'cover', border:`2.5px solid ${GOLD}`, boxShadow:'0 0 20px rgba(253,188,1,0.3)' }} /> : <div style={{ width:'42px', height:'42px', borderRadius:'50%', background:`linear-gradient(135deg,${GOLD},${GOLD_BRIGHT})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.95rem', fontWeight:800, color:DARK, border:`2.5px solid ${GOLD}`, boxShadow:'0 0 20px rgba(253,188,1,0.3)' }}>{initials}</div>}
+                    {sPhotoURL ? <img src={sPhotoURL} alt="" style={{ width:'42px', height:'42px', borderRadius:'50%', objectFit:'cover', border:`2.5px solid ${GOLD}`, boxShadow:'0 0 20px rgba(253,188,1,0.3)' }} /> : <div style={{ width:'42px', height:'42px', borderRadius:'50%', background:`linear-gradient(135deg,${GOLD},${GOLD_BRIGHT})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.95rem', fontWeight:800, color:DARK, border:`2.5px solid ${GOLD}`, boxShadow:'0 0 20px rgba(253,188,1,0.3)' }}>{initials}</div>}
                     <div style={{ position:'absolute', bottom:0, right:0, width:'11px', height:'11px', borderRadius:'50%', background:'linear-gradient(135deg,#22C55E,#16A34A)', border:'2.5px solid #0145A8', boxShadow:'0 0 6px rgba(34,197,94,0.4)' }} />
                   </div>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="2.5" style={{ transition:'transform 0.25s', transform:profileMenuOpen ? 'rotate(180deg)' : 'rotate(0)' }}><path d="M6 9l6 6 6-6" /></svg>
@@ -1035,7 +1074,7 @@ export default function DashboardPage() {
                   <div role="menu" aria-label="Account options" style={{ position:'absolute', top:'100%', right:0, width:'280px', background:'#FFFFFF', border:'2px solid #0145A8', borderRadius:'18px', boxShadow:'0 24px 64px rgba(1,69,168,0.25),0 0 0 1px rgba(1,69,168,0.08)', overflow:'hidden', zIndex:200, animation:'dashFadeIn 0.25s cubic-bezier(0.22,1,0.36,1) both' }}>
                     <div style={{ padding:'1.25rem', borderBottom:'1px solid rgba(1,69,168,0.15)', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(253,188,1,0.04))' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
-                        {user?.photoURL ? <img src={user.photoURL} alt="" style={{ width:'50px', height:'50px', borderRadius:'50%', objectFit:'cover', border:`2.5px solid ${GOLD}`, boxShadow:'0 0 16px rgba(253,188,1,0.25)' }} /> : <div style={{ width:'50px', height:'50px', borderRadius:'50%', background:`linear-gradient(135deg,${GOLD},${GOLD_BRIGHT})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.1rem', fontWeight:800, color:DARK, border:`2.5px solid ${GOLD}`, boxShadow:'0 0 16px rgba(253,188,1,0.25)' }}>{initials}</div>}
+                        {sPhotoURL ? <img src={sPhotoURL} alt="" style={{ width:'50px', height:'50px', borderRadius:'50%', objectFit:'cover', border:`2.5px solid ${GOLD}`, boxShadow:'0 0 16px rgba(253,188,1,0.25)' }} /> : <div style={{ width:'50px', height:'50px', borderRadius:'50%', background:`linear-gradient(135deg,${GOLD},${GOLD_BRIGHT})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.1rem', fontWeight:800, color:DARK, border:`2.5px solid ${GOLD}`, boxShadow:'0 0 16px rgba(253,188,1,0.25)' }}>{initials}</div>}
                         <div style={{ minWidth:0 }}>
                           <p style={{ fontFamily:'var(--font-display)', fontSize:'0.95rem', color:'#0F172A', margin:0, fontWeight:700 }}>{user?.displayName || 'Student'}</p>
                           <p style={{ fontFamily:'var(--font-body)', fontSize:'0.85rem', color:'#475569', margin:'0.2rem 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
@@ -1070,7 +1109,7 @@ export default function DashboardPage() {
             <div style={{ padding:'1.5rem 1rem 1.1rem', borderBottom:'1px solid rgba(253,188,1,0.12)', background:'linear-gradient(135deg,rgba(253,188,1,0.07),transparent 65%)' }}>
               <div style={{ display:'flex', alignItems:'center', gap:'0.85rem' }}>
                 <div style={{ position:'relative', flexShrink:0 }}>
-                  {user?.photoURL ? <img src={user.photoURL} alt="" style={{ width:'52px', height:'52px', borderRadius:'50%', objectFit:'cover', border:'2.5px solid #FDBC01', boxShadow:'0 0 20px rgba(253,188,1,0.35)' }} /> : <div style={{ width:'52px', height:'52px', borderRadius:'50%', background:'linear-gradient(135deg,#FDBC01,#FFD54F)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem', fontWeight:800, color:'#0a1628', border:'2.5px solid #FDBC01', boxShadow:'0 0 20px rgba(253,188,1,0.35)' }}>{initials}</div>}
+                  {sPhotoURL ? <img src={sPhotoURL} alt="" style={{ width:'52px', height:'52px', borderRadius:'50%', objectFit:'cover', border:'2.5px solid #FDBC01', boxShadow:'0 0 20px rgba(253,188,1,0.35)' }} /> : <div style={{ width:'52px', height:'52px', borderRadius:'50%', background:'linear-gradient(135deg,#FDBC01,#FFD54F)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.2rem', fontWeight:800, color:'#0a1628', border:'2.5px solid #FDBC01', boxShadow:'0 0 20px rgba(253,188,1,0.35)' }}>{initials}</div>}
                   <div style={{ position:'absolute', bottom:0, right:0, width:'13px', height:'13px', borderRadius:'50%', background:'linear-gradient(135deg,#22C55E,#16A34A)', border:'2.5px solid #0145A8', boxShadow:'0 0 6px rgba(34,197,94,0.4)' }} />
                 </div>
                 <div style={{ minWidth:0 }}>
@@ -1521,6 +1560,14 @@ export default function DashboardPage() {
                     <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600 }}>Settings</p>
                     <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'#0F172A', margin:'0 0 0.5rem', fontWeight:800, textTransform:'uppercase' }}>ACCOUNT SETTINGS</h2>
                     <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:'0 0 2rem' }}>Quick access to profile and security settings.</p>
+                    <ProfilePhotoUploader
+                      photoURL={sPhotoURL}
+                      name={sUsername || user?.displayName || 'Student'}
+                      initials={initials}
+                      onUpload={handleUploadProfilePhoto}
+                      onRemove={handleRemoveProfilePhoto}
+                      disabled={sSaving}
+                    />
                     <div className="dash-form-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'1rem' }}>
                       <div>
                         <label htmlFor="settings-name" style={{ display:'block', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', marginBottom:'0.5rem', fontWeight:600 }}>Full Name</label>

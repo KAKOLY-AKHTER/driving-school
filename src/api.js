@@ -95,6 +95,13 @@ async function request(path, options = {}) {
 export const api = {
   getUser: (uid) => request(`/api/users/${pathPart(uid)}`),
   saveUser: (uid, data) => request(`/api/users/${pathPart(uid)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  uploadProfileImage: (uid, file) => request(`/api/users/${pathPart(uid)}/profile-image`, {
+    method: 'POST',
+    headers: { 'Content-Type': file.type },
+    body: file,
+    timeoutMs: 60_000,
+  }),
+  removeProfileImage: (uid) => request(`/api/users/${pathPart(uid)}/profile-image`, { method: 'DELETE' }),
   getBookings: (uid) => request(`/api/bookings/${pathPart(uid)}`),
   getBookingAvailability: (date) => request(`/api/bookings/availability?date=${encodeURIComponent(date)}`),
   getAvailability: (params) => request(`/api/availability?${new URLSearchParams(params)}`),
