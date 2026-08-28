@@ -321,6 +321,8 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
   const reviewLimit = 10
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [bookingLeadTimeDays, setBookingLeadTimeDays] = useState(0)
+  const [leadTimeSaving, setLeadTimeSaving] = useState(false)
   const [error, setError] = useState('')
   const [loadVersion, setLoadVersion] = useState(0)
 
@@ -501,13 +503,17 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
     let active = true
     setLoading(true)
     setError('')
-    api.adminAvailability({ page, limit, search, status })
-      .then(data => {
+    Promise.all([
+      api.adminAvailability({ page, limit, search, status }),
+      api.adminBookingLeadTime(),
+    ])
+      .then(([data, leadTime]) => {
         if (!active) return
         setRows(Array.isArray(data?.items) ? data.items : [])
         setTotal(Number(data?.total) || 0)
         setPages(Math.max(1, Number(data?.pages) || 1))
         if (Number(data?.page) && Number(data.page) !== page) setPage(Number(data.page))
+        setBookingLeadTimeDays(Number.isInteger(Number(leadTime?.days)) ? Number(leadTime.days) : 0)
         setSelected([])
       })
       .catch(loadError => { if (active) setError(loadError?.message || 'Availability could not be loaded.') })
@@ -578,6 +584,27 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
       setMessage(saveError?.message || 'Availability could not be saved.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const saveBookingLeadTime = async () => {
+    const days = Number(bookingLeadTimeDays)
+    if (!Number.isInteger(days) || days < 0 || days > 31) {
+      setMessage('Choose a whole number from 0 to 31 days.')
+      return
+    }
+    setLeadTimeSaving(true)
+    try {
+      const result = await api.adminUpdateBookingLeadTime(days)
+      const savedDays = Number(result?.days) || 0
+      setBookingLeadTimeDays(savedDays)
+      setMessage(savedDays
+        ? `Students cannot select lesson dates through ${result?.bookingBlockedThrough} (California time).`
+        : 'Advance booking notice removed. Students can choose any available future date.')
+    } catch (saveError) {
+      setMessage(saveError?.message || 'Advance booking notice could not be saved.')
+    } finally {
+      setLeadTimeSaving(false)
     }
   }
 
@@ -684,6 +711,18 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
             </div>
           </fieldset>
         </div>
+        <section aria-labelledby="advance-booking-notice-heading" style={{ display: 'flex', alignItems: 'end', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginTop: '1.25rem', padding: '1rem', border: '1px solid #FCD34D', borderRadius: '12px', background: 'linear-gradient(135deg,#FFFBEB,#FFF7ED)' }}>
+          <div style={{ maxWidth: '650px' }}>
+            <h3 id="advance-booking-notice-heading" style={{ margin: 0, color: '#92400E', fontSize: '1rem' }}>Minimum advance booking notice</h3>
+            <p style={{ margin: '.35rem 0 0', color: '#78350F', lineHeight: 1.5, fontSize: '.9rem' }}>Choose how many calendar days from today students must wait before selecting a lesson date. For example, <strong>5</strong> blocks today and the next 5 California dates. Enter <strong>0</strong> to allow every available future date.</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'end', gap: '.6rem', flexWrap: 'wrap' }}>
+            <label style={{ display: 'grid', gap: '.35rem', color: '#78350F', fontWeight: 800, fontSize: '.8rem' }}>Days to block (0–31)
+              <input aria-label="Days students must wait before booking" type="number" min="0" max="31" step="1" value={bookingLeadTimeDays} onChange={event => setBookingLeadTimeDays(event.target.value === '' ? '' : Number(event.target.value))} style={{ ...inputStyle, width: '150px', background: '#fff' }} />
+            </label>
+            <button type="button" disabled={leadTimeSaving} onClick={saveBookingLeadTime} style={{ minHeight: '44px', padding: '.7rem 1rem', border: 0, borderRadius: '9px', background: leadTimeSaving ? '#94A3B8' : '#B45309', color: '#fff', fontWeight: 850, cursor: leadTimeSaving ? 'wait' : 'pointer' }}>{leadTimeSaving ? 'Saving…' : 'Save Booking Notice'}</button>
+          </div>
+        </section>
         <div style={{ display: 'flex', gap: '.65rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
           <button type="button" disabled={saving} onClick={saveAvailability} style={{ minHeight: '44px', padding: '.7rem 1.15rem', border: 0, borderRadius: '9px', background: `linear-gradient(135deg,${SKY_BLUE},#0A2A5E)`, color: '#fff', fontWeight: 850, cursor: saving ? 'wait' : 'pointer' }}>{saving ? 'Opening Lesson Slots…' : 'Open Selected Dates & Times'}</button>
           <button type="button" disabled={saving} onClick={() => { setDates([]); setTimes([]) }} style={{ minHeight: '44px', padding: '.7rem 1.15rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Reset</button>

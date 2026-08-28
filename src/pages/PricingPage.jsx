@@ -112,6 +112,7 @@ export default function PricingPage() {
   const [appointmentPeriod, setAppointmentPeriod] = useState('AM')
   const [monthAvailability, setMonthAvailability] = useState({})
   const [monthAvailabilityLoading, setMonthAvailabilityLoading] = useState(false)
+  const [bookingBlockedThrough, setBookingBlockedThrough] = useState('')
   const [availabilityError, setAvailabilityError] = useState('')
   const [availabilityLoading, setAvailabilityLoading] = useState(false)
   const [error, setError] = useState('')
@@ -279,10 +280,12 @@ export default function PricingPage() {
       .then(data => {
         if (!active) return
         setMonthAvailability(data?.dates && typeof data.dates === 'object' ? data.dates : {})
+        setBookingBlockedThrough(typeof data?.bookingBlockedThrough === 'string' ? data.bookingBlockedThrough : '')
       })
       .catch(error => {
         if (!active) return
         setMonthAvailability({})
+        setBookingBlockedThrough('')
         setAvailabilityError(error?.message || 'Available lesson dates could not be loaded.')
       })
       .finally(() => { if (active) setMonthAvailabilityLoading(false) })
@@ -660,6 +663,7 @@ export default function PricingPage() {
               <div aria-label="Calendar status legend" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', margin: '0 0 0.65rem', color: '#334155', fontSize: '0.68rem', fontWeight: 700 }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><i aria-hidden="true" style={{ width: '11px', height: '11px', borderRadius: '3px', background: '#edf7ef', border: '1px solid #cde7d2' }} />Available</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><i aria-hidden="true" style={{ width: '11px', height: '11px', borderRadius: '3px', background: '#dbeafe', border: '1px solid #0755ae' }} />Selected</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><i aria-hidden="true" style={{ width: '11px', height: '11px', borderRadius: '3px', background: '#fff7ed', border: '1px solid #fcd34d' }} />Advance notice</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><i aria-hidden="true" style={{ width: '11px', height: '11px', borderRadius: '3px', background: '#fff1f2', border: '1px solid #fee2e2' }} />Unavailable</span>
               </div>
               {monthAvailabilityLoading && <p role="status" style={{ margin: '0 0 .65rem', color: '#0755AE', fontSize: '.75rem', fontWeight: 700 }}>Loading available lesson dates…</p>}
@@ -673,10 +677,12 @@ export default function PricingPage() {
                   const key = dateKey(day)
                   const dateSlots = Array.isArray(monthAvailability[key]) ? monthAvailability[key] : []
                   const hasAvailableTime = dateSlots.some(slot => slot.status === 'available')
-                  const disabled = dayDate < today || monthAvailabilityLoading || !hasAvailableTime
+                  const advanceNoticeBlocked = Boolean(bookingBlockedThrough && key <= bookingBlockedThrough)
+                  const disabled = dayDate < today || monthAvailabilityLoading || advanceNoticeBlocked || !hasAvailableTime
                   const selected = selectedSlots.some(slot => slot.date === key)
+                  const bookingOpensAfter = bookingBlockedThrough ? new Date(`${bookingBlockedThrough}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
                   return (
-                    <button key={key} disabled={disabled} title={hasAvailableTime ? `${dateSlots.filter(slot => slot.status === 'available').length} time slots available` : 'No lesson times opened by the school'} onClick={() => { setPendingDate(key); setError('') }} style={{ minHeight: '42px', border: selected ? '2px solid #0755ae' : `1px solid ${disabled ? '#fee2e2' : '#cde7d2'}`, borderRadius: '3px', background: selected ? '#dbeafe' : disabled ? '#fff1f2' : '#edf7ef', color: selected ? '#0755ae' : disabled ? '#ff3b45' : '#19963b', fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: selected ? 800 : 500, cursor: disabled ? 'not-allowed' : 'pointer' }}>{day}</button>
+                    <button key={key} disabled={disabled} title={advanceNoticeBlocked ? `Advance booking notice: choose a date after ${bookingOpensAfter}` : hasAvailableTime ? `${dateSlots.filter(slot => slot.status === 'available').length} time slots available` : 'No lesson times opened by the school'} onClick={() => { setPendingDate(key); setError('') }} style={{ minHeight: '42px', border: selected ? '2px solid #0755ae' : `1px solid ${advanceNoticeBlocked ? '#FCD34D' : disabled ? '#fee2e2' : '#cde7d2'}`, borderRadius: '3px', background: selected ? '#dbeafe' : advanceNoticeBlocked ? '#fff7ed' : disabled ? '#fff1f2' : '#edf7ef', color: selected ? '#0755ae' : advanceNoticeBlocked ? '#B45309' : disabled ? '#ff3b45' : '#19963b', fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: selected || advanceNoticeBlocked ? 800 : 500, cursor: disabled ? 'not-allowed' : 'pointer' }}>{day}</button>
                   )
                 })}
               </div>

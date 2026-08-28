@@ -268,6 +268,23 @@ const californiaDateKey = (date = new Date()) => {
   )
   return `${parts.year}-${parts.month}-${parts.day}`
 }
+const BOOKING_LEAD_TIME_SETTING_ID = 'booking-lead-time'
+const MAX_BOOKING_LEAD_TIME_DAYS = 31
+const dateKeyPlusDays = (dateKey, days) => {
+  const [year, month, day] = String(dateKey || '').split('-').map(Number)
+  const next = new Date(Date.UTC(year, month - 1, day + Number(days || 0)))
+  return next.toISOString().slice(0, 10)
+}
+const bookingLeadTimeDays = (value, fallback = 0) => {
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed >= 0 && parsed <= MAX_BOOKING_LEAD_TIME_DAYS ? parsed : fallback
+}
+async function bookingLeadTimeSetting() {
+  const setting = await settingsCol.findOne({ _id: BOOKING_LEAD_TIME_SETTING_ID }, { projection: { days: 1 } })
+  const days = bookingLeadTimeDays(setting?.days)
+  const today = californiaDateKey()
+  return { days, bookingBlockedThrough: days ? dateKeyPlusDays(today, days) : '' }
+}
 const isPlainObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 const cleanInteger = (value, fallback = 0, min = -10_000, max = 10_000) => {
   const parsed = Number.parseInt(value, 10)
@@ -1414,6 +1431,10 @@ function adminAvailabilityStatus(slot, today = californiaDateKey()) {
 
 async function assertSlotsOpenForBooking(slots, session, status = 409, { dateAvailabilityOnly = false } = {}) {
   const requestedDates = [...new Set(slots.map(slot => slot.date).filter(isDateKey))]
+  const leadTime = await bookingLeadTimeSetting()
+  if (leadTime.bookingBlockedThrough && requestedDates.some(date => date <= leadTime.bookingBlockedThrough)) {
+    throw new HttpError(status, `Advance booking notice applies through ${leadTime.bookingBlockedThrough}. Please choose a later lesson date.`)
+  }
   if (dateAvailabilityOnly) {
     const dates = requestedDates
     if (!dates.length) throw new HttpError(status, 'Please choose at least one available appointment date.')
@@ -2393,6 +2414,22 @@ app.get('/api/bookings/availability', async (req, res) => {
     const date = cleanText(req.query.date, 10)
     if (!isDateKey(date)) return res.status(400).json({ error: 'A valid date is required.' })
     await cleanupExpiredHolds()
+    const leadTime = await bookingLeadTimeSetting()
+    const advanceNoticeBlocked = Boolean(leadTime.bookingBlockedThrough && date <= leadTime.bookingBlockedThrough)
+    if (advanceNoticeBlocked) {
+      return res.json({
+        date,
+        configured: true,
+        closed: false,
+        advanceNoticeBlocked: true,
+        bookingLeadTimeDays: leadTime.days,
+        bookingBlockedThrough: leadTime.bookingBlockedThrough,
+        slots: ADMIN_AVAILABILITY_TIMES.map(time => ({ time, status: 'advance-notice' })),
+        availableTimes: [],
+        bookedTimes: [...ADMIN_AVAILABILITY_TIMES],
+        customBookedTimes: [],
+      })
+    }
     const slots = await effectiveAvailabilitySlots({ date, time: { $in: ADMIN_AVAILABILITY_TIMES } })
     const availableTimes = slots.filter(slot => slot.status === 'available').map(slot => slot.time)
     const bookedTimes = ADMIN_AVAILABILITY_TIMES.filter(time => !availableTimes.includes(time))
@@ -2405,6 +2442,9 @@ app.get('/api/bookings/availability', async (req, res) => {
       date,
       configured: slots.length > 0,
       closed: false,
+      advanceNoticeBlocked: false,
+      bookingLeadTimeDays: leadTime.days,
+      bookingBlockedThrough: leadTime.bookingBlockedThrough,
       slots: ADMIN_AVAILABILITY_TIMES.map(time => {
         const slot = slots.find(item => item.time === time)
         return { time, status: slot?.status || 'unavailable' }
@@ -2428,10 +2468,13 @@ app.get('/api/availability', async (req, res) => {
     const rangeDays = Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)
     if (rangeDays > 93) return res.status(400).json({ error: 'Availability can be viewed up to 93 days at a time.' })
     await cleanupExpiredHolds()
-    const allSlots = await effectiveAvailabilitySlots({
-      date: { $gte: from, $lte: to },
-      time: { $in: ADMIN_AVAILABILITY_TIMES },
-    })
+    const [allSlots, leadTime] = await Promise.all([
+      effectiveAvailabilitySlots({
+        date: { $gte: from, $lte: to },
+        time: { $in: ADMIN_AVAILABILITY_TIMES },
+      }),
+      bookingLeadTimeSetting(),
+    ])
     const slots = allSlots
     const dates = {}
     for (const slot of slots) {
@@ -2443,6 +2486,8 @@ app.get('/api/availability', async (req, res) => {
       to,
       dates,
       slots: slots.map(({ _id, slotKey, date, time, status }) => ({ _id, slotKey, date, time, status })),
+      bookingLeadTimeDays: leadTime.days,
+      bookingBlockedThrough: leadTime.bookingBlockedThrough,
     })
   } catch (error) {
     sendServerError(res, error, 'Availability calendar lookup failed')
@@ -4460,6 +4505,37 @@ app.post('/api/admin/bookings', rateLimit({ windowMs: 60_000, max: 30 }), async 
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message })
     return sendServerError(res, error, 'Phone booking could not be created')
+  }
+})
+
+app.get('/api/admin/booking-lead-time', async (_req, res) => {
+  try {
+    const leadTime = await bookingLeadTimeSetting()
+    res.json(leadTime)
+  } catch (error) {
+    sendServerError(res, error, 'Advance booking notice could not be loaded')
+  }
+})
+
+app.put('/api/admin/booking-lead-time', async (req, res) => {
+  try {
+    const days = Number(req.body?.days)
+    if (!Number.isInteger(days) || days < 0 || days > MAX_BOOKING_LEAD_TIME_DAYS) {
+      throw new HttpError(400, `Choose a whole number from 0 to ${MAX_BOOKING_LEAD_TIME_DAYS}.`)
+    }
+    const timestamp = new Date().toISOString()
+    await settingsCol.updateOne(
+      { _id: BOOKING_LEAD_TIME_SETTING_ID },
+      {
+        $set: { days, updatedAt: timestamp, updatedBy: req.auth?.uid || '' },
+        $setOnInsert: { createdAt: timestamp, createdBy: req.auth?.uid || '' },
+      },
+      { upsert: true }
+    )
+    res.json({ ok: true, ...(await bookingLeadTimeSetting()) })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Advance booking notice could not be saved')
   }
 })
 
