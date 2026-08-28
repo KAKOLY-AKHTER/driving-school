@@ -728,23 +728,27 @@ function sanitizeRefundRecord(value, { partial = false } = {}) {
 }
 const isFinalRefundStatus = value => ['refunded', 'denied'].includes(cleanText(value || 'pending', 20).toLowerCase())
 const BOOKING_TIMES = new Set([
-  '07:00 AM - 09:00 AM', '09:00 AM - 11:00 AM', '11:00 AM - 01:00 PM', '12:00 PM - 02:00 PM', '02:00 PM - 04:00 PM', '04:00 PM - 06:00 PM',
+  '07:00 AM - 09:00 AM', '09:30 AM - 11:30 AM', '12:00 PM - 02:00 PM', '02:30 PM - 04:30 PM', '05:00 PM - 07:00 PM',
+  '09:00 AM - 11:00 AM', '11:00 AM - 01:00 PM', '02:00 PM - 04:00 PM', '04:00 PM - 06:00 PM',
   '9:00 AM - 11:00 AM', '11:00 AM - 1:00 PM', '2:00 PM - 4:00 PM', '4:00 PM - 6:00 PM',
 ])
 const BOOKING_TIME_ORDER = new Map([
   '07:00 AM - 09:00 AM',
   '09:00 AM - 11:00 AM',
+  '09:30 AM - 11:30 AM',
   '11:00 AM - 01:00 PM',
   '12:00 PM - 02:00 PM',
   '02:00 PM - 04:00 PM',
+  '02:30 PM - 04:30 PM',
   '04:00 PM - 06:00 PM',
+  '05:00 PM - 07:00 PM',
 ].map((time, index) => [time, index]))
 const ADMIN_AVAILABILITY_TIMES = [
   '07:00 AM - 09:00 AM',
-  '09:00 AM - 11:00 AM',
+  '09:30 AM - 11:30 AM',
   '12:00 PM - 02:00 PM',
-  '02:00 PM - 04:00 PM',
-  '04:00 PM - 06:00 PM',
+  '02:30 PM - 04:30 PM',
+  '05:00 PM - 07:00 PM',
 ]
 const ADMIN_AVAILABILITY_TIME_SET = new Set(ADMIN_AVAILABILITY_TIMES)
 const CUSTOM_APPOINTMENT_TIME_PATTERN = /^(0[1-9]|1[0-2]):(00|15|30|45) (AM|PM)$/
@@ -757,9 +761,12 @@ const normalizeBookingTime = (value) => {
   const compact = cleanText(value, 80).replace(/\s+/g, ' ')
   const aliases = {
     '9:00 AM - 11:00 AM': '09:00 AM - 11:00 AM',
+    '9:30 AM - 11:30 AM': '09:30 AM - 11:30 AM',
     '11:00 AM - 1:00 PM': '11:00 AM - 01:00 PM',
     '2:00 PM - 4:00 PM': '02:00 PM - 04:00 PM',
+    '2:30 PM - 4:30 PM': '02:30 PM - 04:30 PM',
     '4:00 PM - 6:00 PM': '04:00 PM - 06:00 PM',
+    '5:00 PM - 7:00 PM': '05:00 PM - 07:00 PM',
   }
   return aliases[compact] || compact
 }
@@ -1392,19 +1399,28 @@ function validateAvailabilitySlot(date, timeSlot, { allowToday = true } = {}) {
 }
 
 function adminAvailabilityStatus(slot, today = californiaDateKey()) {
-  return slot?.status === 'available' && slot?.date <= today ? 'expired' : slot?.status
+  if (slot?.status === 'held' || slot?.status === 'booked') return slot.status
+  if (slot?.status === 'available' && slot?.date <= today) return 'expired'
+  if (slot?.time && !ADMIN_AVAILABILITY_TIME_SET.has(normalizeBookingTime(slot.time))) return 'legacy'
+  return slot?.status
 }
 
 async function assertSlotsOpenForBooking(slots, session, status = 409, { dateAvailabilityOnly = false } = {}) {
   if (dateAvailabilityOnly) {
     const dates = [...new Set(slots.map(slot => slot.date))]
     if (!dates.length) throw new HttpError(status, 'Please choose at least one available appointment date.')
-    const openDateSlots = await effectiveAvailabilitySlots({ date: { $in: dates } }, session)
+    const openDateSlots = await effectiveAvailabilitySlots({
+      date: { $in: dates },
+      time: { $in: ADMIN_AVAILABILITY_TIMES },
+    }, session)
     const availableDateSet = new Set(openDateSlots.filter(slot => slot.status === 'available').map(slot => slot.date))
     if (dates.some(date => !availableDateSet.has(date))) {
       throw new HttpError(status, 'One or more selected appointment dates are no longer available. Please choose again.')
     }
     return
+  }
+  if (slots.some(slot => !ADMIN_AVAILABILITY_TIME_SET.has(normalizeBookingTime(slot.timeSlot)))) {
+    throw new HttpError(status, 'One or more selected lesson times use an old schedule. Please choose a current time slot.')
   }
   const keys = [...new Set(slots.map(slot => bookingSlotKey(slot.date, slot.timeSlot)))]
   if (!keys.length) throw new HttpError(status, 'Please choose at least one available time slot.')
@@ -2317,7 +2333,7 @@ app.get('/api/bookings/availability', async (req, res) => {
     const date = cleanText(req.query.date, 10)
     if (!isDateKey(date)) return res.status(400).json({ error: 'A valid date is required.' })
     await cleanupExpiredHolds()
-    const slots = await effectiveAvailabilitySlots({ date })
+    const slots = await effectiveAvailabilitySlots({ date, time: { $in: ADMIN_AVAILABILITY_TIMES } })
     const availableTimes = slots.filter(slot => slot.status === 'available').map(slot => slot.time)
     const bookedTimes = ADMIN_AVAILABILITY_TIMES.filter(time => !availableTimes.includes(time))
     const customLocks = await bookingSlotsCol.find({
@@ -2351,7 +2367,10 @@ app.get('/api/availability', async (req, res) => {
     const rangeDays = Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)
     if (rangeDays > 93) return res.status(400).json({ error: 'Availability can be viewed up to 93 days at a time.' })
     await cleanupExpiredHolds()
-    const slots = await effectiveAvailabilitySlots({ date: { $gte: from, $lte: to } })
+    const slots = await effectiveAvailabilitySlots({
+      date: { $gte: from, $lte: to },
+      time: { $in: ADMIN_AVAILABILITY_TIMES },
+    })
     const dates = {}
     for (const slot of slots) {
       if (!dates[slot.date]) dates[slot.date] = []
@@ -4231,7 +4250,7 @@ app.get('/api/admin/availability', async (req, res) => {
     }))
     const filtered = statusFilter === 'manageable'
       ? effective.filter(slot => slot.status === 'available' || slot.status === 'blocked')
-      : ['available', 'blocked', 'held', 'booked', 'expired'].includes(statusFilter)
+      : ['available', 'blocked', 'held', 'booked', 'expired', 'legacy'].includes(statusFilter)
         ? effective.filter(slot => slot.status === statusFilter)
         : effective
     const total = filtered.length

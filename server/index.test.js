@@ -113,10 +113,10 @@ test('Google Calendar refresh tokens are encrypted and authenticated at rest', (
 
 test('Google Calendar lesson times preserve California wall time and duration', () => {
   assert.deepEqual(
-    googleCalendarEventTimes({ date: '2026-09-10', timeSlot: '09:00 AM - 11:00 AM' }),
+    googleCalendarEventTimes({ date: '2026-09-10', timeSlot: '09:30 AM - 11:30 AM' }),
     {
-      start: { dateTime: '2026-09-10T09:00:00', timeZone: 'America/Los_Angeles' },
-      end: { dateTime: '2026-09-10T11:00:00', timeZone: 'America/Los_Angeles' },
+      start: { dateTime: '2026-09-10T09:30:00', timeZone: 'America/Los_Angeles' },
+      end: { dateTime: '2026-09-10T11:30:00', timeZone: 'America/Los_Angeles' },
     }
   )
   assert.equal(
@@ -271,18 +271,32 @@ test('blog image uploads accept real JPG, PNG, and WebP signatures only', () => 
 })
 
 test('admin availability accepts only valid future dates and the five public lesson times', () => {
-  assert.deepEqual(validateAvailabilitySlot('2099-12-20', '07:00 AM - 09:00 AM', { allowToday: false }), {
-    date: '2099-12-20',
-    timeSlot: '07:00 AM - 09:00 AM',
-  })
+  const expectedTimes = [
+    '07:00 AM - 09:00 AM',
+    '09:30 AM - 11:30 AM',
+    '12:00 PM - 02:00 PM',
+    '02:30 PM - 04:30 PM',
+    '05:00 PM - 07:00 PM',
+  ]
+  for (const timeSlot of expectedTimes) {
+    assert.deepEqual(validateAvailabilitySlot('2099-12-20', timeSlot, { allowToday: false }), {
+      date: '2099-12-20',
+      timeSlot,
+    })
+  }
   assert.throws(
     () => validateAvailabilitySlot('2099-02-31', '07:00 AM - 09:00 AM'),
     error => error.status === 400 && /valid booking date and time/i.test(error.message)
   )
   assert.throws(
-    () => validateAvailabilitySlot('2099-12-20', '11:00 AM - 01:00 PM'),
+    () => validateAvailabilitySlot('2099-12-20', '09:00 AM - 11:00 AM'),
     error => error.status === 400 && /five supported lesson times/i.test(error.message)
   )
+})
+
+test('admin availability identifies future rows from the old no-break schedule', () => {
+  assert.equal(adminAvailabilityStatus({ date: '2099-12-20', time: '09:00 AM - 11:00 AM', status: 'available' }, '2099-12-19'), 'legacy')
+  assert.equal(adminAvailabilityStatus({ date: '2099-12-20', time: '09:00 AM - 11:00 AM', status: 'booked' }, '2099-12-19'), 'booked')
 })
 
 test('admin availability marks non-future open slots expired without hiding booked status', () => {

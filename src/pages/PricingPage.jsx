@@ -17,10 +17,10 @@ const DARK = '#0a1628'
 
 const PICKUP_TIMES = [
   '07:00 AM - 09:00 AM',
-  '09:00 AM - 11:00 AM',
+  '09:30 AM - 11:30 AM',
   '12:00 PM - 02:00 PM',
-  '02:00 PM - 04:00 PM',
-  '04:00 PM - 06:00 PM',
+  '02:30 PM - 04:30 PM',
+  '05:00 PM - 07:00 PM',
 ]
 const DMV_APPOINTMENT_HOURS = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0'))
 const DMV_APPOINTMENT_MINUTES = ['00', '15', '30', '45']

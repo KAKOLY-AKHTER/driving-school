@@ -136,10 +136,10 @@ const TIME_SLOT_MAP = {
 
 const ADMIN_LESSON_TIMES = [
   '07:00 AM - 09:00 AM',
-  '09:00 AM - 11:00 AM',
+  '09:30 AM - 11:30 AM',
   '12:00 PM - 02:00 PM',
-  '02:00 PM - 04:00 PM',
-  '04:00 PM - 06:00 PM',
+  '02:30 PM - 04:30 PM',
+  '05:00 PM - 07:00 PM',
 ]
 
 const isValidPlanAmount = (value) => {
@@ -461,6 +461,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
     held: { background: '#FFF7ED', color: '#B45309' },
     booked: { background: '#EFF6FF', color: '#0755AE' },
     expired: { background: '#F1F5F9', color: '#475569' },
+    legacy: { background: '#FFF7ED', color: '#9A3412' },
   }[value] || { background: '#F1F5F9', color: '#475569' })
   const statusLabel = (value) => ({
     available: 'Open for Booking',
@@ -468,8 +469,10 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
     held: 'Checkout in Progress',
     booked: 'Booked by Student',
     expired: 'Past / Expired',
+    legacy: 'Old Schedule — Remove',
   }[value] || value)
   const isManageable = (row) => row.date > localDateKey() && (row.status === 'available' || row.status === 'blocked')
+  const isRemovable = (row) => isManageable(row) || (row.date > localDateKey() && row.status === 'legacy')
   const selectableRows = rows.filter(isManageable)
   const allSelected = selectableRows.length > 0 && selectableRows.every(row => selected.includes(String(row._id)))
 
@@ -479,7 +482,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
           <div>
             <h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>Open Lesson Availability</h2>
-            <p style={{ margin: '.35rem 0 0', color: '#334155', lineHeight: 1.55 }}>Choose one or more future dates, select the lesson times, then save. Each date/time can be booked by one student.</p>
+            <p style={{ margin: '.35rem 0 0', color: '#334155', lineHeight: 1.55 }}>Choose one or more future dates, select the lesson times, then save. Every lesson is 2 hours, followed by a protected 30-minute break.</p>
           </div>
           <span style={{ padding: '.35rem .65rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontWeight: 800, fontSize: '.8rem' }}>Pacific Time (California)</span>
         </div>
@@ -517,7 +520,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
             </div>
           </div>
           <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
-            <legend style={{ fontWeight: 800, color: '#334155', marginBottom: '.4rem' }}>Lesson times</legend>
+            <legend style={{ fontWeight: 800, color: '#334155', marginBottom: '.4rem' }}>Lesson times · 30-minute break between lessons</legend>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: '.55rem' }}>
               {ADMIN_LESSON_TIMES.map(time => <label key={time} style={{ display: 'flex', alignItems: 'center', gap: '.55rem', padding: '.65rem .75rem', border: `1px solid ${times.includes(time) ? '#93C5FD' : '#E2E8F0'}`, borderRadius: '10px', background: times.includes(time) ? '#EFF6FF' : '#fff', color: '#1E293B', fontWeight: 700, cursor: 'pointer' }}><input type="checkbox" checked={times.includes(time)} onChange={() => setTimes(current => current.includes(time) ? current.filter(item => item !== time) : [...current, time])} />{time}</label>)}
             </div>
@@ -534,7 +537,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
           <div><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Manage Lesson Slots ({total})</h2><p style={{ margin: '.25rem 0 0', color: '#334155', fontSize: '.9rem', lineHeight: 1.5 }}><strong>Open for Booking</strong> slots are visible to students. <strong>Closed to Students</strong> slots stay saved but cannot be booked. Past, checkout-in-progress, and booked slots are read-only.</p></div>
           <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
             <input className="admin-toolbar-input" type="search" aria-label="Search availability" placeholder="Search date or time…" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '220px' }} />
-            <select aria-label="Filter lesson slots by booking availability" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '225px' }}><option value="manageable">Editable Future Slots</option><option value="all">All Slot Statuses</option><option value="available">Open for Booking</option><option value="blocked">Closed to Students</option><option value="held">Checkout in Progress</option><option value="booked">Booked by Student</option><option value="expired">Past / Expired</option></select>
+            <select aria-label="Filter lesson slots by booking availability" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '225px' }}><option value="manageable">Editable Future Slots</option><option value="all">All Slot Statuses</option><option value="available">Open for Booking</option><option value="blocked">Closed to Students</option><option value="held">Checkout in Progress</option><option value="booked">Booked by Student</option><option value="expired">Past / Expired</option><option value="legacy">Old Schedule — Remove</option></select>
             <select aria-label="Availability rows per page" value={limit} onChange={event => { setLimit(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '90px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
           </div>
         </div>
@@ -561,7 +564,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead><tr><th scope="col" style={{ ...thStyle, minWidth: '92px' }}><label style={{ display: 'inline-flex', alignItems: 'center', gap: '.45rem', cursor: selectableRows.length ? 'pointer' : 'not-allowed' }}><input aria-label="Select all editable lesson slots on this page" type="checkbox" disabled={!selectableRows.length} checked={allSelected} onChange={() => setSelected(allSelected ? [] : selectableRows.map(row => String(row._id)))} /><span>Select</span></label></th><th scope="col" style={thStyle}>Lesson Date</th><th scope="col" style={thStyle}>Lesson Time</th><th scope="col" style={thStyle}>Can Students Book?</th><th scope="col" className="admin-actions-cell" style={thStyle}>Remove Slot</th></tr></thead>
             <tbody>
-              {rows.map(row => { const meta = statusStyle(row.status); const manageable = isManageable(row); return <tr key={row._id}><td style={tdStyle}><input aria-label={`Select lesson slot on ${row.date} at ${row.time}`} type="checkbox" disabled={!manageable} checked={selected.includes(String(row._id))} onChange={() => setSelected(current => current.includes(String(row._id)) ? current.filter(id => id !== String(row._id)) : [...current, String(row._id)])} /></td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{new Date(`${row.date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{row.time}</td><td style={tdStyle}><span style={{ ...meta, display: 'inline-flex', padding: '.25rem .55rem', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 800, whiteSpace: 'nowrap' }}>{statusLabel(row.status)}</span></td><td className="admin-actions-cell" style={tdStyle}><AdminDeleteIconButton disabled={!manageable} label={`Remove lesson slot on ${row.date} at ${row.time}`} title={manageable ? 'Remove this future lesson slot' : 'Past, checkout-in-progress, and booked slots cannot be removed'} onClick={() => requestConfirmation('Permanently remove this lesson slot?', `${row.date} at ${row.time} will be removed and will no longer appear in the student booking calendar.`, () => deleteSlot(row))} /></td></tr> })}
+              {rows.map(row => { const meta = statusStyle(row.status); const manageable = isManageable(row); const removable = isRemovable(row); return <tr key={row._id}><td style={tdStyle}><input aria-label={`Select lesson slot on ${row.date} at ${row.time}`} type="checkbox" disabled={!manageable} checked={selected.includes(String(row._id))} onChange={() => setSelected(current => current.includes(String(row._id)) ? current.filter(id => id !== String(row._id)) : [...current, String(row._id)])} /></td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{new Date(`${row.date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{row.time}</td><td style={tdStyle}><span style={{ ...meta, display: 'inline-flex', padding: '.25rem .55rem', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 800, whiteSpace: 'nowrap' }}>{statusLabel(row.status)}</span></td><td className="admin-actions-cell" style={tdStyle}><AdminDeleteIconButton disabled={!removable} label={`Remove lesson slot on ${row.date} at ${row.time}`} title={removable ? 'Remove this future lesson slot' : 'Past, checkout-in-progress, and booked slots cannot be removed'} onClick={() => requestConfirmation('Permanently remove this lesson slot?', `${row.date} at ${row.time} will be removed and will no longer appear in the student booking calendar.`, () => deleteSlot(row))} /></td></tr> })}
               {!loading && !rows.length && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{status === 'manageable' && !search ? 'No editable future slots yet. Create future availability above, or choose another status filter.' : search || status !== 'all' ? 'No availability matches the filters.' : 'No lesson availability has been created yet.'}</td></tr>}
               {loading && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>Loading availability…</td></tr>}
             </tbody>
