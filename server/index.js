@@ -1041,9 +1041,10 @@ async function googleCalendarEventBody(booking) {
     (booking.enrollmentId && String(item?.enrollmentId || '') === String(booking.enrollmentId))
       || String(item?.id || '') === String(booking.courseId || '')
   )
-  const studentName = cleanText(profile?.displayName || profile?.name || [profile?.firstName, profile?.lastName].filter(Boolean).join(' '), 160) || 'Student'
-  const studentEmail = normalizeEmail(booking?.email || profile?.email)
-  const plan = cleanText(course?.title || course?.planName, 180) || 'Legacy / Unassigned'
+  const studentName = cleanText(profile?.displayName || profile?.name || [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || booking?.callerName || booking?.studentName, 160) || 'Student'
+  const studentEmail = normalizeEmail(booking?.email || booking?.callerEmail || profile?.email)
+  const studentPhone = cleanText(profile?.phone || booking?.callerPhone || booking?.phone, 40)
+  const plan = cleanText(course?.title || course?.planName || booking?.courseTitle || booking?.courseName || booking?.planName, 180) || 'Legacy / Unassigned'
   const city = cleanText(course?.city || course?.location || booking?.location, 200)
   const cityZip = cleanText(course?.cityZip || booking?.cityZip, 10)
   const location = city ? `${city}, California${cityZip ? ` ${cityZip}` : ''}` : ''
@@ -1068,7 +1069,7 @@ async function googleCalendarEventBody(booking) {
     'STUDENT DETAILS',
     `Student: ${studentName}`,
     studentEmail ? `Email: ${studentEmail}` : null,
-    profile?.phone ? `Phone: ${cleanText(profile.phone, 40)}` : null,
+    studentPhone ? `Phone: ${studentPhone}` : null,
     '',
     'LESSON DETAILS',
     `Plan: ${plan}`,
@@ -4276,15 +4277,81 @@ app.get('/api/admin/bookings', async (req, res) => {
   }
 })
 
-// Creates a lesson for a student who booked by phone or in person.  This is
-// deliberately restricted to an existing student/course: admins cannot
-// accidentally create an unpaid or orphaned enrollment from this endpoint.
+// Creates a lesson for a student who booked by phone or in person. Existing
+// students use their active paid course; a brand-new caller can be recorded as
+// a clearly marked Pending phone booking until staff confirms payment and/or
+// creates their online account.
 app.post('/api/admin/bookings', rateLimit({ windowMs: 60_000, max: 30 }), async (req, res) => {
   try {
     const userId = cleanText(req.body?.userId, 160)
     const courseId = cleanText(req.body?.courseId, 120)
     const enrollmentFingerprint = cleanText(req.body?.enrollmentFingerprint, 160)
     const adminNote = cleanText(req.body?.adminNote, 500)
+    const bookingFor = cleanText(req.body?.bookingFor, 40).toLowerCase()
+    const callerName = cleanText(req.body?.callerName, 160)
+    const callerPhone = cleanText(req.body?.callerPhone, 40)
+    const callerEmail = normalizeEmail(req.body?.callerEmail)
+    const callerService = cleanText(req.body?.callerService, 160)
+
+    if (bookingFor === 'new-caller') {
+      if (!callerName || !callerPhone || !callerService) {
+        throw new HttpError(400, 'Caller name, phone number, and requested service are required.')
+      }
+      const { date, timeSlot } = validateBookingSlot(req.body?.date, req.body?.timeSlot)
+      await cleanupExpiredHolds()
+      const booking = await withMongoTransaction(async (session) => {
+        await assertSlotsOpenForBooking([{ date, timeSlot }], session)
+        const slotKey = bookingSlotKey(date, timeSlot)
+        await bookingSlotsCol.deleteOne({ _id: slotKey, status: 'held', expiresAt: { $lte: new Date() } }, { session })
+        if (await bookingSlotsCol.findOne({ _id: slotKey }, { session })) {
+          throw new HttpError(409, 'This lesson time is no longer available. Choose another open slot.')
+        }
+
+        const bookingId = new ObjectId()
+        const now = new Date()
+        const timestamp = now.toISOString()
+        const phoneLeadId = `phone-${randomUUID()}`
+        const bookingDoc = {
+          _id: bookingId,
+          userId: phoneLeadId,
+          callerName,
+          callerPhone,
+          ...(callerEmail ? { callerEmail, email: callerEmail } : {}),
+          courseId: 'phone-booking',
+          courseTitle: callerService,
+          date,
+          timeSlot,
+          hours: 2,
+          status: 'scheduled',
+          bookingSource: 'admin_phone_new_caller',
+          paymentStatus: 'pending',
+          createdByAdmin: req.auth.uid,
+          ...(adminNote ? { adminNote } : {}),
+          createdAt: timestamp,
+        }
+        try {
+          await bookingSlotsCol.insertOne({
+            _id: slotKey,
+            date,
+            timeSlot,
+            userId: phoneLeadId,
+            courseId: 'phone-booking',
+            bookingId,
+            status: 'scheduled',
+            createdAt: now,
+            createdByAdmin: req.auth.uid,
+          }, { session })
+        } catch (error) {
+          if (isDuplicateKey(error)) throw new HttpError(409, 'This lesson time is no longer available. Choose another open slot.')
+          throw error
+        }
+        await bookingsCol.insertOne(bookingDoc, { session })
+        return bookingDoc
+      })
+      await safelySyncBookingIdsWithGoogleCalendar([booking._id])
+      return res.status(201).json({ ...booking, status: canonicalAdminBookingStatus(booking) })
+    }
+
     if (!userId || !courseId) throw new HttpError(400, 'Choose a registered student and an active course.')
 
     const { date, timeSlot } = validateBookingSlot(req.body?.date, req.body?.timeSlot)

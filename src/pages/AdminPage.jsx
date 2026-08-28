@@ -53,6 +53,14 @@ const adminUserName = (account) => {
   ).trim()
 }
 
+const bookingStudentName = (booking, account) => String(
+  account ? adminUserName(account) : booking?.callerName || booking?.studentName || 'Phone caller'
+).trim()
+
+const bookingStudentContact = (booking, account) => String(
+  account?.email || booking?.email || booking?.callerEmail || booking?.callerPhone || booking?.phone || 'No contact detail'
+).trim()
+
 const bookingSortValue = (booking) => {
   const time = String(booking?.timeSlot || booking?.time || '').match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
   let minutes = 0
@@ -181,9 +189,14 @@ function TablePager({ page, pages, total, label, onChange }) {
 }
 
 function AdminPhoneBookingModal({ users, onClose, onCreated }) {
+  const [bookingFor, setBookingFor] = useState('registered')
   const [studentQuery, setStudentQuery] = useState('')
   const [studentId, setStudentId] = useState('')
   const [courseIndex, setCourseIndex] = useState('')
+  const [callerName, setCallerName] = useState('')
+  const [callerPhone, setCallerPhone] = useState('')
+  const [callerEmail, setCallerEmail] = useState('')
+  const [callerService, setCallerService] = useState('Phone booking — payment to confirm')
   const [date, setDate] = useState(localDateKey())
   const [timeSlot, setTimeSlot] = useState('')
   const [adminNote, setAdminNote] = useState('')
@@ -226,20 +239,34 @@ function AdminPhoneBookingModal({ users, onClose, onCreated }) {
   const submit = async event => {
     event.preventDefault()
     setError('')
-    if (!selectedStudent || !selectedCourse || !date || !timeSlot) {
-      setError('Choose a student, active course, lesson date, and open lesson time.')
+    const isNewCaller = bookingFor === 'caller'
+    if ((!isNewCaller && (!selectedStudent || !selectedCourse)) || (isNewCaller && (!callerName.trim() || !callerPhone.trim() || !callerService.trim())) || !date || !timeSlot) {
+      setError(isNewCaller
+        ? 'Enter the caller name, phone number, service, lesson date, and open lesson time.'
+        : 'Choose a student, active course, lesson date, and open lesson time.')
       return
     }
     setSaving(true)
     try {
-      const booking = await api.adminCreatePhoneBooking({
-        userId: selectedStudent.uid,
-        courseId: selectedCourse.id,
-        enrollmentFingerprint: courseEnrollmentFingerprint(selectedCourse),
-        date,
-        timeSlot,
-        adminNote,
-      })
+      const booking = await api.adminCreatePhoneBooking(isNewCaller
+        ? {
+            bookingFor: 'new-caller',
+            callerName,
+            callerPhone,
+            callerEmail,
+            callerService,
+            date,
+            timeSlot,
+            adminNote,
+          }
+        : {
+            userId: selectedStudent.uid,
+            courseId: selectedCourse.id,
+            enrollmentFingerprint: courseEnrollmentFingerprint(selectedCourse),
+            date,
+            timeSlot,
+            adminNote,
+          })
       onCreated(booking)
     } catch (saveError) {
       setError(saveError?.message || 'The phone booking could not be created.')
@@ -254,20 +281,28 @@ function AdminPhoneBookingModal({ users, onClose, onCreated }) {
     <div className="admin-modal-backdrop" role="presentation" style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(10,22,40,.62)', backdropFilter: 'blur(10px)' }} onClick={event => { if (event.target === event.currentTarget && !saving) onClose() }}>
       <form role="dialog" aria-modal="true" aria-labelledby="phone-booking-title" onSubmit={submit} style={{ width: '100%', maxWidth: '710px', maxHeight: '90vh', overflowY: 'auto', borderRadius: '18px', background: '#fff', boxShadow: '0 24px 80px rgba(0,0,0,.28)', padding: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.15rem' }}>
-          <div><h3 id="phone-booking-title" style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.4rem' }}>Create Phone Booking</h3><p style={{ margin: '.3rem 0 0', color: '#475569', lineHeight: 1.5 }}>Use this for a registered student who called the school. The selected course must still have a lesson available.</p></div>
+          <div><h3 id="phone-booking-title" style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.4rem' }}>Create Phone Booking</h3><p style={{ margin: '.3rem 0 0', color: '#475569', lineHeight: 1.5 }}>Book an existing student or record a new caller who has not registered online yet.</p></div>
           <button type="button" aria-label="Close phone booking form" onClick={onClose} disabled={saving} style={{ border: 0, background: 'transparent', color: '#475569', fontSize: '1.8rem', lineHeight: 1, cursor: saving ? 'wait' : 'pointer' }}>&times;</button>
         </div>
-        <div role="note" style={{ marginBottom: '1rem', padding: '.75rem .9rem', border: '1px solid #BFDBFE', borderRadius: '11px', background: '#EFF6FF', color: '#1E3A5F', lineHeight: 1.5, fontSize: '.9rem' }}><strong>Safe workflow:</strong> this reserves one open time, uses one included lesson from the chosen course, and syncs automatically to the connected school Google Calendar.</div>
+        <div role="note" style={{ marginBottom: '1rem', padding: '.75rem .9rem', border: '1px solid #BFDBFE', borderRadius: '11px', background: '#EFF6FF', color: '#1E3A5F', lineHeight: 1.5, fontSize: '.9rem' }}><strong>Safe workflow:</strong> an existing student uses one lesson from their active course. A new phone caller creates a clearly marked <strong>Pending</strong> booking until staff confirms payment or registration. Both reserve the selected open time and sync to the connected school Google Calendar.</div>
         {error && <div role="alert" style={{ marginBottom: '1rem', padding: '.75rem .9rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{error}</div>}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '1rem' }}>
-          <div style={{ gridColumn: '1 / -1' }}><label htmlFor="phone-booking-search" style={fieldLabel}>Find registered student</label><input id="phone-booking-search" value={studentQuery} onChange={event => setStudentQuery(event.target.value)} style={field} placeholder="Search by name, email, or phone" autoFocus /></div>
-          <div><label htmlFor="phone-booking-student" style={fieldLabel}>Student *</label><select id="phone-booking-student" required value={studentId} onChange={event => { setStudentId(event.target.value); setCourseIndex('') }} style={field}><option value="">Choose a student</option>{filteredStudents.map(account => <option key={account.uid} value={account.uid}>{adminUserName(account)} — {account.email || account.phone || 'No contact detail'}</option>)}</select>{query && !filteredStudents.length && <p style={{ margin: '.35rem 0 0', color: '#B45309', fontSize: '.82rem' }}>No registered student matches that search.</p>}</div>
-          <div><label htmlFor="phone-booking-course" style={fieldLabel}>Active course *</label><select id="phone-booking-course" required value={courseIndex} disabled={!selectedStudent} onChange={event => setCourseIndex(event.target.value)} style={{ ...field, background: selectedStudent ? '#fff' : '#F8FAFC' }}><option value="">{selectedStudent ? 'Choose an active course' : 'Choose a student first'}</option>{activeCourses.map((course, index) => <option key={`${course.id}-${courseEnrollmentFingerprint(course)}-${index}`} value={index}>{course.title || course.planName || COURSE_MAP[course.id] || `Course ${course.id}`}</option>)}</select>{selectedStudent && !activeCourses.length && <p style={{ margin: '.35rem 0 0', color: '#B45309', fontSize: '.82rem' }}>This student has no active course that can receive a lesson.</p>}</div>
+          <fieldset style={{ gridColumn: '1 / -1', margin: 0, padding: '.75rem', border: '1px solid #D7E4F2', borderRadius: '11px', background: '#F8FBFF' }}><legend style={{ padding: '0 .3rem', color: '#334155', fontFamily: 'var(--font-mono)', fontSize: '.76rem', letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 800 }}>Who is calling?</legend><div style={{ display: 'flex', gap: '.65rem', flexWrap: 'wrap' }}><label style={{ display: 'inline-flex', alignItems: 'center', gap: '.45rem', color: '#173B67', fontWeight: 750, cursor: 'pointer' }}><input type="radio" name="phone-booking-for" checked={bookingFor === 'registered'} onChange={() => setBookingFor('registered')} /> Existing registered student</label><label style={{ display: 'inline-flex', alignItems: 'center', gap: '.45rem', color: '#173B67', fontWeight: 750, cursor: 'pointer' }}><input type="radio" name="phone-booking-for" checked={bookingFor === 'caller'} onChange={() => setBookingFor('caller')} /> New caller (no online account yet)</label></div></fieldset>
+          {bookingFor === 'registered' ? <>
+            <div style={{ gridColumn: '1 / -1' }}><label htmlFor="phone-booking-search" style={fieldLabel}>Find registered student</label><input id="phone-booking-search" value={studentQuery} onChange={event => setStudentQuery(event.target.value)} style={field} placeholder="Leave blank to see all students, or search by name, email, or phone" autoFocus /></div>
+            <div><label htmlFor="phone-booking-student" style={fieldLabel}>Student *</label><select id="phone-booking-student" required value={studentId} onChange={event => { setStudentId(event.target.value); setCourseIndex('') }} style={field}><option value="">Choose a student</option>{filteredStudents.map(account => <option key={account.uid} value={account.uid}>{adminUserName(account)} — {account.email || account.phone || 'No contact detail'}</option>)}</select>{query && !filteredStudents.length && <p style={{ margin: '.35rem 0 0', color: '#B45309', fontSize: '.82rem' }}>No registered student matches that search. Clear the search to see everyone.</p>}</div>
+            <div><label htmlFor="phone-booking-course" style={fieldLabel}>Active course *</label><select id="phone-booking-course" required value={courseIndex} disabled={!selectedStudent} onChange={event => setCourseIndex(event.target.value)} style={{ ...field, background: selectedStudent ? '#fff' : '#F8FAFC' }}><option value="">{selectedStudent ? 'Choose an active course' : 'Choose a student first'}</option>{activeCourses.map((course, index) => <option key={`${course.id}-${courseEnrollmentFingerprint(course)}-${index}`} value={index}>{course.title || course.planName || COURSE_MAP[course.id] || `Course ${course.id}`}</option>)}</select>{selectedStudent && !activeCourses.length && <p style={{ margin: '.35rem 0 0', color: '#B45309', fontSize: '.82rem' }}>This student has no active course that can receive a lesson.</p>}</div>
+          </> : <>
+            <div><label htmlFor="phone-caller-name" style={fieldLabel}>Caller full name *</label><input id="phone-caller-name" required value={callerName} onChange={event => setCallerName(event.target.value)} style={field} placeholder="Example: Maria Smith" autoFocus /></div>
+            <div><label htmlFor="phone-caller-phone" style={fieldLabel}>Caller phone number *</label><input id="phone-caller-phone" required value={callerPhone} onChange={event => setCallerPhone(event.target.value)} style={field} placeholder="Example: +1 925 555 0100" /></div>
+            <div><label htmlFor="phone-caller-email" style={fieldLabel}>Caller email (optional)</label><input id="phone-caller-email" type="email" value={callerEmail} onChange={event => setCallerEmail(event.target.value)} style={field} placeholder="Example: maria@email.com" /></div>
+            <div><label htmlFor="phone-caller-service" style={fieldLabel}>Requested plan or service *</label><input id="phone-caller-service" required value={callerService} onChange={event => setCallerService(event.target.value)} style={field} placeholder="Example: Essential Plan" /></div>
+          </>}
           <div><label htmlFor="phone-booking-date" style={fieldLabel}>Lesson date *</label><input id="phone-booking-date" required min={localDateKey()} type="date" value={date} onChange={event => setDate(event.target.value)} style={field} /></div>
           <div><label htmlFor="phone-booking-time" style={fieldLabel}>Open lesson time *</label><select id="phone-booking-time" required disabled={availabilityLoading || !availableTimes.length} value={timeSlot} onChange={event => setTimeSlot(event.target.value)} style={{ ...field, background: availabilityLoading ? '#F8FAFC' : '#fff' }}><option value="">{availabilityLoading ? 'Checking open times…' : availableTimes.length ? 'Choose an open time' : 'No open times'}</option>{availableTimes.map(time => <option key={time} value={time}>{time}</option>)}</select>{availabilityError && <p style={{ margin: '.35rem 0 0', color: '#B91C1C', fontSize: '.82rem' }}>{availabilityError}</p>}</div>
           <div style={{ gridColumn: '1 / -1' }}><label htmlFor="phone-booking-note" style={fieldLabel}>Internal note (optional)</label><textarea id="phone-booking-note" maxLength="500" value={adminNote} onChange={event => setAdminNote(event.target.value)} style={{ ...field, minHeight: '88px', resize: 'vertical' }} placeholder="Example: Called in by student; payment verified by staff." /></div>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.7rem', marginTop: '1.35rem' }}><button type="button" onClick={onClose} disabled={saving} style={{ minHeight: '42px', padding: '.6rem .9rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#334155', fontWeight: 800, cursor: saving ? 'wait' : 'pointer' }}>Cancel</button><button type="submit" disabled={saving || !selectedStudent || !selectedCourse || !timeSlot} style={{ minHeight: '42px', padding: '.6rem 1rem', border: 0, borderRadius: '9px', background: saving || !selectedStudent || !selectedCourse || !timeSlot ? '#94A3B8' : `linear-gradient(135deg,${SKY_BLUE},#0A2A5E)`, color: '#fff', fontWeight: 900, cursor: saving || !selectedStudent || !selectedCourse || !timeSlot ? 'not-allowed' : 'pointer', boxShadow: '0 6px 17px rgba(1,69,168,.18)' }}>{saving ? 'Creating Booking…' : 'Create Upcoming Booking'}</button></div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.7rem', marginTop: '1.35rem' }}><button type="button" onClick={onClose} disabled={saving} style={{ minHeight: '42px', padding: '.6rem .9rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#334155', fontWeight: 800, cursor: saving ? 'wait' : 'pointer' }}>Cancel</button><button type="submit" disabled={saving || !timeSlot || (bookingFor === 'registered' ? !selectedStudent || !selectedCourse : !callerName.trim() || !callerPhone.trim() || !callerService.trim())} style={{ minHeight: '42px', padding: '.6rem 1rem', border: 0, borderRadius: '9px', background: saving || !timeSlot || (bookingFor === 'registered' ? !selectedStudent || !selectedCourse : !callerName.trim() || !callerPhone.trim() || !callerService.trim()) ? '#94A3B8' : `linear-gradient(135deg,${SKY_BLUE},#0A2A5E)`, color: '#fff', fontWeight: 900, cursor: saving || !timeSlot || (bookingFor === 'registered' ? !selectedStudent || !selectedCourse : !callerName.trim() || !callerPhone.trim() || !callerService.trim()) ? 'not-allowed' : 'pointer', boxShadow: '0 6px 17px rgba(1,69,168,.18)' }}>{saving ? 'Creating Booking…' : bookingFor === 'caller' ? 'Create Pending Phone Booking' : 'Create Upcoming Booking'}</button></div>
       </form>
     </div>
   )
@@ -1261,7 +1296,11 @@ export default function AdminPage() {
   const handlePhoneBookingCreated = async (booking) => {
     setBookings(previous => [booking, ...previous])
     setPhoneBookingOpen(false)
-    setMsg('Phone booking created as Upcoming. The lesson has been reserved and sent to the connected Google Calendar.')
+    setMsg(
+      booking?.bookingSource === 'admin_phone_new_caller'
+        ? 'Phone caller booking created as Pending. The time is reserved; confirm payment before changing it to Upcoming.'
+        : 'Phone booking created as Upcoming. The lesson has been reserved and sent to the connected Google Calendar.'
+    )
     setTimeout(() => setMsg(''), 4200)
     try {
       const nextStats = await api.adminStats()
@@ -1610,8 +1649,8 @@ export default function AdminPage() {
   const filteredBookings = bookings.filter(b => {
     const q = bookingSearch.toLowerCase()
     const u = users.find(ux => ux.uid === b.userId)
-    const name = adminUserName(u).toLowerCase()
-    const email = (u?.email || '').toLowerCase()
+    const name = bookingStudentName(b, u).toLowerCase()
+    const email = bookingStudentContact(b, u).toLowerCase()
     const course = String(COURSE_MAP[b.courseId] || b.courseTitle || b.courseId || '').toLowerCase()
     const matchesSearch = !q || name.includes(q) || email.includes(q) || course.includes(q) || String(b.date || '').toLowerCase().includes(q) || String(TIME_SLOT_MAP[b.timeSlot] || b.timeSlot || '').toLowerCase().includes(q)
     const group = bookingStatusMeta(b, todayStr).group
@@ -2084,8 +2123,8 @@ export default function AdminPage() {
                             <tr key={b._id}>
                               <td style={tdStyle}>
                                 <div>
-                                  <p style={{ fontWeight: 600, margin: 0 }}>{adminUserName(u)}{u?.isAdmin === true && <span style={{ marginLeft: '.45rem', padding: '.15rem .4rem', borderRadius: '999px', background: '#FFF7ED', color: '#B45309', fontFamily: 'var(--font-mono)', fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 900 }}>Admin/Test</span>}</p>
-                                  <p style={{ fontSize: '0.95rem', color: '#334155', margin: '0.1rem 0 0' }}>{u?.email || b.userId}</p>
+                                  <p style={{ fontWeight: 600, margin: 0 }}>{bookingStudentName(b, u)}{u?.isAdmin === true && <span style={{ marginLeft: '.45rem', padding: '.15rem .4rem', borderRadius: '999px', background: '#FFF7ED', color: '#B45309', fontFamily: 'var(--font-mono)', fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 900 }}>Admin/Test</span>}{b.bookingSource === 'admin_phone_new_caller' && <span style={{ marginLeft: '.45rem', padding: '.15rem .4rem', borderRadius: '999px', background: '#FFF7ED', color: '#B45309', fontFamily: 'var(--font-mono)', fontSize: '.62rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 900 }}>Phone Caller</span>}</p>
+                                  <p style={{ fontSize: '0.95rem', color: '#334155', margin: '0.1rem 0 0' }}>{bookingStudentContact(b, u)}</p>
                                   <p style={{ fontSize: '0.85rem', color: SKY_BLUE, margin: '0.16rem 0 0', fontWeight: 700 }}>{COURSE_MAP[b.courseId] || b.courseTitle || (b.courseId ? `Plan ${b.courseId}` : 'Legacy / Unassigned')}</p>
                                 </div>
                               </td>
