@@ -891,7 +891,7 @@ const GOOGLE_CALENDAR_TIME_ZONE = String(process.env.GOOGLE_CALENDAR_TIME_ZONE |
 const GOOGLE_CALENDAR_SETTING_ID = 'google-calendar'
 const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events'
 
-let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, couponsCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol
+let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, availabilityClosuresCol, contactCol, settingsCol, pricingCol, couponsCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol
 let connectPromise = null
 
 class HttpError extends Error {
@@ -1405,9 +1405,32 @@ function adminAvailabilityStatus(slot, today = californiaDateKey()) {
   return slot?.status
 }
 
+function validateClosedAvailabilityDates(values, today = californiaDateKey()) {
+  const dates = [...new Set((Array.isArray(values) ? values : []).map(value => cleanText(value, 10)))].sort()
+  if (!dates.length || dates.length > 90) throw new HttpError(400, 'Choose between 1 and 90 future dates to close.')
+  if (dates.some(date => !isDateKey(date))) throw new HttpError(400, 'Every closed date must be a valid calendar date.')
+  if (dates.some(date => date <= today)) throw new HttpError(400, 'Only future dates can be closed for booking.')
+  return dates
+}
+
+async function closedAvailabilityDates(dates, session) {
+  const uniqueDates = [...new Set((Array.isArray(dates) ? dates : []).filter(isDateKey))]
+  if (!uniqueDates.length) return new Set()
+  const items = await availabilityClosuresCol.find(
+    { date: { $in: uniqueDates } },
+    { ...(session ? { session } : {}), projection: { date: 1 } }
+  ).toArray()
+  return new Set(items.map(item => item.date))
+}
+
 async function assertSlotsOpenForBooking(slots, session, status = 409, { dateAvailabilityOnly = false } = {}) {
+  const requestedDates = [...new Set(slots.map(slot => slot.date).filter(isDateKey))]
+  const closedDates = await closedAvailabilityDates(requestedDates, session)
+  if (closedDates.size) {
+    throw new HttpError(status, `The school is closed on ${[...closedDates].sort().join(', ')}. Please choose another lesson date.`)
+  }
   if (dateAvailabilityOnly) {
-    const dates = [...new Set(slots.map(slot => slot.date))]
+    const dates = requestedDates
     if (!dates.length) throw new HttpError(status, 'Please choose at least one available appointment date.')
     const openDateSlots = await effectiveAvailabilitySlots({
       date: { $in: dates },
@@ -1957,6 +1980,7 @@ async function connectDB() {
     bookingsCol = db.collection('bookings')
     bookingSlotsCol = db.collection('booking_slots')
     availabilityCol = db.collection('availability')
+    availabilityClosuresCol = db.collection('availability_closures')
     contactCol = db.collection('contact')
     settingsCol = db.collection('settings')
     pricingCol = db.collection('pricing')
@@ -1977,6 +2001,7 @@ async function connectDB() {
     await bookingSlotsCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, name: 'expire_slot_holds' })
     await availabilityCol.createIndex({ slotKey: 1 }, { unique: true, name: 'unique_admin_availability_slot' })
     await availabilityCol.createIndex({ date: 1, timeOrder: 1 })
+    await availabilityClosuresCol.createIndex({ date: 1 }, { unique: true, name: 'unique_closed_availability_date' })
     await cartsCol.createIndex({ uid: 1 }, { unique: true })
     await couponsCol.createIndex({ code: 1 }, { unique: true, name: 'unique_coupon_code' })
     await couponsCol.createIndex({ isActive: 1, expiresAt: 1 })
@@ -2333,6 +2358,18 @@ app.get('/api/bookings/availability', async (req, res) => {
     const date = cleanText(req.query.date, 10)
     if (!isDateKey(date)) return res.status(400).json({ error: 'A valid date is required.' })
     await cleanupExpiredHolds()
+    const isClosed = Boolean(await availabilityClosuresCol.findOne({ date }, { projection: { _id: 1 } }))
+    if (isClosed) {
+      return res.json({
+        date,
+        configured: true,
+        closed: true,
+        slots: ADMIN_AVAILABILITY_TIMES.map(time => ({ time, status: 'closed' })),
+        availableTimes: [],
+        bookedTimes: [...ADMIN_AVAILABILITY_TIMES],
+        customBookedTimes: [],
+      })
+    }
     const slots = await effectiveAvailabilitySlots({ date, time: { $in: ADMIN_AVAILABILITY_TIMES } })
     const availableTimes = slots.filter(slot => slot.status === 'available').map(slot => slot.time)
     const bookedTimes = ADMIN_AVAILABILITY_TIMES.filter(time => !availableTimes.includes(time))
@@ -2344,6 +2381,7 @@ app.get('/api/bookings/availability', async (req, res) => {
     res.json({
       date,
       configured: slots.length > 0,
+      closed: false,
       slots: ADMIN_AVAILABILITY_TIMES.map(time => {
         const slot = slots.find(item => item.time === time)
         return { time, status: slot?.status || 'unavailable' }
@@ -2367,16 +2405,25 @@ app.get('/api/availability', async (req, res) => {
     const rangeDays = Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)
     if (rangeDays > 93) return res.status(400).json({ error: 'Availability can be viewed up to 93 days at a time.' })
     await cleanupExpiredHolds()
-    const slots = await effectiveAvailabilitySlots({
+    const [allSlots, closures] = await Promise.all([
+      effectiveAvailabilitySlots({
       date: { $gte: from, $lte: to },
       time: { $in: ADMIN_AVAILABILITY_TIMES },
-    })
+      }),
+      availabilityClosuresCol.find(
+        { date: { $gte: from, $lte: to } },
+        { projection: { _id: 0, date: 1 } }
+      ).sort({ date: 1 }).toArray(),
+    ])
+    const closedDates = closures.map(item => item.date)
+    const closedDateSet = new Set(closedDates)
+    const slots = allSlots.filter(slot => !closedDateSet.has(slot.date))
     const dates = {}
     for (const slot of slots) {
       if (!dates[slot.date]) dates[slot.date] = []
       dates[slot.date].push({ time: slot.time, status: slot.status })
     }
-    res.json({ from, to, dates, slots: slots.map(({ _id, slotKey, date, time, status }) => ({ _id, slotKey, date, time, status })) })
+    res.json({ from, to, dates, closedDates, slots: slots.map(({ _id, slotKey, date, time, status }) => ({ _id, slotKey, date, time, status })) })
   } catch (error) {
     sendServerError(res, error, 'Availability calendar lookup failed')
   }
@@ -4223,6 +4270,63 @@ app.get('/api/admin/bookings', async (req, res) => {
   }
 })
 
+app.get('/api/admin/closed-dates', async (req, res) => {
+  try {
+    const items = await availabilityClosuresCol.find(
+      { date: { $gt: californiaDateKey() } },
+      { projection: { date: 1, createdAt: 1, createdBy: 1 } }
+    ).sort({ date: 1 }).limit(365).toArray()
+    res.json({ items, total: items.length })
+  } catch (error) {
+    sendServerError(res, error, 'Closed dates lookup failed')
+  }
+})
+
+app.post('/api/admin/closed-dates', rateLimit({ windowMs: 60_000, max: 30 }), async (req, res) => {
+  try {
+    const dates = validateClosedAvailabilityDates(req.body?.dates)
+    const now = new Date()
+    const activeLock = await bookingSlotsCol.findOne({
+      date: { $in: dates },
+      $or: [
+        { status: { $in: ['confirmed', 'booked', 'scheduled'] } },
+        { status: 'held', expiresAt: { $gt: now } },
+      ],
+    }, { projection: { date: 1, timeSlot: 1 } })
+    if (activeLock) {
+      throw new HttpError(409, `${activeLock.date} already has a booking or checkout in progress. Cancel or complete it before closing the whole date.`)
+    }
+    const timestamp = now.toISOString()
+    await availabilityClosuresCol.bulkWrite(dates.map(date => ({
+      updateOne: {
+        filter: { date },
+        update: {
+          $setOnInsert: { date, createdAt: timestamp, createdBy: req.auth.uid },
+          $set: { updatedAt: timestamp, updatedBy: req.auth.uid },
+        },
+        upsert: true,
+      },
+    })), { ordered: false })
+    res.status(201).json({ ok: true, closed: dates.length, dates })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Dates could not be closed')
+  }
+})
+
+app.delete('/api/admin/closed-dates/:date', async (req, res) => {
+  try {
+    const date = cleanText(req.params.date, 10)
+    if (!isDateKey(date)) throw new HttpError(400, 'A valid closed date is required.')
+    const result = await availabilityClosuresCol.deleteOne({ date })
+    if (!result.deletedCount) throw new HttpError(404, 'That date is not currently closed.')
+    res.json({ ok: true, date })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Closed date could not be reopened')
+  }
+})
+
 app.get('/api/admin/availability', async (req, res) => {
   try {
     await cleanupExpiredHolds()
@@ -4244,13 +4348,17 @@ app.get('/api/admin/availability', async (req, res) => {
       if (!Object.keys(filter.date).length) delete filter.date
     }
     const today = californiaDateKey()
-    const effective = (await effectiveAvailabilitySlots(filter)).map(slot => ({
+    const effectiveSlots = await effectiveAvailabilitySlots(filter)
+    const closureSet = await closedAvailabilityDates(effectiveSlots.map(slot => slot.date))
+    const effective = effectiveSlots.map(slot => ({
       ...slot,
-      status: adminAvailabilityStatus(slot, today),
+      status: closureSet.has(slot.date) && !['held', 'booked'].includes(slot.status)
+        ? 'dayoff'
+        : adminAvailabilityStatus(slot, today),
     }))
     const filtered = statusFilter === 'manageable'
       ? effective.filter(slot => slot.status === 'available' || slot.status === 'blocked')
-      : ['available', 'blocked', 'held', 'booked', 'expired', 'legacy'].includes(statusFilter)
+      : ['available', 'blocked', 'held', 'booked', 'expired', 'legacy', 'dayoff'].includes(statusFilter)
         ? effective.filter(slot => slot.status === statusFilter)
         : effective
     const total = filtered.length
@@ -4271,6 +4379,10 @@ app.post('/api/admin/availability', rateLimit({ windowMs: 60_000, max: 30 }), as
     if (!dates.length || dates.length > 90) throw new HttpError(400, 'Choose between 1 and 90 future dates.')
     if (!times.length || times.length > ADMIN_AVAILABILITY_TIMES.length) throw new HttpError(400, 'Choose at least one supported lesson time.')
     const slots = dates.flatMap(date => times.map(time => validateAvailabilitySlot(date, time, { allowToday: false })))
+    const closedDates = await closedAvailabilityDates(dates)
+    if (closedDates.size) {
+      throw new HttpError(409, `Reopen ${[...closedDates].sort().join(', ')} before adding lesson availability.`)
+    }
     const now = new Date().toISOString()
     const operations = slots.map(slot => {
       const slotKey = bookingSlotKey(slot.date, slot.timeSlot)
@@ -4314,6 +4426,8 @@ app.put('/api/admin/availability/status', async (req, res) => {
       if (slots.some(slot => slot.date <= californiaDateKey())) {
         throw new HttpError(409, 'Expired availability cannot be changed. Only future slots can be managed.')
       }
+      const closedDates = await closedAvailabilityDates(slots.map(slot => slot.date), session)
+      if (closedDates.size) throw new HttpError(409, 'Reopen the closed date before changing its lesson slots.')
       const activeLock = await bookingSlotsCol.findOne({
         _id: { $in: slots.map(slot => slot.slotKey) },
         $or: [
@@ -5768,6 +5882,7 @@ export {
   splitCheckoutItems,
   validateContinuationSlotCount,
   validateAvailabilitySlot,
+  validateClosedAvailabilityDates,
   validateAdminBookingStatusChange,
   slotLimitForTier,
 }

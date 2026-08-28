@@ -33,6 +33,7 @@ const {
   splitCheckoutItems,
   validateContinuationSlotCount,
   validateAvailabilitySlot,
+  validateClosedAvailabilityDates,
   validateAdminBookingStatusChange,
 } = await import('./index.js')
 
@@ -291,6 +292,21 @@ test('admin availability accepts only valid future dates and the five public les
   assert.throws(
     () => validateAvailabilitySlot('2099-12-20', '09:00 AM - 11:00 AM'),
     error => error.status === 400 && /five supported lesson times/i.test(error.message)
+  )
+})
+
+test('closed availability dates are future-only, unique, and sorted', () => {
+  assert.deepEqual(
+    validateClosedAvailabilityDates(['2099-12-22', '2099-12-20', '2099-12-22'], '2099-12-19'),
+    ['2099-12-20', '2099-12-22']
+  )
+  assert.throws(
+    () => validateClosedAvailabilityDates(['2099-12-19'], '2099-12-19'),
+    /Only future dates/
+  )
+  assert.throws(
+    () => validateClosedAvailabilityDates(['2099-02-31'], '2099-01-01'),
+    /valid calendar date/
   )
 })
 
