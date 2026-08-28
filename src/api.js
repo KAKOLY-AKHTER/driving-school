@@ -93,6 +93,10 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  recoverAdminAccess: (recoverySecret, newPassword) => request('/api/admin/recover-access', {
+    method: 'POST',
+    body: JSON.stringify({ recoverySecret, newPassword }),
+  }),
   getUser: (uid) => request(`/api/users/${pathPart(uid)}`),
   saveUser: (uid, data) => request(`/api/users/${pathPart(uid)}`, { method: 'PUT', body: JSON.stringify(data) }),
   uploadProfileImage: (uid, file) => request(`/api/users/${pathPart(uid)}/profile-image`, {

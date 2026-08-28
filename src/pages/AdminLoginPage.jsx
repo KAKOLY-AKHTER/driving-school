@@ -34,6 +34,11 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
   const [resetMessage, setResetMessage] = useState('')
+  const [showRecovery, setShowRecovery] = useState(false)
+  const [recoverySecret, setRecoverySecret] = useState('')
+  const [recoveryPassword, setRecoveryPassword] = useState('')
+  const [recoveryPasswordConfirm, setRecoveryPasswordConfirm] = useState('')
+  const [recoveryLoading, setRecoveryLoading] = useState(false)
   const navigate = useNavigate()
   const { user, isAdmin, refreshProfile } = useAuth()
 
@@ -96,6 +101,39 @@ export default function AdminLoginPage() {
       }
     } finally {
       setResetLoading(false)
+    }
+  }
+
+  const handleEmergencyRecovery = async () => {
+    setError('')
+    setResetMessage('')
+    if (recoverySecret.trim().length < 32) {
+      setError('Enter the temporary recovery secret from the Vercel environment variable.')
+      return
+    }
+    if (recoveryPassword.length < 8) {
+      setError('Use a new password with at least 8 characters.')
+      return
+    }
+    if (recoveryPassword !== recoveryPasswordConfirm) {
+      setError('The two new-password fields do not match.')
+      return
+    }
+
+    setRecoveryLoading(true)
+    try {
+      const result = await api.recoverAdminAccess(recoverySecret, recoveryPassword)
+      setEmail(result.email || email)
+      setPassword('')
+      setRecoverySecret('')
+      setRecoveryPassword('')
+      setRecoveryPasswordConfirm('')
+      setShowRecovery(false)
+      setResetMessage('Admin password reset successfully. Sign in with the new password, then remove ADMIN_RECOVERY_SECRET from Vercel.')
+    } catch (err) {
+      setError(readableErrorMessage(err, 'Emergency recovery could not reset the password.'))
+    } finally {
+      setRecoveryLoading(false)
     }
   }
 
@@ -166,6 +204,26 @@ export default function AdminLoginPage() {
                   {resetLoading ? 'Sending reset link…' : 'Forgot password?'}
                 </button>
               </div>
+
+              <div style={{ margin: '-.55rem 0 1.5rem', textAlign: 'right' }}>
+                <button type="button" onClick={() => { setShowRecovery(value => !value); setError(''); setResetMessage('') }} disabled={loading || resetLoading || recoveryLoading} style={{ padding: 0, background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '.76rem', fontWeight: 600, textDecoration: 'underline' }}>
+                  {showRecovery ? 'Close emergency recovery' : 'No access to the inbox?'}
+                </button>
+              </div>
+
+              {showRecovery && (
+                <div style={{ padding: '1rem', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 'var(--radius-sm)', marginBottom: '1.25rem' }}>
+                  <p style={{ margin: '0 0 .85rem', fontFamily: 'var(--font-body)', fontSize: '.8rem', lineHeight: 1.5, color: '#9A3412' }}>
+                    Use this only if you control the Vercel project. It needs the temporary <strong>ADMIN_RECOVERY_SECRET</strong>; remove that variable after you regain access.
+                  </p>
+                  <input type="password" value={recoverySecret} onChange={(event) => setRecoverySecret(event.target.value)} className="adml-input" style={{ ...inputStyle, marginBottom: '.65rem' }} placeholder="Temporary recovery secret" autoComplete="off" aria-label="Temporary recovery secret" />
+                  <PasswordInput value={recoveryPassword} onChange={(event) => setRecoveryPassword(event.target.value)} className="adml-input" style={{ ...inputStyle, marginBottom: '.65rem' }} placeholder="New admin password (8+ characters)" autoComplete="new-password" aria-label="New admin password" />
+                  <PasswordInput value={recoveryPasswordConfirm} onChange={(event) => setRecoveryPasswordConfirm(event.target.value)} className="adml-input" style={inputStyle} placeholder="Confirm new admin password" autoComplete="new-password" aria-label="Confirm new admin password" />
+                  <button type="button" onClick={handleEmergencyRecovery} disabled={recoveryLoading} style={{ width: '100%', marginTop: '.85rem', padding: '.7rem .85rem', color: '#9A3412', background: '#fff', border: '1px solid #FDBA74', borderRadius: 'var(--radius-sm)', cursor: recoveryLoading ? 'wait' : 'pointer', fontFamily: 'var(--font-body)', fontWeight: 800, fontSize: '.8rem' }}>
+                    {recoveryLoading ? 'Resetting password...' : 'Reset admin password securely'}
+                  </button>
+                </div>
+              )}
 
               {resetMessage && (
                 <div role="status" aria-live="polite" style={{ padding: '0.75rem 1rem', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 'var(--radius-sm)', marginBottom: '1.25rem', fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#166534', lineHeight: 1.5 }}>

@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { MongoClient, ObjectId } from 'mongodb'
 import Groq from 'groq-sdk'
 import sanitizeHtml from 'sanitize-html'
-import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
+import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 
@@ -2054,6 +2054,49 @@ app.use(async (req, res, next) => {
     next()
   } catch (e) {
     sendServerError(res, e, 'Database connection failed')
+  }
+})
+
+// Disabled unless ADMIN_RECOVERY_SECRET is explicitly set. This permits a
+// project owner who controls Vercel, but not the admin mailbox, to recover only
+// the configured administrator account. Delete the environment variable once
+// recovery is complete.
+const recoverySecretMatches = (provided, expected) => {
+  const suppliedHash = createHash('sha256').update(String(provided || '')).digest()
+  const expectedHash = createHash('sha256').update(String(expected || '')).digest()
+  return timingSafeEqual(suppliedHash, expectedHash)
+}
+
+app.post('/api/admin/recover-access', async (req, res) => {
+  try {
+    const recoverySecret = String(process.env.ADMIN_RECOVERY_SECRET || '').trim()
+    const adminEmail = normalizeEmail(process.env.ADMIN_EMAIL)
+    const requestedSecret = String(req.body?.recoverySecret || '')
+    const newPassword = String(req.body?.newPassword || '')
+
+    if (recoverySecret.length < 32 || !adminEmail) {
+      return res.status(404).json({ error: 'Emergency recovery is not enabled for this project.' })
+    }
+    if (!recoverySecretMatches(requestedSecret, recoverySecret)) {
+      return res.status(403).json({ error: 'The recovery secret is incorrect.' })
+    }
+    if (newPassword.length < 8 || newPassword.length > 128) {
+      return res.status(400).json({ error: 'Use a new password between 8 and 128 characters.' })
+    }
+
+    const firebaseAdmin = getFirebaseAdminAuth()
+    const administrator = await firebaseAdmin.getUserByEmail(adminEmail)
+    await firebaseAdmin.updateUser(administrator.uid, { password: newPassword })
+    return res.json({ ok: true, email: adminEmail })
+  } catch (error) {
+    console.error('Admin emergency recovery failed:', error?.code || error?.message || error)
+    if (error?.code === 'auth/user-not-found') {
+      return res.status(404).json({ error: 'The configured administrator account was not found.' })
+    }
+    if (error?.code === 'auth/invalid-password') {
+      return res.status(400).json({ error: 'Use a stronger password and try again.' })
+    }
+    return res.status(503).json({ error: 'The administrator password could not be reset right now. Please try again.' })
   }
 })
 
