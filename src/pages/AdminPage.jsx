@@ -321,8 +321,6 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
   const reviewLimit = 10
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [bookingLeadTimeDays, setBookingLeadTimeDays] = useState(0)
-  const [leadTimeSaving, setLeadTimeSaving] = useState(false)
   const [error, setError] = useState('')
   const [loadVersion, setLoadVersion] = useState(0)
 
@@ -496,6 +494,8 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
   const [limit, setLimit] = useState('10')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [bookingLeadTimeDays, setBookingLeadTimeDays] = useState(0)
+  const [leadTimeSaving, setLeadTimeSaving] = useState(false)
   const [loadVersion, setLoadVersion] = useState(0)
   const [error, setError] = useState('')
 
