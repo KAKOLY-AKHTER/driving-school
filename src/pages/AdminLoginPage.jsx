@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth'
+import { signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth'
 import { auth } from '../firebase'
 import { useAuth } from '../contexts/AuthContext'
 import { api, readableErrorMessage } from '../api'
@@ -32,6 +32,8 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
+  const [resetMessage, setResetMessage] = useState('')
   const navigate = useNavigate()
   const { user, isAdmin, refreshProfile } = useAuth()
 
@@ -68,6 +70,32 @@ export default function AdminLoginPage() {
       setError(adminLoginErrorMessage(err))
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handlePasswordReset = async () => {
+    const resetEmail = email.trim().toLowerCase()
+    setError('')
+    setResetMessage('')
+    if (!/^\S+@\S+\.\S+$/.test(resetEmail)) {
+      setError('Enter your admin email first, then select Forgot password.')
+      return
+    }
+
+    setResetLoading(true)
+    try {
+      await sendPasswordResetEmail(auth, resetEmail)
+      setResetMessage(`A password-reset link was sent to ${resetEmail}. Check the inbox and spam folder, then return here to sign in with the new password.`)
+    } catch (err) {
+      if (err?.code === 'auth/invalid-email') {
+        setError('Enter a valid admin email address.')
+      } else if (err?.code === 'auth/too-many-requests') {
+        setError('Too many reset requests. Please wait a few minutes and try again.')
+      } else {
+        setError('We could not send a password-reset email. Check the email address and try again.')
+      }
+    } finally {
+      setResetLoading(false)
     }
   }
 
@@ -134,7 +162,16 @@ export default function AdminLoginPage() {
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8899aa', fontWeight: 600, marginBottom: '0.4rem' }}>Password</label>
                 <PasswordInput required value={password} onChange={(e) => setPassword(e.target.value)} className="adml-input" style={inputStyle} placeholder="Enter your password" autoComplete="current-password" />
+                <button type="button" onClick={handlePasswordReset} disabled={loading || resetLoading} style={{ display: 'block', margin: '.7rem 0 0 auto', padding: 0, background: 'transparent', border: 'none', color: SKY_BLUE, cursor: resetLoading ? 'wait' : 'pointer', fontFamily: 'var(--font-body)', fontSize: '.82rem', fontWeight: 700, textDecoration: 'underline' }}>
+                  {resetLoading ? 'Sending reset link…' : 'Forgot password?'}
+                </button>
               </div>
+
+              {resetMessage && (
+                <div role="status" aria-live="polite" style={{ padding: '0.75rem 1rem', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 'var(--radius-sm)', marginBottom: '1.25rem', fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#166534', lineHeight: 1.5 }}>
+                  {resetMessage}
+                </div>
+              )}
 
               {error && (
                 <div style={{ padding: '0.75rem 1rem', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 'var(--radius-sm)', marginBottom: '1.25rem', fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#DC2626' }}>
