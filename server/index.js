@@ -4276,6 +4276,113 @@ app.get('/api/admin/bookings', async (req, res) => {
   }
 })
 
+// Creates a lesson for a student who booked by phone or in person.  This is
+// deliberately restricted to an existing student/course: admins cannot
+// accidentally create an unpaid or orphaned enrollment from this endpoint.
+app.post('/api/admin/bookings', rateLimit({ windowMs: 60_000, max: 30 }), async (req, res) => {
+  try {
+    const userId = cleanText(req.body?.userId, 160)
+    const courseId = cleanText(req.body?.courseId, 120)
+    const enrollmentFingerprint = cleanText(req.body?.enrollmentFingerprint, 160)
+    const adminNote = cleanText(req.body?.adminNote, 500)
+    if (!userId || !courseId) throw new HttpError(400, 'Choose a registered student and an active course.')
+
+    const { date, timeSlot } = validateBookingSlot(req.body?.date, req.body?.timeSlot)
+    await cleanupExpiredHolds()
+
+    const booking = await withMongoTransaction(async (session) => {
+      const student = await usersCol.findOne(
+        { uid: userId, isAdmin: { $ne: true } },
+        { session, projection: { uid: 1, email: 1, courses: 1 } }
+      )
+      if (!student) throw new HttpError(404, 'Choose a registered student account.')
+
+      const courses = Array.isArray(student.courses) ? student.courses : []
+      const courseIndex = findCourseEnrollmentIndex(courses, courseId, enrollmentFingerprint, { activeOnly: true })
+      if (courseIndex < 0) throw new HttpError(409, 'That student does not have an active eligible course.')
+      const course = courses[courseIndex]
+      const enrollmentId = cleanText(course?.enrollmentId, 160)
+      const linkedBookingFilter = { userId, courseId, status: { $ne: 'held' } }
+      if (enrollmentId) linkedBookingFilter.enrollmentId = enrollmentId
+      const linkedBookings = await bookingsCol.find(linkedBookingFilter, { session }).toArray()
+      const allowance = packageSlotAllowance(course, course, linkedBookings)
+      if (allowance.remaining < 1) {
+        const label = cleanText(course?.title || course?.planName || courseId, 160) || 'This course'
+        throw new HttpError(409, `${label} has already used all ${allowance.maximum} included lesson slots.`)
+      }
+
+      await assertSlotsOpenForBooking([{ date, timeSlot }], session)
+      const slotKey = bookingSlotKey(date, timeSlot)
+      await bookingSlotsCol.deleteOne({ _id: slotKey, status: 'held', expiresAt: { $lte: new Date() } }, { session })
+      if (await bookingSlotsCol.findOne({ _id: slotKey }, { session })) {
+        throw new HttpError(409, 'This lesson time is no longer available. Choose another open slot.')
+      }
+
+      const bookingId = new ObjectId()
+      const now = new Date()
+      const timestamp = now.toISOString()
+      const bookingDoc = {
+        _id: bookingId,
+        userId,
+        email: normalizeEmail(student.email),
+        date,
+        timeSlot,
+        courseId,
+        ...(enrollmentId ? { enrollmentId } : {}),
+        courseTitle: cleanText(course?.title || course?.planName || '', 160),
+        hours: 2,
+        status: 'confirmed',
+        bookingSource: 'admin_phone',
+        createdByAdmin: req.auth.uid,
+        ...(adminNote ? { adminNote } : {}),
+        createdAt: timestamp,
+        confirmedAt: timestamp,
+      }
+      try {
+        await bookingSlotsCol.insertOne({
+          _id: slotKey,
+          date,
+          timeSlot,
+          userId,
+          courseId,
+          ...(enrollmentId ? { enrollmentId } : {}),
+          bookingId,
+          status: 'confirmed',
+          createdAt: now,
+          createdByAdmin: req.auth.uid,
+        }, { session })
+      } catch (error) {
+        if (isDuplicateKey(error)) throw new HttpError(409, 'This lesson time is no longer available. Choose another open slot.')
+        throw error
+      }
+
+      const pickupSlotsByKey = new Map()
+      for (const rawSlot of Array.isArray(course.pickupSlots) ? course.pickupSlots : []) {
+        const slot = safeStoredPickupSlot(rawSlot)
+        if (slot) pickupSlotsByKey.set(bookingSlotKey(slot.date, slot.time), slot)
+      }
+      pickupSlotsByKey.set(slotKey, { date, time: timeSlot })
+      const pickupSlots = [...pickupSlotsByKey.values()].sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
+      const nextCourses = courses.map((item, index) => index === courseIndex ? {
+        ...item,
+        pickupSlots,
+        slotUsed: pickupSlots.length,
+        slotMaximum: slotLimitForTier(item),
+      } : item)
+
+      await usersCol.updateOne({ uid: userId }, { $set: { courses: nextCourses } }, { session })
+      await bookingsCol.insertOne(bookingDoc, { session })
+      return bookingDoc
+    })
+
+    await safelySyncBookingIdsWithGoogleCalendar([booking._id])
+    res.status(201).json({ ...booking, status: canonicalAdminBookingStatus(booking) })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    return sendServerError(res, error, 'Phone booking could not be created')
+  }
+})
+
 app.get('/api/admin/closed-dates', async (req, res) => {
   try {
     const items = await availabilityClosuresCol.find(

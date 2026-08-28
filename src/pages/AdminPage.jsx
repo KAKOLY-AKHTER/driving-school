@@ -93,6 +93,10 @@ const enrollmentStatusGroup = (course) => {
   return 'active'
 }
 
+const courseEnrollmentFingerprint = (course) => String(
+  course?.enrolledAt || course?.createdAt || course?.paymentRef || 'legacy-current-enrollment'
+).trim().slice(0, 160)
+
 const GOOGLE_MAPS_HOSTS = ['google.com', 'googleusercontent.com']
 
 function validateHttpsUrl(value, { required = true, googleMapsOnly = false } = {}) {
@@ -174,6 +178,99 @@ const SVG = {
 function TablePager({ page, pages, total, label, onChange }) {
   const current = Math.min(Math.max(1, page), Math.max(1, pages))
   return <div className="admin-table-pager" aria-label={`${label} pagination`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginTop: '1rem' }}><span style={{ color: '#334155', fontSize: '.9rem' }}>Page {current} of {Math.max(1, pages)} · {total} {label}</span><div style={{ display: 'flex', gap: '.45rem' }}><button type="button" disabled={current <= 1} onClick={() => onChange(current - 1)} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: current <= 1 ? 'not-allowed' : 'pointer' }}>Previous</button><button type="button" disabled={current >= pages} onClick={() => onChange(current + 1)} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: current >= pages ? 'not-allowed' : 'pointer' }}>Next</button></div></div>
+}
+
+function AdminPhoneBookingModal({ users, onClose, onCreated }) {
+  const [studentQuery, setStudentQuery] = useState('')
+  const [studentId, setStudentId] = useState('')
+  const [courseIndex, setCourseIndex] = useState('')
+  const [date, setDate] = useState(localDateKey())
+  const [timeSlot, setTimeSlot] = useState('')
+  const [adminNote, setAdminNote] = useState('')
+  const [availableTimes, setAvailableTimes] = useState([])
+  const [availabilityLoading, setAvailabilityLoading] = useState(false)
+  const [availabilityError, setAvailabilityError] = useState('')
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const students = users.filter(account => account?.uid && account.isAdmin !== true)
+  const query = studentQuery.trim().toLowerCase()
+  const filteredStudents = students.filter(account => !query || [adminUserName(account), account.email, account.phone]
+    .some(value => String(value || '').toLowerCase().includes(query)))
+  const selectedStudent = students.find(account => account.uid === studentId)
+  const activeCourses = (Array.isArray(selectedStudent?.courses) ? selectedStudent.courses : [])
+    .filter(course => enrollmentStatusGroup(course) === 'active')
+  const selectedCourse = courseIndex === '' ? null : activeCourses[Number(courseIndex)]
+
+  useEffect(() => {
+    let cancelled = false
+    setAvailabilityLoading(true)
+    setAvailabilityError('')
+    api.getBookingAvailability(date)
+      .then(result => {
+        if (cancelled) return
+        const nextTimes = Array.isArray(result?.availableTimes) ? result.availableTimes : []
+        setAvailableTimes(nextTimes)
+        setTimeSlot(current => nextTimes.includes(current) ? current : '')
+      })
+      .catch(loadError => {
+        if (!cancelled) {
+          setAvailableTimes([])
+          setAvailabilityError(loadError?.message || 'Open lesson times could not be loaded.')
+        }
+      })
+      .finally(() => { if (!cancelled) setAvailabilityLoading(false) })
+    return () => { cancelled = true }
+  }, [date])
+
+  const submit = async event => {
+    event.preventDefault()
+    setError('')
+    if (!selectedStudent || !selectedCourse || !date || !timeSlot) {
+      setError('Choose a student, active course, lesson date, and open lesson time.')
+      return
+    }
+    setSaving(true)
+    try {
+      const booking = await api.adminCreatePhoneBooking({
+        userId: selectedStudent.uid,
+        courseId: selectedCourse.id,
+        enrollmentFingerprint: courseEnrollmentFingerprint(selectedCourse),
+        date,
+        timeSlot,
+        adminNote,
+      })
+      onCreated(booking)
+    } catch (saveError) {
+      setError(saveError?.message || 'The phone booking could not be created.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const fieldLabel = { display: 'block', marginBottom: '.35rem', color: '#334155', fontFamily: 'var(--font-mono)', fontSize: '.76rem', letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 800 }
+  const field = { width: '100%', minHeight: '44px', boxSizing: 'border-box', padding: '.58rem .7rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#0F2747', fontFamily: 'var(--font-body)', fontSize: '.95rem' }
+  return (
+    <div className="admin-modal-backdrop" role="presentation" style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(10,22,40,.62)', backdropFilter: 'blur(10px)' }} onClick={event => { if (event.target === event.currentTarget && !saving) onClose() }}>
+      <form role="dialog" aria-modal="true" aria-labelledby="phone-booking-title" onSubmit={submit} style={{ width: '100%', maxWidth: '710px', maxHeight: '90vh', overflowY: 'auto', borderRadius: '18px', background: '#fff', boxShadow: '0 24px 80px rgba(0,0,0,.28)', padding: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.15rem' }}>
+          <div><h3 id="phone-booking-title" style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.4rem' }}>Create Phone Booking</h3><p style={{ margin: '.3rem 0 0', color: '#475569', lineHeight: 1.5 }}>Use this for a registered student who called the school. The selected course must still have a lesson available.</p></div>
+          <button type="button" aria-label="Close phone booking form" onClick={onClose} disabled={saving} style={{ border: 0, background: 'transparent', color: '#475569', fontSize: '1.8rem', lineHeight: 1, cursor: saving ? 'wait' : 'pointer' }}>&times;</button>
+        </div>
+        <div role="note" style={{ marginBottom: '1rem', padding: '.75rem .9rem', border: '1px solid #BFDBFE', borderRadius: '11px', background: '#EFF6FF', color: '#1E3A5F', lineHeight: 1.5, fontSize: '.9rem' }}><strong>Safe workflow:</strong> this reserves one open time, uses one included lesson from the chosen course, and syncs automatically to the connected school Google Calendar.</div>
+        {error && <div role="alert" style={{ marginBottom: '1rem', padding: '.75rem .9rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{error}</div>}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '1rem' }}>
+          <div style={{ gridColumn: '1 / -1' }}><label htmlFor="phone-booking-search" style={fieldLabel}>Find registered student</label><input id="phone-booking-search" value={studentQuery} onChange={event => setStudentQuery(event.target.value)} style={field} placeholder="Search by name, email, or phone" autoFocus /></div>
+          <div><label htmlFor="phone-booking-student" style={fieldLabel}>Student *</label><select id="phone-booking-student" required value={studentId} onChange={event => { setStudentId(event.target.value); setCourseIndex('') }} style={field}><option value="">Choose a student</option>{filteredStudents.map(account => <option key={account.uid} value={account.uid}>{adminUserName(account)} — {account.email || account.phone || 'No contact detail'}</option>)}</select>{query && !filteredStudents.length && <p style={{ margin: '.35rem 0 0', color: '#B45309', fontSize: '.82rem' }}>No registered student matches that search.</p>}</div>
+          <div><label htmlFor="phone-booking-course" style={fieldLabel}>Active course *</label><select id="phone-booking-course" required value={courseIndex} disabled={!selectedStudent} onChange={event => setCourseIndex(event.target.value)} style={{ ...field, background: selectedStudent ? '#fff' : '#F8FAFC' }}><option value="">{selectedStudent ? 'Choose an active course' : 'Choose a student first'}</option>{activeCourses.map((course, index) => <option key={`${course.id}-${courseEnrollmentFingerprint(course)}-${index}`} value={index}>{course.title || course.planName || COURSE_MAP[course.id] || `Course ${course.id}`}</option>)}</select>{selectedStudent && !activeCourses.length && <p style={{ margin: '.35rem 0 0', color: '#B45309', fontSize: '.82rem' }}>This student has no active course that can receive a lesson.</p>}</div>
+          <div><label htmlFor="phone-booking-date" style={fieldLabel}>Lesson date *</label><input id="phone-booking-date" required min={localDateKey()} type="date" value={date} onChange={event => setDate(event.target.value)} style={field} /></div>
+          <div><label htmlFor="phone-booking-time" style={fieldLabel}>Open lesson time *</label><select id="phone-booking-time" required disabled={availabilityLoading || !availableTimes.length} value={timeSlot} onChange={event => setTimeSlot(event.target.value)} style={{ ...field, background: availabilityLoading ? '#F8FAFC' : '#fff' }}><option value="">{availabilityLoading ? 'Checking open times…' : availableTimes.length ? 'Choose an open time' : 'No open times'}</option>{availableTimes.map(time => <option key={time} value={time}>{time}</option>)}</select>{availabilityError && <p style={{ margin: '.35rem 0 0', color: '#B91C1C', fontSize: '.82rem' }}>{availabilityError}</p>}</div>
+          <div style={{ gridColumn: '1 / -1' }}><label htmlFor="phone-booking-note" style={fieldLabel}>Internal note (optional)</label><textarea id="phone-booking-note" maxLength="500" value={adminNote} onChange={event => setAdminNote(event.target.value)} style={{ ...field, minHeight: '88px', resize: 'vertical' }} placeholder="Example: Called in by student; payment verified by staff." /></div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.7rem', marginTop: '1.35rem' }}><button type="button" onClick={onClose} disabled={saving} style={{ minHeight: '42px', padding: '.6rem .9rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#334155', fontWeight: 800, cursor: saving ? 'wait' : 'pointer' }}>Cancel</button><button type="submit" disabled={saving || !selectedStudent || !selectedCourse || !timeSlot} style={{ minHeight: '42px', padding: '.6rem 1rem', border: 0, borderRadius: '9px', background: saving || !selectedStudent || !selectedCourse || !timeSlot ? '#94A3B8' : `linear-gradient(135deg,${SKY_BLUE},#0A2A5E)`, color: '#fff', fontWeight: 900, cursor: saving || !selectedStudent || !selectedCourse || !timeSlot ? 'not-allowed' : 'pointer', boxShadow: '0 6px 17px rgba(1,69,168,.18)' }}>{saving ? 'Creating Booking…' : 'Create Upcoming Booking'}</button></div>
+      </form>
+    </div>
+  )
 }
 
 function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle, requestConfirmation, setMessage }) {
@@ -695,6 +792,7 @@ export default function AdminPage() {
   const [bookingPage, setBookingPage] = useState(1)
   const [bookingLimit, setBookingLimit] = useState('10')
   const [bookingStatusUpdating, setBookingStatusUpdating] = useState('')
+  const [phoneBookingOpen, setPhoneBookingOpen] = useState(false)
   const [contactSearch, setContactSearch] = useState('')
   const [contactStatusFilter, setContactStatusFilter] = useState('all')
   const [contactPage, setContactPage] = useState(1)
@@ -1158,6 +1256,20 @@ export default function AdminPage() {
       `${linkedUser?.displayName || linkedUser?.email || 'This student'}'s ${booking.date || ''} ${TIME_SLOT_MAP[booking.timeSlot] || booking.timeSlot || ''} booking will be permanently removed and the package slot will become available again.`,
       () => deleteBooking(booking._id),
     )
+  }
+
+  const handlePhoneBookingCreated = async (booking) => {
+    setBookings(previous => [booking, ...previous])
+    setPhoneBookingOpen(false)
+    setMsg('Phone booking created as Upcoming. The lesson has been reserved and sent to the connected Google Calendar.')
+    setTimeout(() => setMsg(''), 4200)
+    try {
+      const nextStats = await api.adminStats()
+      if (nextStats) setStats(nextStats)
+    } catch {
+      // The booking itself already succeeded. Dashboard counts will refresh on
+      // the normal notification interval.
+    }
   }
 
   const handleEditContact = (contact) => {
@@ -1917,6 +2029,7 @@ export default function AdminPage() {
                   <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.calendar} Bookings <span style={{ color: '#334155', fontSize: '.9rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>({filteredBookings.length} of {bookings.length})</span></h3>
                     <div className="booking-toolbar-controls" style={{ display: 'flex', alignItems: 'center', gap: '.5rem', justifyContent: 'flex-end' }}>
+                      <button type="button" onClick={() => setPhoneBookingOpen(true)} style={{ minHeight: '44px', flex: '0 0 auto', padding: '.58rem .82rem', border: 0, borderRadius: '9px', background: `linear-gradient(135deg,${SKY_BLUE},#0A2A5E)`, color: '#fff', fontWeight: 900, whiteSpace: 'nowrap', cursor: 'pointer', boxShadow: '0 5px 14px rgba(1,69,168,.18)' }}>+ Phone Booking</button>
                       <input className="admin-toolbar-input" aria-label="Search bookings" type="search" placeholder="Search student, plan, date, time…" value={bookingSearch} onChange={(e) => { setBookingSearch(e.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '260px', minWidth: '200px', flex: '1 1 260px' }} />
                       <select aria-label="Filter bookings by status" value={bookingStatusFilter} onChange={(event) => { setBookingStatusFilter(event.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '210px' }}>
                         <option value="all">All Booking Statuses</option>
@@ -3189,6 +3302,14 @@ Near and Long pricing is applied automatically from the selected city and verifi
           </div>
         </div>
       </div>
+
+      {phoneBookingOpen && (
+        <AdminPhoneBookingModal
+          users={users}
+          onClose={() => setPhoneBookingOpen(false)}
+          onCreated={handlePhoneBookingCreated}
+        />
+      )}
 
       <AdminUserDetailsModal
         dialog={userDetailsDialog}

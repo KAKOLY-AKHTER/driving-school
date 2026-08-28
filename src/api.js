@@ -110,6 +110,7 @@ export const api = {
   adminUsers: () => request('/api/admin/users'),
   adminUserDetails: (uid) => request(`/api/admin/users/${pathPart(uid)}/details`),
   adminBookings: () => request('/api/admin/bookings'),
+  adminCreatePhoneBooking: (data) => request('/api/admin/bookings', { method: 'POST', body: JSON.stringify(data) }),
   adminAvailability: (params) => request(`/api/admin/availability?${new URLSearchParams(params)}`),
   adminAddAvailability: (dates, times) => request('/api/admin/availability', { method: 'POST', body: JSON.stringify({ dates, times }) }),
   adminClosedDates: () => request('/api/admin/closed-dates'),
