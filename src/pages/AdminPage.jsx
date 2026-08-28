@@ -483,20 +483,17 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
   })
   const [times, setTimes] = useState([])
   const [rows, setRows] = useState([])
-  const [closedDates, setClosedDates] = useState([])
   const [openDates, setOpenDates] = useState([])
   const [selected, setSelected] = useState([])
   const [bulkStatus, setBulkStatus] = useState('available')
   const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('manageable')
+  const [status, setStatus] = useState('all')
   const [page, setPage] = useState(1)
   const [pages, setPages] = useState(1)
   const [total, setTotal] = useState(0)
   const [limit, setLimit] = useState('10')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [bookingLeadTimeDays, setBookingLeadTimeDays] = useState(0)
-  const [leadTimeSaving, setLeadTimeSaving] = useState(false)
   const [loadVersion, setLoadVersion] = useState(0)
   const [error, setError] = useState('')
 
@@ -504,22 +501,13 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
     let active = true
     setLoading(true)
     setError('')
-    Promise.all([
-      api.adminAvailability({ page, limit, search, status }),
-      api.adminClosedDates(),
-      api.adminBookingLeadTime(),
-    ])
-      .then(([data, closureData, leadTimeData]) => {
+    api.adminAvailability({ page, limit, search, status })
+      .then(data => {
         if (!active) return
         setRows(Array.isArray(data?.items) ? data.items : [])
         setTotal(Number(data?.total) || 0)
         setPages(Math.max(1, Number(data?.pages) || 1))
         if (Number(data?.page) && Number(data.page) !== page) setPage(Number(data.page))
-        const closureItems = Array.isArray(closureData?.items) ? closureData.items : []
-        const closureKeys = new Set(closureItems.map(item => item.date))
-        setClosedDates(closureItems)
-        setDates(current => current.filter(date => !closureKeys.has(date)))
-        setBookingLeadTimeDays(Number.isInteger(Number(leadTimeData?.days)) ? Number(leadTimeData.days) : 0)
         setSelected([])
       })
       .catch(loadError => { if (active) setError(loadError?.message || 'Availability could not be loaded.') })
@@ -534,7 +522,6 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
   const todayKey = localDateKey()
   const [todayYear, todayMonth] = todayKey.split('-').map(Number)
   const currentMonthStart = new Date(todayYear, todayMonth - 1, 1)
-  const closedDateKeySet = new Set(closedDates.map(item => item.date))
   const openDateKeySet = new Set(openDates)
   const calendarDateKey = day => `${calendarYear}-${String(calendarMonthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 
@@ -555,7 +542,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
   }, [calendarYear, calendarMonthIndex, calendarDayCount, loadVersion])
 
   const toggleDate = date => {
-    if (date <= todayKey || closedDateKeySet.has(date)) return
+    if (date <= todayKey) return
     setDates(current => {
       if (current.includes(date)) return current.filter(item => item !== date)
       if (current.length >= 90) {
@@ -566,7 +553,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
     })
   }
   const selectAvailableMonth = () => {
-    const monthDates = Array.from({ length: calendarDayCount }, (_, index) => calendarDateKey(index + 1)).filter(date => date > todayKey && !closedDateKeySet.has(date))
+    const monthDates = Array.from({ length: calendarDayCount }, (_, index) => calendarDateKey(index + 1)).filter(date => date > todayKey)
     setDates(current => {
       const combined = [...new Set([...current, ...monthDates])].sort()
       if (combined.length > 90) setMessage('Only the first 90 future dates were selected. Save them before adding more.')
@@ -589,60 +576,6 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
       setLoadVersion(value => value + 1)
     } catch (saveError) {
       setMessage(saveError?.message || 'Availability could not be saved.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const saveBookingLeadTime = async () => {
-    const days = Number(bookingLeadTimeDays)
-    if (!Number.isInteger(days) || days < 0 || days > 31) {
-      setMessage('Choose a whole number from 0 to 31 days.')
-      return
-    }
-    setLeadTimeSaving(true)
-    try {
-      const result = await api.adminUpdateBookingLeadTime(days)
-      const blockedThrough = result?.bookingBlockedThrough
-      setBookingLeadTimeDays(Number(result?.days) || 0)
-      setMessage(days
-        ? `Advance booking notice saved. Students cannot select lesson dates through ${new Date(`${blockedThrough}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`
-        : 'Advance booking notice removed. Students can book the next available future date.')
-      setLoadVersion(value => value + 1)
-    } catch (saveError) {
-      setMessage(saveError?.message || 'Advance booking notice could not be saved.')
-    } finally {
-      setLeadTimeSaving(false)
-    }
-  }
-
-  const closeSelectedDates = async () => {
-    if (!dates.length) {
-      setMessage('Select at least one future date to close.')
-      return
-    }
-    setSaving(true)
-    try {
-      const result = await api.adminCloseDates(dates)
-      setMessage(`${result?.closed || dates.length} date${(result?.closed || dates.length) === 1 ? '' : 's'} closed. Students cannot book any lesson on those dates.`)
-      setDates([])
-      setPage(1)
-      setLoadVersion(value => value + 1)
-    } catch (closeError) {
-      setMessage(closeError?.message || 'The selected dates could not be closed.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const reopenDate = async (date) => {
-    setSaving(true)
-    try {
-      await api.adminReopenDate(date)
-      setMessage(`${new Date(`${date}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} reopened. Its saved lesson slots are available again.`)
-      setLoadVersion(value => value + 1)
-    } catch (reopenError) {
-      setMessage(reopenError?.message || 'The date could not be reopened.')
     } finally {
       setSaving(false)
     }
@@ -681,16 +614,14 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
     booked: { background: '#EFF6FF', color: '#0755AE' },
     expired: { background: '#F1F5F9', color: '#475569' },
     legacy: { background: '#FFF7ED', color: '#9A3412' },
-    dayoff: { background: '#FFF7ED', color: '#9A3412' },
   }[value] || { background: '#F1F5F9', color: '#475569' })
   const statusLabel = (value) => ({
-    available: 'Open for Booking',
-    blocked: 'Closed to Students',
+    available: 'Available',
+    blocked: 'Unavailable',
     held: 'Checkout in Progress',
-    booked: 'Booked by Student',
+    booked: 'Booked',
     expired: 'Past / Expired',
     legacy: 'Old Schedule — Remove',
-    dayoff: 'Day Off — Entire Date Closed',
   }[value] || value)
   const isManageable = (row) => row.date > localDateKey() && (row.status === 'available' || row.status === 'blocked')
   const isRemovable = (row) => isManageable(row) || (row.date > localDateKey() && row.status === 'legacy')
@@ -706,22 +637,6 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
             <p style={{ margin: '.35rem 0 0', color: '#334155', lineHeight: 1.55 }}>Choose one or more future dates, select the lesson times, then save. Every lesson is 2 hours, followed by a protected 30-minute break.</p>
           </div>
           <span style={{ padding: '.35rem .65rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontWeight: 800, fontSize: '.8rem' }}>Pacific Time (California)</span>
-        </div>
-        <div style={{ marginBottom: '1.25rem', padding: '1rem', border: '1px solid #BFDBFE', borderRadius: '12px', background: 'linear-gradient(135deg,#EFF6FF,#F8FBFF)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '1rem', flexWrap: 'wrap' }}>
-            <div style={{ maxWidth: '670px' }}>
-              <strong style={{ display: 'block', color: '#0A2A5E', fontSize: '1rem' }}>Minimum Advance Booking Notice</strong>
-              <span style={{ display: 'block', marginTop: '.25rem', color: '#334155', fontSize: '.88rem', lineHeight: 1.5 }}>Block students from booking too close to today. For example, choose 5 to keep today through the next 5 calendar days unavailable. This does not change your saved lesson slots or selected days off.</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '.55rem', flexWrap: 'wrap' }}>
-              <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontSize: '.76rem', fontWeight: 850, letterSpacing: '.05em', textTransform: 'uppercase' }}>
-                Days to block (0–31)
-                <input type="number" min="0" max="31" step="1" value={bookingLeadTimeDays} onChange={event => setBookingLeadTimeDays(event.target.value === '' ? '' : Number(event.target.value))} style={{ ...inputStyle, width: '132px', minHeight: '42px' }} />
-              </label>
-              <button type="button" disabled={leadTimeSaving} onClick={saveBookingLeadTime} style={{ minHeight: '42px', padding: '.65rem .95rem', border: 0, borderRadius: '9px', background: leadTimeSaving ? '#94A3B8' : '#0755AE', color: '#fff', fontWeight: 850, cursor: leadTimeSaving ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}>{leadTimeSaving ? 'Saving…' : 'Save Notice'}</button>
-            </div>
-          </div>
-          <p style={{ margin: '.65rem 0 0', color: '#475569', fontSize: '.8rem' }}><strong>0 days</strong> means no additional notice: students can choose the next available future date.</p>
         </div>
         <div className="admin-grid-responsive" style={{ display: 'grid', gridTemplateColumns: 'minmax(240px,.8fr) minmax(320px,1.2fr)', gap: '1.25rem' }}>
           <div>
@@ -741,18 +656,16 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
                 {Array.from({ length: calendarDayCount }, (_, index) => {
                   const day = index + 1
                   const date = calendarDateKey(day)
-                  const dayOff = closedDateKeySet.has(date)
                   const alreadyOpen = openDateKeySet.has(date)
-                  const disabled = date <= todayKey || dayOff
+                  const disabled = date <= todayKey
                   const chosen = dates.includes(date)
                   const readableDate = new Date(`${date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
-                  return <button type="button" key={date} disabled={disabled} aria-pressed={chosen} aria-label={dayOff ? `${readableDate} is closed for booking` : alreadyOpen ? `${chosen ? 'Remove' : 'Select'} ${readableDate}; already open for booking` : `${chosen ? 'Remove' : 'Select'} ${readableDate}`} title={dayOff ? 'Day Off — students cannot book' : alreadyOpen ? 'Already open for student booking' : undefined} onClick={() => toggleDate(date)} style={{ aspectRatio: '1', minWidth: 0, border: chosen ? `2px solid ${SKY_BLUE}` : dayOff ? '1px solid #FDBA74' : alreadyOpen ? '1px solid #4ADE80' : '1px solid transparent', borderRadius: '10px', background: chosen ? 'linear-gradient(135deg,#0755AE,#2D7BE5)' : dayOff ? '#FFF7ED' : disabled ? 'transparent' : alreadyOpen ? '#DCFCE7' : '#fff', color: chosen ? '#fff' : dayOff ? '#C2410C' : disabled ? '#CBD5E1' : alreadyOpen ? '#15803D' : '#1E293B', fontWeight: chosen || dayOff || alreadyOpen ? 900 : 750, cursor: disabled ? 'not-allowed' : 'pointer', boxShadow: chosen ? '0 6px 14px rgba(7,85,174,.22)' : dayOff ? 'inset 0 -3px 0 #FED7AA' : alreadyOpen ? 'inset 0 -3px 0 #BBF7D0' : disabled ? 'none' : '0 1px 4px rgba(15,35,70,.08)' }}>{day}</button>
+                  return <button type="button" key={date} disabled={disabled} aria-pressed={chosen} aria-label={alreadyOpen ? `${chosen ? 'Remove' : 'Select'} ${readableDate}; already open for booking` : `${chosen ? 'Remove' : 'Select'} ${readableDate}`} title={alreadyOpen ? 'Already open for student booking' : undefined} onClick={() => toggleDate(date)} style={{ aspectRatio: '1', minWidth: 0, border: chosen ? `2px solid ${SKY_BLUE}` : alreadyOpen ? '1px solid #4ADE80' : '1px solid transparent', borderRadius: '10px', background: chosen ? 'linear-gradient(135deg,#0755AE,#2D7BE5)' : disabled ? 'transparent' : alreadyOpen ? '#DCFCE7' : '#fff', color: chosen ? '#fff' : disabled ? '#CBD5E1' : alreadyOpen ? '#15803D' : '#1E293B', fontWeight: chosen || alreadyOpen ? 900 : 750, cursor: disabled ? 'not-allowed' : 'pointer', boxShadow: chosen ? '0 6px 14px rgba(7,85,174,.22)' : alreadyOpen ? 'inset 0 -3px 0 #BBF7D0' : disabled ? 'none' : '0 1px 4px rgba(15,35,70,.08)' }}>{day}</button>
                 })}
               </div>
               <div aria-label="Calendar color guide" style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap', marginTop: '.75rem', color: '#475569', fontSize: '.75rem', fontWeight: 750 }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}><span aria-hidden="true" style={{ width: '13px', height: '13px', borderRadius: '4px', background: 'linear-gradient(135deg,#0755AE,#2D7BE5)' }} />Selected now</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}><span aria-hidden="true" style={{ width: '13px', height: '13px', borderRadius: '4px', background: '#DCFCE7', border: '1px solid #4ADE80' }} />Already open</span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}><span aria-hidden="true" style={{ width: '13px', height: '13px', borderRadius: '4px', background: '#FFF7ED', border: '1px solid #FDBA74' }} />Day off</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '.5rem', flexWrap: 'wrap', marginTop: '.8rem' }}>
                 <button type="button" onClick={selectAvailableMonth} style={{ border: 0, background: 'transparent', color: '#0755AE', fontWeight: 850, cursor: 'pointer', padding: '.35rem' }}>Select all future dates this month</button>
@@ -771,46 +684,18 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
             </div>
           </fieldset>
         </div>
-        <div style={{ marginTop: '1.25rem', padding: '1rem', border: '1px solid #FDBA74', borderRadius: '12px', background: 'linear-gradient(135deg,#FFF7ED,#FFFBEB)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-            <div>
-              <strong style={{ display: 'block', color: '#9A3412', fontSize: '1rem' }}>Close entire dates for vacation or days off</strong>
-              <span style={{ display: 'block', marginTop: '.25rem', color: '#7C2D12', fontSize: '.88rem', lineHeight: 1.5 }}>Select dates above, then close them. Every lesson time on those dates will be disabled for students; saved availability will return when the date is reopened.</span>
-            </div>
-            <button type="button" disabled={saving || !dates.length} onClick={() => {
-              if (!dates.length) return setMessage('Select at least one future date to close.')
-              requestConfirmation(
-                `Close ${dates.length} selected date${dates.length === 1 ? '' : 's'}?`,
-                'Students will not be able to book any lesson time on these dates. Existing availability is preserved and can be restored with Reopen.',
-                closeSelectedDates
-              )
-            }} style={{ minHeight: '44px', padding: '.7rem 1rem', border: '1px solid #EA580C', borderRadius: '9px', background: dates.length ? '#C2410C' : '#CBD5E1', color: '#fff', fontWeight: 850, cursor: saving || !dates.length ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>{saving ? 'Working…' : `Close Selected Dates (${dates.length})`}</button>
-          </div>
-        </div>
         <div style={{ display: 'flex', gap: '.65rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
           <button type="button" disabled={saving} onClick={saveAvailability} style={{ minHeight: '44px', padding: '.7rem 1.15rem', border: 0, borderRadius: '9px', background: `linear-gradient(135deg,${SKY_BLUE},#0A2A5E)`, color: '#fff', fontWeight: 850, cursor: saving ? 'wait' : 'pointer' }}>{saving ? 'Opening Lesson Slots…' : 'Open Selected Dates & Times'}</button>
           <button type="button" disabled={saving} onClick={() => { setDates([]); setTimes([]) }} style={{ minHeight: '44px', padding: '.7rem 1.15rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Reset</button>
-        </div>
-        <div style={{ marginTop: '1.25rem', paddingTop: '1.1rem', borderTop: '1px solid #E2E8F0' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '.75rem', flexWrap: 'wrap' }}>
-            <h3 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.08rem' }}>Closed Dates / Days Off ({closedDates.length})</h3>
-            <span style={{ color: '#64748B', fontSize: '.82rem' }}>Use Reopen to reactivate the previously saved lesson-slot settings.</span>
-          </div>
-          {closedDates.length ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.65rem', marginTop: '.8rem' }}>
-            {closedDates.map(item => <div key={item.date} style={{ display: 'inline-flex', alignItems: 'center', gap: '.55rem', padding: '.5rem .55rem .5rem .75rem', border: '1px solid #FED7AA', borderRadius: '999px', background: '#FFF7ED', color: '#9A3412', fontWeight: 800 }}>
-              <span>{new Date(`${item.date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
-              <button type="button" disabled={saving} aria-label={`Reopen ${item.date} for student booking`} onClick={() => requestConfirmation('Reopen this date for booking?', 'Its saved lesson-slot settings will become active again. Only slots previously marked Open will be bookable.', () => reopenDate(item.date))} style={{ minHeight: '30px', padding: '.25rem .55rem', border: '1px solid #FDBA74', borderRadius: '999px', background: '#fff', color: '#C2410C', fontWeight: 850, cursor: saving ? 'wait' : 'pointer' }}>Reopen</button>
-            </div>)}
-          </div> : <p style={{ margin: '.7rem 0 0', color: '#64748B', fontSize: '.9rem' }}>No future days off have been scheduled.</p>}
         </div>
       </div>
 
       <div style={cardStyle}>
         <div className="admin-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-          <div><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Manage Lesson Slots ({total})</h2><p style={{ margin: '.25rem 0 0', color: '#334155', fontSize: '.9rem', lineHeight: 1.5 }}><strong>Open for Booking</strong> slots are visible to students. <strong>Closed to Students</strong> changes individual slots; <strong>Day Off</strong> closes the entire date. Past, checkout-in-progress, booked, and day-off slots are read-only here.</p></div>
+          <div><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Manage Lesson Slots ({total})</h2><p style={{ margin: '.25rem 0 0', color: '#334155', fontSize: '.9rem', lineHeight: 1.5 }}><strong>Available</strong> slots are visible to students. <strong>Unavailable</strong> closes an individual slot. Past, checkout-in-progress, and booked slots are read-only here.</p></div>
           <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
             <input className="admin-toolbar-input" type="search" aria-label="Search availability" placeholder="Search date or time…" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '220px' }} />
-            <select aria-label="Filter lesson slots by booking availability" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '225px' }}><option value="manageable">Editable Future Slots</option><option value="all">All Slot Statuses</option><option value="available">Open for Booking</option><option value="blocked">Closed to Students</option><option value="dayoff">Day Off — Entire Date Closed</option><option value="held">Checkout in Progress</option><option value="booked">Booked by Student</option><option value="expired">Past / Expired</option><option value="legacy">Old Schedule — Remove</option></select>
+            <select aria-label="Filter lesson slots by booking availability" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '225px' }}><option value="all">All Booking Availability Statuses</option><option value="manageable">Editable Future Slots</option><option value="available">Available</option><option value="blocked">Unavailable</option><option value="held">Checkout in Progress</option><option value="booked">Booked</option><option value="expired">Past / Expired</option><option value="legacy">Old Schedule — Remove</option></select>
             <select aria-label="Availability rows per page" value={limit} onChange={event => { setLimit(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '90px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
           </div>
         </div>
@@ -835,7 +720,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
         {error && <div role="alert" style={{ padding: '.85rem 1rem', marginBottom: '1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{error} <button type="button" onClick={() => setLoadVersion(value => value + 1)} style={{ marginLeft: '.6rem', border: 0, background: 'transparent', color: '#0755AE', fontWeight: 850, cursor: 'pointer' }}>Retry</button></div>}
         <div className="admin-table-wrap">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr><th scope="col" style={{ ...thStyle, minWidth: '92px' }}><label style={{ display: 'inline-flex', alignItems: 'center', gap: '.45rem', cursor: selectableRows.length ? 'pointer' : 'not-allowed' }}><input aria-label="Select all editable lesson slots on this page" type="checkbox" disabled={!selectableRows.length} checked={allSelected} onChange={() => setSelected(allSelected ? [] : selectableRows.map(row => String(row._id)))} /><span>Select</span></label></th><th scope="col" style={thStyle}>Lesson Date</th><th scope="col" style={thStyle}>Lesson Time</th><th scope="col" style={thStyle}>Can Students Book?</th><th scope="col" className="admin-actions-cell" style={thStyle}>Remove Slot</th></tr></thead>
+            <thead><tr><th scope="col" style={{ ...thStyle, minWidth: '92px' }}><label style={{ display: 'inline-flex', alignItems: 'center', gap: '.45rem', cursor: selectableRows.length ? 'pointer' : 'not-allowed' }}><input aria-label="Select all editable lesson slots on this page" type="checkbox" disabled={!selectableRows.length} checked={allSelected} onChange={() => setSelected(allSelected ? [] : selectableRows.map(row => String(row._id)))} /><span>Select</span></label></th><th scope="col" style={thStyle}>Lesson Date</th><th scope="col" style={thStyle}>Lesson Time</th><th scope="col" style={thStyle}>Booking Availability Status</th><th scope="col" className="admin-actions-cell" style={thStyle}>Remove Slot</th></tr></thead>
             <tbody>
               {rows.map(row => { const meta = statusStyle(row.status); const manageable = isManageable(row); const removable = isRemovable(row); return <tr key={row._id}><td style={tdStyle}><input aria-label={`Select lesson slot on ${row.date} at ${row.time}`} type="checkbox" disabled={!manageable} checked={selected.includes(String(row._id))} onChange={() => setSelected(current => current.includes(String(row._id)) ? current.filter(id => id !== String(row._id)) : [...current, String(row._id)])} /></td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{new Date(`${row.date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{row.time}</td><td style={tdStyle}><span style={{ ...meta, display: 'inline-flex', padding: '.25rem .55rem', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 800, whiteSpace: 'nowrap' }}>{statusLabel(row.status)}</span></td><td className="admin-actions-cell" style={tdStyle}><AdminDeleteIconButton disabled={!removable} label={`Remove lesson slot on ${row.date} at ${row.time}`} title={removable ? 'Remove this future lesson slot' : 'Past, checkout-in-progress, and booked slots cannot be removed'} onClick={() => requestConfirmation('Permanently remove this lesson slot?', `${row.date} at ${row.time} will be removed and will no longer appear in the student booking calendar.`, () => deleteSlot(row))} /></td></tr> })}
               {!loading && !rows.length && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{status === 'manageable' && !search ? 'No editable future slots yet. Create future availability above, or choose another status filter.' : search || status !== 'all' ? 'No availability matches the filters.' : 'No lesson availability has been created yet.'}</td></tr>}
