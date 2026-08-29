@@ -835,6 +835,8 @@ export default function AdminPage() {
   const [enrollLimit, setEnrollLimit] = useState('10')
   const [enrollSearch, setEnrollSearch] = useState('')
   const [enrollStatusFilter, setEnrollStatusFilter] = useState('all')
+  const [enrollmentEdit, setEnrollmentEdit] = useState(null)
+  const [enrollmentForm, setEnrollmentForm] = useState({ title: '', status: 'Enrolled', city: '', cityZip: '', cityDistance: '', price: '', slotUsed: 0, slotMaximum: 0, enrolledAt: '' })
   const [refunds, setRefunds] = useState([])
   const [refundTotal, setRefundTotal] = useState(0)
   const [refundPage, setRefundPage] = useState(1)
@@ -1153,33 +1155,9 @@ export default function AdminPage() {
     }
   }
 
-  const handleEditUser = async (account) => {
-    const currentName = adminUserName(account) || account.email || 'Student'
-    const nextName = window.prompt('Edit the student display name', currentName)
-    if (nextName === null) return
-    const trimmedName = nextName.trim()
-    if (!trimmedName) {
-      setMsg('Display name cannot be empty.')
-      setTimeout(() => setMsg(''), 2500)
-      return
-    }
-    try {
-      const payload = { displayName: trimmedName, name: trimmedName }
-      if (account.email) payload.email = account.email
-      if (account.phone) payload.phone = account.phone
-      await api.adminUpdateUser(account.uid, payload)
-      setUsers(previous => previous.map(item => item.uid === account.uid ? { ...item, ...payload } : item))
-      setMsg('User profile updated.')
-      setTimeout(() => setMsg(''), 2200)
-    } catch (error) {
-      setMsg(error?.message || 'User profile could not be updated.')
-      setTimeout(() => setMsg(''), 2500)
-    }
-  }
-
-  const handleDeleteUser = async (account) => {
+  const handleDeleteUser = (account) => {
     const name = adminUserName(account) || account.email || 'this student'
-    requestConfirmation('Delete user account?', `Remove ${name} from the site records? This action also deletes the Firebase auth user and cannot be undone.`, async () => {
+    requestConfirmation('Delete user account?', `Remove ${name} from the site records? This action also deletes the sign-in account and cannot be undone.`, async () => {
       await api.adminDeleteUser(account.uid)
       setUsers(previous => previous.filter(item => item.uid !== account.uid))
       setStats(previous => ({ ...previous, totalUsers: Math.max(0, previous.totalUsers - 1) }))
@@ -1188,27 +1166,21 @@ export default function AdminPage() {
     })
   }
 
-  const handleEditEnrollment = async ({ account, course }) => {
-    const currentTitle = course.title || COURSE_MAP[course.id] || 'Course'
-    const nextTitle = window.prompt('Edit the enrolled course title', currentTitle)
-    if (nextTitle === null) return
-    const trimmedTitle = nextTitle.trim()
-    if (!trimmedTitle) {
-      setMsg('Course title cannot be empty.')
-      setTimeout(() => setMsg(''), 2200)
-      return
-    }
+  const openEnrollmentEditor = ({ account, course }) => {
+    const used = Number(course.slotAllowance?.used ?? course.slotUsage?.used ?? course.slotUsed ?? (Array.isArray(course.pickupSlots) ? course.pickupSlots.length : 0))
+    const maximum = Number(course.slotAllowance?.maximum ?? course.slotUsage?.maximum ?? course.slotMaximum ?? 0)
+    setEnrollmentForm({ title: course.title || COURSE_MAP[course.id] || '', status: course.status || 'Enrolled', city: course.city || '', cityZip: course.cityZip || '', cityDistance: course.cityDistance || '', price: course.price || '', slotUsed: Number.isFinite(used) ? used : 0, slotMaximum: Number.isFinite(maximum) ? maximum : 0, enrolledAt: String(course.enrolledAt || '').slice(0, 10) })
+    setEnrollmentEdit({ account, course })
+  }
+
+  const saveEnrollment = async () => {
+    if (!enrollmentEdit) return
+    const { account, course } = enrollmentEdit
+    if (!enrollmentForm.title.trim()) { setMsg('Course title is required.'); setTimeout(() => setMsg(''), 2200); return }
     try {
-      const enrollmentId = course.enrollmentId || course.id
-      if (enrollmentId) {
-        await api.adminUpdateEnrollment(enrollmentId, { title: trimmedTitle, status: course.status || 'active' })
-      }
-      setUsers(previous => previous.map(item => item.uid !== account.uid ? item : {
-        ...item,
-        courses: Array.isArray(item.courses)
-          ? item.courses.map(entry => (entry.enrollmentId === course.enrollmentId || (entry.id === course.id && entry.enrolledAt === course.enrolledAt)) ? { ...entry, title: trimmedTitle } : entry)
-          : item.courses,
-      }))
+      const result = await api.adminUpdateUserCourse(account.uid, { enrollmentId: course.enrollmentId || '', courseId: course.id || '', enrolledAt: course.enrolledAt || '', course: enrollmentForm })
+      setUsers(previous => previous.map(item => item.uid !== account.uid ? item : { ...item, courses: (item.courses || []).map(entry => (entry.enrollmentId === course.enrollmentId || (entry.id === course.id && entry.enrolledAt === course.enrolledAt)) ? { ...entry, ...(result?.course || enrollmentForm) } : entry) }))
+      setEnrollmentEdit(null)
       setMsg('Enrollment updated.')
       setTimeout(() => setMsg(''), 2200)
     } catch (error) {
@@ -1217,19 +1189,16 @@ export default function AdminPage() {
     }
   }
 
-  const handleDeleteEnrollment = async ({ account, course }) => {
-    const title = course.title || COURSE_MAP[course.id] || 'this course'
-    const enrollmentId = course.enrollmentId || course.id
-    requestConfirmation('Delete this enrollment?', `Remove ${adminUserName(account)}'s ${title} enrollment?`, async () => {
-      if (enrollmentId) await api.adminDeleteEnrollment(enrollmentId)
-      setUsers(previous => previous.map(item => item.uid !== account.uid ? item : {
-        ...item,
-        courses: Array.isArray(item.courses) ? item.courses.filter(entry => !(entry.enrollmentId === course.enrollmentId || (entry.id === course.id && entry.enrolledAt === course.enrolledAt))) : [],
-      }))
+  const handleDeleteEnrollment = ({ account, course }) => requestConfirmation(
+    'Delete this enrollment?',
+    `Remove ${adminUserName(account)}'s ${course.title || COURSE_MAP[course.id] || 'course'} enrollment?`,
+    async () => {
+      await api.adminDeleteUserCourse(account.uid, { enrollmentId: course.enrollmentId || '', courseId: course.id || '', enrolledAt: course.enrolledAt || '' })
+      setUsers(previous => previous.map(item => item.uid !== account.uid ? item : { ...item, courses: (item.courses || []).filter(entry => !(entry.enrollmentId === course.enrollmentId || (entry.id === course.id && entry.enrolledAt === course.enrolledAt))) }))
       setMsg('Enrollment deleted.')
       setTimeout(() => setMsg(''), 2200)
-    })
-  }
+    },
+  )
 
   const updateBookingStatus = async (booking, status) => {
     const bookingId = String(booking?._id || '')
@@ -2076,7 +2045,7 @@ export default function AdminPage() {
                           <th scope="col" style={thStyle}>Login Email</th>
                           <th scope="col" style={thStyle}>Phone Number</th>
                           <th scope="col" style={thStyle}>Account Status</th>
-                          <th scope="col" className="admin-actions-cell" style={thStyle}>User Details</th>
+                          <th scope="col" className="admin-actions-cell" style={thStyle}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2096,11 +2065,7 @@ export default function AdminPage() {
                               <span style={{ display: 'inline-flex', padding: '.28rem .6rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 800 }}>Registered</span>
                             </td>
                             <td className="admin-actions-cell" style={tdStyle}>
-                              <div style={{ display: 'flex', gap: '.45rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                <button type="button" onClick={() => openUserDetails(u)} aria-label={`View details for ${adminUserName(u)}`} style={{ minHeight: '40px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '.48rem', padding: '.52rem .82rem', border: `1.5px solid ${SKY_BLUE}`, borderRadius: '9px', background: '#fff', color: SKY_BLUE, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 5px 14px rgba(1,69,168,.08)' }}>View Details <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button>
-                                <button type="button" onClick={() => handleEditUser(u)} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
-                                <AdminDeleteIconButton label={`Delete user ${adminUserName(u)}`} title="Delete user account" onClick={() => handleDeleteUser(u)} />
-                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '.45rem', flexWrap: 'wrap' }}><button type="button" onClick={() => openUserDetails(u)} aria-label={`View details for ${adminUserName(u)}`} style={{ minHeight: '40px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '.48rem', padding: '.52rem .82rem', border: `1.5px solid ${SKY_BLUE}`, borderRadius: '9px', background: '#fff', color: SKY_BLUE, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 5px 14px rgba(1,69,168,.08)' }}>View Details <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button><AdminDeleteIconButton label={`Delete user ${adminUserName(u)}`} title="Delete user account" onClick={() => handleDeleteUser(u)} /></div>
                             </td>
                           </tr>
                         ))}
@@ -2477,12 +2442,7 @@ export default function AdminPage() {
                                 <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{hasSlotRecord ? (Number.isFinite(used) && Number.isFinite(maximum) ? `${used} / ${maximum}` : Number.isFinite(used) ? used : 'Not recorded') : <span title="Legacy record" style={{ color: '#64748B' }}>Not recorded</span>}</td>
                                 <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><span style={{ display: 'inline-flex', padding: '.25rem .55rem', borderRadius: '999px', background: statusMeta.background, color: statusMeta.color, fontFamily: 'var(--font-mono)', fontSize: '.7rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 800, whiteSpace: 'nowrap' }}>{statusMeta.label}</span></td>
                                 <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{enrolledDate && !Number.isNaN(enrolledDate.getTime()) ? enrolledDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
-                                <td style={tdStyle}>
-                                  <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
-                                    <button type="button" onClick={() => handleEditEnrollment({ account, course })} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
-                                    <AdminDeleteIconButton label={`Delete enrollment for ${adminUserName(account)}`} title="Delete enrollment" onClick={() => handleDeleteEnrollment({ account, course })} />
-                                  </div>
-                                </td>
+                                <td style={tdStyle}><div style={{ display: 'flex', gap: '.4rem' }}><button type="button" onClick={() => openEnrollmentEditor({ account, course })} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '.35rem .6rem', fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer' }}>Edit</button><AdminDeleteIconButton label={`Delete enrollment for ${adminUserName(account)}`} title="Delete enrollment" onClick={() => handleDeleteEnrollment({ account, course })} /></div></td>
                               </tr>
                             )
                           })}
@@ -2587,7 +2547,7 @@ export default function AdminPage() {
                               <td style={{ ...tdStyle, minWidth: '118px', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{r.created_at ? r.created_at.slice(0, 10) : '—'}</td>
                               <td className="refund-actions-cell" style={{ ...tdStyle, minWidth: '205px', whiteSpace: 'nowrap' }}>
                                 <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                  {['refunded', 'denied'].includes(normalizeStatus(r.Status)) ? <><button type="button" onClick={() => setRefundDetails(r)} style={{ background: '#F8FAFC', border: '1.5px solid #CBD5E1', color: '#475569', borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Details</button><span title="Final decisions are read-only" style={{ display: 'inline-flex', alignItems: 'center', color: '#64748B', fontSize: '.75rem', fontWeight: 700 }}>Locked</span></> : <><button onClick={() => { setRefundForm({ Full_Name: r.Full_Name || '', Email: r.Email || '', Phone: r.Phone || '', Course_Name: r.Course_Name || '', Amount: r.Amount || '', Reason: r.Reason || '', Status: r.Status || 'pending' }); setRefundEdit(r._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button><AdminDeleteIconButton label={`Delete refund record for ${r.Full_Name || 'student'}`} title="Delete refund record" onClick={() => requestConfirmation('Delete refund record?', `${r.Full_Name || 'This record'} will be permanently removed. No funds are transferred by this action.`, () => deleteRefund(r._id))} /></>}
+                                  {['refunded', 'denied'].includes(normalizeStatus(r.Status)) ? <><button type="button" onClick={() => setRefundDetails(r)} style={{ background: '#F8FAFC', border: '1.5px solid #CBD5E1', color: '#475569', borderRadius: 'var(--radius-sm)', padding: '0.35rem .6rem', fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer' }}>Details</button><button type="button" onClick={() => { setRefundForm({ Full_Name: r.Full_Name || '', Email: r.Email || '', Phone: r.Phone || '', Course_Name: r.Course_Name || '', Amount: r.Amount || '', Reason: r.Reason || '', Status: r.Status || 'pending' }); setRefundEdit(r._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '.35rem .6rem', fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer' }}>Edit</button></> : <><button onClick={() => { setRefundForm({ Full_Name: r.Full_Name || '', Email: r.Email || '', Phone: r.Phone || '', Course_Name: r.Course_Name || '', Amount: r.Amount || '', Reason: r.Reason || '', Status: r.Status || 'pending' }); setRefundEdit(r._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Review</button><AdminDeleteIconButton label={`Delete refund record for ${r.Full_Name || 'student'}`} title="Delete refund record" onClick={() => requestConfirmation('Delete refund record?', `${r.Full_Name || 'This record'} will be permanently removed. No funds are transferred by this action.`, () => deleteRefund(r._id))} /></>}
                                 </div>
                               </td>
                             </tr>
@@ -3338,6 +3298,20 @@ Near and Long pricing is applied automatically from the selected city and verifi
                 </div>
               )}
 
+              {enrollmentEdit && (
+                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'grid', placeItems: 'center', padding: '1rem', background: 'rgba(10,22,40,.62)' }} onClick={event => { if (event.target === event.currentTarget) setEnrollmentEdit(null) }}>
+                  <div role="dialog" aria-modal="true" aria-labelledby="enrollment-editor-title" style={{ width: 'min(100%, 720px)', maxHeight: '90vh', overflowY: 'auto', padding: '1.5rem', borderRadius: '18px', background: '#fff', boxShadow: '0 24px 80px rgba(0,0,0,.28)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem' }}><div><h3 id="enrollment-editor-title" style={{ margin: 0, color: DARK }}>Edit Enrolled Course</h3><p style={{ margin: '.3rem 0 0', color: '#475569' }}>Update the course, location, price, lesson-slot, status, and enrollment date.</p></div><button type="button" aria-label="Close enrollment editor" onClick={() => setEnrollmentEdit(null)} style={{ border: 0, background: 'transparent', fontSize: '1.6rem', cursor: 'pointer' }}>&times;</button></div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: '1rem' }}>
+                      {[['title', 'Course title', 'text'], ['city', 'Pickup city', 'text'], ['cityZip', 'ZIP code', 'text'], ['price', 'Paid price', 'text'], ['slotUsed', 'Lesson slots used', 'number'], ['slotMaximum', 'Lesson slots allowed', 'number'], ['enrolledAt', 'Enrollment date', 'date']].map(([key, label, type]) => <label key={key} style={{ color: '#334155', fontWeight: 700 }}>{label}<input type={type} min={type === 'number' ? '0' : undefined} value={enrollmentForm[key]} onChange={event => setEnrollmentForm(previous => ({ ...previous, [key]: type === 'number' ? Number(event.target.value) : event.target.value }))} style={{ ...inputStyle, marginTop: '.35rem' }} /></label>)}
+                      <label style={{ color: '#334155', fontWeight: 700 }}>Location distance<select value={enrollmentForm.cityDistance} onChange={event => setEnrollmentForm(previous => ({ ...previous, cityDistance: event.target.value }))} style={{ ...inputStyle, marginTop: '.35rem' }}><option value="">Not recorded</option><option value="Near">Near</option><option value="Long">Long</option></select></label>
+                      <label style={{ color: '#334155', fontWeight: 700 }}>Enrollment status<select value={enrollmentForm.status} onChange={event => setEnrollmentForm(previous => ({ ...previous, status: event.target.value }))} style={{ ...inputStyle, marginTop: '.35rem' }}><option>Enrolled</option><option>Completed</option><option>Cancelled</option><option>Refund Pending</option><option>Refunded</option></select></label>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.75rem', marginTop: '1.5rem' }}><button type="button" onClick={() => setEnrollmentEdit(null)} style={{ padding: '.7rem 1rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', fontWeight: 800 }}>Cancel</button><button type="button" onClick={saveEnrollment} style={{ padding: '.7rem 1rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 800 }}>Save changes</button></div>
+                  </div>
+                </div>
+              )}
+
               {refundEdit && (
                 <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) requestEditorClose('refund editor', () => setRefundEdit(null)) }}>
                   <div role="dialog" aria-modal="true" aria-labelledby="refund-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
@@ -3368,7 +3342,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                       </div>
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Status</label>
-                        <select aria-label="Refund status" disabled={refundEdit === 'new'} value={refundEdit === 'new' ? 'pending' : refundForm.Status} onChange={e => setRefundForm(prev => ({ ...prev, Status: e.target.value }))} style={{ ...inputStyle, cursor: refundEdit === 'new' ? 'not-allowed' : 'pointer', opacity: refundEdit === 'new' ? .75 : 1 }}>
+                        <select aria-label="Refund status" disabled={refundEdit === 'new' || ['refunded', 'denied'].includes(normalizeStatus(refundForm.Status))} value={refundEdit === 'new' ? 'pending' : refundForm.Status} onChange={e => setRefundForm(prev => ({ ...prev, Status: e.target.value }))} style={{ ...inputStyle, cursor: refundEdit === 'new' || ['refunded', 'denied'].includes(normalizeStatus(refundForm.Status)) ? 'not-allowed' : 'pointer', opacity: refundEdit === 'new' || ['refunded', 'denied'].includes(normalizeStatus(refundForm.Status)) ? .75 : 1 }}>
                           <option value="pending">Pending</option>
                           <option value="refunded">Refunded</option>
                           <option value="denied">Denied</option>
@@ -3387,7 +3361,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
                       <button onClick={() => setRefundEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#334155', cursor: 'pointer' }}>Cancel</button>
                       <button onClick={handleSaveRefund} style={{ flex: 1, padding: '0.75rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>
-                        {refundEdit === 'new' ? 'Add Refund' : refundForm.Status === 'refunded' ? 'Issue PayPal Refund' : 'Save Changes'}
+                        {refundEdit === 'new' ? 'Add Refund' : refundForm.Status === 'refunded' && !['refunded', 'denied'].includes(normalizeStatus(refunds.find(item => String(item._id) === String(refundEdit))?.Status)) ? 'Issue PayPal Refund' : 'Save Changes'}
                       </button>
                     </div>
                   </div>

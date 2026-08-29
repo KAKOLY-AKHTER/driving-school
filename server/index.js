@@ -407,25 +407,6 @@ function sanitizeUserProfile(value) {
   }
   return output
 }
-
-function sanitizeAdminUserUpdate(value) {
-  if (!isPlainObject(value)) throw new HttpError(400, 'A valid user update is required.')
-  const output = {}
-  if (value.displayName !== undefined) {
-    const displayName = cleanText(value.displayName, 160).replace(/\s+/g, ' ').trim()
-    if (!displayName) throw new HttpError(400, 'Display name is required.')
-    output.displayName = displayName
-  }
-  if (value.firstName !== undefined) output.firstName = cleanText(value.firstName, 80).replace(/\s+/g, ' ').trim()
-  if (value.lastName !== undefined) output.lastName = cleanText(value.lastName, 80).replace(/\s+/g, ' ').trim()
-  if (value.email !== undefined) {
-    output.email = normalizeEmail(value.email)
-    if (!isEmail(output.email)) throw new HttpError(400, 'Please enter a valid email address.')
-  }
-  if (value.phone !== undefined) output.phone = cleanText(value.phone, 30).trim()
-  if (value.isAdmin !== undefined) output.isAdmin = value.isAdmin === true || value.isAdmin === 'true'
-  return output
-}
 function sanitizeChatMessages(value, maxMessages = 100) {
   if (!Array.isArray(value)) throw new HttpError(400, 'Messages must be a list.')
   return value.slice(-maxMessages).map(message => {
@@ -1439,23 +1420,6 @@ function validateAvailabilitySlot(date, timeSlot, { allowToday = true } = {}) {
     throw new HttpError(400, 'Please choose a future date.')
   }
   return slot
-}
-
-function validateClosedAvailabilityDates(dates, today = californiaDateKey()) {
-  const normalizedDates = [...new Set((Array.isArray(dates) ? dates : []).map(date => cleanText(date, 10)))]
-  if (!normalizedDates.length) {
-    throw new HttpError(400, 'Choose at least one future date.')
-  }
-  const validDates = normalizedDates.map(date => {
-    if (!isDateKey(date)) {
-      throw new HttpError(400, 'Please enter a valid calendar date.')
-    }
-    return date
-  })
-  if (validDates.some(date => date <= today)) {
-    throw new HttpError(400, 'Only future dates can be closed.')
-  }
-  return [...new Set(validDates)].sort()
 }
 
 function adminAvailabilityStatus(slot, today = californiaDateKey()) {
@@ -4734,28 +4698,11 @@ app.put('/api/admin/users/:uid/role', async (req, res) => {
   }
 })
 
-app.put('/api/admin/users/:uid', async (req, res) => {
-  try {
-    const targetUid = cleanText(req.params.uid, 160)
-    if (!targetUid) return res.status(400).json({ error: 'User id required.' })
-    const update = sanitizeAdminUserUpdate(req.body)
-    if (Object.keys(update).length === 0) return res.status(400).json({ error: 'No user fields were supplied.' })
-    if (targetUid === req.auth.uid && update.isAdmin === false) {
-      return res.status(400).json({ error: 'You cannot remove your own administrator access from this page.' })
-    }
-    await usersCol.updateOne({ uid: targetUid }, { $set: update })
-    res.json({ ok: true })
-  } catch (error) {
-    if (error.status) return res.status(error.status).json({ error: error.message })
-    sendServerError(res, error, 'Admin user update failed')
-  }
-})
-
 app.delete('/api/admin/users/:uid', async (req, res) => {
   try {
     const targetUid = cleanText(req.params.uid, 160)
-    if (!targetUid) return res.status(400).json({ error: 'User id required.' })
-    if (targetUid === req.auth.uid) return res.status(400).json({ error: 'You cannot delete your own admin account.' })
+    if (!targetUid) throw new HttpError(400, 'User id is required.')
+    if (targetUid === req.auth.uid) throw new HttpError(400, 'You cannot delete your own admin account.')
     await usersCol.deleteOne({ uid: targetUid })
     try {
       await getFirebaseAdminAuth().deleteUser(targetUid)
@@ -4766,6 +4713,89 @@ app.delete('/api/admin/users/:uid', async (req, res) => {
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message })
     sendServerError(res, error, 'Admin user delete failed')
+  }
+})
+
+// Checkout enrollments are stored inside each student's account document. These
+// routes edit that source directly, rather than the legacy enrollments collection.
+const findAdminCourseIndex = (courses, reference = {}) => {
+  const enrollmentId = cleanText(reference.enrollmentId, 160)
+  const courseId = cleanText(reference.courseId, 120)
+  const enrolledAt = cleanText(reference.enrolledAt, 160)
+  if (enrollmentId) {
+    const index = courses.findLastIndex(course => cleanText(course?.enrollmentId, 160) === enrollmentId)
+    if (index >= 0) return index
+  }
+  return findCourseEnrollmentIndex(courses, courseId, enrolledAt)
+}
+
+const sanitizeAdminCourseUpdate = value => {
+  if (!isPlainObject(value)) throw new HttpError(400, 'A valid course update is required.')
+  const statusMap = new Map([['enrolled', 'Enrolled'], ['active', 'Enrolled'], ['completed', 'Completed'], ['cancelled', 'Cancelled'], ['canceled', 'Cancelled'], ['refund pending', 'Refund Pending'], ['refunded', 'Refunded']])
+  const output = {}
+  if (value.title !== undefined) {
+    const title = cleanText(value.title, 200)
+    if (!title) throw new HttpError(400, 'Course title is required.')
+    output.title = title
+  }
+  if (value.status !== undefined) {
+    const status = statusMap.get(cleanText(value.status, 40).toLowerCase())
+    if (!status) throw new HttpError(400, 'Please choose a valid enrollment status.')
+    output.status = status
+  }
+  for (const field of ['city', 'cityZip', 'price']) if (value[field] !== undefined) output[field] = cleanText(value[field], field === 'price' ? 40 : 120)
+  if (value.cityDistance !== undefined) {
+    const distance = cleanText(value.cityDistance, 20)
+    if (distance && !['Near', 'Long'].includes(distance)) throw new HttpError(400, 'Location distance must be Near or Long.')
+    output.cityDistance = distance
+  }
+  if (value.enrolledAt !== undefined) {
+    const date = cleanText(value.enrolledAt, 80)
+    if (date && Number.isNaN(new Date(date).getTime())) throw new HttpError(400, 'Please enter a valid enrollment date.')
+    output.enrolledAt = date
+  }
+  if (value.slotUsed !== undefined || value.slotMaximum !== undefined) {
+    const used = cleanInteger(value.slotUsed, 0, 0, 1000)
+    const maximum = cleanInteger(value.slotMaximum, 0, 0, 1000)
+    if (used > maximum) throw new HttpError(400, 'Used lesson slots cannot exceed the allowed slots.')
+    output.slotAllowance = { used, maximum }; output.slotUsage = { used, maximum }; output.slotUsed = used; output.slotMaximum = maximum
+  }
+  if (!Object.keys(output).length) throw new HttpError(400, 'No course fields were supplied.')
+  return output
+}
+
+app.put('/api/admin/users/:uid/courses', async (req, res) => {
+  try {
+    const uid = cleanText(req.params.uid, 160)
+    if (!uid) throw new HttpError(400, 'User id is required.')
+    const student = await usersCol.findOne({ uid }, { projection: { courses: 1 } })
+    if (!student) throw new HttpError(404, 'Student account was not found.')
+    const courses = Array.isArray(student.courses) ? student.courses : []
+    const index = findAdminCourseIndex(courses, req.body)
+    if (index < 0) throw new HttpError(404, 'Enrollment was not found.')
+    const update = sanitizeAdminCourseUpdate(req.body?.course)
+    await usersCol.updateOne({ uid }, { $set: Object.fromEntries(Object.entries(update).map(([key, value]) => [`courses.${index}.${key}`, value])) })
+    res.json({ ok: true, course: { ...courses[index], ...update } })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Enrollment update failed')
+  }
+})
+
+app.delete('/api/admin/users/:uid/courses', async (req, res) => {
+  try {
+    const uid = cleanText(req.params.uid, 160)
+    if (!uid) throw new HttpError(400, 'User id is required.')
+    const student = await usersCol.findOne({ uid }, { projection: { courses: 1 } })
+    if (!student) throw new HttpError(404, 'Student account was not found.')
+    const courses = Array.isArray(student.courses) ? student.courses : []
+    const index = findAdminCourseIndex(courses, req.body)
+    if (index < 0) throw new HttpError(404, 'Enrollment was not found.')
+    await usersCol.updateOne({ uid }, { $pull: { courses: courses[index] } })
+    res.json({ ok: true })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Enrollment deletion failed')
   }
 })
 
@@ -5966,8 +5996,14 @@ app.put('/api/admin/refunds/:id', async (req, res) => {
     const existingRefund = await refundsCol.findOne({ _id: refundId })
     if (!existingRefund) return res.status(404).json({ error: 'Refund record not found.' })
     const existingStatus = cleanText(existingRefund.Status || 'pending', 20).toLowerCase()
+    // A completed/denied payment decision is immutable, but staff can still
+    // correct the display and contact fields on its administrative record.
     if (isFinalRefundStatus(existingStatus)) {
-      return res.status(409).json({ error: `This refund is already ${existingStatus} and can no longer be changed.` })
+      const requestedStatus = cleanText(sanitized.Status || existingStatus, 20).toLowerCase()
+      if (requestedStatus !== existingStatus) return res.status(409).json({ error: `This refund is already ${existingStatus}; its payment status cannot be changed.` })
+      delete sanitized.Status
+      await refundsCol.updateOne({ _id: refundId }, { $set: { ...sanitized, updated_at: new Date().toISOString().replace('T', ' ').slice(0, 19) } })
+      return res.json({ ok: true, status: existingStatus })
     }
     const requestedStatus = cleanText(sanitized.Status || existingRefund.Status || 'pending', 20).toLowerCase()
 
@@ -6251,9 +6287,7 @@ export {
   splitCheckoutItems,
   validateContinuationSlotCount,
   validateAvailabilitySlot,
-  validateClosedAvailabilityDates,
   validateAdminBookingStatusChange,
-  sanitizeAdminUserUpdate,
   slotLimitForTier,
 }
 export default app
