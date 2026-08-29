@@ -10,7 +10,7 @@ const Home = lazy(() => import('./pages/Home'))
 const AboutPage = lazy(() => import('./pages/AboutPage'))
 const PricingPage = lazy(() => import('./pages/PricingPage'))
 const ContactPage = lazy(() => import('./pages/ContactPage'))
-const RegisterPage = lazy(() => import('./pages/RegisterPage'))
+const SignupPage = lazy(() => import('./pages/SignupPage'))
 const BookingRegistrationPage = lazy(() => import('./pages/BookingRegistrationPage'))
 const PaymentPage = lazy(() => import('./pages/PaymentPage'))
 const SchedulePage = lazy(() => import('./pages/SchedulePage'))
@@ -152,7 +152,7 @@ function AppRoutes() {
               <Route path="/blog/:slug" element={<BlogPage />} />
               <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
               <Route path="/terms" element={<TermsPage />} />
-              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/register" element={<SignupPage />} />
               <Route path="/booking/register" element={<BookingRegistrationPage />} />
               <Route path="/schedule" element={<SchedulePage />} />
               <Route path="/login" element={<LoginPage />} />
