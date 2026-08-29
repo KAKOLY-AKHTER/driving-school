@@ -127,15 +127,16 @@ export default function Footer() {
         }
         .ft-road-car {
           position: absolute;
-          left: -120px;
+          right: -120px;
+          left: auto;
           bottom: -2px;
           filter: drop-shadow(0 5px 5px rgba(0,0,0,0.45));
           animation: ftCarDrive 15s linear infinite;
         }
         @keyframes ftCarDrive {
-          0% { transform: translateX(0) translateY(0); }
-          50% { transform: translateX(calc(50vw + 120px)) translateY(-2px); }
-          100% { transform: translateX(calc(100vw + 240px)) translateY(0); }
+          0% { transform: translateX(0) translateY(0) scaleX(-1); }
+          50% { transform: translateX(calc(-50vw - 120px)) translateY(-2px) scaleX(-1); }
+          100% { transform: translateX(calc(-100vw - 240px)) translateY(0) scaleX(-1); }
         }
         @media (min-width: 768px) {
           .ft-grid { grid-template-columns: 1.5fr 1fr 1fr 1.2fr !important; }

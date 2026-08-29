@@ -188,11 +188,11 @@ export default function Nav() {
                   aria-expanded={profileOpen}
                   aria-haspopup="menu"
                   aria-controls="nav-profile-menu"
+                  aria-label="Open account menu"
                 >
                   <div className="nav-profile-avatar">
                     {user.displayName ? user.displayName[0].toUpperCase() : user.email?.[0].toUpperCase()}
                   </div>
-                  {user.displayName || user.email?.split('@')[0]}
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6" /></svg>
                 </button>
                 {profileOpen && (

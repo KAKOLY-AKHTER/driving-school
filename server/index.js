@@ -4549,10 +4549,6 @@ app.get('/api/admin/availability', async (req, res) => {
     const from = cleanText(req.query.from, 10)
     const to = cleanText(req.query.to, 10)
     const filter = {}
-    if (search) {
-      const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      filter.$or = [{ date: { $regex: safeSearch, $options: 'i' } }, { time: { $regex: safeSearch, $options: 'i' } }]
-    }
     if (from || to) {
       filter.date = {}
       if (from && isDateKey(from)) filter.date.$gte = from
@@ -4565,11 +4561,21 @@ app.get('/api/admin/availability', async (req, res) => {
       ...slot,
       status: adminAvailabilityStatus(slot, today),
     }))
+    const normalizedSearch = search.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const searchMatched = !normalizedSearch ? effective : effective.filter(slot => {
+      const date = new Date(`${slot.date}T12:00:00`)
+      const friendlyDate = Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+      const numericDate = Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-US')
+      const shortTime = String(slot.time || '').replace(/\b0(\d):/g, '$1:')
+      const compactTime = shortTime.replace(/:00/g, '')
+      return [slot.date, slot.time, shortTime, compactTime, friendlyDate, numericDate]
+        .some(value => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes(normalizedSearch))
+    })
     const filtered = statusFilter === 'manageable'
-      ? effective.filter(slot => slot.status === 'available' || slot.status === 'blocked')
+      ? searchMatched.filter(slot => slot.status === 'available' || slot.status === 'blocked')
       : ['available', 'blocked', 'held', 'booked', 'expired', 'legacy'].includes(statusFilter)
-        ? effective.filter(slot => slot.status === statusFilter)
-        : effective
+        ? searchMatched.filter(slot => slot.status === statusFilter)
+        : searchMatched
     const total = filtered.length
     const pages = Math.max(1, Math.ceil(total / limit))
     const safePage = Math.min(page, pages)

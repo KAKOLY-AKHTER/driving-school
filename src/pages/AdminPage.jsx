@@ -487,7 +487,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
   const [selected, setSelected] = useState([])
   const [bulkStatus, setBulkStatus] = useState('available')
   const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('all')
+  const [status, setStatus] = useState('available')
   const [page, setPage] = useState(1)
   const [pages, setPages] = useState(1)
   const [total, setTotal] = useState(0)
@@ -654,6 +654,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
   const isRemovable = (row) => isManageable(row) || (row.date > localDateKey() && row.status === 'legacy')
   const selectableRows = rows.filter(isManageable)
   const allSelected = selectableRows.length > 0 && selectableRows.every(row => selected.includes(String(row._id)))
+  const paginationControls = pages > 1 && <div aria-label="Availability pagination" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', margin: '0 0 1rem' }}><span style={{ color: '#334155', fontSize: '.9rem' }}>Page {page} of {pages} · {total} slots</span><div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap' }}><button type="button" disabled={page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))} style={{ padding: '.5rem .75rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: page <= 1 ? 'not-allowed' : 'pointer' }}>Previous</button>{Array.from({ length: Math.min(7, pages) }, (_, index) => Math.min(Math.max(1, page - 3) + index, pages)).filter((value, index, values) => values.indexOf(value) === index).map(value => <button type="button" key={value} aria-current={value === page ? 'page' : undefined} onClick={() => setPage(value)} style={{ minWidth: '38px', padding: '.5rem .65rem', border: `1px solid ${value === page ? SKY_BLUE : '#CBD5E1'}`, borderRadius: '8px', background: value === page ? SKY_BLUE : '#fff', color: value === page ? '#fff' : '#334155', fontWeight: 800, cursor: 'pointer' }}>{value}</button>)}<button type="button" disabled={page >= pages} onClick={() => setPage(value => Math.min(pages, value + 1))} style={{ padding: '.5rem .75rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: page >= pages ? 'not-allowed' : 'pointer' }}>Next</button></div></div>
 
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
@@ -734,7 +735,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
           <div><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Manage Lesson Slots ({total})</h2><p style={{ margin: '.25rem 0 0', color: '#334155', fontSize: '.9rem', lineHeight: 1.5 }}><strong>Available</strong> slots are visible to students. <strong>Unavailable</strong> closes an individual slot. Past, checkout-in-progress, and booked slots are read-only here.</p></div>
           <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
             <input className="admin-toolbar-input" type="search" aria-label="Search availability" placeholder="Search date or time…" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '220px' }} />
-            <select aria-label="Filter lesson slots by booking availability" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '225px' }}><option value="all">All Booking Availability Statuses</option><option value="manageable">Editable Future Slots</option><option value="available">Available</option><option value="blocked">Unavailable</option><option value="held">Checkout in Progress</option><option value="booked">Booked</option><option value="expired">Past / Expired</option><option value="legacy">Old Schedule — Remove</option></select>
+            <select aria-label="Filter lesson slots by booking availability" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '180px' }}><option value="available">Available</option><option value="booked">Booked</option></select>
             <select aria-label="Availability rows per page" value={limit} onChange={event => { setLimit(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '90px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
           </div>
         </div>
@@ -757,6 +758,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
           <p style={{ margin: '.35rem 0 0', color: '#475569', fontSize: '.8rem' }}><strong>Need to change a date or time?</strong> Remove the incorrect future slot, then create the correct slot in “Open Lesson Availability” above.</p>
         </div>
         {error && <div role="alert" style={{ padding: '.85rem 1rem', marginBottom: '1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{error} <button type="button" onClick={() => setLoadVersion(value => value + 1)} style={{ marginLeft: '.6rem', border: 0, background: 'transparent', color: '#0755AE', fontWeight: 850, cursor: 'pointer' }}>Retry</button></div>}
+        {paginationControls}
         <div className="admin-table-wrap">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead><tr><th scope="col" style={{ ...thStyle, minWidth: '92px' }}><label style={{ display: 'inline-flex', alignItems: 'center', gap: '.45rem', cursor: selectableRows.length ? 'pointer' : 'not-allowed' }}><input aria-label="Select all editable lesson slots on this page" type="checkbox" disabled={!selectableRows.length} checked={allSelected} onChange={() => setSelected(allSelected ? [] : selectableRows.map(row => String(row._id)))} /><span>Select</span></label></th><th scope="col" style={thStyle}>Lesson Date</th><th scope="col" style={thStyle}>Lesson Time</th><th scope="col" style={thStyle}>Booking Availability Status</th><th scope="col" className="admin-actions-cell" style={thStyle}>Remove Slot</th></tr></thead>
@@ -767,7 +769,6 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
             </tbody>
           </table>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginTop: '1rem' }}><span style={{ color: '#334155', fontSize: '.9rem' }}>Page {page} of {pages}</span><div style={{ display: 'flex', gap: '.45rem' }}><button type="button" disabled={page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: page <= 1 ? 'not-allowed' : 'pointer' }}>Previous</button><button type="button" disabled={page >= pages} onClick={() => setPage(value => Math.min(pages, value + 1))} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: page >= pages ? 'not-allowed' : 'pointer' }}>Next</button></div></div>
       </div>
     </div>
   )
@@ -1628,7 +1629,6 @@ export default function AdminPage() {
       course,
       key: course.enrollmentId || `${account.uid}-${course.id || 'course'}-${course.enrolledAt || index}`,
     })))
-  const activeEnrollmentRows = enrollmentRows.filter(({ course }) => enrollmentStatusGroup(course) === 'active')
   const filteredPricing = pricing.filter(plan => {
     const query = pricingSearch.trim().toLowerCase()
     const usage = enrollmentRows.filter(({ course }) => String(course?.id || '') === String(plan.id || '')).length
@@ -1659,8 +1659,6 @@ export default function AdminPage() {
     (safeEnrollPage - 1) * Number(enrollLimit),
     safeEnrollPage * Number(enrollLimit),
   )
-  const enrolledStudentCount = new Set(activeEnrollmentRows.map(row => row.account.uid)).size
-  const enrolledPackageCount = new Set(activeEnrollmentRows.map(row => String(row.course.id || row.course.title || ''))).size
 
   const filteredBookings = bookings.filter(b => {
     const q = bookingSearch.toLowerCase()
@@ -2364,19 +2362,6 @@ export default function AdminPage() {
 
               {!loading && !loadError && activeTab === 'enrolled' && (
                 <div>
-                  <div className="admin-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-                    {[
-                      { num: enrolledStudentCount, label: 'Enrolled Students', color: SKY_BLUE },
-                      { num: enrolledPackageCount, label: 'Active Packages', color: GOLD },
-                      { num: enrollmentRows.length, label: 'Course Enrollments', color: '#22C55E' },
-                    ].map(s => (
-                      <div key={s.label} className="admin-stat" style={{ background: '#fff', borderRadius: 'var(--radius-lg)', border: '1px solid #E2EBF5', textAlign: 'center', padding: '1.5rem 1rem', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
-                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 800, color: s.color, lineHeight: 1, marginBottom: '0.3rem' }}>{s.num}</div>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#334155', fontWeight: 600 }}>{s.label}</div>
-                      </div>
-                    ))}
-                  </div>
-
                   <div style={cardStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                       <div>
