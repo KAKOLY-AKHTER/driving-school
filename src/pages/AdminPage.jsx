@@ -185,7 +185,9 @@ const SVG = {
 
 function TablePager({ page, pages, total, label, onChange, children }) {
   const current = Math.min(Math.max(1, page), Math.max(1, pages))
-  return <div className="admin-table-pager" aria-label={`${label} pagination`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', margin: '0 0 1rem' }}><div style={{ display: 'flex', alignItems: 'center', gap: '.65rem', flexWrap: 'wrap' }}>{children}<span style={{ color: '#334155', fontSize: '.9rem' }}>Page {current} of {Math.max(1, pages)} · {total} {label}</span></div><div style={{ display: 'flex', gap: '.45rem' }}><button type="button" disabled={current <= 1} onClick={() => onChange(current - 1)} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: current <= 1 ? 'not-allowed' : 'pointer' }}>Previous</button><button type="button" disabled={current >= pages} onClick={() => onChange(current + 1)} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: current >= pages ? 'not-allowed' : 'pointer' }}>Next</button></div></div>
+  const pageNumbers = Array.from({ length: Math.min(7, pages) }, (_, index) => Math.min(Math.max(1, current - 3) + index, pages)).filter((value, index, values) => values.indexOf(value) === index)
+  const buttonStyle = (active = false) => ({ minWidth: '38px', padding: '.5rem .65rem', border: `1px solid ${active ? SKY_BLUE : '#CBD5E1'}`, borderRadius: '8px', background: active ? SKY_BLUE : '#fff', color: active ? '#fff' : '#334155', fontWeight: 800, cursor: 'pointer' })
+  return <div className="admin-table-pager" aria-label={`${label} pagination`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', margin: '0 0 1rem' }}><div style={{ display: 'flex', alignItems: 'center', gap: '.65rem', flexWrap: 'wrap' }}>{children}<span style={{ color: '#334155', fontSize: '.9rem' }}>Page {current} of {Math.max(1, pages)} · {total} {label}</span></div><div style={{ display: 'flex', gap: '.45rem', flexWrap: 'wrap' }}><button type="button" disabled={current <= 1} onClick={() => onChange(current - 1)} style={{ ...buttonStyle(), cursor: current <= 1 ? 'not-allowed' : 'pointer', opacity: current <= 1 ? .55 : 1 }}>Previous</button>{pageNumbers.map(number => <button type="button" key={number} aria-current={number === current ? 'page' : undefined} onClick={() => onChange(number)} style={buttonStyle(number === current)}>{number}</button>)}<button type="button" disabled={current >= pages} onClick={() => onChange(current + 1)} style={{ ...buttonStyle(), cursor: current >= pages ? 'not-allowed' : 'pointer', opacity: current >= pages ? .55 : 1 }}>Next</button></div></div>
 }
 
 function AdminPhoneBookingModal({ users, onClose, onCreated }) {
@@ -1871,13 +1873,9 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div className="admin-user-copy" style={{ textAlign: 'right' }}>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.92rem', color: '#fff', margin: 0, fontWeight: 600 }}>{user?.displayName || 'Admin'}</p>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'rgba(255,255,255,0.88)', margin: 0 }}>{user?.email}</p>
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
               <div style={{ position: 'relative' }}>
-                {profilePhotoPreview ? <img src={profilePhotoPreview} alt={`${user?.displayName || 'Administrator'} profile`} style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.3)', flexShrink: 0 }} /> : <div aria-label={`${user?.displayName || 'Administrator'} profile`} style={{ width: '42px', height: '42px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', fontWeight: 800, color: DARK, border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.3)', flexShrink: 0 }}>{initials}</div>}
+                <div aria-label={`${user?.displayName || 'Administrator'} profile`} style={{ width: '42px', height: '42px', borderRadius: '50%', background: `linear-gradient(135deg, ${GOLD}, ${GOLD_BRIGHT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', fontWeight: 800, color: DARK, border: '2.5px solid #FDBC01', boxShadow: '0 0 20px rgba(253,188,1,0.3)', flexShrink: 0 }}>{initials}</div>
                 <div style={{ position: 'absolute', bottom: 0, right: 0, width: '11px', height: '11px', borderRadius: '50%', background: 'linear-gradient(135deg,#22C55E,#16A34A)', border: '2.5px solid #0145A8', boxShadow: '0 0 6px rgba(34,197,94,0.4)' }} />
               </div>
             </div>
