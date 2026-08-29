@@ -6,6 +6,7 @@ const {
   DEFAULT_LOCATIONS,
   adminAvailabilityStatus,
   adminUserProfileDetails,
+  sanitizeAdminUserUpdate,
   canonicalAdminBookingStatus,
   cloudinarySignature,
   bookingsForEnrollment,
@@ -68,6 +69,29 @@ test('admin user details expose profile fields without passwords or private acco
     phone: '+1 555 0100',
     address: '123 Main Street',
   })
+})
+
+test('admin user update payloads are sanitized before saving', () => {
+  assert.deepEqual(
+    sanitizeAdminUserUpdate({
+      displayName: '  Jane Doe  ',
+      firstName: ' Jane ',
+      lastName: ' Doe ',
+      email: '  jane@example.com ',
+      phone: ' +1 555 0100 ',
+      isAdmin: 'true',
+    }),
+    {
+      displayName: 'Jane Doe',
+      firstName: 'Jane',
+      lastName: 'Doe',
+      email: 'jane@example.com',
+      phone: '+1 555 0100',
+      isAdmin: true,
+    }
+  )
+  assert.throws(() => sanitizeAdminUserUpdate({ email: 'not-an-email' }), /valid email/i)
+  assert.throws(() => sanitizeAdminUserUpdate({ displayName: '' }), /display name/i)
 })
 
 test('coupon validation normalizes codes and accepts fixed or percentage discounts', () => {

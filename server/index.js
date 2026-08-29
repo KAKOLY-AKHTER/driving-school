@@ -407,6 +407,25 @@ function sanitizeUserProfile(value) {
   }
   return output
 }
+
+function sanitizeAdminUserUpdate(value) {
+  if (!isPlainObject(value)) throw new HttpError(400, 'A valid user update is required.')
+  const output = {}
+  if (value.displayName !== undefined) {
+    const displayName = cleanText(value.displayName, 160).replace(/\s+/g, ' ').trim()
+    if (!displayName) throw new HttpError(400, 'Display name is required.')
+    output.displayName = displayName
+  }
+  if (value.firstName !== undefined) output.firstName = cleanText(value.firstName, 80).replace(/\s+/g, ' ').trim()
+  if (value.lastName !== undefined) output.lastName = cleanText(value.lastName, 80).replace(/\s+/g, ' ').trim()
+  if (value.email !== undefined) {
+    output.email = normalizeEmail(value.email)
+    if (!isEmail(output.email)) throw new HttpError(400, 'Please enter a valid email address.')
+  }
+  if (value.phone !== undefined) output.phone = cleanText(value.phone, 30).trim()
+  if (value.isAdmin !== undefined) output.isAdmin = value.isAdmin === true || value.isAdmin === 'true'
+  return output
+}
 function sanitizeChatMessages(value, maxMessages = 100) {
   if (!Array.isArray(value)) throw new HttpError(400, 'Messages must be a list.')
   return value.slice(-maxMessages).map(message => {
@@ -1420,6 +1439,23 @@ function validateAvailabilitySlot(date, timeSlot, { allowToday = true } = {}) {
     throw new HttpError(400, 'Please choose a future date.')
   }
   return slot
+}
+
+function validateClosedAvailabilityDates(dates, today = californiaDateKey()) {
+  const normalizedDates = [...new Set((Array.isArray(dates) ? dates : []).map(date => cleanText(date, 10)))]
+  if (!normalizedDates.length) {
+    throw new HttpError(400, 'Choose at least one future date.')
+  }
+  const validDates = normalizedDates.map(date => {
+    if (!isDateKey(date)) {
+      throw new HttpError(400, 'Please enter a valid calendar date.')
+    }
+    return date
+  })
+  if (validDates.some(date => date <= today)) {
+    throw new HttpError(400, 'Only future dates can be closed.')
+  }
+  return [...new Set(validDates)].sort()
 }
 
 function adminAvailabilityStatus(slot, today = californiaDateKey()) {
@@ -4698,6 +4734,41 @@ app.put('/api/admin/users/:uid/role', async (req, res) => {
   }
 })
 
+app.put('/api/admin/users/:uid', async (req, res) => {
+  try {
+    const targetUid = cleanText(req.params.uid, 160)
+    if (!targetUid) return res.status(400).json({ error: 'User id required.' })
+    const update = sanitizeAdminUserUpdate(req.body)
+    if (Object.keys(update).length === 0) return res.status(400).json({ error: 'No user fields were supplied.' })
+    if (targetUid === req.auth.uid && update.isAdmin === false) {
+      return res.status(400).json({ error: 'You cannot remove your own administrator access from this page.' })
+    }
+    await usersCol.updateOne({ uid: targetUid }, { $set: update })
+    res.json({ ok: true })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Admin user update failed')
+  }
+})
+
+app.delete('/api/admin/users/:uid', async (req, res) => {
+  try {
+    const targetUid = cleanText(req.params.uid, 160)
+    if (!targetUid) return res.status(400).json({ error: 'User id required.' })
+    if (targetUid === req.auth.uid) return res.status(400).json({ error: 'You cannot delete your own admin account.' })
+    await usersCol.deleteOne({ uid: targetUid })
+    try {
+      await getFirebaseAdminAuth().deleteUser(targetUid)
+    } catch (error) {
+      if (error?.code !== 'auth/user-not-found') throw error
+    }
+    res.json({ ok: true })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Admin user delete failed')
+  }
+})
+
 app.put('/api/admin/bookings/:id/status', async (req, res) => {
   try {
     if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid booking id.')
@@ -6180,7 +6251,9 @@ export {
   splitCheckoutItems,
   validateContinuationSlotCount,
   validateAvailabilitySlot,
+  validateClosedAvailabilityDates,
   validateAdminBookingStatusChange,
+  sanitizeAdminUserUpdate,
   slotLimitForTier,
 }
 export default app
