@@ -183,9 +183,9 @@ const SVG = {
   star: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>,
 }
 
-function TablePager({ page, pages, total, label, onChange }) {
+function TablePager({ page, pages, total, label, onChange, children }) {
   const current = Math.min(Math.max(1, page), Math.max(1, pages))
-  return <div className="admin-table-pager" aria-label={`${label} pagination`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginTop: '1rem' }}><span style={{ color: '#334155', fontSize: '.9rem' }}>Page {current} of {Math.max(1, pages)} · {total} {label}</span><div style={{ display: 'flex', gap: '.45rem' }}><button type="button" disabled={current <= 1} onClick={() => onChange(current - 1)} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: current <= 1 ? 'not-allowed' : 'pointer' }}>Previous</button><button type="button" disabled={current >= pages} onClick={() => onChange(current + 1)} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: current >= pages ? 'not-allowed' : 'pointer' }}>Next</button></div></div>
+  return <div className="admin-table-pager" aria-label={`${label} pagination`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', margin: '0 0 1rem' }}><div style={{ display: 'flex', alignItems: 'center', gap: '.65rem', flexWrap: 'wrap' }}>{children}<span style={{ color: '#334155', fontSize: '.9rem' }}>Page {current} of {Math.max(1, pages)} · {total} {label}</span></div><div style={{ display: 'flex', gap: '.45rem' }}><button type="button" disabled={current <= 1} onClick={() => onChange(current - 1)} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: current <= 1 ? 'not-allowed' : 'pointer' }}>Previous</button><button type="button" disabled={current >= pages} onClick={() => onChange(current + 1)} style={{ padding: '.5rem .8rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: current >= pages ? 'not-allowed' : 'pointer' }}>Next</button></div></div>
 }
 
 function AdminPhoneBookingModal({ users, onClose, onCreated }) {
@@ -309,7 +309,7 @@ function AdminPhoneBookingModal({ users, onClose, onCreated }) {
 }
 
 function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle, requestConfirmation, setMessage }) {
-  const emptyForm = { name: '', text: '', rating: 5, order: 0, published: true, imageUrl: '', imagePublicId: '' }
+  const emptyForm = { name: '', text: '', rating: 5, published: true, imageUrl: '', imagePublicId: '' }
   const [reviews, setReviews] = useState([])
   const [form, setForm] = useState(emptyForm)
   const [imageFile, setImageFile] = useState(null)
@@ -382,7 +382,6 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
         name: form.name.trim(),
         text: form.text.trim(),
         rating: Number(form.rating),
-        order: Number(form.order),
         published: Boolean(form.published),
       }
       if (editingId) await api.adminUpdateReview(editingId, payload)
@@ -399,7 +398,7 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
 
   const startEdit = review => {
     setEditingId(String(review._id))
-    setForm({ name: review.name || '', text: review.text || '', rating: Number(review.rating) || 5, order: Number(review.order) || 0, published: review.published !== false, imageUrl: review.imageUrl || '', imagePublicId: review.imagePublicId || '' })
+    setForm({ name: review.name || '', text: review.text || '', rating: Number(review.rating) || 5, published: review.published !== false, imageUrl: review.imageUrl || '', imagePublicId: review.imagePublicId || '' })
     setImageFile(null)
     setImagePreview(review.imageUrl || '')
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -452,10 +451,9 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
             </div>
           </div>
         </div>
-        <div className="admin-grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 180px 180px', gap: '1rem' }}>
+        <div className="admin-grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 180px', gap: '1rem' }}>
           <div><label htmlFor="review-name" style={labelStyle}>Reviewer Name</label><input id="review-name" maxLength={120} required value={form.name} onChange={event => setForm(current => ({ ...current, name: event.target.value }))} placeholder="Customer name" style={inputStyle} /></div>
           <div><label htmlFor="review-rating" style={labelStyle}>Rating</label><select id="review-rating" value={form.rating} onChange={event => setForm(current => ({ ...current, rating: Number(event.target.value) }))} style={inputStyle}>{[5,4,3,2,1].map(rating => <option key={rating} value={rating}>{rating} Star{rating === 1 ? '' : 's'}</option>)}</select></div>
-          <div><label htmlFor="review-order" style={labelStyle}>Display Order</label><input id="review-order" type="number" min="0" max="10000" value={form.order} onChange={event => setForm(current => ({ ...current, order: event.target.value }))} style={inputStyle} /></div>
         </div>
         <div style={{ marginTop: '1rem' }}><label htmlFor="review-text" style={labelStyle}>Review Text</label><textarea id="review-text" required maxLength={1200} rows={5} value={form.text} onChange={event => setForm(current => ({ ...current, text: event.target.value }))} placeholder="Write the customer's testimonial…" style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }} /><div style={{ textAlign: 'right', color: '#475569', fontSize: '.78rem', marginTop: '.25rem' }}>{form.text.length}/1200</div></div>
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: '.55rem', marginTop: '.75rem', color: '#334155', fontWeight: 800, cursor: 'pointer' }}><input type="checkbox" checked={form.published} onChange={event => setForm(current => ({ ...current, published: event.target.checked }))} />Publish on Home page</label>
@@ -465,11 +463,12 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
       <div style={cardStyle}>
         <div className="admin-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Customer Reviews ({filtered.length} of {reviews.length})</h2><div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}><input className="admin-toolbar-input" type="search" aria-label="Search reviews" placeholder="Search reviewer or text…" value={search} onChange={event => setSearch(event.target.value)} style={{ ...inputStyle, width: '240px' }} /><select aria-label="Filter review visibility" value={visibility} onChange={event => setVisibility(event.target.value)} style={{ ...inputStyle, width: '145px' }}><option value="all">All reviews</option><option value="published">Published</option><option value="draft">Draft</option></select></div></div>
         {error && <div role="alert" style={{ padding: '.85rem 1rem', marginBottom: '1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{error} <button type="button" onClick={() => setLoadVersion(value => value + 1)} style={{ marginLeft: '.6rem', border: 0, background: 'transparent', color: '#0755AE', fontWeight: 850, cursor: 'pointer' }}>Retry</button></div>}
-        <div className="admin-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr><th scope="col" style={thStyle}>Display Order</th><th scope="col" style={thStyle}>Reviewer</th><th scope="col" style={thStyle}>Review Message</th><th scope="col" style={thStyle}>Star Rating</th><th scope="col" style={thStyle}>Website Visibility</th><th scope="col" className="admin-actions-cell" style={thStyle}>Manage Review</th></tr></thead><tbody>
-          {filtered.map(review => <tr key={review._id}><td style={tdStyle}>{review.order ?? 0}</td><td style={{ ...tdStyle, fontWeight: 800, whiteSpace: 'nowrap' }}><div style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>{review.imageUrl ? <img src={review.imageUrl} alt={`${review.name} reviewer`} loading="lazy" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #D9E4F2', boxShadow: '0 5px 14px rgba(15,45,87,.1)' }} /> : <span aria-hidden="true" style={{ width: '48px', height: '48px', borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg,#0755AE,#0A2A5E)', color: '#fff', border: `2px solid ${GOLD}`, fontWeight: 900 }}>{String(review.name || '?').trim().split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase()}</span>}<span>{review.name}</span></div></td><td style={{ ...tdStyle, minWidth: '280px', maxWidth: '520px', lineHeight: 1.5 }}>{review.text}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap', color: GOLD_DEEP, fontWeight: 900 }}>{'★'.repeat(Number(review.rating) || 5)}<span style={{ color: '#CBD5E1' }}>{'★'.repeat(5 - (Number(review.rating) || 5))}</span></td><td style={tdStyle}><button type="button" onClick={() => togglePublished(review)} style={{ padding: '.3rem .6rem', border: `1px solid ${review.published !== false ? '#BBF7D0' : '#CBD5E1'}`, borderRadius: '999px', background: review.published !== false ? '#F0FDF4' : '#F8FAFC', color: review.published !== false ? '#15803D' : '#64748B', fontWeight: 800, cursor: 'pointer' }}>{review.published !== false ? 'Published' : 'Draft'}</button></td><td className="admin-actions-cell" style={tdStyle}><div style={{ display: 'flex', gap: '.4rem' }}><button type="button" onClick={() => startEdit(review)} style={{ padding: '.4rem .65rem', border: `1.5px solid ${SKY_BLUE}`, borderRadius: '8px', background: '#fff', color: SKY_BLUE, fontWeight: 800, cursor: 'pointer' }}>Edit</button><AdminDeleteIconButton label={`Delete customer review from ${review.name || 'customer'}`} title="Delete customer review" onClick={() => requestConfirmation('Delete customer review?', `${review.name}'s testimonial will be permanently removed.`, () => deleteReview(review))} /></div></td></tr>)}
-          {!loading && !filtered.length && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{search || visibility !== 'all' ? 'No reviews match the selected filters.' : 'No customer reviews yet.'}</td></tr>}
-          {loading && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>Loading reviews…</td></tr>}
-        </tbody></table></div><TablePager page={safeReviewPage} pages={reviewPages} total={matchedReviews.length} label="reviews" onChange={setReviewPage} />
+        <TablePager page={safeReviewPage} pages={reviewPages} total={matchedReviews.length} label="reviews" onChange={setReviewPage} />
+        <div className="admin-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr><th scope="col" style={thStyle}>Reviewer</th><th scope="col" style={thStyle}>Review Message</th><th scope="col" style={thStyle}>Star Rating</th><th scope="col" style={thStyle}>Website Visibility</th><th scope="col" className="admin-actions-cell" style={thStyle}>Manage Review</th></tr></thead><tbody>
+          {filtered.map(review => <tr key={review._id}><td style={{ ...tdStyle, fontWeight: 800, whiteSpace: 'nowrap' }}><div style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>{review.imageUrl ? <img src={review.imageUrl} alt={`${review.name} reviewer`} loading="lazy" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #D9E4F2', boxShadow: '0 5px 14px rgba(15,45,87,.1)' }} /> : <span aria-hidden="true" style={{ width: '48px', height: '48px', borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg,#0755AE,#0A2A5E)', color: '#fff', border: `2px solid ${GOLD}`, fontWeight: 900 }}>{String(review.name || '?').trim().split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase()}</span>}<span>{review.name}</span></div></td><td style={{ ...tdStyle, minWidth: '280px', maxWidth: '520px', lineHeight: 1.5 }}>{review.text}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap', color: GOLD_DEEP, fontWeight: 900 }}>{'★'.repeat(Number(review.rating) || 5)}<span style={{ color: '#CBD5E1' }}>{'★'.repeat(5 - (Number(review.rating) || 5))}</span></td><td style={tdStyle}><button type="button" onClick={() => togglePublished(review)} style={{ padding: '.3rem .6rem', border: `1px solid ${review.published !== false ? '#BBF7D0' : '#CBD5E1'}`, borderRadius: '999px', background: review.published !== false ? '#F0FDF4' : '#F8FAFC', color: review.published !== false ? '#15803D' : '#64748B', fontWeight: 800, cursor: 'pointer' }}>{review.published !== false ? 'Published' : 'Draft'}</button></td><td className="admin-actions-cell" style={tdStyle}><div style={{ display: 'flex', gap: '.4rem' }}><button type="button" onClick={() => startEdit(review)} style={{ padding: '.4rem .65rem', border: `1.5px solid ${SKY_BLUE}`, borderRadius: '8px', background: '#fff', color: SKY_BLUE, fontWeight: 800, cursor: 'pointer' }}>Edit</button><AdminDeleteIconButton label={`Delete customer review from ${review.name || 'customer'}`} title="Delete customer review" onClick={() => requestConfirmation('Delete customer review?', `${review.name}'s testimonial will be permanently removed.`, () => deleteReview(review))} /></div></td></tr>)}
+          {!loading && !filtered.length && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{search || visibility !== 'all' ? 'No reviews match the selected filters.' : 'No customer reviews yet.'}</td></tr>}
+          {loading && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>Loading reviews…</td></tr>}
+        </tbody></table></div>
       </div>
     </div>
   )
@@ -654,7 +653,10 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
   const isRemovable = (row) => isManageable(row) || (row.date > localDateKey() && row.status === 'legacy')
   const selectableRows = rows.filter(isManageable)
   const allSelected = selectableRows.length > 0 && selectableRows.every(row => selected.includes(String(row._id)))
-  const paginationControls = pages > 1 && <div aria-label="Availability pagination" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', margin: '0 0 1rem' }}><div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap' }}><button type="button" disabled={page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))} style={{ padding: '.5rem .75rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: page <= 1 ? 'not-allowed' : 'pointer' }}>Previous</button>{Array.from({ length: Math.min(7, pages) }, (_, index) => Math.min(Math.max(1, page - 3) + index, pages)).filter((value, index, values) => values.indexOf(value) === index).map(value => <button type="button" key={value} aria-current={value === page ? 'page' : undefined} onClick={() => setPage(value)} style={{ minWidth: '38px', padding: '.5rem .65rem', border: `1px solid ${value === page ? SKY_BLUE : '#CBD5E1'}`, borderRadius: '8px', background: value === page ? SKY_BLUE : '#fff', color: value === page ? '#fff' : '#334155', fontWeight: 800, cursor: 'pointer' }}>{value}</button>)}<button type="button" disabled={page >= pages} onClick={() => setPage(value => Math.min(pages, value + 1))} style={{ padding: '.5rem .75rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: page >= pages ? 'not-allowed' : 'pointer' }}>Next</button></div></div>
+  const paginationControls = <div aria-label="Availability pagination" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', margin: '0 0 1rem' }}>
+    <select aria-label="Availability rows per page" value={limit} onChange={event => { setLimit(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
+    {pages > 1 && <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap' }}><button type="button" disabled={page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))} style={{ padding: '.5rem .75rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: page <= 1 ? 'not-allowed' : 'pointer' }}>Previous</button>{Array.from({ length: Math.min(7, pages) }, (_, index) => Math.min(Math.max(1, page - 3) + index, pages)).filter((value, index, values) => values.indexOf(value) === index).map(value => <button type="button" key={value} aria-current={value === page ? 'page' : undefined} onClick={() => setPage(value)} style={{ minWidth: '38px', padding: '.5rem .65rem', border: `1px solid ${value === page ? SKY_BLUE : '#CBD5E1'}`, borderRadius: '8px', background: value === page ? SKY_BLUE : '#fff', color: value === page ? '#fff' : '#334155', fontWeight: 800, cursor: 'pointer' }}>{value}</button>)}<button type="button" disabled={page >= pages} onClick={() => setPage(value => Math.min(pages, value + 1))} style={{ padding: '.5rem .75rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', cursor: page >= pages ? 'not-allowed' : 'pointer' }}>Next</button></div>}
+  </div>
 
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
@@ -736,7 +738,6 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
           <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
             <input className="admin-toolbar-input" type="search" aria-label="Search availability" placeholder="Search date or time…" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '220px' }} />
             <select aria-label="Filter lesson slots by booking availability" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '180px' }}><option value="available">Available</option><option value="booked">Booked</option></select>
-            <select aria-label="Availability rows per page" value={limit} onChange={event => { setLimit(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '90px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
           </div>
         </div>
         <div aria-label="Bulk actions for selected lesson slots" style={{ padding: '.85rem', marginBottom: '1rem', border: '1px solid #D8E4F0', borderRadius: '12px', background: '#F8FBFF' }}>
@@ -1640,7 +1641,10 @@ export default function AdminPage() {
   const visiblePricing = filteredPricing.slice((safePricingPage - 1) * 10, safePricingPage * 10)
   const enrolledQuery = enrollSearch.trim().toLowerCase()
   const filteredEnrollmentRows = enrollmentRows.filter(({ account, course }) => {
-    const matchesStatus = enrollStatusFilter === 'all' || enrollmentStatusGroup(course) === enrollStatusFilter
+    const normalizedCourseStatus = normalizeStatus(course?.status || 'enrolled')
+    const matchesStatus = enrollStatusFilter === 'all'
+      || normalizedCourseStatus === enrollStatusFilter
+      || (enrollStatusFilter === 'cancelled' && normalizedCourseStatus === 'canceled')
     const matchesSearch = !enrolledQuery || [
       adminUserName(account),
       account.email,
@@ -2035,6 +2039,7 @@ export default function AdminPage() {
                       {userSearch && <button type="button" onClick={() => setUserSearch('')} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                     </div>
                   </div>
+                  <TablePager page={safeUserPage} pages={userPages} total={filteredUsers.length} label="users" onChange={setUserPage} />
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
@@ -2073,7 +2078,6 @@ export default function AdminPage() {
                       </tbody>
                     </table>
                   </div>
-                  <TablePager page={safeUserPage} pages={userPages} total={filteredUsers.length} label="users" onChange={setUserPage} />
                 </div>
               )}
 
@@ -2091,10 +2095,10 @@ export default function AdminPage() {
                         <option value="completed">Completed</option>
                         <option value="cancelled">Cancelled</option>
                       </select>
-                      <select aria-label="Booking rows per page" value={bookingLimit} onChange={event => { setBookingLimit(event.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '105px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
                       {(bookingSearch || bookingStatusFilter !== 'all') && <button type="button" onClick={() => { setBookingSearch(''); setBookingStatusFilter('all'); setBookingPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                     </div>
                   </div>
+                  <TablePager page={safeBookingPage} pages={bookingPages} total={filteredBookings.length} label="bookings" onChange={setBookingPage}><select aria-label="Booking rows per page" value={bookingLimit} onChange={event => { setBookingLimit(event.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></TablePager>
                   <div role="note" aria-label="Booking status guide" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: '.65rem', margin: '0 0 1rem', padding: '.85rem 1rem', border: '1px solid #D9E5F2', borderRadius: '13px', background: '#F8FBFF' }}>
                     {[
                       ['scheduled', 'Booking exists and is waiting for final confirmation.'],
@@ -2189,7 +2193,6 @@ export default function AdminPage() {
                       </tbody>
                     </table>
                   </div>
-                  <TablePager page={safeBookingPage} pages={bookingPages} total={filteredBookings.length} label="bookings" onChange={setBookingPage} />
                 </div>
               )}
 
@@ -2236,7 +2239,7 @@ export default function AdminPage() {
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.mail} Contact Messages <span style={{ color: '#334155', fontSize: '.9rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>({filteredContacts.length} of {contacts.length})</span></h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       <input className="admin-toolbar-input" aria-label="Search contact messages" type="search" placeholder="Search name, email, message…" value={contactSearch} onChange={(event) => { setContactSearch(event.target.value); setContactPage(1) }} style={{ ...inputStyle, width: '280px' }} />
-                      <select aria-label="Filter contact messages by status" value={contactStatusFilter} onChange={(event) => setContactStatusFilter(event.target.value)} style={{ ...inputStyle, width: '145px' }}>
+                      <select aria-label="Filter contact messages by status" value={contactStatusFilter} onChange={(event) => { setContactStatusFilter(event.target.value); setContactPage(1) }} style={{ ...inputStyle, width: '145px' }}>
                         <option value="all">All statuses</option>
                         <option value="new">New</option>
                         <option value="read">Read</option>
@@ -2245,6 +2248,7 @@ export default function AdminPage() {
                       {(contactSearch || contactStatusFilter !== 'all') && <button type="button" onClick={() => { setContactSearch(''); setContactStatusFilter('all') }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                     </div>
                   </div>
+                  <TablePager page={safeContactPage} pages={contactPages} total={filteredContacts.length} label="messages" onChange={setContactPage} />
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
@@ -2283,7 +2287,6 @@ export default function AdminPage() {
                       </tbody>
                     </table>
                   </div>
-                  <TablePager page={safeContactPage} pages={contactPages} total={filteredContacts.length} label="messages" onChange={setContactPage} />
                 </div>
               )}
 
@@ -2297,6 +2300,7 @@ export default function AdminPage() {
                     <strong>Location pricing:</strong> Near cities use the Near Price; Long cities use the Long Price. The server verifies the selected city and applies the matching price to the cart and invoice.
                   </div>
                   <div className="admin-toolbar" style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', marginBottom: '1rem' }}><input type="search" aria-label="Search pricing plans" placeholder="Search plan, price or option…" value={pricingSearch} onChange={event => { setPricingSearch(event.target.value); setPricingPage(1) }} style={{ ...inputStyle, maxWidth: '300px' }} /><select aria-label="Filter pricing plans by usage" value={pricingUsageFilter} onChange={event => { setPricingUsageFilter(event.target.value); setPricingPage(1) }} style={{ ...inputStyle, width: '170px' }}><option value="all">All plans</option><option value="used">Enrolled plans</option><option value="unused">Unused plans</option></select></div>
+                  <TablePager page={safePricingPage} pages={pricingPages} total={filteredPricing.length} label="plans" onChange={setPricingPage} />
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
@@ -2352,7 +2356,6 @@ export default function AdminPage() {
                       </tbody>
                     </table>
                   </div>
-                  <TablePager page={safePricingPage} pages={pricingPages} total={filteredPricing.length} label="plans" onChange={setPricingPage} />
                 </div>
               )}
 
@@ -2373,19 +2376,20 @@ export default function AdminPage() {
                         <select aria-label="Filter enrollments by status" value={enrollStatusFilter} onChange={e => { setEnrollStatusFilter(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '170px', fontSize: '1.05rem' }}>
                           <option value="all">All statuses</option>
                           <option value="active">Active</option>
+                          <option value="enrolled">Enrolled</option>
+                          <option value="paid">Paid</option>
+                          <option value="pending">Pending</option>
+                          <option value="in progress">In Progress</option>
+                          <option value="completed">Completed</option>
                           <option value="refund pending">Refund Pending</option>
                           <option value="refunded">Refunded</option>
                           <option value="cancelled">Cancelled</option>
-                        </select>
-                        <select aria-label="Enrollments per page" value={enrollLimit} onChange={e => { setEnrollLimit(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '90px', fontSize: '1.05rem' }}>
-                          <option value="10">10 / page</option>
-                          <option value="20">20 / page</option>
-                          <option value="50">50 / page</option>
                         </select>
                         {(enrollSearch || enrollStatusFilter !== 'all') && <button type="button" onClick={() => { setEnrollSearch(''); setEnrollStatusFilter('all'); setEnrollPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                       </div>
                     </div>
 
+                    <TablePager page={safeEnrollPage} pages={enrollPages} total={enrollTotal} label="enrollments" onChange={setEnrollPage}><select aria-label="Enrollments per page" value={enrollLimit} onChange={e => { setEnrollLimit(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="20">20 / page</option><option value="50">50 / page</option></select></TablePager>
                     <div className="admin-table-wrap" style={{ overflowX: 'auto' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem', minWidth: '1280px' }}>
                         <thead>
@@ -2436,18 +2440,6 @@ export default function AdminPage() {
                       </table>
                     </div>
 
-                    {enrollPages > 1 && (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
-                        <button disabled={safeEnrollPage <= 1} onClick={() => setEnrollPage(prev => Math.max(1, prev - 1))} style={{ padding: '0.4rem 0.8rem', background: safeEnrollPage <= 1 ? '#f0f2f5' : '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, color: safeEnrollPage <= 1 ? '#ccc' : DARK, cursor: safeEnrollPage <= 1 ? 'not-allowed' : 'pointer' }}>Prev</button>
-                        {Array.from({ length: Math.min(enrollPages, 10) }, (_, i) => {
-                          const start = Math.max(1, safeEnrollPage - 4)
-                          const p = start + i
-                          if (p > enrollPages) return null
-                          return <button key={p} onClick={() => setEnrollPage(p)} style={{ padding: '0.4rem 0.7rem', background: p === safeEnrollPage ? SKY_BLUE : '#fff', border: `1px solid ${p === safeEnrollPage ? SKY_BLUE : '#E2EBF5'}`, borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, color: p === safeEnrollPage ? '#fff' : DARK, cursor: 'pointer' }}>{p}</button>
-                        })}
-                        <button disabled={safeEnrollPage >= enrollPages} onClick={() => setEnrollPage(prev => Math.min(enrollPages, prev + 1))} style={{ padding: '0.4rem 0.8rem', background: safeEnrollPage >= enrollPages ? '#f0f2f5' : '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, color: safeEnrollPage >= enrollPages ? '#ccc' : DARK, cursor: safeEnrollPage >= enrollPages ? 'not-allowed' : 'pointer' }}>Next</button>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
@@ -2479,11 +2471,6 @@ export default function AdminPage() {
                           <option value="refunded">Refunded</option>
                           <option value="denied">Denied</option>
                         </select>
-                        <select aria-label="Refund records per page" value={refundLimit} onChange={e => { setRefundLimit(e.target.value); setRefundPage(1) }} style={{ ...inputStyle, width: '90px', fontSize: '1.05rem' }}>
-                          <option value="10">10 / page</option>
-                          <option value="20">20 / page</option>
-                          <option value="50">50 / page</option>
-                        </select>
                         {(refundSearch || refundStatusFilter !== 'all') && <button type="button" onClick={() => { setRefundSearch(''); setRefundStatusFilter('all'); setRefundPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                         <button onClick={() => { setRefundForm({ Full_Name: '', Email: '', Phone: '', Course_Name: '', Amount: '', Reason: '', Status: 'pending' }); setRefundEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Refund</button>
                       </div>
@@ -2493,6 +2480,7 @@ export default function AdminPage() {
                       Refund requests stay pending until reviewed. Changing a PayPal-linked request to Refunded sends the refund through PayPal; Denied closes the request without returning funds.
                     </div>
 
+                    <TablePager page={refundPage} pages={refundPages} total={refundTotal} label="refunds" onChange={setRefundPage}><select aria-label="Refund records per page" value={refundLimit} onChange={e => { setRefundLimit(e.target.value); setRefundPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="20">20 / page</option><option value="50">50 / page</option></select></TablePager>
                     <div className="admin-table-wrap">
                       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
@@ -2541,13 +2529,6 @@ export default function AdminPage() {
                       </table>
                     </div>
 
-                    {refundPages > 1 && (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
-                        <button disabled={refundPage <= 1} onClick={() => setRefundPage(prev => Math.max(1, prev - 1))} style={{ padding: '0.4rem 0.8rem', background: refundPage <= 1 ? '#f0f2f5' : '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, color: refundPage <= 1 ? '#ccc' : DARK, cursor: refundPage <= 1 ? 'not-allowed' : 'pointer' }}>Prev</button>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: '#334155' }}>Page {refundPage} of {refundPages}</span>
-                        <button disabled={refundPage >= refundPages} onClick={() => setRefundPage(prev => Math.min(refundPages, prev + 1))} style={{ padding: '0.4rem 0.8rem', background: refundPage >= refundPages ? '#f0f2f5' : '#fff', border: '1px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, color: refundPage >= refundPages ? '#ccc' : DARK, cursor: refundPage >= refundPages ? 'not-allowed' : 'pointer' }}>Next</button>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
@@ -2585,13 +2566,14 @@ Near and Long pricing is applied automatically from the selected city and verifi
 
                     <div className="admin-toolbar" style={{ display: 'flex', gap: '.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
                       <input className="admin-toolbar-input" type="search" aria-label="Search booking locations" placeholder="Search city or ZIP code…" value={locationSearch} onChange={event => { setLocationSearch(event.target.value); setLocationPage(1) }} style={inputStyle} />
-                      <select aria-label="Filter booking locations by distance" value={locationDistanceFilter} onChange={event => setLocationDistanceFilter(event.target.value)} style={{ ...inputStyle, width: 'auto', minWidth: '170px' }}>
+                      <select aria-label="Filter booking locations by distance" value={locationDistanceFilter} onChange={event => { setLocationDistanceFilter(event.target.value); setLocationPage(1) }} style={{ ...inputStyle, width: 'auto', minWidth: '170px' }}>
                         <option value="all">All distances</option>
                         <option value="near">Near</option>
                         <option value="long">Long</option>
                       </select>
                     </div>
 
+                    <TablePager page={safeLocationPage} pages={locationPages} total={filteredLocations.length} label="locations" onChange={setLocationPage} />
                     <div className="admin-table-wrap">
                       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '680px' }}>
                         <thead>
@@ -2633,7 +2615,6 @@ Near and Long pricing is applied automatically from the selected city and verifi
                       </table>
                     </div>
                   </div>
-                  <TablePager page={safeLocationPage} pages={locationPages} total={filteredLocations.length} label="locations" onChange={setLocationPage} />
                 </div>
               )}
 
@@ -2644,6 +2625,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                     <button onClick={() => { setAreasForm({ name: '', map: '', icon: '', order: 0 }); setAreasEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Map</button>
                   </div>
                   <div className="admin-toolbar" style={{ marginBottom: '1rem' }}><input type="search" aria-label="Search service area maps" placeholder="Search name or URL…" value={areaSearch} onChange={event => { setAreaSearch(event.target.value); setAreaPage(1) }} style={{ ...inputStyle, maxWidth: '320px' }} /></div>
+                  <TablePager page={safeAreaPage} pages={areaPages} total={filteredAreas.length} label="maps" onChange={setAreaPage} />
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
@@ -2701,7 +2683,6 @@ Near and Long pricing is applied automatically from the selected city and verifi
                       </tbody>
                     </table>
                   </div>
-                  <TablePager page={safeAreaPage} pages={areaPages} total={filteredAreas.length} label="maps" onChange={setAreaPage} />
                 </div>
               )}
 
@@ -2712,6 +2693,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                     <button onClick={() => { setSocialsForm({ platform: 'facebook', url: '', order: socials.length }); setSocialsEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Social Link</button>
                   </div>
                   <div className="admin-toolbar" style={{ marginBottom: '1rem' }}><input type="search" aria-label="Search social links" placeholder="Search platform or URL…" value={socialSearch} onChange={event => { setSocialSearch(event.target.value); setSocialPage(1) }} style={{ ...inputStyle, maxWidth: '320px' }} /></div>
+                  <TablePager page={safeSocialPage} pages={socialPages} total={filteredSocials.length} label="links" onChange={setSocialPage} />
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
@@ -2747,7 +2729,6 @@ Near and Long pricing is applied automatically from the selected city and verifi
                       </tbody>
                     </table>
                   </div>
-                  <TablePager page={safeSocialPage} pages={socialPages} total={filteredSocials.length} label="links" onChange={setSocialPage} />
                 </div>
               )}
 

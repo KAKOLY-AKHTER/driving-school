@@ -16,7 +16,6 @@ const emptyForm = {
   published: false,
   featured: false,
   publishedAt: "",
-  order: 0,
 };
 
 const MAX_BLOG_IMAGE_BYTES = 4 * 1024 * 1024;
@@ -172,7 +171,6 @@ export default function AdminBlogPanel({
       published: Boolean(post.published),
       featured: Boolean(post.featured),
       publishedAt: localDateTimeValue(post.publishedAt),
-      order: Number(post.order) || 0,
     });
     setImageFile(null);
     setImagePreview(post.imageUrl || "");
@@ -212,7 +210,6 @@ export default function AdminBlogPanel({
         publishedAt: form.publishedAt
           ? new Date(form.publishedAt).toISOString()
           : "",
-        order: Number(form.order) || 0,
       };
       if (editingId) await api.adminUpdateBlog(editingId, payload);
       else await api.adminAddBlog(payload);
@@ -392,25 +389,6 @@ export default function AdminBlogPanel({
                 setForm((current) => ({
                   ...current,
                   author: event.target.value,
-                }))
-              }
-            />
-          </div>
-          <div>
-            <label htmlFor="blog-order" style={labelStyle}>
-              Display order
-            </label>
-            <input
-              id="blog-order"
-              type="number"
-              min="0"
-              max="10000"
-              style={inputStyle}
-              value={form.order}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  order: event.target.value,
                 }))
               }
             />
@@ -732,7 +710,6 @@ export default function AdminBlogPanel({
               <option value="published">Published</option>
               <option value="draft">Drafts</option>
             </select>
-            <select aria-label="Blog rows per page" style={{ ...inputStyle, width: 112 }} value={limit} onChange={(event) => { setLimit(Number(event.target.value)); setPage(1); }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
           </div>
         </div>
         {loading ? (
@@ -751,6 +728,7 @@ export default function AdminBlogPanel({
           </div>
         ) : (
           <div className="admin-table-wrap">
+            <div aria-label="Blog pagination" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: ".75rem", flexWrap: "wrap", marginBottom: "1rem" }}><div style={{ display: "flex", alignItems: "center", gap: ".65rem", flexWrap: "wrap" }}><select aria-label="Blog rows per page" style={{ ...inputStyle, width: 112 }} value={limit} onChange={(event) => { setLimit(Number(event.target.value)); setPage(1); }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select><span style={{ color: "#334155" }}>Page {safePage} of {pages} · {filtered.length} posts</span></div><div style={{ display: "flex", gap: ".45rem" }}><button type="button" disabled={safePage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>Previous</button><button type="button" disabled={safePage >= pages} onClick={() => setPage((value) => Math.min(pages, value + 1))}>Next</button></div></div>
             <table
               style={{
                 width: "100%",
@@ -914,7 +892,6 @@ export default function AdminBlogPanel({
                 )}
               </tbody>
             </table>
-            <div aria-label="Blog pagination" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: ".75rem", flexWrap: "wrap", marginTop: "1rem" }}><span style={{ color: "#334155" }}>Page {safePage} of {pages} · {filtered.length} posts</span><div style={{ display: "flex", gap: ".45rem" }}><button type="button" disabled={safePage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>Previous</button><button type="button" disabled={safePage >= pages} onClick={() => setPage((value) => Math.min(pages, value + 1))}>Next</button></div></div>
           </div>
         )}
       </section>

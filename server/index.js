@@ -4568,7 +4568,15 @@ app.get('/api/admin/availability', async (req, res) => {
       const numericDate = Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-US')
       const shortTime = String(slot.time || '').replace(/\b0(\d):/g, '$1:')
       const compactTime = shortTime.replace(/:00/g, '')
-      return [slot.date, slot.time, shortTime, compactTime, friendlyDate, numericDate]
+      const statusLabel = {
+        available: 'available',
+        blocked: 'unavailable',
+        held: 'checkout in progress',
+        booked: 'booked',
+        expired: 'past expired',
+        legacy: 'old schedule remove',
+      }[slot.status] || slot.status
+      return [slot.date, slot.time, shortTime, compactTime, friendlyDate, numericDate, slot.status, statusLabel]
         .some(value => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes(normalizedSearch))
     })
     const filtered = statusFilter === 'manageable'
@@ -5212,8 +5220,8 @@ app.delete('/api/admin/locations/:id', async (req, res) => {
 app.get('/api/reviews', async (_req, res) => {
   try {
     const reviews = await reviewsCol.find({ published: true })
-      .sort({ order: 1, createdAt: 1 })
-      .project({ name: 1, text: 1, rating: 1, order: 1, imageUrl: 1 })
+      .sort({ createdAt: -1, _id: -1 })
+      .project({ name: 1, text: 1, rating: 1, imageUrl: 1 })
       .toArray()
     res.json(reviews)
   } catch (error) {
@@ -5223,7 +5231,7 @@ app.get('/api/reviews', async (_req, res) => {
 
 app.get('/api/admin/reviews', async (_req, res) => {
   try {
-    const reviews = await reviewsCol.find().sort({ order: 1, createdAt: 1 }).toArray()
+    const reviews = await reviewsCol.find().sort({ createdAt: -1, _id: -1 }).toArray()
     res.json(reviews)
   } catch (error) {
     sendServerError(res, error, 'Admin review lookup failed')
@@ -5303,7 +5311,7 @@ app.get('/api/blogs', async (req, res) => {
     }
     if (category) query.category = category
     const posts = await blogsCol.find(query)
-      .sort({ featured: -1, order: 1, publishedAt: -1, createdAt: -1 })
+      .sort({ publishedAt: -1, createdAt: -1, _id: -1 })
       .limit(limit)
       .project({ title: 1, slug: 1, excerpt: 1, category: 1, author: 1, imageUrl: 1, featured: 1, publishedAt: 1, readingMinutes: 1 })
       .toArray()
@@ -5331,7 +5339,7 @@ app.get('/api/blogs/:slug', async (req, res) => {
 
 app.get('/api/admin/blogs', async (_req, res) => {
   try {
-    const posts = await blogsCol.find().sort({ featured: -1, order: 1, publishedAt: -1, createdAt: -1 }).toArray()
+    const posts = await blogsCol.find().sort({ createdAt: -1, _id: -1 }).toArray()
     res.json(posts.map(safeBlogDocument))
   } catch (error) {
     sendServerError(res, error, 'Admin blog lookup failed')

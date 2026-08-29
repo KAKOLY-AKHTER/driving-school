@@ -8,7 +8,6 @@ import { useCart } from '../contexts/CartContext'
 import { api } from '../api'
 import { usePageMeta } from '../usePageMeta'
 import { openPrintableDocument } from '../utils/printDocument'
-import { downloadBookingCalendar, googleCalendarUrl } from '../utils/bookingCalendar'
 import { ONLINE_COURSE_CURRICULUM } from '../data/onlineCourseCurriculum'
 import { UserLiveSupportPanel } from '../components/LiveSupportPanels'
 import PasswordInput from '../components/PasswordInput'
@@ -311,9 +310,6 @@ export default function DashboardPage() {
   const [refundReason, setRefundReason] = useState('')
   const [courseActionLoading, setCourseActionLoading] = useState('')
   const [courseActionError, setCourseActionError] = useState('')
-  const [bookingCancelConfirm, setBookingCancelConfirm] = useState(null)
-  const [bookingCancelLoading, setBookingCancelLoading] = useState(false)
-  const [bookingCancelError, setBookingCancelError] = useState('')
   const [logoutLoading, setLogoutLoading] = useState(false)
   const [quizSaving, setQuizSaving] = useState(false)
   const [chatMessages, setChatMessages] = useState([])
@@ -341,12 +337,11 @@ export default function DashboardPage() {
     : courseDetail ? 'course-detail'
     : cancelConfirm ? 'cancel-course'
       : refundConfirm ? 'refund-course'
-        : bookingCancelConfirm ? 'cancel-booking'
-          : conversationDeleteConfirm ? 'delete-conversation'
-            : ''
+        : conversationDeleteConfirm ? 'delete-conversation'
+          : ''
 
   const closeActiveModal = useCallback(() => {
-    if (courseActionLoading || bookingCancelLoading || conversationActionId) return
+    if (courseActionLoading || conversationActionId) return
     setCourseDetail(null)
     setCancelConfirm(null)
     setRefundConfirm(null)
@@ -357,7 +352,7 @@ export default function DashboardPage() {
     setConversationDeleteConfirm(null)
     setUnsavedConfirm(null)
     setTextDetails(null)
-  }, [courseActionLoading, bookingCancelLoading, conversationActionId])
+  }, [courseActionLoading, conversationActionId])
 
   useEffect(() => {
     if (!openModalKey || !modalRef.current) return undefined
@@ -421,27 +416,6 @@ export default function DashboardPage() {
     loadConversations()
     return () => { active = false }
   }, [activeTab, user, conversationVersion])
-  const handleCancelBooking = (id) => {
-    setBookingCancelError('')
-    setBookingCancelConfirm(id)
-  }
-  const confirmCancelBooking = async () => {
-    if (!bookingCancelConfirm || bookingCancelLoading) return
-    setBookingCancelLoading(true)
-    setBookingCancelError('')
-    try {
-      const result = await api.deleteBooking(bookingCancelConfirm)
-      setBookings(prev => result?.booking
-        ? prev.map(booking => booking._id === bookingCancelConfirm ? result.booking : booking)
-        : prev.map(booking => booking._id === bookingCancelConfirm ? { ...booking, status: 'cancelled' } : booking))
-      setBookingCancelConfirm(null)
-      showNotice('Booking cancelled successfully.')
-    } catch (error) {
-      setBookingCancelError(error.message || 'The booking could not be cancelled. Please try again.')
-    } finally {
-      setBookingCancelLoading(false)
-    }
-  }
   const handleCompleteQuiz = async (moduleId, correctCount) => {
     setQuizScore(correctCount); setQuizSubmitted(true)
     if (correctCount >= 2 && !completedModules.includes(moduleId)) {
@@ -779,8 +753,11 @@ export default function DashboardPage() {
   const matchedCourses = [...courses].filter(course => {
     const query = courseSearch.trim().toLowerCase()
     const status = normalizeStatus(course.status || 'enrolled')
+    const matchesStatus = courseStatusFilter === 'all'
+      || status === courseStatusFilter
+      || (courseStatusFilter === 'cancelled' && status === 'canceled')
     return (!query || [course.title, course.id, course.status, course.price, course.city, course.cityZip].some(value => String(value || '').toLowerCase().includes(query)))
-      && (courseStatusFilter === 'all' || status === courseStatusFilter)
+      && matchesStatus
   }).sort((a, b) => {
     const order = { enrolled: 0, paid: 0, 'in progress': 1, pending: 2, 'refund pending': 3, completed: 4, refunded: 5, cancelled: 6, canceled: 6 }
     return (order[normalizeStatus(a.status)] ?? 1) - (order[normalizeStatus(b.status)] ?? 1)
@@ -797,6 +774,20 @@ export default function DashboardPage() {
   const paymentPages = Math.max(1, Math.ceil(matchedPayments.length / 10))
   const safePaymentPage = Math.min(paymentPage, paymentPages)
   const visiblePayments = matchedPayments.slice((safePaymentPage - 1) * 10, safePaymentPage * 10)
+  const courseDetailPayment = courseDetail && [...payments].reverse().find(payment =>
+    (courseDetail.paymentRef && String(payment?.ref || '') === String(courseDetail.paymentRef))
+    || (courseDetail.enrollmentId && (Array.isArray(payment?.enrollmentIds) && payment.enrollmentIds.some(id => String(id) === String(courseDetail.enrollmentId))
+      || Array.isArray(payment?.courseBreakdown) && payment.courseBreakdown.some(item => String(item?.enrollmentId || '') === String(courseDetail.enrollmentId))))
+  )
+  const coursePaymentStatus = courseDetailPayment?.status || courseDetail?.paymentStatus || (['refund pending', 'refunded'].includes(normalizeStatus(courseDetail?.status)) ? courseDetail.status : 'Paid')
+  const paymentStatusForBooking = (booking) => {
+    const payment = [...payments].reverse().find(candidate =>
+      (booking?.enrollmentId && (Array.isArray(candidate?.enrollmentIds) && candidate.enrollmentIds.some(id => String(id) === String(booking.enrollmentId))
+        || Array.isArray(candidate?.courseBreakdown) && candidate.courseBreakdown.some(item => String(item?.enrollmentId || '') === String(booking.enrollmentId))))
+      || (booking?.courseId && Array.isArray(candidate?.courseBreakdown) && candidate.courseBreakdown.some(item => String(item?.id || item?.courseId || '') === String(booking.courseId)))
+    )
+    return payment?.status || (normalizeStatus(booking?.status) === 'refunded' ? 'Refunded' : 'Paid')
+  }
   const upcomingPages = Math.max(1, Math.ceil(upcomingBookings.length / 10))
   const safeUpcomingPage = Math.min(upcomingPage, upcomingPages)
   const visibleUpcomingBookings = upcomingBookings.slice((safeUpcomingPage - 1) * 10, safeUpcomingPage * 10)
@@ -1350,7 +1341,7 @@ export default function DashboardPage() {
                       )}
                     </div>
                     <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:'0 0 1.5rem' }}>Here are your currently enrolled courses... you can add more packages.</p>
-                    <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search enrolled courses" placeholder="Search course, city or price…" value={courseSearch} onChange={event => { setCourseSearch(event.target.value); setCoursePage(1) }} className="dash-input" style={{ flex:'1 1 240px' }} /><select aria-label="Filter courses by status" value={courseStatusFilter} onChange={event => { setCourseStatusFilter(event.target.value); setCoursePage(1) }} className="dash-input" style={{ width:'180px' }}><option value="all">All statuses</option><option value="enrolled">Enrolled</option><option value="in progress">In Progress</option><option value="completed">Completed</option><option value="refund pending">Refund Pending</option><option value="refunded">Refunded</option><option value="cancelled">Cancelled</option></select></div>
+                    <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search enrolled courses" placeholder="Search course, city or price…" value={courseSearch} onChange={event => { setCourseSearch(event.target.value); setCoursePage(1) }} className="dash-input" style={{ flex:'1 1 240px' }} /><select aria-label="Filter courses by status" value={courseStatusFilter} onChange={event => { setCourseStatusFilter(event.target.value); setCoursePage(1) }} className="dash-input" style={{ width:'180px' }}><option value="all">All statuses</option><option value="active">Active</option><option value="enrolled">Enrolled</option><option value="paid">Paid</option><option value="pending">Pending</option><option value="in progress">In Progress</option><option value="completed">Completed</option><option value="refund pending">Refund Pending</option><option value="refunded">Refunded</option><option value="cancelled">Cancelled</option></select></div>
                     <button onClick={() => navigate('/pricing')} className="dash-btn-primary" style={{ marginBottom:'2rem' }}>Add more packages</button>
                     <div style={{ display:'flex', flexDirection:'column', gap:'0.75rem' }}>
                       {courses.length === 0 && (
@@ -1432,8 +1423,8 @@ export default function DashboardPage() {
                           <p style={{ fontFamily:'var(--font-display)', fontSize:'1rem', color:GOLD, fontWeight:800, margin:0 }}>{courseDetail.price}</p>
                         </div>
                         <div style={{ background:'#F8FAFD', borderRadius:'12px', padding:'1rem', border:'1px solid #E8EDF4' }}>
-                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Status</p>
-                          <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:courseDetail.status === 'Enrolled' || courseDetail.status === 'Paid' ? '#16A34A' : '#DC2626', fontWeight:700, margin:0 }}>{courseDetail.status}</p>
+                          <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Payment Status</p>
+                          <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:paymentStatusColors(coursePaymentStatus).color, fontWeight:700, margin:0 }}>{coursePaymentStatus}</p>
                         </div>
                         <div style={{ background:'#F8FAFD', borderRadius:'12px', padding:'1rem', border:'1px solid #E8EDF4' }}>
                           <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Progress</p>
@@ -1519,11 +1510,12 @@ export default function DashboardPage() {
                         <p style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', color:SKY_BLUE, margin:0, fontWeight:800 }}>{payments.length}</p>
                       </div>
                     </div>
+                    {matchedPayments.length > 0 && <div aria-label="Payment pagination" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'.75rem', flexWrap:'wrap', margin:'0 0 1rem' }}><span style={{ color:'#475569' }}>Page {safePaymentPage} of {paymentPages} · {matchedPayments.length} payments</span><div style={{ display:'flex', gap:'.45rem' }}><button type="button" disabled={safePaymentPage <= 1} onClick={() => setPaymentPage(page => Math.max(1, page - 1))}>Previous</button><button type="button" disabled={safePaymentPage >= paymentPages} onClick={() => setPaymentPage(page => Math.min(paymentPages, page + 1))}>Next</button></div></div>}
                     <div className="dash-table-scroll">
                     <table style={{ width:'100%', borderCollapse:'separate', borderSpacing:'0', minWidth:'700px' }}>
                       <thead>
                         <tr>
-                          {['Date','Ref','Email','Item','Amount','Status','Receipt'].map((th, i) => (
+                          {['Date','Ref','Email','Item','Amount','Payment Status','Receipt'].map((th, i) => (
                             <th key={th} className={i===6?'dash-payment-actions':''} style={{ textAlign:i===6?'center':'left', padding:'0.85rem 1rem', fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', fontWeight:700, borderBottom:'2px solid #E8EDF4', background:'linear-gradient(135deg,#FAFBFD,#F5F7FB)', ...(i===0?{borderTopLeftRadius:'10px',borderBottomLeftRadius:'10px'}:{}), ...(i===6?{borderTopRightRadius:'10px',borderBottomRightRadius:'10px'}:{}) }}>{th}</th>
                           ))}
                         </tr>
@@ -1555,7 +1547,6 @@ export default function DashboardPage() {
                     </table>
                     </div>
                     {payments.length > 0 && matchedPayments.length === 0 && <p style={{ textAlign:'center', color:'#475569', padding:'1.25rem' }}>No payments match the selected filters.</p>}
-                    {matchedPayments.length > 0 && <div aria-label="Payment pagination" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'.75rem', flexWrap:'wrap', marginTop:'1rem' }}><span style={{ color:'#475569' }}>Page {safePaymentPage} of {paymentPages} · {matchedPayments.length} payments</span><div style={{ display:'flex', gap:'.45rem' }}><button type="button" disabled={safePaymentPage <= 1} onClick={() => setPaymentPage(page => Math.max(1, page - 1))}>Previous</button><button type="button" disabled={safePaymentPage >= paymentPages} onClick={() => setPaymentPage(page => Math.min(paymentPages, page + 1))}>Next</button></div></div>}
                   </div>
                 </div>
               )}
@@ -1771,7 +1762,6 @@ export default function DashboardPage() {
                       <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(1,69,168,0.08),rgba(1,69,168,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}>{I.book}</div>
                       My Bookings
                     </h3>
-                    {upcomingBookings.length > 0 && <p style={{ margin:'-.35rem 0 1rem', padding:'.65rem .75rem', borderRadius:'10px', background:'#EFF6FF', border:'1px solid #DBEAFE', color:'#1E3A8A', fontFamily:'var(--font-body)', fontSize:'.82rem', lineHeight:1.5 }}>Add a lesson to Google Calendar, or use <strong>Phone / Other</strong> for Apple Calendar, Outlook, and your device calendar. Confirm it once by choosing Save or Add in the calendar app.</p>}
                     {upcomingBookings.length === 0 && pastBookings.length === 0 ? (
                       <div style={{ textAlign:'center', padding:'2.5rem 1rem' }}>
                         <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg></div>
@@ -1784,7 +1774,8 @@ export default function DashboardPage() {
                           {visibleUpcomingBookings.map(b => {
                             const slot = TIME_SLOTS.find(s => s.id === b.timeSlot)
                             const displayedTime = slot?.time || b.timeSlot || b.time || ''
-                            const googleUrl = googleCalendarUrl(b, courses, displayedTime)
+                            const paymentStatus = paymentStatusForBooking(b)
+                            const paymentColors = paymentStatusColors(paymentStatus)
                             return (
                               <div key={b._id || `${b.date}-${b.timeSlot || b.time}-${b.enrollmentId || ''}`} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'.85rem', flexWrap:'wrap', padding:'0.9rem 1rem', background:'linear-gradient(135deg,rgba(34,197,94,0.055),rgba(34,197,94,0.015))', borderRadius:'14px', border:'1px solid rgba(34,197,94,0.14)' }}>
                                 <div style={{ minWidth:'150px', flex:'1 1 170px' }}>
@@ -1792,10 +1783,7 @@ export default function DashboardPage() {
                                   <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#334155', margin:'0.15rem 0 0' }}>{displayedTime}</p>
                                 </div>
                                 <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:'0.45rem', flexWrap:'wrap', flex:'1 1 260px' }}>
-                                  <span style={{ padding:'0.25rem 0.7rem', background:normalizeStatus(b.status) === 'confirmed' ? 'rgba(1,69,168,.10)' : 'rgba(34,197,94,.10)', color:normalizeStatus(b.status) === 'confirmed' ? SKY_BLUE : '#15803D', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700 }}>{normalizeStatus(b.status) === 'confirmed' ? 'Confirmed' : 'Scheduled'}</span>
-                                  {googleUrl && <a href={googleUrl} target="_blank" rel="noreferrer" aria-label={`Add ${b.date} lesson to Google Calendar`} title="Open in Google Calendar" style={{ minHeight:'34px', display:'inline-flex', alignItems:'center', gap:'.35rem', padding:'.4rem .65rem', borderRadius:'9px', border:'1px solid rgba(1,69,168,.22)', background:'#fff', color:SKY_BLUE, fontFamily:'var(--font-body)', fontSize:'.78rem', fontWeight:800, textDecoration:'none', whiteSpace:'nowrap' }}><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 10h18"/><path d="m9 15 2 2 4-4"/></svg>Google Calendar</a>}
-                                  <button type="button" aria-label={`Add ${b.date} lesson to phone, Apple Calendar, or Outlook`} title="Download calendar event for phone, Apple Calendar, or Outlook" onClick={() => { if (!downloadBookingCalendar(b, courses, displayedTime)) showNotice('This booking does not have a valid date and time for the calendar.', 'error') }} style={{ minHeight:'34px', display:'inline-flex', alignItems:'center', gap:'.35rem', padding:'.4rem .65rem', borderRadius:'9px', border:'1px solid #CBD5E1', background:'#fff', color:'#334155', fontFamily:'var(--font-body)', fontSize:'.78rem', fontWeight:800, cursor:'pointer', whiteSpace:'nowrap' }}><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M5 19h14"/></svg>Phone / Other</button>
-                                  <button type="button" aria-label="Cancel booking" title="Cancel booking" onClick={() => handleCancelBooking(b._id)} style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', padding:'0.35rem', borderRadius:'6px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
+                                  <span title="Payment status" style={{ padding:'0.25rem 0.7rem', background:paymentColors.background, color:paymentColors.color, borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700 }}>Payment: {paymentStatus}</span>
                                 </div>
                               </div>
                             )
@@ -1806,16 +1794,15 @@ export default function DashboardPage() {
                           <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', fontWeight:600, margin:'0.5rem 0 0.25rem' }}>Past</p>
                           {pastBookings.slice(0, showAllHistory ? pastBookings.length : 10).map(b => {
                             const slot = TIME_SLOTS.find(s => s.id === b.timeSlot)
-                            const pastStatus = normalizeStatus(b.status)
-                            const pastStatusLabel = pastStatus === 'canceled' || pastStatus === 'cancelled' ? 'Cancelled' : pastStatus === 'no show' ? 'No Show' : pastStatus === 'refunded' ? 'Refunded' : 'Completed'
-                            const pastStatusIsNegative = ['canceled', 'cancelled', 'no show', 'refunded'].includes(pastStatus)
+                            const paymentStatus = paymentStatusForBooking(b)
+                            const paymentColors = paymentStatusColors(paymentStatus)
                             return (
                               <div key={b._id || `${b.date}-${b.timeSlot || b.time}-${b.enrollmentId || ''}`} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.85rem 1rem', background:'#FAFBFD', borderRadius:'14px', border:'1px solid #F1F5F9', opacity:0.7 }}>
                                 <div>
                                   <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#666', fontWeight:500, margin:0 }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })}</p>
                                   <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#999', margin:'0.15rem 0 0' }}>{slot?.time || b.timeSlot}</p>
                                 </div>
-                                <span style={{ padding:'0.25rem 0.7rem', background:pastStatusIsNegative ? 'rgba(220,38,38,.08)' : 'rgba(136,153,170,0.08)', color:pastStatusIsNegative ? '#B91C1C' : '#475569', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:600 }}>{pastStatusLabel}</span>
+                                <span title="Payment status" style={{ padding:'0.25rem 0.7rem', background:paymentColors.background, color:paymentColors.color, borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:600 }}>Payment: {paymentStatus}</span>
                               </div>
                             )
                           })}
@@ -1960,20 +1947,6 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {bookingCancelConfirm && (
-              <div className="dash-modal-backdrop" role="presentation" style={{ position:'fixed', inset:0, background:'rgba(10,22,40,.68)', backdropFilter:'blur(10px)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }} onClick={(e) => { if (e.target === e.currentTarget && !bookingCancelLoading) { setBookingCancelConfirm(null); setBookingCancelError('') } }}>
-                <div ref={modalRef} className="dash-confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="cancel-booking-title" aria-describedby="cancel-booking-copy" style={{ width:'100%', maxWidth:'420px', background:'#fff', borderRadius:'22px', boxShadow:'0 28px 90px rgba(2,12,27,.35)', padding:'2rem' }}>
-                  <div style={{ width:'58px', height:'58px', borderRadius:'18px', background:'rgba(220,38,38,.08)', color:'#DC2626', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'1.2rem' }}><svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M9 15l6 0"/></svg></div>
-                  <h2 id="cancel-booking-title" style={{ fontFamily:'var(--font-display)', fontSize:'1.35rem', color:DARK, margin:'0 0 .55rem' }}>Cancel this booking?</h2>
-                  <p id="cancel-booking-copy" style={{ fontFamily:'var(--font-body)', fontSize:'1rem', lineHeight:1.65, color:'#475569', margin:'0 0 1.5rem' }}>The selected lesson will be removed from your upcoming bookings. This action cannot be undone.</p>
-                  {bookingCancelError && <p role="alert" style={{ margin:'0 0 1.25rem', padding:'0.7rem 0.8rem', borderRadius:'10px', background:'#FEF2F2', border:'1px solid #FECACA', color:'#B91C1C', fontFamily:'var(--font-body)', fontSize:'0.92rem' }}>{bookingCancelError}</p>}
-                  <div style={{ display:'flex', gap:'.75rem', justifyContent:'flex-end', flexWrap:'wrap' }}>
-                    <button type="button" autoFocus disabled={bookingCancelLoading} onClick={() => { setBookingCancelConfirm(null); setBookingCancelError('') }} style={{ padding:'.8rem 1.15rem', border:'1px solid #CBD5E1', borderRadius:'11px', background:'#fff', color:'#334155', fontWeight:700, cursor:bookingCancelLoading ? 'wait' : 'pointer', opacity:bookingCancelLoading ? .65 : 1 }}>Keep Booking</button>
-                    <button type="button" disabled={bookingCancelLoading} onClick={confirmCancelBooking} style={{ padding:'.8rem 1.15rem', border:0, borderRadius:'11px', background:'linear-gradient(135deg,#DC2626,#B91C1C)', color:'#fff', fontWeight:700, cursor:bookingCancelLoading ? 'wait' : 'pointer', boxShadow:'0 7px 18px rgba(220,38,38,.22)', opacity:bookingCancelLoading ? .72 : 1 }}>{bookingCancelLoading ? 'Cancelling…' : 'Yes, Cancel'}</button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
