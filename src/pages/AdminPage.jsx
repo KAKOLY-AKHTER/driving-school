@@ -814,6 +814,7 @@ export default function AdminPage() {
   const [contacts, setContacts] = useState([])
   const [userSearch, setUserSearch] = useState('')
   const [userPage, setUserPage] = useState(1)
+  const [userLimit, setUserLimit] = useState('10')
   const [userDetailsDialog, setUserDetailsDialog] = useState(null)
   const [bookingSearch, setBookingSearch] = useState('')
   const [bookingStatusFilter, setBookingStatusFilter] = useState('all')
@@ -1687,9 +1688,12 @@ export default function AdminPage() {
     const q = userSearch.toLowerCase()
     return !q || adminUserName(u).toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q) || (u.phone || '').includes(q)
   })
-  const userPages = Math.max(1, Math.ceil(filteredUsers.length / 10))
+  const userPages = Math.max(1, Math.ceil(filteredUsers.length / Number(userLimit)))
   const safeUserPage = Math.min(userPage, userPages)
-  const visibleUsers = filteredUsers.slice((safeUserPage - 1) * 10, safeUserPage * 10)
+  const visibleUsers = filteredUsers.slice(
+    (safeUserPage - 1) * Number(userLimit),
+    safeUserPage * Number(userLimit),
+  )
 
   const enrollmentRows = websiteUsers.flatMap(account => (Array.isArray(account.courses) ? account.courses : [])
     .map((course, index) => ({
@@ -2099,7 +2103,7 @@ export default function AdminPage() {
                       {userSearch && <button type="button" onClick={() => setUserSearch('')} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                     </div>
                   </div>
-                  <TablePager page={safeUserPage} pages={userPages} total={filteredUsers.length} label="users" onChange={setUserPage} />
+                  <TablePager page={safeUserPage} pages={userPages} total={filteredUsers.length} label="users" onChange={setUserPage}><select aria-label="User rows per page" value={userLimit} onChange={event => { setUserLimit(event.target.value); setUserPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></TablePager>
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
@@ -2158,7 +2162,6 @@ export default function AdminPage() {
                       {(bookingSearch || bookingStatusFilter !== 'all') && <button type="button" onClick={() => { setBookingSearch(''); setBookingStatusFilter('all'); setBookingPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                     </div>
                   </div>
-                  <TablePager page={safeBookingPage} pages={bookingPages} total={filteredBookings.length} label="bookings" onChange={setBookingPage}><select aria-label="Booking rows per page" value={bookingLimit} onChange={event => { setBookingLimit(event.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></TablePager>
                   <div role="note" aria-label="Booking status guide" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: '.65rem', margin: '0 0 1rem', padding: '.85rem 1rem', border: '1px solid #D9E5F2', borderRadius: '13px', background: '#F8FBFF' }}>
                     {[
                       ['scheduled', 'Booking exists and is waiting for final confirmation.'],
@@ -2180,6 +2183,7 @@ export default function AdminPage() {
                     </div>
                   </div>
                   {bookingDataFilter === 'test' && <div role="note" style={{ margin: '0 0 1rem', padding: '.8rem 1rem', borderRadius: '12px', border: '1px solid #FED7AA', background: '#FFF7ED', color: '#9A3412', lineHeight: 1.55 }}><strong>Safe test-data review:</strong> these rows are potential admin, sandbox or example-account bookings. Verify each student and payment first, then use its individual Delete action; no bulk deletion is performed.</div>}
+                  <TablePager page={safeBookingPage} pages={bookingPages} total={filteredBookings.length} label="bookings" onChange={setBookingPage}><select aria-label="Booking rows per page" value={bookingLimit} onChange={event => { setBookingLimit(event.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></TablePager>
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
