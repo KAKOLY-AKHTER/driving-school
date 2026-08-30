@@ -45,13 +45,13 @@ function SupportShell({ children }) {
         .live-support-unread{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#DC2626;color:#fff;font-size:.7rem;font-weight:900;flex:none}
         .live-support-chat{display:flex;flex-direction:column;min-width:0;background:#fff}
         .live-support-chat-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.25rem;border-bottom:1px solid #E2EBF5;min-height:72px}
-        .live-support-chat-body{flex:1;overflow:auto;padding:1.25rem;background:radial-gradient(circle at 100% 0%,rgba(1,69,168,.05),transparent 22rem),#FBFDFF}
-        .live-support-message{display:flex;justify-content:flex-start;margin:.75rem 0}
+        .live-support-chat-body{flex:1;overflow:auto;padding:1.4rem 1.5rem;background:radial-gradient(circle at 100% 0%,rgba(1,69,168,.05),transparent 22rem),#FBFDFF}
+        .live-support-message{display:flex;justify-content:flex-start;margin:1rem 0}
         .live-support-message.is-mine{justify-content:flex-end}
-        .live-support-bubble{max-width:min(78%,620px);padding:.8rem 1rem;border-radius:16px 16px 16px 5px;background:#fff;border:1px solid #E2EBF5;box-shadow:0 4px 14px rgba(15,35,70,.05)}
-        .live-support-message.is-mine .live-support-bubble{background:linear-gradient(135deg,#0145A8,#0A2A5E);color:#fff;border:0;border-radius:16px 16px 5px 16px}
-        .live-support-bubble p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;font-size:1rem;line-height:1.55}
-        .live-support-bubble span{display:block;margin-top:.4rem;font-size:.72rem;color:#7C8A9E}
+        .live-support-bubble{width:fit-content;min-width:min(205px,78vw);max-width:min(68%,560px);padding:1rem 1.12rem;border-radius:18px 18px 18px 6px;background:#fff;border:1px solid #D8E4F2;box-shadow:0 7px 18px rgba(15,35,70,.08)}
+        .live-support-message.is-mine .live-support-bubble{background:linear-gradient(135deg,#0755AE,#0A2A5E);color:#fff;border:0;border-radius:18px 18px 6px 18px;box-shadow:0 8px 20px rgba(1,69,168,.2)}
+        .live-support-bubble p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;font-size:clamp(.96rem,1.1vw,1.04rem);line-height:1.6}
+        .live-support-bubble span{display:block;margin-top:.55rem;font-size:.76rem;color:#64748B}
         .live-support-message.is-mine .live-support-bubble span{color:rgba(255,255,255,0.88)}
         .live-support-compose{padding:1rem 1.25rem;border-top:1px solid #E2EBF5;background:#fff}
         .live-support-compose-row{display:flex;align-items:flex-end;gap:.65rem}
@@ -70,8 +70,8 @@ function SupportShell({ children }) {
         .live-support-error{margin:.75rem 1rem;padding:.75rem;border-radius:10px;background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C;font-weight:700}
         .live-support-stats{display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.55rem}
         .live-support-stat{font-size:.72rem;font-weight:850;border-radius:999px;padding:.28rem .48rem;background:#EFF6FF;color:#0145A8}
-        @media(max-width:760px){.live-support-shell{grid-template-columns:1fr;height:auto;min-height:680px}.live-support-list{border-right:0;border-bottom:1px solid #E2EBF5;max-height:255px}.live-support-chat{min-height:520px}.live-support-chat-head{padding:.85rem 1rem}.live-support-chat-body{padding:1rem}.live-support-compose{padding:.85rem}.live-support-bubble{max-width:88%}}
-        @media(max-width:480px){.live-support-compose-row{align-items:stretch;flex-direction:column}.live-support-primary{width:100%}.live-support-chat-head{align-items:flex-start}.live-support-chat-head>div:last-child{display:flex;flex-direction:column;gap:.4rem}.live-support-bubble{max-width:94%}}
+        @media(max-width:760px){.live-support-shell{grid-template-columns:1fr;height:auto;min-height:680px}.live-support-list{border-right:0;border-bottom:1px solid #E2EBF5;max-height:255px}.live-support-chat{min-height:520px}.live-support-chat-head{padding:.85rem 1rem}.live-support-chat-body{padding:1rem}.live-support-compose{padding:.85rem}.live-support-bubble{min-width:min(190px,82vw);max-width:88%}}
+        @media(max-width:480px){.live-support-compose-row{align-items:stretch;flex-direction:column}.live-support-primary{width:100%}.live-support-chat-head{align-items:flex-start}.live-support-chat-head>div:last-child{display:flex;flex-direction:column;gap:.4rem}.live-support-bubble{min-width:min(170px,88vw);max-width:94%;padding:.9rem 1rem}}
       `}</style>
       {children}
     </>
@@ -213,7 +213,6 @@ export function AdminLiveSupportPanel({ onUnreadChange }) {
   const [threads, setThreads] = useState([])
   const [counts, setCounts] = useState({ total: 0, open: 0, unread: 0 })
   const [selectedKey, setSelectedKey] = useState('')
-  const [search, setSearch] = useState('')
   const [status, setStatus] = useState('all')
   const [draft, setDraft] = useState('')
   const [loading, setLoading] = useState(true)
@@ -242,13 +241,8 @@ export function AdminLiveSupportPanel({ onUnreadChange }) {
   }, [loadInbox])
 
   const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase()
-    return threads.filter(thread => {
-      const matchesStatus = status === 'all' || thread.status === status
-      const matchesSearch = !query || [thread.subject, thread.student?.name, thread.student?.email, thread.student?.phone].some(value => String(value || '').toLowerCase().includes(query))
-      return matchesStatus && matchesSearch
-    })
-  }, [threads, search, status])
+    return threads.filter(thread => status === 'all' || thread.status === status)
+  }, [threads, status])
   const selected = threads.find(thread => supportKey(thread) === selectedKey)
 
   useEffect(() => { onUnreadChange?.(counts.unread || 0) }, [counts.unread, onUnreadChange])
@@ -287,7 +281,7 @@ export function AdminLiveSupportPanel({ onUnreadChange }) {
     <SupportShell>
       <div style={{ maxWidth: 1180, margin: '0 auto 1rem', display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div><p style={{ color: '#334155', margin: 0 }}>Reply to student questions and keep every conversation in one place.</p><div className="live-support-stats"><span className="live-support-stat">{counts.total} total</span><span className="live-support-stat">{counts.open} open</span><span className="live-support-stat" style={{ background: counts.unread ? '#FEF2F2' : '#F1F5F9', color: counts.unread ? '#B91C1C' : '#64748B' }}>{counts.unread} unread</span></div></div>
-        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}><input aria-label="Search live support" className="live-support-input" type="search" style={{ width: 245 }} value={search} onChange={event => setSearch(event.target.value)} placeholder="Search student or subject…" /><select aria-label="Filter support status" className="live-support-input" style={{ width: 130 }} value={status} onChange={event => setStatus(event.target.value)}><option value="all">All status</option><option value="open">Open</option><option value="closed">Closed</option></select></div>
+        <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}><select aria-label="Filter support status" className="live-support-input" style={{ width: 150 }} value={status} onChange={event => setStatus(event.target.value)}><option value="all">All status</option><option value="open">Open</option><option value="closed">Closed</option></select></div>
       </div>
       <section aria-label="Admin live support inbox" className="live-support-shell">
         <aside className="live-support-list">
