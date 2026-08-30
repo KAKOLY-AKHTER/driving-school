@@ -505,12 +505,12 @@ function sanitizeChatMessages(value, maxMessages = 100) {
 }
 function sanitizePricing(value) {
   if (!isPlainObject(value)) throw new HttpError(400, 'A valid pricing plan is required.')
-  const id = cleanText(value.id, 120)
+  const id = cleanText(value.id, 120) || `plan-${new ObjectId().toHexString()}`
   const planName = cleanText(value.planName, 160)
   const planPrice = normalizePlanPrice(value.planPrice)
   const planPriceTwo = normalizePlanPrice(value.planPriceTwo ?? value.planPrice)
-  if (!id || !planName || !planPrice || !planPriceTwo) {
-    throw new HttpError(400, 'Plan id, name, Near price, and Long price are required. Use valid dollar amounts.')
+  if (!planName || !planPrice || !planPriceTwo) {
+    throw new HttpError(400, 'Plan name, Near price, and Long price are required. Use valid dollar amounts.')
   }
   const allowedPermissions = new Set(['Select', 'Included', 'Optional', 'Not Included'])
   const options = (Array.isArray(value.options) ? value.options : []).slice(0, 20).map(option => ({
@@ -5157,12 +5157,14 @@ app.get('/api/pricing', async (req, res) => {
 
 app.post('/api/admin/pricing', async (req, res) => {
   try {
+    const firstPlan = await pricingCol.find().sort({ order: 1, createdAt: 1 }).limit(1).next()
     const doc = {
       ...sanitizePricing(req.body),
+      order: Math.min(-1, Number(firstPlan?.order || 0) - 1),
       createdAt: new Date().toISOString(),
     }
     const result = await pricingCol.insertOne(doc)
-    res.json({ ok: true, _id: result.insertedId })
+    res.json({ ok: true, _id: result.insertedId, pricing: { ...doc, _id: result.insertedId } })
   } catch (e) {
     if (e.status) return res.status(e.status).json({ error: e.message })
     res.status(500).json({ error: e.message })
@@ -5171,7 +5173,10 @@ app.post('/api/admin/pricing', async (req, res) => {
 
 app.put('/api/admin/pricing/:id', async (req, res) => {
   try {
-    const doc = sanitizePricing(req.body)
+    if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid pricing plan id.')
+    const existing = await pricingCol.findOne({ _id: new ObjectId(req.params.id) }, { projection: { id: 1 } })
+    if (!existing) throw new HttpError(404, 'Pricing plan not found.')
+    const doc = sanitizePricing({ ...req.body, id: cleanText(req.body?.id, 120) || existing.id })
     if (req.body?.order === undefined) delete doc.order
     await pricingCol.updateOne(
       { _id: new ObjectId(req.params.id) },

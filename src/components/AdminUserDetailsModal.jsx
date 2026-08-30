@@ -168,9 +168,8 @@ export default function AdminUserDetailsModal({ dialog, onClose, onRetry }) {
             <>
               <div style={{ display: 'flex', alignItems: 'stretch', flexWrap: 'wrap', border: '1px solid #DCE7F3', borderRadius: '14px', background: '#fff', overflow: 'hidden', boxShadow: '0 8px 24px rgba(10,42,94,.045)' }}>
                 {[
-                  ['Courses', summary.courses], ['Bookings', summary.bookings], ['Payments', summary.payments],
-                  ['Refunds', summary.refunds], ['Cart Items', summary.cartItems], ['Support Threads', summary.supportThreads],
-                ].map(([label, value], index) => <div key={label} style={{ minWidth: '125px', flex: '1 1 125px', padding: '.9rem 1rem', borderRight: index < 5 ? '1px solid #E6EDF5' : 0, textAlign: 'center' }}><strong style={{ display: 'block', color: BLUE, fontFamily: 'var(--font-display)', fontSize: '1.45rem', lineHeight: 1.2 }}>{Number(value || 0)}</strong><span style={{ display: 'block', marginTop: '.2rem', color: '#496581', fontSize: '.84rem', lineHeight: 1.35, fontWeight: 800 }}>{label}</span></div>)}
+                  ['Courses', summary.courses], ['Bookings', summary.bookings], ['Payments', summary.payments], ['Refunds', summary.refunds],
+                ].map(([label, value], index, items) => <div key={label} style={{ minWidth: '125px', flex: '1 1 125px', padding: '.9rem 1rem', borderRight: index < items.length - 1 ? '1px solid #E6EDF5' : 0, textAlign: 'center' }}><strong style={{ display: 'block', color: BLUE, fontFamily: 'var(--font-display)', fontSize: '1.45rem', lineHeight: 1.2 }}>{Number(value || 0)}</strong><span style={{ display: 'block', marginTop: '.2rem', color: '#496581', fontSize: '.84rem', lineHeight: 1.35, fontWeight: 800 }}>{label}</span></div>)}
               </div>
 
               <nav aria-label="Student profile sections" style={{ display: 'flex', gap: '.35rem', overflowX: 'auto', padding: '.35rem', border: '1px solid #DCE7F3', borderRadius: '12px', background: '#EDF3F9' }}>
@@ -179,7 +178,6 @@ export default function AdminUserDetailsModal({ dialog, onClose, onRetry }) {
                   ['courses', `Courses (${summary.courses || 0})`],
                   ['bookings', `Bookings (${summary.bookings || 0})`],
                   ['finance', 'Payments & Refunds'],
-                  ['activity', 'Activity'],
                 ].map(([key, label]) => {
                   const selected = activeTab === key
                   return <button key={key} type="button" aria-pressed={selected} onClick={() => setActiveTab(key)} style={{ minHeight: '46px', flex: '0 0 auto', padding: '.65rem 1rem', border: selected ? `1px solid ${BLUE}` : '1px solid transparent', borderRadius: '9px', background: selected ? '#fff' : 'transparent', color: selected ? BLUE : '#49627E', boxShadow: selected ? '0 4px 13px rgba(1,69,168,.1)' : 'none', fontSize: '.95rem', lineHeight: 1.35, fontWeight: 900, cursor: 'pointer' }}>{label}</button>
@@ -269,13 +267,6 @@ export default function AdminUserDetailsModal({ dialog, onClose, onRetry }) {
                 />
               </Section></div>}
 
-              {activeTab === 'activity' && <Section title="Other Account Activity" subtitle="Current cart, checkout, and support activity summaries.">
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', columnGap: '1.4rem' }}>
-                  <InfoField label="Courses Waiting in Cart" value={(data.cartItems || []).map(item => item.title || item.planName || item.id).filter(Boolean)} />
-                  <InfoField label="PayPal Checkout Attempts" value={(data.checkoutOrders || []).length} />
-                  <InfoField label="Support Subjects" value={(data.supportThreads || []).map(thread => thread.subject).filter(Boolean)} />
-                </div>
-              </Section>}
             </>
           )}
         </div>

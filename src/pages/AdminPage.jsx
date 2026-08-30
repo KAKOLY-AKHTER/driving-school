@@ -390,7 +390,6 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
   const [imagePreview, setImagePreview] = useState('')
   const [editingId, setEditingId] = useState('')
   const [search, setSearch] = useState('')
-  const [visibility, setVisibility] = useState('all')
   const [reviewPage, setReviewPage] = useState(1)
   const [reviewLimit, setReviewLimit] = useState(10)
   const [loading, setLoading] = useState(true)
@@ -497,10 +496,8 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
 
   const matchedReviews = reviews.filter(review => {
     const query = search.trim().toLowerCase()
-    return (!query || String(review.name || '').toLowerCase().includes(query) || String(review.text || '').toLowerCase().includes(query))
-      && (visibility === 'all' || (visibility === 'published' ? review.published !== false : review.published === false))
+    return !query || String(review.name || '').toLowerCase().includes(query) || String(review.text || '').toLowerCase().includes(query)
   })
-  const reviewStatusOptions = [...new Set(reviews.map(review => review.published !== false ? 'published' : 'draft'))]
   const publishedCount = reviews.filter(review => review.published !== false).length
   const reviewPages = Math.max(1, Math.ceil(matchedReviews.length / reviewLimit))
   const safeReviewPage = Math.min(reviewPage, reviewPages)
@@ -536,12 +533,12 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
       </form>
 
       <div style={cardStyle}>
-        <div className="admin-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Customer Reviews ({filtered.length} of {reviews.length})</h2><div style={{ display: 'flex', gap: '.5rem', flexWrap: 'nowrap', alignItems: 'center' }}><input className="admin-toolbar-input" type="search" aria-label="Search reviews" placeholder="Search reviewer or text…" value={search} onChange={event => { setSearch(event.target.value); setReviewPage(1) }} style={{ ...inputStyle, width: '240px', minWidth: 0 }} /><select aria-label="Filter review visibility" value={visibility} onChange={event => { setVisibility(event.target.value); setReviewPage(1) }} style={{ ...inputStyle, width: '145px', flexShrink: 0 }}><option value="all">All review statuses</option>{reviewStatusOptions.map(status => <option key={status} value={status}>{status === 'published' ? 'Published' : 'Draft'}</option>)}</select></div></div>
+        <div className="admin-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Customer Reviews ({filtered.length} of {reviews.length})</h2><div style={{ display: 'flex', gap: '.5rem', flexWrap: 'nowrap', alignItems: 'center' }}><input className="admin-toolbar-input" type="search" aria-label="Search reviews" placeholder="Search reviewer or text…" value={search} onChange={event => { setSearch(event.target.value); setReviewPage(1) }} style={{ ...inputStyle, width: '240px', minWidth: 0 }} /></div></div>
         {error && <div role="alert" style={{ padding: '.85rem 1rem', marginBottom: '1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{error} <button type="button" onClick={() => setLoadVersion(value => value + 1)} style={{ marginLeft: '.6rem', border: 0, background: 'transparent', color: '#0755AE', fontWeight: 850, cursor: 'pointer' }}>Retry</button></div>}
         <TablePager page={safeReviewPage} pages={reviewPages} total={matchedReviews.length} label="reviews" onChange={setReviewPage}><select aria-label="Review rows per page" value={reviewLimit} onChange={event => { setReviewLimit(Number(event.target.value)); setReviewPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></TablePager>
         <div className="admin-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr><th scope="col" style={thStyle}>Reviewer</th><th scope="col" style={thStyle}>Review Message</th><th scope="col" style={thStyle}>Star Rating</th><th scope="col" style={thStyle}>Website Visibility</th><th scope="col" className="admin-actions-cell" style={thStyle}>Manage Review</th></tr></thead><tbody>
           {filtered.map(review => <tr key={review._id}><td style={{ ...tdStyle, fontWeight: 800, whiteSpace: 'nowrap' }}><div style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>{review.imageUrl ? <img src={review.imageUrl} alt={`${review.name} reviewer`} loading="lazy" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #D9E4F2', boxShadow: '0 5px 14px rgba(15,45,87,.1)' }} /> : <span aria-hidden="true" style={{ width: '48px', height: '48px', borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg,#0755AE,#0A2A5E)', color: '#fff', border: `2px solid ${GOLD}`, fontWeight: 900 }}>{String(review.name || '?').trim().split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase()}</span>}<span>{review.name}</span></div></td><td style={{ ...tdStyle, minWidth: '280px', maxWidth: '520px', lineHeight: 1.5 }}>{review.text}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap', color: GOLD_DEEP, fontWeight: 900 }}>{'★'.repeat(Number(review.rating) || 5)}<span style={{ color: '#CBD5E1' }}>{'★'.repeat(5 - (Number(review.rating) || 5))}</span></td><td style={tdStyle}><button type="button" onClick={() => togglePublished(review)} style={{ padding: '.3rem .6rem', border: `1px solid ${review.published !== false ? '#BBF7D0' : '#CBD5E1'}`, borderRadius: '999px', background: review.published !== false ? '#F0FDF4' : '#F8FAFC', color: review.published !== false ? '#15803D' : '#64748B', fontWeight: 800, cursor: 'pointer' }}>{review.published !== false ? 'Published' : 'Draft'}</button></td><td className="admin-actions-cell" style={tdStyle}><div style={{ display: 'flex', gap: '.4rem' }}><button type="button" onClick={() => startEdit(review)} style={{ padding: '.4rem .65rem', border: `1.5px solid ${SKY_BLUE}`, borderRadius: '8px', background: '#fff', color: SKY_BLUE, fontWeight: 800, cursor: 'pointer' }}>Edit</button><AdminDeleteIconButton label={`Delete customer review from ${review.name || 'customer'}`} title="Delete customer review" onClick={() => requestConfirmation('Delete customer review?', `${review.name}'s testimonial will be permanently removed.`, () => deleteReview(review))} /></div></td></tr>)}
-          {!loading && !filtered.length && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{search || visibility !== 'all' ? 'No reviews match the selected filters.' : 'No customer reviews yet.'}</td></tr>}
+          {!loading && !filtered.length && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{search ? 'No reviews match your search.' : 'No customer reviews yet.'}</td></tr>}
           {loading && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>Loading reviews…</td></tr>}
         </tbody></table></div>
       </div>
@@ -853,9 +850,9 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
         {paginationControls}
         <div className="admin-table-wrap">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr><th scope="col" style={{ ...thStyle, minWidth: '92px' }}><label style={{ display: 'inline-flex', alignItems: 'center', gap: '.45rem', cursor: selectableRows.length ? 'pointer' : 'not-allowed' }}><input aria-label="Select all editable lesson slots on this page" type="checkbox" disabled={!selectableRows.length} checked={allSelected} onChange={() => setSelected(allSelected ? [] : selectableRows.map(row => String(row._id)))} /><span>Select</span></label></th><th scope="col" style={thStyle}>Lesson Date</th><th scope="col" style={thStyle}>Lesson Time</th><th scope="col" style={thStyle}>Booking Availability Status</th><th scope="col" className="admin-actions-cell" style={thStyle}>Actions</th></tr></thead>
+            <thead><tr><th scope="col" style={{ ...thStyle, minWidth: '92px' }}><label style={{ display: 'inline-flex', alignItems: 'center', gap: '.45rem', cursor: selectableRows.length ? 'pointer' : 'not-allowed' }}><input aria-label="Select all editable lesson slots on this page" type="checkbox" disabled={!selectableRows.length} checked={allSelected} onChange={() => setSelected(allSelected ? [] : selectableRows.map(row => String(row._id)))} /><span>Select</span></label></th><th scope="col" style={thStyle}>Lesson Date</th><th scope="col" style={thStyle}>Lesson Time</th><th scope="col" style={thStyle}>Booking Availability Status</th><th scope="col" className="admin-actions-cell" style={thStyle}>Remove Slot</th></tr></thead>
             <tbody>
-              {rows.map(row => { const meta = statusStyle(row.status); const manageable = isManageable(row); const removable = isRemovable(row); const statusId = `availability-status-${row._id}`; return <tr key={row._id}><td style={tdStyle}><input aria-label={`Select lesson slot on ${row.date} at ${row.time}`} type="checkbox" disabled={!manageable} checked={selected.includes(String(row._id))} onChange={() => setSelected(current => current.includes(String(row._id)) ? current.filter(id => id !== String(row._id)) : [...current, String(row._id)])} /></td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{new Date(`${row.date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{row.time}</td><td style={tdStyle}>{manageable ? <select id={statusId} aria-label={`Change booking availability for ${row.date} at ${row.time}`} disabled={saving} value={row.status} onChange={event => updateRowStatus(row, event.target.value)} style={{ minWidth: '150px', padding: '.46rem .65rem', border: `1px solid ${meta.color}55`, borderRadius: '9px', background: meta.background, color: meta.color, fontFamily: 'var(--font-mono)', fontSize: '.76rem', letterSpacing: '.04em', textTransform: 'uppercase', fontWeight: 800, cursor: saving ? 'wait' : 'pointer' }}><option value="available">Available</option><option value="blocked">Unavailable</option><option value="booked" disabled>Booked (automatic)</option></select> : <span title="Booked is created automatically when a student reserves this lesson slot" style={{ ...meta, display: 'inline-flex', padding: '.25rem .55rem', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 800, whiteSpace: 'nowrap' }}>{statusLabel(row.status)}</span>}</td><td className="admin-actions-cell" style={tdStyle}><div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', whiteSpace: 'nowrap' }}><button type="button" disabled={!manageable || saving} onClick={() => document.getElementById(statusId)?.focus()} title={manageable ? 'Edit this slot availability' : 'Only future available or unavailable slots can be edited'} style={{ border: `1.5px solid ${SKY_BLUE}`, borderRadius: 'var(--radius-sm)', padding: '.35rem .6rem', background: '#fff', color: SKY_BLUE, fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 700, cursor: manageable && !saving ? 'pointer' : 'not-allowed', opacity: manageable ? 1 : .5 }}>Edit</button><AdminDeleteIconButton disabled={!removable} label={`Remove lesson slot on ${row.date} at ${row.time}`} title={removable ? 'Remove this future lesson slot' : 'Past, checkout-in-progress, and booked slots cannot be removed'} onClick={() => requestConfirmation('Permanently remove this lesson slot?', `${row.date} at ${row.time} will be removed and will no longer appear in the student booking calendar.`, () => deleteSlot(row))} /></div></td></tr> })}
+              {rows.map(row => { const meta = statusStyle(row.status); const manageable = isManageable(row); const removable = isRemovable(row); return <tr key={row._id}><td style={tdStyle}><input aria-label={`Select lesson slot on ${row.date} at ${row.time}`} type="checkbox" disabled={!manageable} checked={selected.includes(String(row._id))} onChange={() => setSelected(current => current.includes(String(row._id)) ? current.filter(id => id !== String(row._id)) : [...current, String(row._id)])} /></td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{new Date(`${row.date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{row.time}</td><td style={tdStyle}>{manageable ? <select aria-label={`Change booking availability for ${row.date} at ${row.time}`} disabled={saving} value={row.status} onChange={event => updateRowStatus(row, event.target.value)} style={{ minWidth: '150px', padding: '.46rem .65rem', border: `1px solid ${meta.color}55`, borderRadius: '9px', background: meta.background, color: meta.color, fontFamily: 'var(--font-mono)', fontSize: '.76rem', letterSpacing: '.04em', textTransform: 'uppercase', fontWeight: 800, cursor: saving ? 'wait' : 'pointer' }}><option value="available">Available</option><option value="blocked">Unavailable</option><option value="booked" disabled>Booked (automatic)</option></select> : <span title="Booked is created automatically when a student reserves this lesson slot" style={{ ...meta, display: 'inline-flex', padding: '.25rem .55rem', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 800, whiteSpace: 'nowrap' }}>{statusLabel(row.status)}</span>}</td><td className="admin-actions-cell" style={tdStyle}><AdminDeleteIconButton disabled={!removable} label={`Remove lesson slot on ${row.date} at ${row.time}`} title={removable ? 'Remove this future lesson slot' : 'Past, checkout-in-progress, and booked slots cannot be removed'} onClick={() => requestConfirmation('Permanently remove this lesson slot?', `${row.date} at ${row.time} will be removed and will no longer appear in the student booking calendar.`, () => deleteSlot(row))} /></td></tr> })}
               {!loading && !rows.length && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{status === 'manageable' && !search ? 'No editable future slots yet. Create future availability above, or choose another status filter.' : search || status !== 'all' ? 'No availability matches the filters.' : 'No lesson availability has been created yet.'}</td></tr>}
               {loading && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>Loading availability…</td></tr>}
             </tbody>
@@ -927,7 +924,7 @@ export default function AdminPage() {
   const [areaLimit, setAreaLimit] = useState('10')
   const [socials, setSocials] = useState([])
   const [socialsEdit, setSocialsEdit] = useState(null)
-  const [socialsForm, setSocialsForm] = useState({ platform: 'facebook', url: '', order: 0 })
+  const [socialsForm, setSocialsForm] = useState({ platform: 'facebook', url: '' })
   const [socialSearch, setSocialSearch] = useState('')
   const [detailsDialog, setDetailsDialog] = useState(null)
   const [enrollPage, setEnrollPage] = useState(1)
@@ -2375,7 +2372,6 @@ export default function AdminPage() {
                               <td style={{ ...tdStyle, minWidth: '190px', whiteSpace: 'nowrap' }}>{displayedTime}</td>
                               <td style={tdStyle}>
                                 <select
-                                  id={`booking-status-${b._id}`}
                                   aria-label={`Change booking status for ${adminUserName(u)} on ${b.date || ''}`}
                                   title={statusMeta.group === 'cancelled' ? 'Cancelled is final because the lesson slot has been released.' : 'Change this booking status'}
                                   value={statusMeta.group}
@@ -2402,7 +2398,6 @@ export default function AdminPage() {
                                       Calendar unavailable
                                     </button>
                                   )}
-                                  <button type="button" disabled={bookingStatusUpdating === String(b._id) || statusMeta.group === 'cancelled'} onClick={() => document.getElementById(`booking-status-${b._id}`)?.focus()} title={statusMeta.group === 'cancelled' ? 'Cancelled bookings cannot be edited.' : 'Edit this booking status'} style={{ minHeight: '38px', padding: '.38rem .68rem', border: `1.5px solid ${SKY_BLUE}`, borderRadius: '9px', background: '#fff', color: SKY_BLUE, fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 800, cursor: statusMeta.group === 'cancelled' || bookingStatusUpdating === String(b._id) ? 'not-allowed' : 'pointer', opacity: statusMeta.group === 'cancelled' ? .5 : 1, whiteSpace: 'nowrap' }}>Edit</button>
                                   <AdminDeleteIconButton
                                     label={`Delete ${b.date || ''} booking for ${adminUserName(u) || u?.email || 'student'}`}
                                     title="Delete booking"
@@ -2521,7 +2516,7 @@ export default function AdminPage() {
                 <div style={cardStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.dollar} Pricing Plan ({pricing.length})</h3>
-                    <button onClick={() => { setPricingForm({ planName: '', id: '', planPrice: '', planPriceTwo: '', option1: '', perm1: 'Select', option2: '', perm2: 'Select', option3: '', perm3: 'Select', option4: '', perm4: 'Select', option5: '', perm5: 'Select' }); setPricingEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Pricing Plan</button>
+                    <button onClick={() => { setPricingForm({ planName: '', planPrice: '', planPriceTwo: '', option1: '', perm1: 'Select', option2: '', perm2: 'Select', option3: '', perm3: 'Select', option4: '', perm4: 'Select', option5: '', perm5: 'Select' }); setPricingEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Pricing Plan</button>
                   </div>
                   <div role="note" style={{ marginBottom: '1.25rem', padding: '0.9rem 1rem', border: '1px solid #BFDBFE', background: '#EFF6FF', borderRadius: '12px', color: '#1E3A5F', lineHeight: 1.55 }}>
                     <strong>Location pricing:</strong> Near cities use the Near Price; Long cities use the Long Price. The server verifies the selected city and applies the matching price to the cart and invoice.
@@ -2532,7 +2527,6 @@ export default function AdminPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr>
-                          <th scope="col" style={thStyle}>Plan ID</th>
                           <th scope="col" style={thStyle}>Pricing Plan</th>
                           <th scope="col" style={thStyle}>Near-Area Price</th>
                           <th scope="col" style={thStyle}>Long-Distance Price</th>
@@ -2550,7 +2544,6 @@ export default function AdminPage() {
                           const enrolledCount = enrollmentRows.filter(({ course }) => String(course?.id || '') === String(t.id || '')).length
                           return (
                             <tr key={t._id}>
-                              <td style={tdStyle}><span style={{ padding: '0.15rem 0.4rem', background: 'rgba(1,69,168,0.08)', color: SKY_BLUE, borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 700 }}>{t.id}</span></td>
                               <td style={{ ...tdStyle, fontWeight: 600, maxWidth: '160px' }}><button type="button" aria-label={`View full pricing details for ${t.planName}`} onClick={() => setDetailsDialog({ title: t.planName || 'Pricing Plan', subtitle: `Near ${t.planPrice || '—'} · Long ${t.planPriceTwo || '—'}`, content: (opts.length ? opts.map((option, index) => `${index + 1}. ${option?.text || '—'} — ${option?.permission && option.permission !== 'Select' ? option.permission : '—'}`).join('\n') : 'No options recorded.') })} style={{ maxWidth: '145px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: 0, padding: 0, background: 'transparent', color: SKY_BLUE, textDecoration: 'underline', cursor: 'pointer', fontWeight: 700 }}>{t.planName}</button></td>
                               <td style={tdStyle}>{t.planPrice}</td>
                               <td style={tdStyle}>{t.planPriceTwo}</td>
@@ -2562,7 +2555,7 @@ export default function AdminPage() {
                                   <button onClick={() => {
                                     const opts = t.options || []
                                     setPricingForm({
-                                      planName: t.planName || '', id: t.id || '',
+                                      planName: t.planName || '',
                                       planPrice: t.planPrice || '', planPriceTwo: t.planPriceTwo || '',
                                       option1: opts[0]?.text || '', perm1: opts[0]?.permission || 'Select',
                                       option2: opts[1]?.text || '', perm2: opts[1]?.permission || 'Select',
@@ -2578,7 +2571,7 @@ export default function AdminPage() {
                           )
                         })}
                         {filteredPricing.length === 0 && (
-                          <tr><td colSpan={10} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{pricingSearch ? 'No pricing plans match the search.' : 'No pricing packages yet. Click "+ Add Pricing Plan" to create one.'}</td></tr>
+                          <tr><td colSpan={9} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{pricingSearch ? 'No pricing plans match the search.' : 'No pricing packages yet. Click "+ Add Pricing Plan" to create one.'}</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -2910,7 +2903,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                 <div style={{ ...cardStyle, marginBottom: '1.25rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.share} Social Links Management ({socials.length})</h3>
-                    <button onClick={() => { setSocialsForm({ platform: 'facebook', url: '', order: socials.length }); setSocialsEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Social Link</button>
+                    <button onClick={() => { setSocialsForm({ platform: 'facebook', url: '' }); setSocialsEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Social Link</button>
                   </div>
                   <div className="admin-toolbar" style={{ marginBottom: '1rem' }}><input type="search" aria-label="Search social links" placeholder="Search platform or URL…" value={socialSearch} onChange={event => setSocialSearch(event.target.value)} style={{ ...inputStyle, maxWidth: '320px' }} /></div>
                   <div className="admin-table-wrap">
@@ -2919,7 +2912,6 @@ Near and Long pricing is applied automatically from the selected city and verifi
                         <tr>
                           <th scope="col" style={thStyle}>Social Platform</th>
                           <th scope="col" style={thStyle}>Profile / Page URL</th>
-                          <th scope="col" style={thStyle}>Display Order</th>
                           <th scope="col" className="admin-actions-cell" style={thStyle}>Manage Link</th>
                         </tr>
                       </thead>
@@ -2933,17 +2925,16 @@ Near and Long pricing is applied automatically from the selected city and verifi
                               </span>
                             </td>
                             <td style={{ ...tdStyle, maxWidth: '300px' }}><button type="button" aria-label={`View full ${socialPlatformLabel(s.platform)} URL`} onClick={() => setDetailsDialog({ title: 'Social Link URL', subtitle: socialPlatformLabel(s.platform), content: s.url || '—' })} style={{ maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: 0, background: 'transparent', padding: 0, color: SKY_BLUE, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}>{s.url || '—'}</button></td>
-                            <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>{s.order ?? 0}</td>
                             <td className="admin-actions-cell" style={tdStyle}>
                               <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                <button onClick={() => { setSocialsForm({ platform: s.platform || 'link', url: s.url || '', order: s.order ?? 0 }); setSocialsEdit(s._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
+                                <button onClick={() => { setSocialsForm({ platform: s.platform || 'link', url: s.url || '' }); setSocialsEdit(s._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
                                 <AdminDeleteIconButton label={`Delete ${socialPlatformLabel(s.platform)} social link`} title="Delete social link" onClick={() => requestConfirmation('Delete social link?', `${socialPlatformLabel(s.platform)} will be removed from the website.`, () => deleteSocial(s._id))} />
                               </div>
                             </td>
                           </tr>
                         ))}
                         {socials.length === 0 && (
-                          <tr><td colSpan={4} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>No social links yet. Click "+ Add Social Link" to create one.</td></tr>
+                          <tr><td colSpan={3} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>No social links yet. Click "+ Add Social Link" to create one.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -3202,7 +3193,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                       <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Comments</label>
                       <textarea aria-label="Contact comments" rows="4" value={contactForm.comments} onChange={e => setContactForm(prev => ({ ...prev, comments: e.target.value }))} style={{ ...inputStyle, resize: 'vertical' }} />
                     </div>
-                    <div style={{ marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                       <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Status</label>
                       <select aria-label="Contact status" value={contactForm.status} onChange={e => setContactForm(prev => ({ ...prev, status: e.target.value }))} style={inputStyle}>
                         <option value="new">New</option>
@@ -3231,10 +3222,6 @@ Near and Long pricing is applied automatically from the selected city and verifi
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Plan Name *</label>
                         <input autoFocus aria-label="Plan name" type="text" value={pricingForm.planName} onChange={e => setPricingForm(prev => ({ ...prev, planName: e.target.value }))} style={inputStyle} />
-                      </div>
-                      <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>ID *</label>
-                        <input type="text" value={pricingForm.id} onChange={e => setPricingForm(prev => ({ ...prev, id: e.target.value }))} style={inputStyle} placeholder="e.g. 1, 2, 3..." />
                       </div>
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Near Price *</label>
@@ -3281,17 +3268,17 @@ Near and Long pricing is applied automatically from the selected city and verifi
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
                       <button onClick={() => setPricingEdit(null)} style={{ flex: 1, padding: '0.75rem', background: 'none', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, color: '#334155', cursor: 'pointer' }}>Cancel</button>
                       <button onClick={async () => {
-                        if (!pricingForm.planName || !pricingForm.id || !pricingForm.planPrice || !pricingForm.planPriceTwo) { setMsg('Plan Name, ID, Near Price, and Long Price are required.'); setTimeout(() => setMsg(''), 2000); return }
+                        if (!pricingForm.planName || !pricingForm.planPrice || !pricingForm.planPriceTwo) { setMsg('Plan Name, Near Price, and Long Price are required.'); setTimeout(() => setMsg(''), 2000); return }
                         if (!isValidPlanAmount(pricingForm.planPrice) || !isValidPlanAmount(pricingForm.planPriceTwo)) { setMsg('Near Price and Long Price must be valid dollar amounts with up to 2 decimal places.'); setTimeout(() => setMsg(''), 3500); return }
                         const options = [1,2,3,4,5].map(i => ({
                           text: pricingForm[`option${i}`] || '',
                           permission: pricingForm[`perm${i}`] || 'Select',
                         }))
-                        const doc = { planName: pricingForm.planName, id: pricingForm.id, planPrice: pricingForm.planPrice, planPriceTwo: pricingForm.planPriceTwo, options }
+                        const doc = { planName: pricingForm.planName, planPrice: pricingForm.planPrice, planPriceTwo: pricingForm.planPriceTwo, options }
                         try {
                           if (pricingEdit === 'new') {
                             const r = await api.adminAddPricing(doc)
-                            if (r.ok) { doc._id = r._id; setPricing(prev => [...prev, doc]) }
+                            if (r.ok) { setPricing(prev => [r.pricing || { ...doc, _id: r._id }, ...prev]) }
                           } else {
                             await api.adminUpdatePricing(pricingEdit, doc)
                             setPricing(prev => prev.map(x => x._id === pricingEdit ? { ...x, ...doc } : x))
@@ -3456,16 +3443,12 @@ Near and Long pricing is applied automatically from the selected city and verifi
                       <h3 id="social-dialog-title" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, margin: 0 }}>{socialsEdit === 'new' ? 'Add Social Link' : 'Edit Social Link'}</h3>
                       <button type="button" aria-label="Close social link editor" onClick={() => setSocialsEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: '#334155', cursor: 'pointer' }}>&times;</button>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                    <div style={{ marginBottom: '1.5rem' }}>
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Platform *</label>
                         <select autoFocus aria-label="Social platform" value={socialsForm.platform} onChange={e => setSocialsForm(prev => ({ ...prev, platform: e.target.value }))} style={inputStyle}>
                           {SOCIAL_PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                         </select>
-                      </div>
-                      <div>
-                        <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Order</label>
-                        <input type="number" value={socialsForm.order} onChange={e => setSocialsForm(prev => ({ ...prev, order: Number(e.target.value) }))} style={inputStyle} />
                       </div>
                     </div>
                     <div style={{ marginBottom: '1.5rem' }}>
@@ -3481,7 +3464,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                         if (!socialsForm.url) { setMsg('URL is required.'); setTimeout(() => setMsg(''), 2000); return }
                         const urlResult = validateHttpsUrl(socialsForm.url)
                         if (urlResult.error) { setMsg(urlResult.error); setTimeout(() => setMsg(''), 3500); return }
-                        const doc = { platform: socialsForm.platform, url: urlResult.value, order: Number(socialsForm.order) || 0 }
+                        const doc = { platform: socialsForm.platform, url: urlResult.value }
                         try {
                           if (socialsEdit === 'new') {
                             const r = await api.adminAddSocial(doc)

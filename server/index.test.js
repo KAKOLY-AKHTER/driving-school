@@ -425,6 +425,8 @@ test('admin pricing accepts dollar values and rejects malformed prices', () => {
   })
   assert.equal(plan.planPrice, '$210')
   assert.equal(plan.planPriceTwo, '$275.50')
+  const autoIdPlan = sanitizePricing({ planName: 'AUTO ID PLAN', planPrice: '$210', planPriceTwo: '$275', options: [] })
+  assert.match(autoIdPlan.id, /^plan-[a-f0-9]{24}$/)
   assert.throws(
     () => sanitizePricing({ id: '2', planName: 'BASIC PLAN', planPrice: 'free', planPriceTwo: '$275' }),
     error => error.status === 400 && /valid dollar amounts/.test(error.message)

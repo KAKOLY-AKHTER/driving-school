@@ -64,7 +64,6 @@ export default function AdminBlogPanel({
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState("");
   const [search, setSearch] = useState("");
-  const [visibility, setVisibility] = useState("all");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [loading, setLoading] = useState(true);
@@ -114,12 +113,9 @@ export default function AdminBlogPanel({
               .toLowerCase()
               .includes(query),
         );
-      const matchesVisibility =
-        visibility === "all" || publicationState(post).label.toLowerCase() === visibility;
-      return matchesSearch && matchesVisibility;
+      return matchesSearch;
     });
-  }, [posts, search, visibility]);
-  const postStatusOptions = [...new Set(posts.map((post) => publicationState(post).label.toLowerCase()))];
+  }, [posts, search]);
   const pages = Math.max(1, Math.ceil(filtered.length / limit));
   const safePage = Math.min(page, pages);
   const visiblePosts = filtered.slice((safePage - 1) * limit, safePage * limit);
@@ -700,15 +696,6 @@ export default function AdminBlogPanel({
               onChange={(event) => { setSearch(event.target.value); setPage(1); }}
               placeholder="Search title, category…"
             />
-            <select
-              aria-label="Filter blog visibility"
-              style={{ ...inputStyle, width: 140, flexShrink: 0 }}
-              value={visibility}
-              onChange={(event) => { setVisibility(event.target.value); setPage(1); }}
-            >
-              <option value="all">All post statuses</option>
-              {postStatusOptions.map((status) => <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>)}
-            </select>
           </div>
         </div>
         {loading ? (
@@ -884,7 +871,7 @@ export default function AdminBlogPanel({
                       }}
                     >
                       {posts.length
-                        ? "No blog posts match the filters."
+                        ? "No blog posts match your search."
                         : "No blog posts yet. Create the first post above."}
                     </td>
                   </tr>
