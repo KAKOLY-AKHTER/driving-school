@@ -690,19 +690,19 @@ export default function AdminBlogPanel({
               {filtered.length} of {posts.length} posts
             </p>
           </div>
-          <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: ".5rem", flexWrap: "nowrap", alignItems: "center" }}>
             <input
               className="admin-toolbar-input"
               type="search"
               aria-label="Search blog posts"
-              style={{ ...inputStyle, width: 260 }}
+              style={{ ...inputStyle, width: 260, minWidth: 0 }}
               value={search}
               onChange={(event) => { setSearch(event.target.value); setPage(1); }}
               placeholder="Search title, category…"
             />
             <select
               aria-label="Filter blog visibility"
-              style={{ ...inputStyle, width: 140 }}
+              style={{ ...inputStyle, width: 140, flexShrink: 0 }}
               value={visibility}
               onChange={(event) => { setVisibility(event.target.value); setPage(1); }}
             >

@@ -69,7 +69,7 @@ export function openPrintableDocument({ title, heading, subtitle, rows, autoPrin
 
 // A detailed, print-friendly enrollment invoice. Browser print dialogs let staff
 // save this document as a PDF without exposing any account data in a URL.
-export function openEnrollmentInvoice({ school = {}, student = {}, enrollment = {}, autoPrint = true }) {
+function _openPrintableEnrollmentInvoice({ school = {}, student = {}, enrollment = {}, autoPrint = true }) {
   const popup = window.open('', '_blank', 'width=920,height=780')
   if (!popup) return false
 
@@ -107,5 +107,144 @@ export function openEnrollmentInvoice({ school = {}, student = {}, enrollment = 
   const totals = doc.createElement('div'); totals.className = 'totals'; const subtotal = line('Subtotal', enrollment.amount); const tax = line('Tax', '$0.00'); const total = line('Total', enrollment.amount); total.className = 'total'; totals.append(subtotal, tax, total); main.append(totals)
   const footer = doc.createElement('footer'); footer.textContent = 'Thank you for choosing A Precision Driving School. This invoice summarizes the enrollment and payment details available at the time it was generated.'; main.append(footer)
   doc.body.replaceChildren(main); popup.focus(); if (autoPrint) window.setTimeout(() => popup.print(), 120)
+  return true
+}
+
+const invoiceValue = input => input === null || input === undefined || input === '' ? 'Not recorded' : String(input)
+const invoiceFileName = input => String(input || 'enrollment-invoice').replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'enrollment-invoice'
+
+const fetchImageData = async (url) => {
+  const response = await fetch(url)
+  if (!response.ok) throw new Error('Logo unavailable')
+  const blob = await response.blob()
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
+
+// Creates a real PDF and downloads it directly, with no print window involved.
+export async function openEnrollmentInvoice({ school = {}, student = {}, enrollment = {} }) {
+  const [{ jsPDF }, logo] = await Promise.all([
+    import('jspdf'),
+    fetchImageData('/driving-logo.png').catch(() => null),
+  ])
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' })
+  const pageWidth = pdf.internal.pageSize.getWidth()
+  const margin = 42
+  const contentWidth = pageWidth - margin * 2
+  const blue = [1, 69, 168]
+  const navy = [10, 42, 94]
+  const gold = [253, 188, 1]
+  const value = invoiceValue
+  const amount = value(enrollment.amount)
+
+  pdf.setFillColor(...navy)
+  pdf.rect(0, 0, pageWidth, 126, 'F')
+  pdf.setFillColor(...gold)
+  pdf.rect(0, 120, pageWidth, 6, 'F')
+  if (logo) pdf.addImage(logo, 'PNG', margin, 26, 66, 66)
+  pdf.setTextColor(255, 255, 255)
+  pdf.setFont('helvetica', 'bold')
+  pdf.setFontSize(21)
+  pdf.text(value(school.name || 'A Precision Driving School'), logo ? 120 : margin, 52)
+  pdf.setFont('helvetica', 'normal')
+  pdf.setFontSize(9.5)
+  pdf.text([school.address, school.phone, school.email, school.website].filter(Boolean).join('  |  '), logo ? 120 : margin, 70, { maxWidth: 300 })
+  pdf.setFillColor(...blue)
+  pdf.roundedRect(pageWidth - 163, 36, 121, 32, 5, 5, 'F')
+  pdf.setFont('helvetica', 'bold')
+  pdf.setFontSize(15)
+  pdf.text('INVOICE', pageWidth - 102.5, 57, { align: 'center' })
+  pdf.setTextColor(71, 85, 105)
+  pdf.setFont('helvetica', 'normal')
+  pdf.setFontSize(9.5)
+  pdf.text(`Invoice # ${value(enrollment.reference)}`, pageWidth - margin, 90, { align: 'right' })
+  pdf.text(`Issued ${value(enrollment.issuedAt)}`, pageWidth - margin, 105, { align: 'right' })
+
+  const section = (title, y) => {
+    pdf.setFillColor(...blue)
+    pdf.roundedRect(margin, y, contentWidth, 24, 5, 5, 'F')
+    pdf.setTextColor(255, 255, 255)
+    pdf.setFont('helvetica', 'bold')
+    pdf.setFontSize(10)
+    pdf.text(title, margin + 12, y + 16)
+    return y + 24
+  }
+  const detail = (label, input, x, y, width) => {
+    pdf.setTextColor(51, 65, 85)
+    pdf.setFont('helvetica', 'bold')
+    pdf.setFontSize(8.5)
+    pdf.text(label.toUpperCase(), x, y)
+    pdf.setTextColor(15, 35, 70)
+    pdf.setFont('helvetica', 'normal')
+    pdf.setFontSize(10)
+    pdf.text(pdf.splitTextToSize(value(input), width), x, y + 13)
+  }
+
+  let y = 152
+  y = section('STUDENT & ENROLLMENT INFORMATION', y)
+  pdf.setFillColor(248, 251, 255)
+  pdf.roundedRect(margin, y, contentWidth, 150, 0, 0, 'F')
+  const leftX = margin + 14
+  const rightX = margin + contentWidth / 2 + 8
+  const detailWidth = contentWidth / 2 - 28
+  const rows = [
+    [['Student', student.name], ['Enrollment ID', enrollment.id]],
+    [['Email', student.email], ['Payment Status', enrollment.paymentStatus]],
+    [['Phone', student.phone], ['Enrollment Status', enrollment.status]],
+    [['Address', student.address], ['Enrollment Date', enrollment.enrolledAt]],
+    [['Pickup Location', enrollment.location], ['Lesson Slots', enrollment.lessonSlots]],
+  ]
+  rows.forEach((row, index) => {
+    const rowY = y + 17 + index * 27
+    detail(row[0][0], row[0][1], leftX, rowY, detailWidth)
+    detail(row[1][0], row[1][1], rightX, rowY, detailWidth)
+  })
+  y += 174
+  y = section('COURSE DETAILS', y)
+  pdf.setFillColor(241, 245, 249)
+  pdf.rect(margin, y, contentWidth, 24, 'F')
+  pdf.setTextColor(51, 65, 85)
+  pdf.setFont('helvetica', 'bold')
+  pdf.setFontSize(8.5)
+  pdf.text('COURSE', margin + 12, y + 16)
+  pdf.text('PRICE', margin + contentWidth - 165, y + 16)
+  pdf.text('STATUS', margin + contentWidth - 70, y + 16)
+  y += 24
+  pdf.setDrawColor(226, 232, 240)
+  pdf.rect(margin, y, contentWidth, 38)
+  pdf.setTextColor(15, 35, 70)
+  pdf.setFont('helvetica', 'bold')
+  pdf.setFontSize(10)
+  pdf.text(pdf.splitTextToSize(value(enrollment.course), contentWidth - 270), margin + 12, y + 17)
+  pdf.text(amount, margin + contentWidth - 165, y + 17)
+  pdf.setTextColor(21, 128, 61)
+  pdf.text(value(enrollment.status), margin + contentWidth - 70, y + 17)
+  y += 62
+  const totalsX = pageWidth - margin - 195
+  pdf.setFillColor(255, 251, 235)
+  pdf.roundedRect(totalsX, y, 195, 76, 7, 7, 'F')
+  pdf.setTextColor(51, 65, 85)
+  pdf.setFont('helvetica', 'normal')
+  pdf.setFontSize(10)
+  pdf.text('Subtotal', totalsX + 14, y + 22)
+  pdf.text(amount, totalsX + 181, y + 22, { align: 'right' })
+  pdf.text('Tax', totalsX + 14, y + 40)
+  pdf.text('$0.00', totalsX + 181, y + 40, { align: 'right' })
+  pdf.setDrawColor(...gold)
+  pdf.line(totalsX + 14, y + 49, totalsX + 181, y + 49)
+  pdf.setTextColor(...blue)
+  pdf.setFont('helvetica', 'bold')
+  pdf.setFontSize(13)
+  pdf.text('TOTAL', totalsX + 14, y + 68)
+  pdf.text(amount, totalsX + 181, y + 68, { align: 'right' })
+  pdf.setTextColor(100, 116, 139)
+  pdf.setFont('helvetica', 'normal')
+  pdf.setFontSize(8.5)
+  pdf.text('Thank you for choosing A Precision Driving School. This invoice is an enrollment and payment summary.', margin, 748, { maxWidth: contentWidth })
+  pdf.save(`${invoiceFileName(enrollment.reference)}-invoice.pdf`)
   return true
 }

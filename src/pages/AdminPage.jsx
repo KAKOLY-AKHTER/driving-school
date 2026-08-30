@@ -328,7 +328,7 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
   const [search, setSearch] = useState('')
   const [visibility, setVisibility] = useState('all')
   const [reviewPage, setReviewPage] = useState(1)
-  const reviewLimit = 10
+  const [reviewLimit, setReviewLimit] = useState(10)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -471,9 +471,9 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
       </form>
 
       <div style={cardStyle}>
-        <div className="admin-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Customer Reviews ({filtered.length} of {reviews.length})</h2><div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}><input className="admin-toolbar-input" type="search" aria-label="Search reviews" placeholder="Search reviewer or text…" value={search} onChange={event => setSearch(event.target.value)} style={{ ...inputStyle, width: '240px' }} /><select aria-label="Filter review visibility" value={visibility} onChange={event => setVisibility(event.target.value)} style={{ ...inputStyle, width: '145px' }}><option value="all">All reviews</option><option value="published">Published</option><option value="draft">Draft</option></select></div></div>
+        <div className="admin-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Customer Reviews ({filtered.length} of {reviews.length})</h2><div style={{ display: 'flex', gap: '.5rem', flexWrap: 'nowrap', alignItems: 'center' }}><input className="admin-toolbar-input" type="search" aria-label="Search reviews" placeholder="Search reviewer or text…" value={search} onChange={event => { setSearch(event.target.value); setReviewPage(1) }} style={{ ...inputStyle, width: '240px', minWidth: 0 }} /><select aria-label="Filter review visibility" value={visibility} onChange={event => { setVisibility(event.target.value); setReviewPage(1) }} style={{ ...inputStyle, width: '145px', flexShrink: 0 }}><option value="all">All reviews</option><option value="published">Published</option><option value="draft">Draft</option></select></div></div>
         {error && <div role="alert" style={{ padding: '.85rem 1rem', marginBottom: '1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{error} <button type="button" onClick={() => setLoadVersion(value => value + 1)} style={{ marginLeft: '.6rem', border: 0, background: 'transparent', color: '#0755AE', fontWeight: 850, cursor: 'pointer' }}>Retry</button></div>}
-        <TablePager page={safeReviewPage} pages={reviewPages} total={matchedReviews.length} label="reviews" onChange={setReviewPage} />
+        <TablePager page={safeReviewPage} pages={reviewPages} total={matchedReviews.length} label="reviews" onChange={setReviewPage}><select aria-label="Review rows per page" value={reviewLimit} onChange={event => { setReviewLimit(Number(event.target.value)); setReviewPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></TablePager>
         <div className="admin-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr><th scope="col" style={thStyle}>Reviewer</th><th scope="col" style={thStyle}>Review Message</th><th scope="col" style={thStyle}>Star Rating</th><th scope="col" style={thStyle}>Website Visibility</th><th scope="col" className="admin-actions-cell" style={thStyle}>Manage Review</th></tr></thead><tbody>
           {filtered.map(review => <tr key={review._id}><td style={{ ...tdStyle, fontWeight: 800, whiteSpace: 'nowrap' }}><div style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>{review.imageUrl ? <img src={review.imageUrl} alt={`${review.name} reviewer`} loading="lazy" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #D9E4F2', boxShadow: '0 5px 14px rgba(15,45,87,.1)' }} /> : <span aria-hidden="true" style={{ width: '48px', height: '48px', borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg,#0755AE,#0A2A5E)', color: '#fff', border: `2px solid ${GOLD}`, fontWeight: 900 }}>{String(review.name || '?').trim().split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase()}</span>}<span>{review.name}</span></div></td><td style={{ ...tdStyle, minWidth: '280px', maxWidth: '520px', lineHeight: 1.5 }}>{review.text}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap', color: GOLD_DEEP, fontWeight: 900 }}>{'★'.repeat(Number(review.rating) || 5)}<span style={{ color: '#CBD5E1' }}>{'★'.repeat(5 - (Number(review.rating) || 5))}</span></td><td style={tdStyle}><button type="button" onClick={() => togglePublished(review)} style={{ padding: '.3rem .6rem', border: `1px solid ${review.published !== false ? '#BBF7D0' : '#CBD5E1'}`, borderRadius: '999px', background: review.published !== false ? '#F0FDF4' : '#F8FAFC', color: review.published !== false ? '#15803D' : '#64748B', fontWeight: 800, cursor: 'pointer' }}>{review.published !== false ? 'Published' : 'Draft'}</button></td><td className="admin-actions-cell" style={tdStyle}><div style={{ display: 'flex', gap: '.4rem' }}><button type="button" onClick={() => startEdit(review)} style={{ padding: '.4rem .65rem', border: `1.5px solid ${SKY_BLUE}`, borderRadius: '8px', background: '#fff', color: SKY_BLUE, fontWeight: 800, cursor: 'pointer' }}>Edit</button><AdminDeleteIconButton label={`Delete customer review from ${review.name || 'customer'}`} title="Delete customer review" onClick={() => requestConfirmation('Delete customer review?', `${review.name}'s testimonial will be permanently removed.`, () => deleteReview(review))} /></div></td></tr>)}
           {!loading && !filtered.length && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{search || visibility !== 'all' ? 'No reviews match the selected filters.' : 'No customer reviews yet.'}</td></tr>}
@@ -761,9 +761,9 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
       <div style={cardStyle}>
         <div className="admin-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
           <div><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Manage Lesson Slots ({total})</h2><p style={{ margin: '.25rem 0 0', color: '#334155', fontSize: '.9rem', lineHeight: 1.5 }}><strong>Available</strong> slots are visible to students. <strong>Unavailable</strong> closes an individual slot. Past, checkout-in-progress, and booked slots are read-only here.</p></div>
-          <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-            <input className="admin-toolbar-input" type="search" aria-label="Search availability" placeholder="Search date, time or status…" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '220px' }} />
-            <select aria-label="Filter lesson slots by booking availability" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '180px' }}><option value="available">Available</option><option value="blocked">Unavailable</option><option value="booked">Booked</option></select>
+          <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'nowrap', alignItems: 'center' }}>
+            <input className="admin-toolbar-input" type="search" aria-label="Search availability" placeholder="Search date, time or status…" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '220px', minWidth: 0 }} />
+            <select aria-label="Filter lesson slots by booking availability" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '180px', flexShrink: 0 }}><option value="available">Available</option><option value="blocked">Unavailable</option><option value="booked">Booked</option></select>
           </div>
         </div>
         <div aria-label="Bulk actions for selected lesson slots" style={{ padding: '.85rem', marginBottom: '1rem', border: '1px solid #D8E4F0', borderRadius: '12px', background: '#F8FBFF' }}>
@@ -840,6 +840,7 @@ export default function AdminPage() {
   const [pricingSearch, setPricingSearch] = useState('')
   const [pricingUsageFilter, setPricingUsageFilter] = useState('all')
   const [pricingPage, setPricingPage] = useState(1)
+  const [pricingLimit, setPricingLimit] = useState('10')
   const [pricingEdit, setPricingEdit] = useState(null)
   const [pricingForm, setPricingForm] = useState({ planName: '', id: '', planPrice: '', planPriceTwo: '', option1: '', perm1: 'Select', option2: '', perm2: 'Select', option3: '', perm3: 'Select', option4: '', perm4: 'Select', option5: '', perm5: 'Select' })
   const [locations, setLocations] = useState(DEFAULT_BOOKING_LOCATIONS)
@@ -848,17 +849,18 @@ export default function AdminPage() {
   const [locationSearch, setLocationSearch] = useState('')
   const [locationDistanceFilter, setLocationDistanceFilter] = useState('all')
   const [locationPage, setLocationPage] = useState(1)
+  const [locationLimit, setLocationLimit] = useState('10')
   const [areas, setAreas] = useState([])
   const [areasEdit, setAreasEdit] = useState(null)
   const [areasForm, setAreasForm] = useState({ name: '', map: '', icon: '', order: 0 })
   const [copiedArea, setCopiedArea] = useState(null)
   const [areaSearch, setAreaSearch] = useState('')
   const [areaPage, setAreaPage] = useState(1)
+  const [areaLimit, setAreaLimit] = useState('10')
   const [socials, setSocials] = useState([])
   const [socialsEdit, setSocialsEdit] = useState(null)
   const [socialsForm, setSocialsForm] = useState({ platform: 'facebook', url: '', order: 0 })
   const [socialSearch, setSocialSearch] = useState('')
-  const [socialPage, setSocialPage] = useState(1)
   const [detailsDialog, setDetailsDialog] = useState(null)
   const [enrollPage, setEnrollPage] = useState(1)
   const [enrollLimit, setEnrollLimit] = useState('10')
@@ -1240,23 +1242,27 @@ export default function AdminPage() {
     }
   }
 
-  const downloadEnrollmentInvoice = ({ account, course }) => {
+  const downloadEnrollmentInvoice = async ({ account, course }) => {
     const used = Number(course.slotAllowance?.used ?? course.slotUsage?.used ?? course.slotUsed ?? (Array.isArray(course.pickupSlots) ? course.pickupSlots.length : 0))
     const maximum = Number(course.slotAllowance?.maximum ?? course.slotUsage?.maximum ?? course.slotMaximum)
-    const opened = openEnrollmentInvoice({
-      school: { name: 'A Precision Driving School', address: 'California, United States', email: 'info@aprecisiondrivingschool.com', website: 'aprecisiondrivingschool.com' },
-      student: { name: adminUserName(account), email: account.email, phone: account.phone, address: account.address },
-      enrollment: {
-        reference: course.paymentRef || course.enrollmentId || `${account.uid}-${course.id || 'course'}`,
-        id: course.enrollmentId || 'Not recorded', course: course.title || COURSE_MAP[course.id] || `Course ${course.id || ''}`,
-        amount: course.paidAmount || course.price || '—', status: enrollmentStatusValue(course) === 'completed' ? 'Completed' : enrollmentStatusValue(course) === 'cancelled' ? 'Cancelled' : 'Enrolled',
-        paymentStatus: course.paymentStatus || (normalizeStatus(course.status) === 'refunded' ? 'Refunded' : 'Paid'),
-        enrolledAt: course.enrolledAt ? new Date(course.enrolledAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Not recorded',
-        issuedAt: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-        location: course.city ? `${course.city}${course.cityZip ? `, CA ${course.cityZip}` : ''}` : 'Not recorded', lessonSlots: Number.isFinite(used) && Number.isFinite(maximum) ? `${used} / ${maximum}` : 'Not recorded',
-      },
-    })
-    if (!opened) { setMsg('Please allow pop-ups to download the invoice.'); setTimeout(() => setMsg(''), 2500) }
+    try {
+      await openEnrollmentInvoice({
+        school: { name: 'A Precision Driving School', address: 'California, United States', email: 'info@aprecisiondrivingschool.com', website: 'aprecisiondrivingschool.com' },
+        student: { name: adminUserName(account), email: account.email, phone: account.phone, address: account.address },
+        enrollment: {
+          reference: course.paymentRef || course.enrollmentId || `${account.uid}-${course.id || 'course'}`,
+          id: course.enrollmentId || 'Not recorded', course: course.title || COURSE_MAP[course.id] || `Course ${course.id || ''}`,
+          amount: course.paidAmount || course.price || '—', status: enrollmentStatusValue(course) === 'completed' ? 'Completed' : enrollmentStatusValue(course) === 'cancelled' ? 'Cancelled' : 'Enrolled',
+          paymentStatus: course.paymentStatus || (normalizeStatus(course.status) === 'refunded' ? 'Refunded' : 'Paid'),
+          enrolledAt: course.enrolledAt ? new Date(course.enrolledAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Not recorded',
+          issuedAt: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+          location: course.city ? `${course.city}${course.cityZip ? `, CA ${course.cityZip}` : ''}` : 'Not recorded', lessonSlots: Number.isFinite(used) && Number.isFinite(maximum) ? `${used} / ${maximum}` : 'Not recorded',
+        },
+      })
+    } catch {
+      setMsg('Invoice PDF could not be downloaded. Please try again.')
+      setTimeout(() => setMsg(''), 2500)
+    }
   }
 
   const handleDeleteEnrollment = ({ account, course }) => requestConfirmation(
@@ -1707,9 +1713,9 @@ export default function AdminPage() {
     return (!query || [plan.id, plan.planName, plan.planPrice, plan.planPriceTwo, ...(plan.options || []).map(option => option?.text)].some(value => String(value || '').toLowerCase().includes(query)))
       && (pricingUsageFilter === 'all' || (pricingUsageFilter === 'used' ? usage > 0 : usage === 0))
   })
-  const pricingPages = Math.max(1, Math.ceil(filteredPricing.length / 10))
+  const pricingPages = Math.max(1, Math.ceil(filteredPricing.length / Number(pricingLimit)))
   const safePricingPage = Math.min(pricingPage, pricingPages)
-  const visiblePricing = filteredPricing.slice((safePricingPage - 1) * 10, safePricingPage * 10)
+  const visiblePricing = filteredPricing.slice((safePricingPage - 1) * Number(pricingLimit), safePricingPage * Number(pricingLimit))
   const enrolledQuery = enrollSearch.trim().toLowerCase()
   const filteredEnrollmentRows = enrollmentRows.filter(({ account, course }) => {
     const matchesStatus = enrollStatusFilter === 'all' || enrollmentStatusValue(course) === enrollStatusFilter
@@ -1770,17 +1776,15 @@ export default function AdminPage() {
         && (locationDistanceFilter === 'all' || distance.toLowerCase() === locationDistanceFilter)
     })
     .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || String(a.name || '').localeCompare(String(b.name || '')))
-  const locationPages = Math.max(1, Math.ceil(filteredLocations.length / 10))
+  const locationPages = Math.max(1, Math.ceil(filteredLocations.length / Number(locationLimit)))
   const safeLocationPage = Math.min(locationPage, locationPages)
-  const visibleLocations = filteredLocations.slice((safeLocationPage - 1) * 10, safeLocationPage * 10)
+  const visibleLocations = filteredLocations.slice((safeLocationPage - 1) * Number(locationLimit), safeLocationPage * Number(locationLimit))
   const filteredAreas = [...areas].filter(area => !areaSearch.trim() || [area.name, area.map].some(value => String(value || '').toLowerCase().includes(areaSearch.trim().toLowerCase())))
-  const areaPages = Math.max(1, Math.ceil(filteredAreas.length / 10))
+  const areaPages = Math.max(1, Math.ceil(filteredAreas.length / Number(areaLimit)))
   const safeAreaPage = Math.min(areaPage, areaPages)
-  const visibleAreas = filteredAreas.slice((safeAreaPage - 1) * 10, safeAreaPage * 10)
+  const visibleAreas = filteredAreas.slice((safeAreaPage - 1) * Number(areaLimit), safeAreaPage * Number(areaLimit))
   const filteredSocials = [...socials].filter(item => !socialSearch.trim() || [socialPlatformLabel(item.platform), item.url].some(value => String(value || '').toLowerCase().includes(socialSearch.trim().toLowerCase())))
-  const socialPages = Math.max(1, Math.ceil(filteredSocials.length / 10))
-  const safeSocialPage = Math.min(socialPage, socialPages)
-  const visibleSocials = filteredSocials.slice((safeSocialPage - 1) * 10, safeSocialPage * 10)
+  const visibleSocials = filteredSocials
 
   const nearLocationCount = locations.filter(location => locationDistanceLabel(location.distance) === 'Near').length
   const longLocationCount = locations.filter(location => locationDistanceLabel(location.distance) === 'Long').length
@@ -2364,7 +2368,7 @@ export default function AdminPage() {
                     <strong>Location pricing:</strong> Near cities use the Near Price; Long cities use the Long Price. The server verifies the selected city and applies the matching price to the cart and invoice.
                   </div>
                   <div className="admin-toolbar" style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', marginBottom: '1rem' }}><input type="search" aria-label="Search pricing plans" placeholder="Search plan, price or option…" value={pricingSearch} onChange={event => { setPricingSearch(event.target.value); setPricingPage(1) }} style={{ ...inputStyle, maxWidth: '300px' }} /><select aria-label="Filter pricing plans by usage" value={pricingUsageFilter} onChange={event => { setPricingUsageFilter(event.target.value); setPricingPage(1) }} style={{ ...inputStyle, width: '170px' }}><option value="all">All plans</option><option value="used">Enrolled plans</option><option value="unused">Unused plans</option></select></div>
-                  <TablePager page={safePricingPage} pages={pricingPages} total={filteredPricing.length} label="plans" onChange={setPricingPage} />
+                  <TablePager page={safePricingPage} pages={pricingPages} total={filteredPricing.length} label="plans" onChange={setPricingPage}><select aria-label="Pricing plan rows per page" value={pricingLimit} onChange={event => { setPricingLimit(event.target.value); setPricingPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></TablePager>
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
@@ -2633,7 +2637,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                       </select>
                     </div>
 
-                    <TablePager page={safeLocationPage} pages={locationPages} total={filteredLocations.length} label="locations" onChange={setLocationPage} />
+                    <TablePager page={safeLocationPage} pages={locationPages} total={filteredLocations.length} label="locations" onChange={setLocationPage}><select aria-label="Location rows per page" value={locationLimit} onChange={event => { setLocationLimit(event.target.value); setLocationPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></TablePager>
                     <div className="admin-table-wrap">
                       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '680px' }}>
                         <thead>
@@ -2685,7 +2689,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                     <button onClick={() => { setAreasForm({ name: '', map: '', icon: '', order: 0 }); setAreasEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Map</button>
                   </div>
                   <div className="admin-toolbar" style={{ marginBottom: '1rem' }}><input type="search" aria-label="Search service area maps" placeholder="Search name or URL…" value={areaSearch} onChange={event => { setAreaSearch(event.target.value); setAreaPage(1) }} style={{ ...inputStyle, maxWidth: '320px' }} /></div>
-                  <TablePager page={safeAreaPage} pages={areaPages} total={filteredAreas.length} label="maps" onChange={setAreaPage} />
+                  <TablePager page={safeAreaPage} pages={areaPages} total={filteredAreas.length} label="maps" onChange={setAreaPage}><select aria-label="Map rows per page" value={areaLimit} onChange={event => { setAreaLimit(event.target.value); setAreaPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></TablePager>
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
@@ -2752,8 +2756,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.share} Social Links Management ({socials.length})</h3>
                     <button onClick={() => { setSocialsForm({ platform: 'facebook', url: '', order: socials.length }); setSocialsEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Social Link</button>
                   </div>
-                  <div className="admin-toolbar" style={{ marginBottom: '1rem' }}><input type="search" aria-label="Search social links" placeholder="Search platform or URL…" value={socialSearch} onChange={event => { setSocialSearch(event.target.value); setSocialPage(1) }} style={{ ...inputStyle, maxWidth: '320px' }} /></div>
-                  <TablePager page={safeSocialPage} pages={socialPages} total={filteredSocials.length} label="links" onChange={setSocialPage} />
+                  <div className="admin-toolbar" style={{ marginBottom: '1rem' }}><input type="search" aria-label="Search social links" placeholder="Search platform or URL…" value={socialSearch} onChange={event => setSocialSearch(event.target.value)} style={{ ...inputStyle, maxWidth: '320px' }} /></div>
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
