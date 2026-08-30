@@ -145,24 +145,33 @@ export async function openEnrollmentInvoice({ school = {}, student = {}, enrollm
   pdf.rect(0, 0, pageWidth, 126, 'F')
   pdf.setFillColor(...gold)
   pdf.rect(0, 120, pageWidth, 6, 'F')
-  if (logo) pdf.addImage(logo, 'PNG', margin, 26, 66, 66)
+  if (logo) {
+    pdf.setFillColor(255, 255, 255)
+    pdf.roundedRect(margin - 6, 20, 80, 80, 8, 8, 'F')
+    pdf.addImage(logo, 'PNG', margin + 1, 27, 66, 66)
+  }
   pdf.setTextColor(255, 255, 255)
   pdf.setFont('helvetica', 'bold')
-  pdf.setFontSize(21)
-  pdf.text(value(school.name || 'A Precision Driving School'), logo ? 120 : margin, 52)
+  pdf.setFontSize(22)
+  pdf.text(value(school.name || 'A Precision Driving School'), logo ? 132 : margin, 52)
   pdf.setFont('helvetica', 'normal')
-  pdf.setFontSize(9.5)
-  pdf.text([school.address, school.phone, school.email, school.website].filter(Boolean).join('  |  '), logo ? 120 : margin, 70, { maxWidth: 300 })
+  pdf.setFontSize(10)
+  pdf.text([school.address, school.phone, school.email, school.website].filter(Boolean).join('  |  '), logo ? 132 : margin, 72, { maxWidth: 310 })
   pdf.setFillColor(...blue)
-  pdf.roundedRect(pageWidth - 163, 36, 121, 32, 5, 5, 'F')
+  pdf.roundedRect(pageWidth - 170, 30, 128, 34, 5, 5, 'F')
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(15)
-  pdf.text('INVOICE', pageWidth - 102.5, 57, { align: 'center' })
-  pdf.setTextColor(71, 85, 105)
+  pdf.setTextColor(255, 255, 255)
+  pdf.text('INVOICE', pageWidth - 106, 52, { align: 'center' })
+  pdf.setFillColor(255, 255, 255)
+  pdf.roundedRect(pageWidth - 220, 76, 178, 31, 5, 5, 'F')
+  pdf.setTextColor(...navy)
+  pdf.setFont('helvetica', 'bold')
+  pdf.setFontSize(8.6)
+  pdf.text(`Invoice # ${value(enrollment.reference)}`, pageWidth - 52, 89, { align: 'right' })
   pdf.setFont('helvetica', 'normal')
-  pdf.setFontSize(9.5)
-  pdf.text(`Invoice # ${value(enrollment.reference)}`, pageWidth - margin, 90, { align: 'right' })
-  pdf.text(`Issued ${value(enrollment.issuedAt)}`, pageWidth - margin, 105, { align: 'right' })
+  pdf.setFontSize(8.2)
+  pdf.text(`Issued ${value(enrollment.issuedAt)}`, pageWidth - 52, 101, { align: 'right' })
 
   const section = (title, y) => {
     pdf.setFillColor(...blue)
@@ -184,67 +193,58 @@ export async function openEnrollmentInvoice({ school = {}, student = {}, enrollm
     pdf.text(pdf.splitTextToSize(value(input), width), x, y + 13)
   }
 
+  const hasValue = input => input !== null && input !== undefined && String(input).trim() !== ''
+  const drawDetailsSection = (title, pairs, y, fill = [248, 251, 255]) => {
+    const usablePairs = pairs.filter(([, input]) => hasValue(input))
+    if (!usablePairs.length) usablePairs.push(['Details', 'Not recorded'])
+    const detailRows = []
+    for (let index = 0; index < usablePairs.length; index += 2) detailRows.push([usablePairs[index], usablePairs[index + 1] || ['', '']])
+    const bodyHeight = Math.max(48, 16 + detailRows.length * 32)
+    if (y + 24 + bodyHeight > 740) {
+      pdf.addPage()
+      y = 48
+    }
+    y = section(title, y)
+    pdf.setFillColor(...fill)
+    pdf.roundedRect(margin, y, contentWidth, bodyHeight, 0, 0, 'F')
+    const leftX = margin + 14
+    const rightX = margin + contentWidth / 2 + 8
+    const detailWidth = contentWidth / 2 - 28
+    detailRows.forEach((row, index) => {
+      const rowY = y + 15 + index * 32
+      detail(row[0][0], row[0][1], leftX, rowY, detailWidth)
+      if (row[1][0]) detail(row[1][0], row[1][1], rightX, rowY, detailWidth)
+    })
+    return y + bodyHeight + 16
+  }
+
   let y = 152
-  y = section('STUDENT & ENROLLMENT INFORMATION', y)
-  pdf.setFillColor(248, 251, 255)
-  pdf.roundedRect(margin, y, contentWidth, 150, 0, 0, 'F')
-  const leftX = margin + 14
-  const rightX = margin + contentWidth / 2 + 8
-  const detailWidth = contentWidth / 2 - 28
-  const rows = [
-    [['Student', student.name], ['Enrollment ID', enrollment.id]],
-    [['Email', student.email], ['Payment Status', enrollment.paymentStatus]],
-    [['Phone', student.phone], ['Enrollment Status', enrollment.status]],
-    [['Address', student.address], ['Enrollment Date', enrollment.enrolledAt]],
-    [['Pickup Location', enrollment.location], ['Lesson Slots', enrollment.lessonSlots]],
-  ]
-  rows.forEach((row, index) => {
-    const rowY = y + 17 + index * 27
-    detail(row[0][0], row[0][1], leftX, rowY, detailWidth)
-    detail(row[1][0], row[1][1], rightX, rowY, detailWidth)
-  })
-  y += 174
-  y = section('COURSE DETAILS', y)
-  pdf.setFillColor(241, 245, 249)
-  pdf.rect(margin, y, contentWidth, 24, 'F')
-  pdf.setTextColor(51, 65, 85)
-  pdf.setFont('helvetica', 'bold')
-  pdf.setFontSize(8.5)
-  pdf.text('COURSE', margin + 12, y + 16)
-  pdf.text('PRICE', margin + contentWidth - 165, y + 16)
-  pdf.text('STATUS', margin + contentWidth - 70, y + 16)
-  y += 24
-  pdf.setDrawColor(226, 232, 240)
-  pdf.rect(margin, y, contentWidth, 38)
-  pdf.setTextColor(15, 35, 70)
-  pdf.setFont('helvetica', 'bold')
-  pdf.setFontSize(10)
-  pdf.text(pdf.splitTextToSize(value(enrollment.course), contentWidth - 270), margin + 12, y + 17)
-  pdf.text(amount, margin + contentWidth - 165, y + 17)
-  pdf.setTextColor(21, 128, 61)
-  pdf.text(value(enrollment.status), margin + contentWidth - 70, y + 17)
-  y += 62
-  const totalsX = pageWidth - margin - 195
-  pdf.setFillColor(255, 251, 235)
-  pdf.roundedRect(totalsX, y, 195, 76, 7, 7, 'F')
-  pdf.setTextColor(51, 65, 85)
-  pdf.setFont('helvetica', 'normal')
-  pdf.setFontSize(10)
-  pdf.text('Subtotal', totalsX + 14, y + 22)
-  pdf.text(amount, totalsX + 181, y + 22, { align: 'right' })
-  pdf.text('Tax', totalsX + 14, y + 40)
-  pdf.text('$0.00', totalsX + 181, y + 40, { align: 'right' })
-  pdf.setDrawColor(...gold)
-  pdf.line(totalsX + 14, y + 49, totalsX + 181, y + 49)
-  pdf.setTextColor(...blue)
-  pdf.setFont('helvetica', 'bold')
-  pdf.setFontSize(13)
-  pdf.text('TOTAL', totalsX + 14, y + 68)
-  pdf.text(amount, totalsX + 181, y + 68, { align: 'right' })
+  y = drawDetailsSection('STUDENT INFORMATION', [
+    ['Student ID', student.id], ['Username', student.username],
+    ['Full Name', student.name], ['Email', student.email],
+    ['Phone', student.phone], ['Gender', student.gender],
+    ['Date of Birth', student.dateOfBirth || student.dob], ['Address', student.address],
+    ['City', student.city], ['State', student.state],
+    ['ZIP Code', student.zipCode || student.zip], ['Permit Number', student.permitNumber || student.permit],
+    ['Permit Issue Date', student.permitIssueDate || student.issueDate], ['Permit Expiry Date', student.permitExpiryDate || student.expiryDate],
+    ['Parent Phone', student.parentPhone], ['Pickup Address', student.pickupAddress],
+    ['Notes', student.notes], ['Medical Notes', student.medication || student.medicalNotes],
+  ])
+  y = drawDetailsSection('BOOKING DETAILS', [
+    ['Course', enrollment.course], ['Enrollment ID', enrollment.id],
+    ['Enrollment Status', enrollment.status], ['Enrollment Date', enrollment.enrolledAt],
+    ['Pickup Location', enrollment.location], ['Lesson Slots', enrollment.lessonSlots],
+  ], y, [241, 248, 255])
+  y = drawDetailsSection('PAYMENT DETAILS', [
+    ['Invoice Reference', enrollment.reference], ['Payment Status', enrollment.paymentStatus],
+    ['Paid Amount', amount], ['Payment Date', enrollment.paymentDate || enrollment.enrolledAt],
+    ['Issued On', enrollment.issuedAt], ['Tax', '$0.00'],
+    ['Total Paid', amount], ['Coupon', enrollment.couponCode],
+  ], y, [255, 251, 235])
   pdf.setTextColor(100, 116, 139)
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(8.5)
-  pdf.text('Thank you for choosing A Precision Driving School. This invoice is an enrollment and payment summary.', margin, 748, { maxWidth: contentWidth })
+  pdf.text('Thank you for choosing A Precision Driving School. This invoice is an enrollment and payment summary.', margin, Math.min(y + 8, 755), { maxWidth: contentWidth })
   pdf.save(`${invoiceFileName(enrollment.reference)}-invoice.pdf`)
   return true
 }

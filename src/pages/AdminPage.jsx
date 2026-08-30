@@ -31,6 +31,15 @@ const localDateKey = (date = new Date()) => new Intl.DateTimeFormat('en-CA', {
   day: '2-digit',
 }).format(date)
 
+const formatDateDMY = (value) => {
+  const raw = String(value || '').trim()
+  if (!raw) return 'Not recorded'
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T12:00:00`) : new Date(raw)
+  return Number.isNaN(date.getTime())
+    ? raw
+    : new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date)
+}
+
 const normalizeStatus = (value) => String(value || '').trim().toLowerCase().replace(/[\s_-]+/g, ' ')
 
 const BOOKING_STATUS_LABELS = {
@@ -1223,20 +1232,17 @@ export default function AdminPage() {
     }
   }
 
-  const updateEnrollmentStatus = async ({ account, course, key }, nextStatus, sendConfirmation = false) => {
+  const updateEnrollmentStatus = async ({ account, course, key }, nextStatus) => {
     const currentStatus = enrollmentStatusValue(course)
-    if ((nextStatus === currentStatus && !sendConfirmation) || enrollmentStatusUpdating) return
+    if (nextStatus === currentStatus || enrollmentStatusUpdating) return
     setEnrollmentStatusUpdating(key)
     try {
       const nextLabel = nextStatus === 'completed' ? 'Completed' : nextStatus === 'cancelled' ? 'Cancelled' : 'Enrolled'
       const result = await api.adminUpdateUserCourse(account.uid, {
-        enrollmentId: course.enrollmentId || '', courseId: course.id || '', enrolledAt: course.enrolledAt || '', course: { status: nextLabel }, sendConfirmation,
+        enrollmentId: course.enrollmentId || '', courseId: course.id || '', enrolledAt: course.enrolledAt || '', course: { status: nextLabel },
       })
       setUsers(previous => previous.map(item => item.uid !== account.uid ? item : { ...item, courses: (item.courses || []).map(entry => (entry.enrollmentId === course.enrollmentId || (entry.id === course.id && entry.enrolledAt === course.enrolledAt)) ? { ...entry, ...(result?.course || { status: nextLabel }) } : entry) }))
-      const delivery = result?.emailDelivery
-      setMsg(sendConfirmation
-        ? delivery?.status === 'sent' ? 'Course confirmed and email sent to the student.' : delivery?.status === 'skipped' ? `Course confirmed. Email was not sent: ${delivery.reason}` : 'Course confirmed, but the confirmation email could not be sent.'
-        : `Enrollment status changed to ${nextLabel}.`)
+      setMsg(`Enrollment status changed to ${nextLabel}.`)
       setTimeout(() => setMsg(''), 2200)
     } catch (error) {
       setMsg(error?.message || 'Enrollment status could not be updated.')
@@ -1252,15 +1258,36 @@ export default function AdminPage() {
     try {
       await openEnrollmentInvoice({
         school: { name: 'A Precision Driving School', address: 'California, United States', email: 'info@aprecisiondrivingschool.com', website: 'aprecisiondrivingschool.com' },
-        student: { name: adminUserName(account), email: account.email, phone: account.phone, address: account.address },
+        student: {
+          id: account.uid,
+          username: account.username || account.displayName,
+          name: adminUserName(account),
+          email: account.email,
+          phone: account.phone,
+          gender: account.gender,
+          dateOfBirth: account.dateOfBirth || account.dob,
+          address: account.address,
+          city: account.city,
+          state: account.state,
+          zipCode: account.zipCode || account.zip,
+          permitNumber: account.permitNumber || account.permit,
+          permitIssueDate: account.permitIssueDate || account.issueDate,
+          permitExpiryDate: account.permitExpiryDate || account.expiryDate,
+          parentPhone: account.parentPhone,
+          pickupAddress: account.pickupAddress,
+          notes: account.notes,
+          medication: account.medication || account.medicalNotes,
+        },
         enrollment: {
           reference: course.paymentRef || course.enrollmentId || `${account.uid}-${course.id || 'course'}`,
           id: course.enrollmentId || 'Not recorded', course: course.title || COURSE_MAP[course.id] || `Course ${course.id || ''}`,
           amount: course.paidAmount || course.price || '—', status: enrollmentStatusValue(course) === 'completed' ? 'Completed' : enrollmentStatusValue(course) === 'cancelled' ? 'Cancelled' : 'Enrolled',
           paymentStatus: course.paymentStatus || (normalizeStatus(course.status) === 'refunded' ? 'Refunded' : 'Paid'),
-          enrolledAt: course.enrolledAt ? new Date(course.enrolledAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Not recorded',
-          issuedAt: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+          enrolledAt: formatDateDMY(course.enrolledAt),
+          paymentDate: formatDateDMY(course.paidAt || course.enrolledAt),
+          issuedAt: formatDateDMY(new Date()),
           location: course.city ? `${course.city}${course.cityZip ? `, CA ${course.cityZip}` : ''}` : 'Not recorded', lessonSlots: Number.isFinite(used) && Number.isFinite(maximum) ? `${used} / ${maximum}` : 'Not recorded',
+          couponCode: course.couponCode,
         },
       })
     } catch {
@@ -2497,7 +2524,7 @@ export default function AdminPage() {
                                 <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{course.city ? <>{course.city}{course.cityZip ? `, CA ${course.cityZip}` : ''}</> : <span title="Legacy record" style={{ color: '#64748B' }}>Not recorded</span>}{course.cityDistance ? <span style={{ display: 'block', color: '#334155', fontSize: '.78rem' }}>{locationDistanceLabel(course.cityDistance)}</span> : null}</td>
                                 <td style={{ ...tdStyle, fontWeight: 800 }}>{course.price || '—'}</td>
                                 <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{hasSlotRecord ? (Number.isFinite(used) && Number.isFinite(maximum) ? `${used} / ${maximum}` : Number.isFinite(used) ? used : 'Not recorded') : <span title="Legacy record" style={{ color: '#64748B' }}>Not recorded</span>}</td>
-                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}><select aria-label={`Change enrollment status for ${adminUserName(account)}`} value={enrollmentStatus} disabled={Boolean(enrollmentStatusUpdating)} onChange={event => updateEnrollmentStatus({ account, course, key }, event.target.value)} style={{ minWidth: '145px', padding: '.45rem .62rem', border: `1px solid ${statusMeta.color}55`, borderRadius: '9px', background: statusMeta.background, color: statusMeta.color, fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.05em', textTransform: 'uppercase', fontWeight: 800, cursor: enrollmentStatusUpdating ? 'wait' : 'pointer' }}><option value="enrolled">Enrolled</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select><button type="button" disabled={Boolean(enrollmentStatusUpdating)} onClick={() => updateEnrollmentStatus({ account, course, key }, 'enrolled', true)} title="Confirm this course and email the student" style={{ padding: '.45rem .6rem', border: '1px solid #86EFAC', borderRadius: '8px', background: '#F0FDF4', color: '#15803D', fontWeight: 850, cursor: enrollmentStatusUpdating ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}>Confirm &amp; email</button></div></td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}><select aria-label={`Change enrollment status for ${adminUserName(account)}`} value={enrollmentStatus} disabled={Boolean(enrollmentStatusUpdating)} onChange={event => updateEnrollmentStatus({ account, course, key }, event.target.value)} style={{ minWidth: '145px', padding: '.45rem .62rem', border: `1px solid ${statusMeta.color}55`, borderRadius: '9px', background: statusMeta.background, color: statusMeta.color, fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.05em', textTransform: 'uppercase', fontWeight: 800, cursor: enrollmentStatusUpdating ? 'wait' : 'pointer' }}><option value="enrolled">Enrolled</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></div></td>
                                 <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{enrolledDate && !Number.isNaN(enrolledDate.getTime()) ? enrolledDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
                                 <td style={tdStyle}><div style={{ display: 'flex', gap: '.4rem' }}><button type="button" onClick={() => downloadEnrollmentInvoice({ account, course })} style={{ background: '#F0FDF4', border: '1.5px solid #86EFAC', color: '#15803D', borderRadius: 'var(--radius-sm)', padding: '.35rem .6rem', fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer' }}>Download invoice</button><button type="button" onClick={() => openEnrollmentEditor({ account, course })} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '.35rem .6rem', fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer' }}>Edit</button><AdminDeleteIconButton label={`Delete enrollment for ${adminUserName(account)}`} title="Delete enrollment" onClick={() => handleDeleteEnrollment({ account, course })} /></div></td>
                               </tr>

@@ -270,6 +270,38 @@ async function deliverEnrollmentConfirmationEmail(student, course) {
     return { status: 'failed', error: cleanText(error?.message, 240) || 'Email delivery failed.' }
   }
 }
+
+async function deliverBookingConfirmationEmail(student, checkout, bookings = []) {
+  const { apiKey, from, adminEmail } = resendConfiguration()
+  const email = cleanText(student?.email, 320).toLowerCase()
+  if (!apiKey || !from) return { status: 'skipped', reason: 'Course email environment variables are incomplete.' }
+  if (!isEmail(email)) return { status: 'skipped', reason: 'The student does not have a valid email address.' }
+
+  const payment = checkout?.payment || {}
+  const studentName = cleanText(student?.displayName || student?.name || [student?.firstName, student?.lastName].filter(Boolean).join(' '), 160) || 'Student'
+  const enrollmentIds = new Set((Array.isArray(payment.enrollmentIds) ? payment.enrollmentIds : []).map(value => String(value)))
+  const confirmedCourses = (Array.isArray(checkout?.courses) ? checkout.courses : [])
+    .filter(course => enrollmentIds.has(String(course?.enrollmentId)))
+  const safe = escapeEmailHtml
+  const courseRows = confirmedCourses.length
+    ? confirmedCourses.map(course => `<tr><td style="padding:11px;font-weight:700">${safe(cleanText(course?.title || course?.planName || course?.id, 200) || 'Driving course')}</td><td style="padding:11px">${safe(cleanText(course?.paidAmount ?? course?.price, 60) || 'Paid')}</td></tr>`).join('')
+    : `<tr><td style="padding:11px;font-weight:700">Course</td><td style="padding:11px">${safe(cleanText(payment?.item, 300) || 'Your booking')}</td></tr>`
+  const bookingRows = bookings.length
+    ? bookings.map(booking => `<tr><td style="padding:11px">${safe(cleanText(booking?.date, 32))}</td><td style="padding:11px">${safe(cleanText(booking?.timeSlot || booking?.time, 80))}</td></tr>`).join('')
+    : `<tr><td colspan="2" style="padding:11px">Your confirmed lesson details are available in the dashboard.</td></tr>`
+  const html = emailShell({
+    eyebrow: 'Booking confirmed',
+    title: `Booking successful, ${safe(studentName)}.`,
+    body: `<p>Your payment was successful and your booking is confirmed. Please keep this email for your records.</p><h3 style="margin:22px 0 8px;color:#0145a8">Payment details</h3><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;background:#f7faff"><tr><td style="padding:11px;font-weight:700">Invoice reference</td><td style="padding:11px">${safe(cleanText(payment?.ref, 160) || 'Available in your dashboard')}</td></tr><tr><td style="padding:11px;font-weight:700">Payment status</td><td style="padding:11px">${safe(cleanText(payment?.status, 60) || 'Paid')}</td></tr><tr><td style="padding:11px;font-weight:700">Amount paid</td><td style="padding:11px">$${safe(moneyString(payment?.amount || 0))}</td></tr></table><h3 style="margin:22px 0 8px;color:#0145a8">Course details</h3><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;background:#f7faff"><tr><th style="padding:11px;text-align:left">Course</th><th style="padding:11px;text-align:left">Paid amount</th></tr>${courseRows}</table><h3 style="margin:22px 0 8px;color:#0145a8">Lesson booking details</h3><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;background:#f7faff"><tr><th style="padding:11px;text-align:left">Date</th><th style="padding:11px;text-align:left">Time</th></tr>${bookingRows}</table><p>You can sign in to your dashboard any time to review your courses, payment receipt, and lesson schedule.</p>`,
+    footer: 'A Precision Driving School · Please keep this confirmation for your records.',
+  })
+  try {
+    const result = await sendResendEmail({ to: email, subject: 'Booking confirmed | A Precision Driving School', html, replyTo: adminEmail || undefined })
+    return result.skipped ? { status: 'skipped', reason: 'Course email environment variables are incomplete.' } : { status: 'sent', id: result.id }
+  } catch (error) {
+    return { status: 'failed', error: cleanText(error?.message, 240) || 'Email delivery failed.' }
+  }
+}
 const isDateKey = (value) => {
   const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (!match) return false
@@ -3752,12 +3784,24 @@ app.post('/api/users/:uid/paypal/orders/:orderId/capture', rateLimit({ windowMs:
       { _id: orderId, uid: req.auth.uid },
       { $set: { status: 'COMPLETED', completedAt: new Date(), checkoutResult } }
     )
+    const student = await usersCol.findOne(
+      { uid: req.auth.uid },
+      { projection: { displayName: 1, name: 1, firstName: 1, lastName: 1, email: 1, phone: 1 } }
+    )
+    const confirmedBookings = checkout.bookingIds.length
+      ? await bookingsCol.find({ _id: { $in: checkout.bookingIds }, userId: req.auth.uid }).toArray()
+      : []
+    const emailDelivery = checkout.payment?.status === 'Paid'
+      ? await deliverBookingConfirmationEmail(student, checkout, confirmedBookings)
+      : null
+    if (emailDelivery?.status === 'failed') console.warn('Booking confirmation email failed:', emailDelivery.error)
     return res.json({
       ok: true,
       orderId,
       captureId: record.captureId,
       status: 'COMPLETED',
       ...checkoutResult,
+      ...(emailDelivery ? { emailDelivery } : {}),
     })
   } catch (error) {
     const issue = error.paypalIssue || ''

@@ -4,6 +4,7 @@ import { api } from '../api'
 import { useAuth } from '../contexts/AuthContext'
 import { useCart } from '../contexts/CartContext'
 import { usePageMeta } from '../usePageMeta'
+import { downloadPaymentReceipt } from '../utils/printDocument'
 
 const BLUE = '#0145A8'
 const DARK = '#0A1628'
@@ -75,6 +76,8 @@ export default function PaymentPage() {
   const [paymentError, setPaymentError] = useState('')
   const [paymentEnvironment, setPaymentEnvironment] = useState('sandbox')
   const [paymentResult, setPaymentResult] = useState(null)
+  const [receiptDownloading, setReceiptDownloading] = useState(false)
+  const [receiptError, setReceiptError] = useState('')
   const paypalButtonsRef = useRef(null)
   const [checkoutReference] = useState(() => {
     const suffix = Math.random().toString(36).slice(2, 8).toUpperCase()
@@ -92,6 +95,48 @@ export default function PaymentPage() {
     const slots = Array.isArray(item.pickupSlots) ? item.pickupSlots : []
     return slots.map(slot => ({ ...slot, plan: item.title, city: item.city }))
   }), [items])
+
+  const handleReceiptDownload = async () => {
+    if (!paymentResult || receiptDownloading) return
+    setReceiptDownloading(true)
+    setReceiptError('')
+    try {
+      const profile = user ? await api.getUser(user.uid) : {}
+      const payment = paymentResult.payment || {}
+      await downloadPaymentReceipt({
+        payment: {
+          ...payment,
+          ref: payment.ref || paymentResult.captureId || paymentResult.orderId,
+          status: payment.status || 'Paid',
+          item: payment.item || (Array.isArray(paymentResult.courses) ? paymentResult.courses.map(course => course.title).filter(Boolean).join(' + ') : 'Course booking'),
+        },
+        student: {
+          id: profile.uid || user?.uid,
+          username: profile.username || profile.displayName || user?.displayName,
+          name: profile.displayName || profile.name || user?.displayName || 'Student',
+          email: profile.email || user?.email,
+          phone: profile.phone,
+          gender: profile.gender,
+          dateOfBirth: profile.dateOfBirth || profile.dob,
+          address: profile.address,
+          city: profile.city,
+          state: profile.state,
+          zipCode: profile.zipCode || profile.zip,
+          permitNumber: profile.permitNumber || profile.permit,
+          permitIssueDate: profile.permitIssueDate || profile.issueDate,
+          permitExpiryDate: profile.permitExpiryDate || profile.expiryDate,
+          parentPhone: profile.parentPhone,
+          pickupAddress: profile.pickupAddress,
+          notes: profile.notes,
+          medication: profile.medication || profile.medicalNotes,
+        },
+      })
+    } catch {
+      setReceiptError('Receipt PDF could not be downloaded. Please try again.')
+    } finally {
+      setReceiptDownloading(false)
+    }
+  }
 
   const applyCoupon = async event => {
     event.preventDefault()
@@ -227,7 +272,7 @@ export default function PaymentPage() {
         .payment-notice{padding:.8rem .9rem;border:1px solid #FCD34D;border-radius:10px;background:#FFFBEB;color:#92400E;font-size:.82rem;line-height:1.5;margin:0 0 1rem}
         .paypal-checkout{min-height:52px;position:relative}.paypal-loading{min-height:52px;display:grid;place-items:center;border-radius:999px;background:#F1F5F9;color:#334155;font-weight:800}.paypal-processing{padding:.75rem 1rem;border-radius:10px;background:#EFF6FF;color:#1D4ED8;text-align:center;font-weight:800;margin-bottom:.75rem}.paypal-error{padding:.8rem .9rem;border:1px solid #FCA5A5;border-radius:10px;background:#FEF2F2;color:#B91C1C;font-size:.84rem;line-height:1.5;margin-bottom:.85rem}.payment-powered{text-align:center;margin:.85rem 0 0;color:#475569;font-size:.72rem}.payment-powered strong{color:#087CC1}
         .payment-success{padding:clamp(2rem,6vw,4.5rem);text-align:center;border:1px solid #BBE7D2;border-top:6px solid #059669;border-radius:20px;background:#fff;box-shadow:0 24px 70px rgba(15,35,65,.1)}.payment-success-icon{width:76px;height:76px;margin:0 auto 1.2rem;border-radius:50%;display:grid;place-items:center;background:#ECFDF5;color:#047857;font-size:2.2rem;font-weight:900}.payment-success h2{margin:0;font-family:var(--font-display);font-size:clamp(2rem,4vw,3rem);color:${DARK}}.payment-success p{color:#334155;line-height:1.65}.payment-success-reference{display:inline-block;padding:.8rem 1rem;margin:.5rem 0 1.3rem;border-radius:10px;background:#F8FAFC;border:1px solid #E2E8F0;color:${DARK};overflow-wrap:anywhere}.payment-success-actions{display:flex;justify-content:center;gap:.75rem;flex-wrap:wrap}
-        .payment-actions{display:flex;justify-content:center;gap:.7rem;flex-wrap:wrap;margin-top:1.35rem}.payment-back{border:1px solid #CAD7E5;border-radius:999px;background:#fff;color:${BLUE};padding:.75rem 1.15rem;font-weight:800;cursor:pointer}.payment-contact{color:${BLUE};font-weight:800;text-decoration:none;padding:.75rem 1.15rem}
+        .payment-actions{display:flex;justify-content:center;gap:.7rem;flex-wrap:wrap;margin-top:1.35rem}.payment-back{border:1px solid #CAD7E5;border-radius:999px;background:#fff;color:${BLUE};padding:.75rem 1.15rem;font-weight:800;cursor:pointer}.payment-contact{color:${BLUE};font-weight:800;text-decoration:none;padding:.75rem 1.15rem;border:0;background:transparent;cursor:pointer;font:inherit}.payment-contact:disabled{opacity:.6;cursor:wait}
         .payment-empty{padding:4rem 1rem;text-align:center;border:1px solid #D9E4F0;border-radius:20px;background:#fff;box-shadow:0 20px 60px rgba(15,35,65,.08)}.payment-empty h2{font-family:var(--font-display);font-size:2rem;margin:0 0 .6rem}.payment-empty p{color:#334155;margin:0 0 1.5rem}
         @media(max-width:860px){.payment-grid{grid-template-columns:1fr}.payment-security{min-height:auto}.payment-security h2{margin-top:1.4rem}}
         @media(max-width:520px){.payment-page{padding-inline:.7rem}.payment-card{padding:1.1rem}.payment-coupon{flex-direction:column}.payment-coupon button{width:100%}.payment-item{flex-direction:column}.payment-security{padding:1.35rem}}
@@ -250,8 +295,9 @@ export default function PaymentPage() {
             </div>
             <div className="payment-success-actions">
               <Link to="/dashboard?tab=courses" className="btn-gold">View My Courses</Link>
-              <Link to="/dashboard?tab=payments" className="payment-contact">View Receipt</Link>
+              <button type="button" className="payment-contact" onClick={handleReceiptDownload} disabled={receiptDownloading}>{receiptDownloading ? 'Downloading…' : 'View Receipt'}</button>
             </div>
+            {receiptError && <p role="alert" style={{ color:'#B91C1C', margin:'1rem 0 0' }}>{receiptError}</p>}
           </div>
         ) : loading && !items.length ? (
           <div className="payment-empty" role="status">Restoring your selected booking...</div>
