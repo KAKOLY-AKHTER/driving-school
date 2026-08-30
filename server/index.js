@@ -243,6 +243,33 @@ async function deliverContactEmails(contact) {
   const errors = results.filter(result => result.status === 'rejected').map(result => cleanText(result.reason?.message, 240))
   return { status: errors.length === 0 ? 'sent' : sentIds.length ? 'partial' : 'failed', sentIds, ...(errors.length ? { error: errors.join(' | ') } : {}) }
 }
+
+async function deliverEnrollmentConfirmationEmail(student, course) {
+  const { apiKey, from, adminEmail } = resendConfiguration()
+  const email = cleanText(student?.email, 320).toLowerCase()
+  if (!apiKey || !from) return { status: 'skipped', reason: 'Course email environment variables are incomplete.' }
+  if (!isEmail(email)) return { status: 'skipped', reason: 'The student does not have a valid email address.' }
+  const studentName = cleanText(student?.displayName || student?.name || [student?.firstName, student?.lastName].filter(Boolean).join(' '), 160) || 'Student'
+  const courseName = cleanText(course?.title || course?.planName || course?.id, 200) || 'Your driving course'
+  const location = [cleanText(course?.city, 120), cleanText(course?.cityZip, 24)].filter(Boolean).join(', ') || 'To be arranged'
+  const allowance = course?.slotAllowance || course?.slotUsage || {}
+  const used = Number(allowance.used ?? course?.slotUsed)
+  const maximum = Number(allowance.maximum ?? course?.slotMaximum)
+  const lessonSlots = Number.isFinite(used) && Number.isFinite(maximum) ? `${used} of ${maximum}` : 'Shown in your dashboard'
+  const safe = escapeEmailHtml
+  const html = emailShell({
+    eyebrow: 'Course enrollment confirmed',
+    title: `You are confirmed, ${safe(studentName)}.`,
+    body: `<p>Your enrollment has been confirmed by A Precision Driving School. Your course details are below.</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;background:#f7faff"><tr><td style="padding:11px;font-weight:700">Course</td><td style="padding:11px">${safe(courseName)}</td></tr><tr><td style="padding:11px;font-weight:700">Enrollment status</td><td style="padding:11px">Confirmed / Enrolled</td></tr><tr><td style="padding:11px;font-weight:700">Payment status</td><td style="padding:11px">${safe(cleanText(course?.paymentStatus, 60) || 'Paid')}</td></tr><tr><td style="padding:11px;font-weight:700">Paid price</td><td style="padding:11px">${safe(cleanText(course?.paidAmount || course?.price, 60) || 'Shown in your dashboard')}</td></tr><tr><td style="padding:11px;font-weight:700">Pickup location</td><td style="padding:11px">${safe(location)}</td></tr><tr><td style="padding:11px;font-weight:700">Lesson slots</td><td style="padding:11px">${safe(lessonSlots)}</td></tr><tr><td style="padding:11px;font-weight:700">Enrollment reference</td><td style="padding:11px">${safe(cleanText(course?.enrollmentId || course?.paymentRef, 160) || 'Available in your dashboard')}</td></tr></table><p>You can sign in to your dashboard to review your course, payment, and lesson booking details.</p>`,
+    footer: 'A Precision Driving School · Please keep this confirmation for your records.',
+  })
+  try {
+    const result = await sendResendEmail({ to: email, subject: `Course enrollment confirmed | ${courseName}`, html, replyTo: adminEmail || undefined })
+    return result.skipped ? { status: 'skipped', reason: 'Course email environment variables are incomplete.' } : { status: 'sent', id: result.id }
+  } catch (error) {
+    return { status: 'failed', error: cleanText(error?.message, 240) || 'Email delivery failed.' }
+  }
+}
 const isDateKey = (value) => {
   const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (!match) return false
@@ -1420,6 +1447,15 @@ function validateAvailabilitySlot(date, timeSlot, { allowToday = true } = {}) {
     throw new HttpError(400, 'Please choose a future date.')
   }
   return slot
+}
+
+function validateClosedAvailabilityDates(dates, today = californiaDateKey()) {
+  if (!Array.isArray(dates)) throw new HttpError(400, 'Dates must be provided as an array.')
+  return [...new Set(dates.map(date => cleanText(date, 10)))].sort().map(date => {
+    if (!isDateKey(date)) throw new HttpError(400, 'Please choose a valid calendar date.')
+    if (date <= today) throw new HttpError(400, 'Only future dates can be closed.')
+    return date
+  })
 }
 
 function adminAvailabilityStatus(slot, today = californiaDateKey()) {
@@ -4782,14 +4818,18 @@ app.put('/api/admin/users/:uid/courses', async (req, res) => {
   try {
     const uid = cleanText(req.params.uid, 160)
     if (!uid) throw new HttpError(400, 'User id is required.')
-    const student = await usersCol.findOne({ uid }, { projection: { courses: 1 } })
+    const student = await usersCol.findOne({ uid }, { projection: { courses: 1, displayName: 1, name: 1, firstName: 1, lastName: 1, email: 1, phone: 1 } })
     if (!student) throw new HttpError(404, 'Student account was not found.')
     const courses = Array.isArray(student.courses) ? student.courses : []
     const index = findAdminCourseIndex(courses, req.body)
     if (index < 0) throw new HttpError(404, 'Enrollment was not found.')
     const update = sanitizeAdminCourseUpdate(req.body?.course)
+    const shouldSendConfirmation = req.body?.sendConfirmation === true && update.status === 'Enrolled'
     await usersCol.updateOne({ uid }, { $set: Object.fromEntries(Object.entries(update).map(([key, value]) => [`courses.${index}.${key}`, value])) })
-    res.json({ ok: true, course: { ...courses[index], ...update } })
+    const updatedCourse = { ...courses[index], ...update }
+    const emailDelivery = shouldSendConfirmation ? await deliverEnrollmentConfirmationEmail(student, updatedCourse) : null
+    if (emailDelivery?.status === 'failed') console.warn('Enrollment confirmation email failed:', emailDelivery.error)
+    res.json({ ok: true, course: updatedCourse, ...(emailDelivery ? { emailDelivery } : {}) })
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message })
     sendServerError(res, error, 'Enrollment update failed')
@@ -6301,6 +6341,7 @@ export {
   splitCheckoutItems,
   validateContinuationSlotCount,
   validateAvailabilitySlot,
+  validateClosedAvailabilityDates,
   validateAdminBookingStatusChange,
   slotLimitForTier,
 }
