@@ -73,7 +73,7 @@ const statusLabel = (status) => String(status || '')
   .join(' ')
 
 const COURSE_STATUS_FILTERS = ['enrolled', 'refund pending', 'refunded']
-const PAYMENT_STATUS_FILTERS = ['paid', 'pending', 'refunded']
+const PAYMENT_STATUS_FILTERS = ['paid', 'refunded']
 
 const slotLimitForCourse = (course) => {
   const id = String(course?.id || '')
@@ -1527,14 +1527,10 @@ export default function DashboardPage() {
                     <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600, animation:'dashTextReveal 0.8s ease both' }}>Billing</p>
                     <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'#0F172A', margin:'0 0 1.5rem', fontWeight:800, textTransform:'uppercase' }}>PAYMENT HISTORY</h2>
                     <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search payments" placeholder="Search reference, item or email…" value={paymentSearch} onChange={event => { setPaymentSearch(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ flex:'1 1 260px' }} /><select aria-label="Filter payments by status" value={paymentStatusFilter} onChange={event => { setPaymentStatusFilter(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ width:'180px' }}><option value="all">All payment statuses</option>{PAYMENT_STATUS_FILTERS.map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}</select></div>
-                    <div className="dash-stat-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1rem', marginBottom:'2rem' }}>
+                    <div className="dash-stat-grid" style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:'1rem', marginBottom:'2rem' }}>
                       <div style={{ background:'linear-gradient(135deg,rgba(5,150,105,0.04),rgba(5,150,105,0.01))', border:'1px solid rgba(5,150,105,0.1)', borderRadius:'var(--radius-md)', padding:'1.25rem' }}>
                         <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#059669', margin:'0 0 0.25rem', fontWeight:600 }}>Total Paid</p>
                         <p style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', color:'#059669', margin:0, fontWeight:800 }}>{formatUSD(totalPaid)}</p>
-                      </div>
-                      <div style={{ background:'linear-gradient(135deg,rgba(234,179,8,0.04),rgba(234,179,8,0.01))', border:'1px solid rgba(234,179,8,0.1)', borderRadius:'var(--radius-md)', padding:'1.25rem' }}>
-                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#CA8A04', margin:'0 0 0.25rem', fontWeight:600 }}>Pending</p>
-                        <p style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', color:'#CA8A04', margin:0, fontWeight:800 }}>{payments.filter(payment => normalizeStatus(payment.status) === 'pending').length}</p>
                       </div>
                       <div style={{ background:'linear-gradient(135deg,rgba(1,69,168,0.04),rgba(1,69,168,0.01))', border:'1px solid rgba(1,69,168,0.1)', borderRadius:'var(--radius-md)', padding:'1.25rem' }}>
                         <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:SKY_BLUE, margin:'0 0 0.25rem', fontWeight:600 }}>Transactions</p>
