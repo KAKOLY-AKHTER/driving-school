@@ -807,6 +807,18 @@ export default function DashboardPage() {
     { length: Math.min(5, pages) },
     (_, index) => Math.max(1, Math.min(pages - 4, page - 2)) + index,
   )
+  const pagerButtonStyle = (active = false) => ({
+    minWidth: '44px',
+    minHeight: '44px',
+    padding: '.5rem .72rem',
+    border: `1px solid ${active ? SKY_BLUE : '#CBD5E1'}`,
+    borderRadius: '9px',
+    background: active ? SKY_BLUE : '#fff',
+    color: active ? '#fff' : '#334155',
+    fontWeight: 800,
+    lineHeight: 1,
+    cursor: 'pointer',
+  })
   const courseDetailPayment = courseDetail && [...payments].reverse().find(payment =>
     (courseDetail.paymentRef && String(payment?.ref || '') === String(courseDetail.paymentRef))
     || (courseDetail.enrollmentId && (Array.isArray(payment?.enrollmentIds) && payment.enrollmentIds.some(id => String(id) === String(courseDetail.enrollmentId))
@@ -1367,7 +1379,7 @@ export default function DashboardPage() {
                         <select aria-label="Courses per page" value={courseLimit} onChange={event => { setCourseLimit(event.target.value); setCoursePage(1) }} className="dash-input" style={{ width:'125px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
                         <span style={{ color:'#475569' }}>Page {safeCoursePage} of {coursePages} · {matchedCourses.length} courses</span>
                       </div>
-                      <div style={{ display:'flex', gap:'.45rem', alignItems:'center' }}><button type="button" disabled={safeCoursePage <= 1} onClick={() => setCoursePage(page => Math.max(1, page - 1))}>Previous</button>{pageNumbers(safeCoursePage, coursePages).map(page => <button type="button" key={page} aria-label={`Course page ${page}`} aria-current={page === safeCoursePage ? 'page' : undefined} onClick={() => setCoursePage(page)} style={page === safeCoursePage ? { background:SKY_BLUE, color:'#fff', borderColor:SKY_BLUE } : undefined}>{page}</button>)}<button type="button" disabled={safeCoursePage >= coursePages} onClick={() => setCoursePage(page => Math.min(coursePages, page + 1))}>Next</button></div>
+                      <div style={{ display:'flex', gap:'.45rem', alignItems:'center' }}><button type="button" disabled={safeCoursePage <= 1} onClick={() => setCoursePage(page => Math.max(1, page - 1))} style={{ ...pagerButtonStyle(), minWidth:'82px', opacity:safeCoursePage <= 1 ? .5 : 1, cursor:safeCoursePage <= 1 ? 'not-allowed' : 'pointer' }}>Previous</button>{pageNumbers(safeCoursePage, coursePages).map(page => <button type="button" key={page} aria-label={`Course page ${page}`} aria-current={page === safeCoursePage ? 'page' : undefined} onClick={() => setCoursePage(page)} style={pagerButtonStyle(page === safeCoursePage)}>{page}</button>)}<button type="button" disabled={safeCoursePage >= coursePages} onClick={() => setCoursePage(page => Math.min(coursePages, page + 1))} style={{ ...pagerButtonStyle(), minWidth:'60px', opacity:safeCoursePage >= coursePages ? .5 : 1, cursor:safeCoursePage >= coursePages ? 'not-allowed' : 'pointer' }}>Next</button></div>
                     </div>}
                     <div style={{ display:'flex', flexDirection:'column', gap:'0.75rem' }}>
                       {courses.length === 0 && (
@@ -1540,7 +1552,7 @@ export default function DashboardPage() {
                         <select aria-label="Payments per page" value={paymentLimit} onChange={event => { setPaymentLimit(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ width:'125px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
                         <span style={{ color:'#475569' }}>Page {safePaymentPage} of {paymentPages} · {matchedPayments.length} payments</span>
                       </div>
-                      <div style={{ display:'flex', gap:'.45rem', alignItems:'center' }}><button type="button" disabled={safePaymentPage <= 1} onClick={() => setPaymentPage(page => Math.max(1, page - 1))}>Previous</button>{pageNumbers(safePaymentPage, paymentPages).map(page => <button type="button" key={page} aria-label={`Payment page ${page}`} aria-current={page === safePaymentPage ? 'page' : undefined} onClick={() => setPaymentPage(page)} style={page === safePaymentPage ? { background:SKY_BLUE, color:'#fff', borderColor:SKY_BLUE } : undefined}>{page}</button>)}<button type="button" disabled={safePaymentPage >= paymentPages} onClick={() => setPaymentPage(page => Math.min(paymentPages, page + 1))}>Next</button></div>
+                      <div style={{ display:'flex', gap:'.45rem', alignItems:'center' }}><button type="button" disabled={safePaymentPage <= 1} onClick={() => setPaymentPage(page => Math.max(1, page - 1))} style={{ ...pagerButtonStyle(), minWidth:'82px', opacity:safePaymentPage <= 1 ? .5 : 1, cursor:safePaymentPage <= 1 ? 'not-allowed' : 'pointer' }}>Previous</button>{pageNumbers(safePaymentPage, paymentPages).map(page => <button type="button" key={page} aria-label={`Payment page ${page}`} aria-current={page === safePaymentPage ? 'page' : undefined} onClick={() => setPaymentPage(page)} style={pagerButtonStyle(page === safePaymentPage)}>{page}</button>)}<button type="button" disabled={safePaymentPage >= paymentPages} onClick={() => setPaymentPage(page => Math.min(paymentPages, page + 1))} style={{ ...pagerButtonStyle(), minWidth:'60px', opacity:safePaymentPage >= paymentPages ? .5 : 1, cursor:safePaymentPage >= paymentPages ? 'not-allowed' : 'pointer' }}>Next</button></div>
                     </div>}
                     <div className="dash-table-scroll">
                     <table style={{ width:'100%', borderCollapse:'separate', borderSpacing:'0', minWidth:'700px' }}>

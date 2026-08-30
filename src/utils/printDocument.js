@@ -147,7 +147,7 @@ export async function openEnrollmentInvoice({ school = {}, student = {}, enrollm
   pdf.rect(0, 120, pageWidth, 6, 'F')
   if (logo) {
     pdf.setFillColor(255, 255, 255)
-    pdf.roundedRect(margin - 6, 20, 80, 80, 8, 8, 'F')
+    pdf.rect(margin - 6, 20, 80, 80, 'F')
     pdf.addImage(logo, 'PNG', margin + 1, 27, 66, 66)
   }
   pdf.setTextColor(255, 255, 255)
@@ -158,13 +158,13 @@ export async function openEnrollmentInvoice({ school = {}, student = {}, enrollm
   pdf.setFontSize(10)
   pdf.text([school.address, school.phone, school.email, school.website].filter(Boolean).join('  |  '), logo ? 132 : margin, 72, { maxWidth: 310 })
   pdf.setFillColor(...blue)
-  pdf.roundedRect(pageWidth - 170, 30, 128, 34, 5, 5, 'F')
+  pdf.rect(pageWidth - 170, 30, 128, 34, 'F')
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(15)
   pdf.setTextColor(255, 255, 255)
   pdf.text('INVOICE', pageWidth - 106, 52, { align: 'center' })
   pdf.setFillColor(255, 255, 255)
-  pdf.roundedRect(pageWidth - 220, 76, 178, 31, 5, 5, 'F')
+  pdf.rect(pageWidth - 220, 76, 178, 31, 'F')
   pdf.setTextColor(...navy)
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(8.6)
@@ -174,8 +174,9 @@ export async function openEnrollmentInvoice({ school = {}, student = {}, enrollm
   pdf.text(`Issued ${value(enrollment.issuedAt)}`, pageWidth - 52, 101, { align: 'right' })
 
   const section = (title, y) => {
+    if (![margin, y, contentWidth, 24].every(Number.isFinite)) throw new Error(`Invalid PDF section coordinates: ${title} (${margin}, ${y}, ${contentWidth})`)
     pdf.setFillColor(...blue)
-    pdf.roundedRect(margin, y, contentWidth, 24, 5, 5, 'F')
+    pdf.rect(margin, y, contentWidth, 24, 'F')
     pdf.setTextColor(255, 255, 255)
     pdf.setFont('helvetica', 'bold')
     pdf.setFontSize(10)
@@ -206,7 +207,7 @@ export async function openEnrollmentInvoice({ school = {}, student = {}, enrollm
     }
     y = section(title, y)
     pdf.setFillColor(...fill)
-    pdf.roundedRect(margin, y, contentWidth, bodyHeight, 0, 0, 'F')
+    pdf.rect(margin, y, contentWidth, bodyHeight, 'F')
     const leftX = margin + 14
     const rightX = margin + contentWidth / 2 + 8
     const detailWidth = contentWidth / 2 - 28
@@ -229,7 +230,7 @@ export async function openEnrollmentInvoice({ school = {}, student = {}, enrollm
     ['Permit Issue Date', student.permitIssueDate || student.issueDate], ['Permit Expiry Date', student.permitExpiryDate || student.expiryDate],
     ['Parent Phone', student.parentPhone], ['Pickup Address', student.pickupAddress],
     ['Notes', student.notes], ['Medical Notes', student.medication || student.medicalNotes],
-  ])
+  ], y)
   y = drawDetailsSection('BOOKING DETAILS', [
     ['Course', enrollment.course], ['Enrollment ID', enrollment.id],
     ['Enrollment Status', enrollment.status], ['Enrollment Date', enrollment.enrolledAt],

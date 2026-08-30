@@ -848,7 +848,6 @@ export default function AdminPage() {
   const [settingsSaving, setSettingsSaving] = useState(false)
   const [pricing, setPricing] = useState([])
   const [pricingSearch, setPricingSearch] = useState('')
-  const [pricingUsageFilter, setPricingUsageFilter] = useState('all')
   const [pricingPage, setPricingPage] = useState(1)
   const [pricingLimit, setPricingLimit] = useState('10')
   const [pricingEdit, setPricingEdit] = useState(null)
@@ -1740,9 +1739,7 @@ export default function AdminPage() {
     })))
   const filteredPricing = pricing.filter(plan => {
     const query = pricingSearch.trim().toLowerCase()
-    const usage = enrollmentRows.filter(({ course }) => String(course?.id || '') === String(plan.id || '')).length
     return (!query || [plan.id, plan.planName, plan.planPrice, plan.planPriceTwo, ...(plan.options || []).map(option => option?.text)].some(value => String(value || '').toLowerCase().includes(query)))
-      && (pricingUsageFilter === 'all' || (pricingUsageFilter === 'used' ? usage > 0 : usage === 0))
   })
   const pricingPages = Math.max(1, Math.ceil(filteredPricing.length / Number(pricingLimit)))
   const safePricingPage = Math.min(pricingPage, pricingPages)
@@ -2398,7 +2395,7 @@ export default function AdminPage() {
                   <div role="note" style={{ marginBottom: '1.25rem', padding: '0.9rem 1rem', border: '1px solid #BFDBFE', background: '#EFF6FF', borderRadius: '12px', color: '#1E3A5F', lineHeight: 1.55 }}>
                     <strong>Location pricing:</strong> Near cities use the Near Price; Long cities use the Long Price. The server verifies the selected city and applies the matching price to the cart and invoice.
                   </div>
-                  <div className="admin-toolbar" style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', marginBottom: '1rem' }}><input type="search" aria-label="Search pricing plans" placeholder="Search plan, price or option…" value={pricingSearch} onChange={event => { setPricingSearch(event.target.value); setPricingPage(1) }} style={{ ...inputStyle, maxWidth: '300px' }} /><select aria-label="Filter pricing plans by usage" value={pricingUsageFilter} onChange={event => { setPricingUsageFilter(event.target.value); setPricingPage(1) }} style={{ ...inputStyle, width: '170px' }}><option value="all">All plans</option><option value="used">Enrolled plans</option><option value="unused">Unused plans</option></select></div>
+                  <div className="admin-toolbar" style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', marginBottom: '1rem' }}><input type="search" aria-label="Search pricing plans" placeholder="Search plan, price or option…" value={pricingSearch} onChange={event => { setPricingSearch(event.target.value); setPricingPage(1) }} style={{ ...inputStyle, maxWidth: '300px' }} /></div>
                   <TablePager page={safePricingPage} pages={pricingPages} total={filteredPricing.length} label="plans" onChange={setPricingPage}><select aria-label="Pricing plan rows per page" value={pricingLimit} onChange={event => { setPricingLimit(event.target.value); setPricingPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></TablePager>
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -2450,7 +2447,7 @@ export default function AdminPage() {
                           )
                         })}
                         {filteredPricing.length === 0 && (
-                          <tr><td colSpan={10} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{pricingSearch || pricingUsageFilter !== 'all' ? 'No pricing plans match the selected filters.' : 'No pricing packages yet. Click "+ Add Pricing Plan" to create one.'}</td></tr>
+                          <tr><td colSpan={10} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{pricingSearch ? 'No pricing plans match the search.' : 'No pricing packages yet. Click "+ Add Pricing Plan" to create one.'}</td></tr>
                         )}
                       </tbody>
                     </table>
