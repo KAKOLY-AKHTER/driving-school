@@ -72,6 +72,9 @@ const statusLabel = (status) => String(status || '')
   .map(word => word.charAt(0).toUpperCase() + word.slice(1))
   .join(' ')
 
+const COURSE_STATUS_FILTERS = ['enrolled', 'refund pending', 'refunded']
+const PAYMENT_STATUS_FILTERS = ['paid', 'pending', 'refunded']
+
 const slotLimitForCourse = (course) => {
   const id = String(course?.id || '')
   const name = String(course?.title || course?.planName || '').toUpperCase()
@@ -229,21 +232,20 @@ export default function DashboardPage() {
     setActiveTab(current => current === nextTab ? current : nextTab)
   }, [searchParams])
 
-  // A status may be changed by the admin while this page is open. In that
-  // case, return to "All" instead of leaving the table on an invalid filter.
+  // Keep filter state valid if the page is restored from an older URL/session.
   useEffect(() => {
-    if (courseStatusFilter !== 'all' && !courses.some(course => normalizeStatus(course.status || 'enrolled') === courseStatusFilter)) {
+    if (courseStatusFilter !== 'all' && !COURSE_STATUS_FILTERS.includes(courseStatusFilter)) {
       setCourseStatusFilter('all')
       setCoursePage(1)
     }
-  }, [courses, courseStatusFilter])
+  }, [courseStatusFilter])
 
   useEffect(() => {
-    if (paymentStatusFilter !== 'all' && !payments.some(payment => normalizeStatus(payment.status || 'pending') === paymentStatusFilter)) {
+    if (paymentStatusFilter !== 'all' && !PAYMENT_STATUS_FILTERS.includes(paymentStatusFilter)) {
       setPaymentStatusFilter('all')
       setPaymentPage(1)
     }
-  }, [payments, paymentStatusFilter])
+  }, [paymentStatusFilter])
 
   useEffect(() => {
     const warnBeforeLeaving = (event) => {
@@ -771,14 +773,6 @@ export default function DashboardPage() {
     .reduce((sum, payment) => sum + netPaymentAmount(payment), 0)
   const pendingRefunds = courses.filter(course => normalizeStatus(course.status) === 'refund pending').length
   const activeCourses = courses.filter(course => !['refund pending', 'refunded', 'cancelled', 'canceled'].includes(normalizeStatus(course.status)))
-  // Keep each dropdown tied to the statuses that are actually present in its table.
-  // This prevents users from selecting a filter that can never return a result.
-  const courseStatusOptions = [...new Set(courses.map(course => normalizeStatus(course.status || 'enrolled')))]
-    .filter(Boolean)
-    .sort((a, b) => statusLabel(a).localeCompare(statusLabel(b)))
-  const paymentStatusOptions = [...new Set(payments.map(payment => normalizeStatus(payment.status || 'pending')))]
-    .filter(Boolean)
-    .sort((a, b) => statusLabel(a).localeCompare(statusLabel(b)))
   const matchedCourses = [...courses].filter(course => {
     const query = courseSearch.trim().toLowerCase()
     const status = normalizeStatus(course.status || 'enrolled')
@@ -1372,7 +1366,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:'0 0 1.5rem' }}>Here are your currently enrolled courses... you can add more packages.</p>
-                    <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search enrolled courses" placeholder="Search course, city or price…" value={courseSearch} onChange={event => { setCourseSearch(event.target.value); setCoursePage(1) }} className="dash-input" style={{ flex:'1 1 240px' }} /><select aria-label="Filter courses by status" value={courseStatusFilter} onChange={event => { setCourseStatusFilter(event.target.value); setCoursePage(1) }} className="dash-input" style={{ width:'190px' }}><option value="all">All course statuses</option>{courseStatusOptions.map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}</select></div>
+                    <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search enrolled courses" placeholder="Search course, city or price…" value={courseSearch} onChange={event => { setCourseSearch(event.target.value); setCoursePage(1) }} className="dash-input" style={{ flex:'1 1 240px' }} /><select aria-label="Filter courses by status" value={courseStatusFilter} onChange={event => { setCourseStatusFilter(event.target.value); setCoursePage(1) }} className="dash-input" style={{ width:'190px' }}><option value="all">All course statuses</option>{COURSE_STATUS_FILTERS.map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}</select></div>
                     <button onClick={() => navigate('/pricing')} className="dash-btn-primary" style={{ marginBottom:'2rem' }}>Add more packages</button>
                     {matchedCourses.length > 0 && <div aria-label="Course pagination" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'.75rem', flexWrap:'wrap', margin:'0 0 1rem' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:'.7rem', flexWrap:'wrap' }}>
@@ -1532,7 +1526,7 @@ export default function DashboardPage() {
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT},${GOLD})`, backgroundSize:'200% 100%', animation:'dashShimmer 5s linear infinite' }} />
                     <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600, animation:'dashTextReveal 0.8s ease both' }}>Billing</p>
                     <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'#0F172A', margin:'0 0 1.5rem', fontWeight:800, textTransform:'uppercase' }}>PAYMENT HISTORY</h2>
-                    <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search payments" placeholder="Search reference, item or email…" value={paymentSearch} onChange={event => { setPaymentSearch(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ flex:'1 1 260px' }} /><select aria-label="Filter payments by status" value={paymentStatusFilter} onChange={event => { setPaymentStatusFilter(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ width:'180px' }}><option value="all">All statuses</option>{paymentStatusOptions.map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}</select></div>
+                    <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search payments" placeholder="Search reference, item or email…" value={paymentSearch} onChange={event => { setPaymentSearch(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ flex:'1 1 260px' }} /><select aria-label="Filter payments by status" value={paymentStatusFilter} onChange={event => { setPaymentStatusFilter(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ width:'180px' }}><option value="all">All payment statuses</option>{PAYMENT_STATUS_FILTERS.map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}</select></div>
                     <div className="dash-stat-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1rem', marginBottom:'2rem' }}>
                       <div style={{ background:'linear-gradient(135deg,rgba(5,150,105,0.04),rgba(5,150,105,0.01))', border:'1px solid rgba(5,150,105,0.1)', borderRadius:'var(--radius-md)', padding:'1.25rem' }}>
                         <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#059669', margin:'0 0 0.25rem', fontWeight:600 }}>Total Paid</p>
