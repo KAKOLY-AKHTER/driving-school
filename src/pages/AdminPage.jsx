@@ -558,7 +558,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
   const [selected, setSelected] = useState([])
   const [bulkStatus, setBulkStatus] = useState('available')
   const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('available')
+  const [status, setStatus] = useState('all')
   const [page, setPage] = useState(1)
   const [pages, setPages] = useState(1)
   const [total, setTotal] = useState(0)
@@ -825,7 +825,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
           <div><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Manage Lesson Slots ({total})</h2><p style={{ margin: '.25rem 0 0', color: '#334155', fontSize: '.9rem', lineHeight: 1.5 }}><strong>Available</strong> slots are visible to students. <strong>Unavailable</strong> closes an individual slot. Past, checkout-in-progress, and booked slots are read-only here.</p></div>
           <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'nowrap', alignItems: 'center' }}>
             <input className="admin-toolbar-input" type="search" aria-label="Search availability" placeholder="Search date, time or status…" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '220px', minWidth: 0 }} />
-            <select aria-label="Filter lesson slots by booking availability" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '180px', flexShrink: 0 }}><option value="available">Available</option><option value="blocked">Unavailable</option><option value="booked">Booked</option></select>
+            <select aria-label="Filter lesson slots by booking availability" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '180px', flexShrink: 0 }}><option value="all">All lesson slots</option><option value="available">Available</option><option value="blocked">Unavailable</option><option value="booked">Booked</option></select>
           </div>
         </div>
         <div aria-label="Bulk actions for selected lesson slots" style={{ padding: '.85rem', marginBottom: '1rem', border: '1px solid #D8E4F0', borderRadius: '12px', background: '#F8FBFF' }}>
@@ -2481,7 +2481,7 @@ export default function AdminPage() {
                           <th scope="col" style={thStyle}>Contact Message</th>
                           <th scope="col" style={thStyle}>Message Status</th>
                           <th scope="col" style={thStyle}>Received On</th>
-                          <th scope="col" className="admin-actions-cell" style={thStyle}>Manage Message</th>
+                          <th scope="col" className="admin-actions-cell" style={thStyle}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2496,10 +2496,7 @@ export default function AdminPage() {
                             </td>
                             <td style={tdStyle}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</td>
                             <td className="admin-actions-cell" style={tdStyle}>
-                              <div style={{ display: 'flex', gap: '0.4rem', whiteSpace: 'nowrap' }}>
-                                <button type="button" onClick={() => openContactConversation(c)} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem .55rem', fontFamily: 'var(--font-mono)', fontSize: '.7rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Open / Reply</button>
-                                <AdminDeleteIconButton label={`Delete contact message from ${c.firstName || ''} ${c.lastName || ''}`.trim()} title="Delete contact message" onClick={() => handleDeleteContact(c._id)} />
-                              </div>
+                              <div style={{ display: 'flex', gap: '0.4rem', whiteSpace: 'nowrap' }}><AdminDeleteIconButton label={`Delete contact message from ${c.firstName || ''} ${c.lastName || ''}`.trim()} title="Delete contact message" onClick={() => handleDeleteContact(c._id)} /></div>
                             </td>
                           </tr>
                         ))}
