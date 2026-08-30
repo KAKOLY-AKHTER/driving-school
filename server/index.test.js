@@ -382,6 +382,11 @@ test('booking locations match the approved Near and Long city groups', () => {
   assert.equal(longNames.length, 22)
   assert.equal(DEFAULT_LOCATIONS.length, 31)
   assert.equal(new Set(DEFAULT_LOCATIONS.map(location => location.name.toLowerCase())).size, 31)
+  assert.equal(DEFAULT_LOCATIONS.every(location => /^\d{5}$/.test(location.zipCode)), true)
+  assert.deepEqual(
+    Object.fromEntries(DEFAULT_LOCATIONS.slice(0, 2).map(location => [location.name, location.zipCode])),
+    { Fremont: '94536', Newark: '94560' }
+  )
 })
 
 test('booking location input is normalized and constrained to Near or Long', () => {
