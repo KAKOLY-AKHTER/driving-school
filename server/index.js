@@ -6024,9 +6024,15 @@ app.get('/api/admin/refunds', async (req, res) => {
       }
       filter.Status = { $regex: `^${normalizedStatusFilter}$`, $options: 'i' }
     }
-    if (search) {
-      const r = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
-      filter.$or = [{ Full_Name: r }, { Email: r }, { Phone: r }, { Course_Name: r }, { Reason: r }]
+    const searchTerms = cleanText(search, 120).split(/\s+/).filter(Boolean)
+    if (searchTerms.length) {
+      // Search each word across all visible refund-table fields. This lets an
+      // admin find "Kakoly Essential" even though the name and course live in
+      // separate columns, while still supporting partial email or phone search.
+      filter.$and = searchTerms.map(term => {
+        const expression = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+        return { $or: [{ Full_Name: expression }, { Email: expression }, { Phone: expression }, { Course_Name: expression }, { Reason: expression }] }
+      })
     }
     const total = await refundsCol.countDocuments(filter)
     const data = await refundsCol.find(filter)

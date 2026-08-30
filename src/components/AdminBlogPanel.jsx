@@ -115,11 +115,11 @@ export default function AdminBlogPanel({
               .includes(query),
         );
       const matchesVisibility =
-        visibility === "all" ||
-        (visibility === "published" ? post.published : !post.published);
+        visibility === "all" || publicationState(post).label.toLowerCase() === visibility;
       return matchesSearch && matchesVisibility;
     });
   }, [posts, search, visibility]);
+  const postStatusOptions = [...new Set(posts.map((post) => publicationState(post).label.toLowerCase()))];
   const pages = Math.max(1, Math.ceil(filtered.length / limit));
   const safePage = Math.min(page, pages);
   const visiblePosts = filtered.slice((safePage - 1) * limit, safePage * limit);
@@ -706,9 +706,8 @@ export default function AdminBlogPanel({
               value={visibility}
               onChange={(event) => { setVisibility(event.target.value); setPage(1); }}
             >
-              <option value="all">All posts</option>
-              <option value="published">Published</option>
-              <option value="draft">Drafts</option>
+              <option value="all">All post statuses</option>
+              {postStatusOptions.map((status) => <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>)}
             </select>
           </div>
         </div>
@@ -728,7 +727,7 @@ export default function AdminBlogPanel({
           </div>
         ) : (
           <div className="admin-table-wrap">
-            <div aria-label="Blog pagination" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: ".75rem", flexWrap: "wrap", marginBottom: "1rem" }}><div style={{ display: "flex", alignItems: "center", gap: ".65rem", flexWrap: "wrap" }}><select aria-label="Blog rows per page" style={{ ...inputStyle, width: 112 }} value={limit} onChange={(event) => { setLimit(Number(event.target.value)); setPage(1); }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select><span style={{ color: "#334155" }}>Page {safePage} of {pages} · {filtered.length} posts</span></div><div style={{ display: "flex", gap: ".45rem", alignItems: "center" }}><button type="button" disabled={safePage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>Previous</button>{Array.from({ length: pages }, (_, index) => index + 1).slice(Math.max(0, safePage - 4), Math.max(0, safePage - 4) + 7).map((value) => <button key={value} type="button" aria-current={value === safePage ? "page" : undefined} onClick={() => setPage(value)} style={value === safePage ? { background: "#0B4DA2", color: "#fff", borderColor: "#0B4DA2" } : undefined}>{value}</button>)}<button type="button" disabled={safePage >= pages} onClick={() => setPage((value) => Math.min(pages, value + 1))}>Next</button></div></div>
+            <div aria-label="Blog pagination" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: ".75rem", flexWrap: "wrap", marginBottom: "1rem" }}><div style={{ display: "flex", alignItems: "center", gap: ".65rem", flexWrap: "wrap" }}><select aria-label="Blog rows per page" style={{ ...inputStyle, width: 112 }} value={limit} onChange={(event) => { setLimit(Number(event.target.value)); setPage(1); }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select><span style={{ color: "#334155" }}>Page {safePage} of {pages} · {filtered.length} posts</span></div><div style={{ display: "flex", gap: ".45rem", alignItems: "center" }}><button type="button" disabled={safePage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))} style={{ minWidth: 82, minHeight: 44, padding: ".5rem .72rem", border: "1px solid #CBD5E1", borderRadius: 9, background: "#fff", color: "#334155", fontWeight: 800, cursor: safePage <= 1 ? "not-allowed" : "pointer", opacity: safePage <= 1 ? .55 : 1 }}>Previous</button>{Array.from({ length: pages }, (_, index) => index + 1).slice(Math.max(0, safePage - 4), Math.max(0, safePage - 4) + 7).map((value) => <button key={value} type="button" aria-current={value === safePage ? "page" : undefined} onClick={() => setPage(value)} style={{ minWidth: 44, minHeight: 44, padding: ".5rem .72rem", border: `1px solid ${value === safePage ? "#0B4DA2" : "#CBD5E1"}`, borderRadius: 9, background: value === safePage ? "#0B4DA2" : "#fff", color: value === safePage ? "#fff" : "#334155", fontWeight: 800, cursor: "pointer" }}>{value}</button>)}<button type="button" disabled={safePage >= pages} onClick={() => setPage((value) => Math.min(pages, value + 1))} style={{ minWidth: 60, minHeight: 44, padding: ".5rem .72rem", border: "1px solid #CBD5E1", borderRadius: 9, background: "#fff", color: "#334155", fontWeight: 800, cursor: safePage >= pages ? "not-allowed" : "pointer", opacity: safePage >= pages ? .55 : 1 }}>Next</button></div></div>
             <table
               style={{
                 width: "100%",

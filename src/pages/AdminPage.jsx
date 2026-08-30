@@ -445,6 +445,7 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
     return (!query || String(review.name || '').toLowerCase().includes(query) || String(review.text || '').toLowerCase().includes(query))
       && (visibility === 'all' || (visibility === 'published' ? review.published !== false : review.published === false))
   })
+  const reviewStatusOptions = [...new Set(reviews.map(review => review.published !== false ? 'published' : 'draft'))]
   const publishedCount = reviews.filter(review => review.published !== false).length
   const reviewPages = Math.max(1, Math.ceil(matchedReviews.length / reviewLimit))
   const safeReviewPage = Math.min(reviewPage, reviewPages)
@@ -480,7 +481,7 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
       </form>
 
       <div style={cardStyle}>
-        <div className="admin-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Customer Reviews ({filtered.length} of {reviews.length})</h2><div style={{ display: 'flex', gap: '.5rem', flexWrap: 'nowrap', alignItems: 'center' }}><input className="admin-toolbar-input" type="search" aria-label="Search reviews" placeholder="Search reviewer or text…" value={search} onChange={event => { setSearch(event.target.value); setReviewPage(1) }} style={{ ...inputStyle, width: '240px', minWidth: 0 }} /><select aria-label="Filter review visibility" value={visibility} onChange={event => { setVisibility(event.target.value); setReviewPage(1) }} style={{ ...inputStyle, width: '145px', flexShrink: 0 }}><option value="all">All reviews</option><option value="published">Published</option><option value="draft">Draft</option></select></div></div>
+        <div className="admin-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Customer Reviews ({filtered.length} of {reviews.length})</h2><div style={{ display: 'flex', gap: '.5rem', flexWrap: 'nowrap', alignItems: 'center' }}><input className="admin-toolbar-input" type="search" aria-label="Search reviews" placeholder="Search reviewer or text…" value={search} onChange={event => { setSearch(event.target.value); setReviewPage(1) }} style={{ ...inputStyle, width: '240px', minWidth: 0 }} /><select aria-label="Filter review visibility" value={visibility} onChange={event => { setVisibility(event.target.value); setReviewPage(1) }} style={{ ...inputStyle, width: '145px', flexShrink: 0 }}><option value="all">All review statuses</option>{reviewStatusOptions.map(status => <option key={status} value={status}>{status === 'published' ? 'Published' : 'Draft'}</option>)}</select></div></div>
         {error && <div role="alert" style={{ padding: '.85rem 1rem', marginBottom: '1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{error} <button type="button" onClick={() => setLoadVersion(value => value + 1)} style={{ marginLeft: '.6rem', border: 0, background: 'transparent', color: '#0755AE', fontWeight: 850, cursor: 'pointer' }}>Retry</button></div>}
         <TablePager page={safeReviewPage} pages={reviewPages} total={matchedReviews.length} label="reviews" onChange={setReviewPage}><select aria-label="Review rows per page" value={reviewLimit} onChange={event => { setReviewLimit(Number(event.target.value)); setReviewPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></TablePager>
         <div className="admin-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr><th scope="col" style={thStyle}>Reviewer</th><th scope="col" style={thStyle}>Review Message</th><th scope="col" style={thStyle}>Star Rating</th><th scope="col" style={thStyle}>Website Visibility</th><th scope="col" className="admin-actions-cell" style={thStyle}>Manage Review</th></tr></thead><tbody>
@@ -1720,6 +1721,7 @@ export default function AdminPage() {
   }, [activeTab, refundPage, refundLimit, refundSearch, refundStatusFilter, refundAttempt])
 
   const websiteUsers = users.filter(u => u.isAdmin !== true)
+  const refundStatusOptions = [...new Set(refunds.map(refund => normalizeStatus(refund.Status || 'pending')).filter(Boolean))]
   const filteredUsers = websiteUsers.filter(u => {
     const q = userSearch.toLowerCase()
     return !q || adminUserName(u).toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q) || (u.phone || '').includes(q)
@@ -2558,11 +2560,9 @@ export default function AdminPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                         <input className="admin-toolbar-input" aria-label="Search refund records" type="search" placeholder="Search by name, email, course…" value={refundSearch} onChange={e => { setRefundSearch(e.target.value); setRefundPage(1) }} style={{ ...inputStyle, width: '220px' }} />
                         <select aria-label="Filter refunds by status" value={refundStatusFilter} onChange={event => { setRefundStatusFilter(event.target.value); setRefundPage(1) }} style={{ ...inputStyle, width: '155px' }}>
-                          <option value="all">All statuses</option>
-                          <option value="pending">Pending</option>
-                          <option value="refunded">Refunded</option>
-                          <option value="denied">Denied</option>
-                        </select>
+                        <option value="all">All refund statuses</option>
+                        {refundStatusOptions.map(status => <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>)}
+                      </select>
                         {(refundSearch || refundStatusFilter !== 'all') && <button type="button" onClick={() => { setRefundSearch(''); setRefundStatusFilter('all'); setRefundPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                       </div>
                     </div>
