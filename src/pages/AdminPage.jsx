@@ -1769,13 +1769,38 @@ export default function AdminPage() {
   )
 
   const filteredBookings = bookings.filter(b => {
-    const q = bookingSearch.toLowerCase()
+    const q = bookingSearch.trim().toLowerCase()
     const u = users.find(ux => ux.uid === b.userId)
     const name = bookingStudentName(b, u).toLowerCase()
     const email = bookingStudentContact(b, u).toLowerCase()
-    const course = String(COURSE_MAP[b.courseId] || b.courseTitle || b.courseId || '').toLowerCase()
-    const matchesSearch = !q || name.includes(q) || email.includes(q) || course.includes(q) || String(b.date || '').toLowerCase().includes(q) || String(TIME_SLOT_MAP[b.timeSlot] || b.timeSlot || '').toLowerCase().includes(q)
     const group = bookingStatusMeta(b, todayStr).group
+    const rawDate = String(b.date || '')
+    const lessonDate = rawDate ? new Date(`${rawDate}T12:00:00`) : null
+    const formattedDates = lessonDate && !Number.isNaN(lessonDate.getTime())
+      ? [
+          lessonDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
+          lessonDate.toLocaleDateString('en-US'),
+          lessonDate.toLocaleDateString('en-GB'),
+          lessonDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        ]
+      : []
+    const searchValues = [
+      name,
+      email,
+      COURSE_MAP[b.courseId],
+      b.courseTitle,
+      b.courseName,
+      b.planName,
+      b.courseId,
+      rawDate,
+      ...formattedDates,
+      TIME_SLOT_MAP[b.timeSlot],
+      b.timeSlot,
+      b.time,
+      bookingStatusMeta(b, todayStr).label,
+      group,
+    ]
+    const matchesSearch = !q || searchValues.some(value => String(value || '').toLowerCase().includes(q))
     const matchesStatus = bookingStatusFilter === 'all' || group === bookingStatusFilter
     return matchesSearch && matchesStatus
   }).sort((a, b) => bookingSortValue(a).localeCompare(bookingSortValue(b)))
