@@ -248,3 +248,26 @@ export async function openEnrollmentInvoice({ school = {}, student = {}, enrollm
   pdf.save(`${invoiceFileName(enrollment.reference)}-invoice.pdf`)
   return true
 }
+
+// Reuses the branded PDF invoice for the student's payment history. It downloads
+// directly so students do not need to use the browser print dialog.
+export async function downloadPaymentReceipt({ payment = {}, student = {} }) {
+  return openEnrollmentInvoice({
+    school: {
+      name: 'A Precision Driving School',
+      address: 'San Ramon, California',
+    },
+    student,
+    enrollment: {
+      id: Array.isArray(payment.enrollmentIds) ? payment.enrollmentIds.join(', ') : payment.enrollmentId || payment.ref,
+      reference: payment.ref || payment._id || 'payment-receipt',
+      paymentStatus: payment.status || 'Paid',
+      status: payment.status || 'Paid',
+      enrolledAt: payment.date || '',
+      course: payment.item || 'Course payment',
+      amount: payment.amount || '$0.00',
+      location: payment.location || 'Not recorded',
+      lessonSlots: payment.lessonSlots || 'Not recorded',
+    },
+  })
+}

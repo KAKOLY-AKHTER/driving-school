@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../api'
 import AdminDeleteIconButton from './AdminDeleteIconButton'
 
@@ -38,8 +38,6 @@ export default function AdminCouponsPanel({ cardStyle, inputStyle, labelStyle, t
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [attempt, setAttempt] = useState(0)
-  const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('all')
   const [limit, setLimit] = useState(10)
   const [page, setPage] = useState(1)
   const [editing, setEditing] = useState(null)
@@ -57,10 +55,7 @@ export default function AdminCouponsPanel({ cardStyle, inputStyle, labelStyle, t
     return () => { cancelled = true }
   }, [attempt])
 
-  const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase()
-    return coupons.filter(coupon => (!query || [coupon.code, coupon.discountType, coupon.discountValue, coupon.expiresAt].some(value => String(value || '').toLowerCase().includes(query))) && (status === 'all' || coupon.effectiveStatus === status))
-  }, [coupons, search, status])
+  const filtered = coupons
   const pages = Math.max(1, Math.ceil(filtered.length / limit))
   const safePage = Math.min(page, pages)
   const visible = filtered.slice((safePage - 1) * limit, safePage * limit)
@@ -150,11 +145,10 @@ export default function AdminCouponsPanel({ cardStyle, inputStyle, labelStyle, t
       <div role="note" style={{ marginBottom: '1rem', padding: '.85rem 1rem', border: '1px solid #BFDBFE', borderRadius: '12px', background: '#EFF6FF', color: '#1E3A5F', lineHeight: 1.55 }}><strong>How it works:</strong> Fixed Amount removes a dollar value; Percentage removes a percentage. A coupon may reduce a PayPal order to $0.01, but never below it.</div>
       {message && <div role="status" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #86EFAC', borderRadius: '10px', background: '#F0FDF4', color: '#166534', fontWeight: 750 }}>{message}</div>}
       {error && <div role="alert" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #FCA5A5', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{error} {!editing && <button type="button" onClick={() => setAttempt(current => current + 1)} style={{ marginLeft: '.5rem', border: 0, background: 'transparent', color: BLUE, fontWeight: 850, cursor: 'pointer' }}>Retry</button>}</div>}
-      <div className="admin-toolbar" style={{ display: 'flex', gap: '.55rem', flexWrap: 'wrap', marginBottom: '1rem' }}><input type="search" aria-label="Search coupon codes" placeholder="Search code, discount or date…" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} style={{ ...inputStyle, maxWidth: '290px' }} /><select aria-label="Filter coupon status" value={status} onChange={event => { setStatus(event.target.value); setPage(1) }} style={{ ...inputStyle, width: '220px' }}><option value="all">All coupon statuses</option><option value="active">Active</option><option value="scheduled">Scheduled</option><option value="paused">Paused</option><option value="expired">Expired</option></select></div>
       <Pager page={safePage} pages={pages} total={filtered.length} onChange={setPage}><select aria-label="Coupon rows per page" value={limit} onChange={event => { setLimit(Number(event.target.value)); setPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></Pager>
       <div className="admin-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '980px' }}><thead><tr><th scope="col" style={thStyle}>Coupon Code</th><th scope="col" style={thStyle}>Customer Discount</th><th scope="col" style={thStyle}>Valid From</th><th scope="col" style={thStyle}>Expires After</th><th scope="col" style={thStyle}>Current Availability</th><th scope="col" style={thStyle}>Times Used</th><th scope="col" className="admin-actions-cell" style={thStyle}>Manage Coupon</th></tr></thead><tbody>
         {visible.map(coupon => { const meta = statusMeta(coupon); return <tr key={coupon._id}><td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontWeight: 900, color: BLUE }}>{coupon.code}</td><td style={{ ...tdStyle, fontWeight: 800 }}>{discountLabel(coupon)}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{coupon.startsAt || 'Immediately'}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{coupon.expiresAt || 'No expiry date'}</td><td style={tdStyle}><span style={{ display: 'inline-flex', padding: '.28rem .55rem', borderRadius: '999px', background: meta.background, color: meta.color, fontSize: '.72rem', fontWeight: 850, whiteSpace: 'nowrap' }}>{meta.label}</span></td><td style={{ ...tdStyle, textAlign: 'center', fontWeight: 800 }}>{Number(coupon.redemptionCount || 0)}</td><td className="admin-actions-cell" style={{ ...tdStyle, minWidth: '235px' }}><div style={{ display: 'flex', gap: '.4rem' }}><button type="button" onClick={() => toggleCoupon(coupon)} style={{ padding: '.4rem .6rem', border: `1.5px solid ${coupon.isActive === false ? '#16A34A' : '#D97706'}`, borderRadius: '8px', background: '#fff', color: coupon.isActive === false ? '#15803D' : '#B45309', fontWeight: 800, cursor: 'pointer' }}>{coupon.isActive === false ? 'Activate' : 'Pause'}</button><button type="button" onClick={() => openEdit(coupon)} style={{ padding: '.4rem .6rem', border: `1.5px solid ${BLUE}`, borderRadius: '8px', background: '#fff', color: BLUE, fontWeight: 800, cursor: 'pointer' }}>Edit</button><AdminDeleteIconButton label={`Delete coupon code ${coupon.code || ''}`.trim()} title="Delete coupon code" onClick={() => deleteCoupon(coupon)} /></div></td></tr> })}
-        {!loading && !visible.length && <tr><td colSpan={7} style={{ ...tdStyle, padding: '2.2rem', textAlign: 'center', color: '#475569' }}>{search || status !== 'all' ? 'No coupons match the selected search and status.' : 'No coupon codes yet. Select “Create Coupon” to add the first one.'}</td></tr>}
+        {!loading && !visible.length && <tr><td colSpan={7} style={{ ...tdStyle, padding: '2.2rem', textAlign: 'center', color: '#475569' }}>No coupon codes yet. Select “Create Coupon” to add the first one.</td></tr>}
         {loading && <tr><td colSpan={7} style={{ ...tdStyle, padding: '2.2rem', textAlign: 'center', color: '#475569' }}>Loading coupon codes…</td></tr>}
       </tbody></table></div>
     </div>

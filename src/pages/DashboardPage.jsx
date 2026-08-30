@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useCart } from '../contexts/CartContext'
 import { api } from '../api'
 import { usePageMeta } from '../usePageMeta'
-import { openPrintableDocument } from '../utils/printDocument'
+import { downloadPaymentReceipt } from '../utils/printDocument'
 import { ONLINE_COURSE_CURRICULUM } from '../data/onlineCourseCurriculum'
 import { UserLiveSupportPanel } from '../components/LiveSupportPanels'
 import PasswordInput from '../components/PasswordInput'
@@ -26,6 +26,15 @@ const localDateKey = (date = new Date()) => new Intl.DateTimeFormat('en-CA', {
   month: '2-digit',
   day: '2-digit',
 }).format(date)
+
+const formatDateDMY = (value) => {
+  const raw = String(value || '').trim()
+  if (!raw) return '—'
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T12:00:00`) : new Date(raw)
+  return Number.isNaN(date.getTime())
+    ? raw
+    : new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date)
+}
 
 const formatUSD = (value) => {
   const amount = typeof value === 'number'
@@ -712,26 +721,14 @@ export default function DashboardPage() {
     }
   }
 
-  const handlePrintPayment = (payment) => {
-    const refunded = refundedPaymentAmount(payment)
-    const net = netPaymentAmount(payment)
-    const opened = openPrintableDocument({
-      title: `Invoice - ${payment.ref || 'Booking'}`,
-      heading: 'A Precision Driving School',
-      subtitle: 'Booking invoice',
-      rows: [
-        ['Date', payment.date],
-        ['Reference', payment.ref],
-        ['Email', payment.email],
-        ['Item', payment.item],
-        ['Amount', formatUSD(payment.amount)],
-        ...(refunded > 0 ? [['Refunded', formatUSD(refunded)], ['Net paid', formatUSD(net)]] : []),
-        ['Status', payment.status],
-      ],
-      autoPrint: true,
-    })
-    if (!opened) {
-      showNotice('Please allow pop-ups to print this invoice.', 'error')
+  const handleDownloadPaymentReceipt = async (payment) => {
+    try {
+      await downloadPaymentReceipt({
+        payment: { ...payment, date: formatDateDMY(payment.date) },
+        student: { name: user?.displayName || 'Student', email: user?.email || payment.email, phone, address },
+      })
+    } catch {
+      showNotice('The payment receipt could not be downloaded. Please try again.', 'error')
     }
   }
 
@@ -1135,7 +1132,7 @@ export default function DashboardPage() {
               </button>
               <div style={{ padding:'0.85rem 1rem', background:'linear-gradient(145deg,rgba(253,188,1,0.10),rgba(255,255,255,0.03))', borderRadius:'14px', border:'1px solid rgba(253,188,1,0.2)', boxShadow:'inset 0 1px 0 rgba(255,255,255,0.06)' }}>
                 <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'rgba(253,188,1,0.85)', margin:0, fontWeight:700 }}>Member Since</p>
-                <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#FFFFFF', margin:'0.3rem 0 0', fontWeight:600 }}>{user?.metadata?.creationTime ? new Date(user.metadata.creationTime).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' }) : 'Recently'}</p>
+                <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#FFFFFF', margin:'0.3rem 0 0', fontWeight:600 }}>{user?.metadata?.creationTime ? formatDateDMY(user.metadata.creationTime) : 'Recently'}</p>
               </div>
             </div>
           </div>
@@ -1209,7 +1206,7 @@ export default function DashboardPage() {
                     <div className="dash-anim dash-d1 dash-card-premium dash-overview-next-card" style={{ gridColumn:'span 4' }}>
                       <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${SKY_BLUE},#3B82F6)` }} />
                       <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.82rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:'0 0 .55rem', fontWeight:700 }}>Next Lesson</p>
-                      {nextBooking ? <><p style={{ fontFamily:'var(--font-display)', fontSize:'1.05rem', color:DARK, margin:'0 0 .25rem', fontWeight:800 }}>{nextBooking.date}</p><p style={{ margin:0, color:'#475569', fontFamily:'var(--font-body)' }}>{nextBooking.timeSlot || nextBooking.time || 'Time to be confirmed'}</p></> : <p style={{ margin:0, color:'#475569', fontFamily:'var(--font-body)' }}>No upcoming lesson</p>}
+                      {nextBooking ? <><p style={{ fontFamily:'var(--font-display)', fontSize:'1.05rem', color:DARK, margin:'0 0 .25rem', fontWeight:800 }}>{formatDateDMY(nextBooking.date)}</p><p style={{ margin:0, color:'#475569', fontFamily:'var(--font-body)' }}>{nextBooking.timeSlot || nextBooking.time || 'Time to be confirmed'}</p></> : <p style={{ margin:0, color:'#475569', fontFamily:'var(--font-body)' }}>No upcoming lesson</p>}
                       <button type="button" className="dash-overview-inline-action" onClick={() => switchTab('bookings')}>
                         View lesson schedule <span aria-hidden="true">&rarr;</span>
                       </button>
@@ -1284,7 +1281,7 @@ export default function DashboardPage() {
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(253,188,1,0.1),rgba(253,188,1,0.04))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={GOLD_DEEP} strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg></div>
                         <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Submitted</p>
                       </div>
-                      <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#0F172A', margin:0, fontWeight:600 }}>{submittedAt ? new Date(submittedAt + 'T12:00:00').toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' }) : '—'}</p>
+                      <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#0F172A', margin:0, fontWeight:600 }}>{formatDateDMY(submittedAt)}</p>
                     </div>
 
                     {/* Notes */}
@@ -1304,7 +1301,7 @@ export default function DashboardPage() {
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(5,150,105,0.08),rgba(5,150,105,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg></div>
                         <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Issue Date</p>
                       </div>
-                      <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#0F172A', margin:0, fontWeight:600 }}>{issueDate ? new Date(issueDate + 'T12:00:00').toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' }) : '—'}</p>
+                      <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#0F172A', margin:0, fontWeight:600 }}>{formatDateDMY(issueDate)}</p>
                     </div>
 
                     {/* Expiry */}
@@ -1314,7 +1311,7 @@ export default function DashboardPage() {
                         <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:'linear-gradient(135deg,rgba(220,38,38,0.08),rgba(220,38,38,0.03))', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg></div>
                         <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.9rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#475569', margin:0, fontWeight:600 }}>Expiry</p>
                       </div>
-                      <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#0F172A', margin:0, fontWeight:600 }}>{expiryDate ? new Date(expiryDate + 'T12:00:00').toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' }) : '—'}</p>
+                      <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#0F172A', margin:0, fontWeight:600 }}>{formatDateDMY(expiryDate)}</p>
                     </div>
                   </div>
                 </div>
@@ -1329,12 +1326,6 @@ export default function DashboardPage() {
                         <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600, animation:'dashTextReveal 0.8s ease both' }}>COURSES</p>
                         <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'#0F172A', margin:0, fontWeight:800, textTransform:'uppercase' }}>YOUR ENROLLED COURSES</h2>
                       </div>
-                      {activeCourses.length > 0 && (
-                        <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', padding:'0.5rem 1rem', borderRadius:'12px', border:'1px solid rgba(1,69,168,0.08)' }}>
-                          <span style={{ fontFamily:'var(--font-display)', fontSize:'1.3rem', fontWeight:800, color:SKY_BLUE }}>{activeCourses.length}</span>
-                          <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', fontWeight:600 }}>active</span>
-                        </div>
-                      )}
                     </div>
                     <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:'0 0 1.5rem' }}>Here are your currently enrolled courses... you can add more packages.</p>
                     <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search enrolled courses" placeholder="Search course, city or price…" value={courseSearch} onChange={event => { setCourseSearch(event.target.value); setCoursePage(1) }} className="dash-input" style={{ flex:'1 1 240px' }} /><select aria-label="Filter courses by status" value={courseStatusFilter} onChange={event => { setCourseStatusFilter(event.target.value); setCoursePage(1) }} className="dash-input" style={{ width:'180px' }}><option value="all">All statuses</option><option value="active">Active</option><option value="enrolled">Enrolled</option><option value="paid">Paid</option><option value="pending">Pending</option><option value="in progress">In Progress</option><option value="completed">Completed</option><option value="refund pending">Refund Pending</option><option value="refunded">Refunded</option><option value="cancelled">Cancelled</option></select></div>
@@ -1434,7 +1425,7 @@ export default function DashboardPage() {
                       {courseDetail.enrolledAt && (
                         <div style={{ background:'#F8FAFD', borderRadius:'12px', padding:'1rem', border:'1px solid #E8EDF4', marginBottom:'1.25rem' }}>
                           <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Enrolled On</p>
-                          <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:DARK, fontWeight:600, margin:0 }}>{new Date(courseDetail.enrolledAt).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' })}</p>
+                          <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:DARK, fontWeight:600, margin:0 }}>{formatDateDMY(courseDetail.enrolledAt)}</p>
                         </div>
                       )}
                       <button onClick={() => setCourseDetail(null)} style={{ width:'100%', padding:'0.85rem', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.15em', textTransform:'uppercase', fontWeight:700, color:'#fff', background:`linear-gradient(135deg,${SKY_BLUE},#0a2a5e)`, border:'none', borderRadius:'var(--radius-sm)', cursor:'pointer', boxShadow:'0 4px 16px rgba(1,69,168,0.2)' }}>Close</button>
@@ -1491,7 +1482,7 @@ export default function DashboardPage() {
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT},${GOLD})`, backgroundSize:'200% 100%', animation:'dashShimmer 5s linear infinite' }} />
                     <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600, animation:'dashTextReveal 0.8s ease both' }}>Billing</p>
                     <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'#0F172A', margin:'0 0 1.5rem', fontWeight:800, textTransform:'uppercase' }}>PAYMENT HISTORY</h2>
-                    <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search payments" placeholder="Search reference, item or email…" value={paymentSearch} onChange={event => { setPaymentSearch(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ flex:'1 1 260px' }} /><select aria-label="Filter payments by status" value={paymentStatusFilter} onChange={event => { setPaymentStatusFilter(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ width:'180px' }}><option value="all">All statuses</option><option value="paid">Paid</option><option value="pending">Pending</option><option value="refunded">Refunded</option><option value="partially refunded">Partially Refunded</option></select></div>
+                    <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search payments" placeholder="Search reference, item or email…" value={paymentSearch} onChange={event => { setPaymentSearch(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ flex:'1 1 260px' }} /><select aria-label="Filter payments by status" value={paymentStatusFilter} onChange={event => { setPaymentStatusFilter(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ width:'180px' }}><option value="all">All statuses</option><option value="paid">Paid</option><option value="pending">Pending</option><option value="refunded">Refunded</option></select></div>
                     <div className="dash-stat-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1rem', marginBottom:'2rem' }}>
                       <div style={{ background:'linear-gradient(135deg,rgba(5,150,105,0.04),rgba(5,150,105,0.01))', border:'1px solid rgba(5,150,105,0.1)', borderRadius:'var(--radius-md)', padding:'1.25rem' }}>
                         <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#059669', margin:'0 0 0.25rem', fontWeight:600 }}>Total Paid</p>
@@ -1530,13 +1521,13 @@ export default function DashboardPage() {
                           const refunded = refundedPaymentAmount(p)
                           const statusColors = paymentStatusColors(p.status)
                           return <tr key={p.ref || p._id || `${p.date}-${p.item}-${i}`} className="dash-table-row" style={{ borderBottom:'1px solid #F1F5F9' }}>
-                            <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569' }}>{p.date}</td>
+                            <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569' }}>{formatDateDMY(p.date)}</td>
                             <td style={{ padding:'1rem', maxWidth:'170px' }}><button type="button" aria-label={`View full payment reference ${p.ref || ''}`} onClick={() => setTextDetails({ title:'Payment Reference', content:p.ref || 'Not recorded' })} style={{ maxWidth:'150px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', border:0, padding:0, background:'transparent', color:SKY_BLUE, textDecoration:'underline', cursor:'pointer', fontFamily:'var(--font-mono)', fontWeight:700 }}>{p.ref || '—'}</button></td>
                             <td style={{ padding:'1rem', maxWidth:'220px' }}><button type="button" aria-label="View full payment email" onClick={() => setTextDetails({ title:'Payment Email', content:p.email || 'Not recorded' })} style={{ maxWidth:'200px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', border:0, padding:0, background:'transparent', color:SKY_BLUE, textDecoration:'underline', cursor:'pointer' }}>{p.email || '—'}</button></td>
                             <td style={{ padding:'1rem', maxWidth:'240px' }}><button type="button" aria-label="View full payment item" onClick={() => setTextDetails({ title:'Payment Item', content:p.item || 'Not recorded' })} style={{ maxWidth:'220px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', border:0, padding:0, background:'transparent', color:SKY_BLUE, textDecoration:'underline', cursor:'pointer', fontWeight:700 }}>{p.item || '—'}</button></td>
                             <td style={{ padding:'1rem', fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#0F172A', fontWeight:700 }}>{refunded > 0 ? <><span style={{ display:'block' }}>{formatUSD(netPaymentAmount(p))} net</span><span style={{ display:'block', color:'#A16207', fontSize:'0.82rem', fontWeight:700 }}>{formatUSD(refunded)} refunded</span></> : formatUSD(p.amount)}</td>
                             <td style={{ padding:'1rem' }}><span style={{ padding:'0.25rem 0.7rem', ...statusColors, borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:700 }}>{p.status}</span></td>
-                            <td className="dash-payment-actions" style={{ padding:'1rem', textAlign:'center' }}><button type="button" aria-label={`Print invoice ${p.ref || ''}`} title="Print invoice" onClick={() => handlePrintPayment(p)} style={{ background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.35rem', borderRadius:'8px', display:'inline-flex' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg></button></td>
+                            <td className="dash-payment-actions" style={{ padding:'1rem', textAlign:'center' }}><button type="button" aria-label={`Download payment receipt ${p.ref || ''}`} title="Download payment receipt PDF" onClick={() => handleDownloadPaymentReceipt(p)} style={{ background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', border:'none', color:SKY_BLUE, cursor:'pointer', padding:'0.35rem', borderRadius:'8px', display:'inline-flex' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg></button></td>
                           </tr>
                         })}
                       </tbody>
@@ -1775,7 +1766,7 @@ export default function DashboardPage() {
                             return (
                               <div key={b._id || `${b.date}-${b.timeSlot || b.time}-${b.enrollmentId || ''}`} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'.85rem', flexWrap:'wrap', padding:'0.9rem 1rem', background:'linear-gradient(135deg,rgba(34,197,94,0.055),rgba(34,197,94,0.015))', borderRadius:'14px', border:'1px solid rgba(34,197,94,0.14)' }}>
                                 <div style={{ minWidth:'150px', flex:'1 1 170px' }}>
-                                  <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:DARK, fontWeight:600, margin:0 }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })}</p>
+                                  <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:DARK, fontWeight:600, margin:0 }}>{formatDateDMY(b.date)}</p>
                                   <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#334155', margin:'0.15rem 0 0' }}>{displayedTime}</p>
                                 </div>
                                 <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:'0.45rem', flexWrap:'wrap', flex:'1 1 260px' }}>
@@ -1795,7 +1786,7 @@ export default function DashboardPage() {
                             return (
                               <div key={b._id || `${b.date}-${b.timeSlot || b.time}-${b.enrollmentId || ''}`} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.85rem 1rem', background:'#FAFBFD', borderRadius:'14px', border:'1px solid #F1F5F9', opacity:0.7 }}>
                                 <div>
-                                  <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#666', fontWeight:500, margin:0 }}>{new Date(b.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })}</p>
+                                  <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#666', fontWeight:500, margin:0 }}>{formatDateDMY(b.date)}</p>
                                   <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#999', margin:'0.15rem 0 0' }}>{slot?.time || b.timeSlot}</p>
                                 </div>
                                 <span title="Payment status" style={{ padding:'0.25rem 0.7rem', background:paymentColors.background, color:paymentColors.color, borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:600 }}>Payment: {paymentStatus}</span>

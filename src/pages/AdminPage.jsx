@@ -826,6 +826,7 @@ export default function AdminPage() {
   const [contactSearch, setContactSearch] = useState('')
   const [contactStatusFilter, setContactStatusFilter] = useState('all')
   const [contactPage, setContactPage] = useState(1)
+  const [contactLimit, setContactLimit] = useState('10')
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -1767,9 +1768,9 @@ export default function AdminPage() {
     const matchesStatus = contactStatusFilter === 'all' || status === contactStatusFilter
     return matchesSearch && matchesStatus
   })
-  const contactPages = Math.max(1, Math.ceil(filteredContacts.length / 10))
+  const contactPages = Math.max(1, Math.ceil(filteredContacts.length / Number(contactLimit)))
   const safeContactPage = Math.min(contactPage, contactPages)
-  const visibleContacts = filteredContacts.slice((safeContactPage - 1) * 10, safeContactPage * 10)
+  const visibleContacts = filteredContacts.slice((safeContactPage - 1) * Number(contactLimit), safeContactPage * Number(contactLimit))
 
   const filteredLocations = [...locations]
     .filter(location => {
@@ -2308,9 +2309,9 @@ export default function AdminPage() {
                 <div style={cardStyle}>
                   <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.mail} Contact Messages <span style={{ color: '#334155', fontSize: '.9rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>({filteredContacts.length} of {contacts.length})</span></h3>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      <input className="admin-toolbar-input" aria-label="Search contact messages" type="search" placeholder="Search name, email, message…" value={contactSearch} onChange={(event) => { setContactSearch(event.target.value); setContactPage(1) }} style={{ ...inputStyle, width: '280px' }} />
-                      <select aria-label="Filter contact messages by status" value={contactStatusFilter} onChange={(event) => { setContactStatusFilter(event.target.value); setContactPage(1) }} style={{ ...inputStyle, width: '145px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'nowrap', justifyContent: 'flex-end' }}>
+                      <input className="admin-toolbar-input" aria-label="Search contact messages" type="search" placeholder="Search name, email, message…" value={contactSearch} onChange={(event) => { setContactSearch(event.target.value); setContactPage(1) }} style={{ ...inputStyle, width: '280px', minWidth: 0 }} />
+                      <select aria-label="Filter contact messages by status" value={contactStatusFilter} onChange={(event) => { setContactStatusFilter(event.target.value); setContactPage(1) }} style={{ ...inputStyle, width: '145px', flexShrink: 0 }}>
                         <option value="all">All statuses</option>
                         <option value="new">New</option>
                         <option value="read">Read</option>
@@ -2319,7 +2320,7 @@ export default function AdminPage() {
                       {(contactSearch || contactStatusFilter !== 'all') && <button type="button" onClick={() => { setContactSearch(''); setContactStatusFilter('all') }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                     </div>
                   </div>
-                  <TablePager page={safeContactPage} pages={contactPages} total={filteredContacts.length} label="messages" onChange={setContactPage} />
+                  <TablePager page={safeContactPage} pages={contactPages} total={filteredContacts.length} label="messages" onChange={setContactPage}><select aria-label="Contact message rows per page" value={contactLimit} onChange={event => { setContactLimit(event.target.value); setContactPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></TablePager>
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
@@ -2529,7 +2530,7 @@ export default function AdminPage() {
 
                   <div style={cardStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.refund} Refunds ({refundTotal})</h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '.65rem', flexWrap: 'wrap' }}><h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.refund} Refunds ({refundTotal})</h3><button onClick={() => { setRefundForm({ Full_Name: '', Email: '', Phone: '', Course_Name: '', Amount: '', Reason: '', Status: 'pending' }); setRefundEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Refund</button></div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                         <input className="admin-toolbar-input" aria-label="Search refund records" type="search" placeholder="Search by name, email, course…" value={refundSearch} onChange={e => { setRefundSearch(e.target.value); setRefundPage(1) }} style={{ ...inputStyle, width: '220px' }} />
                         <select aria-label="Filter refunds by status" value={refundStatusFilter} onChange={event => { setRefundStatusFilter(event.target.value); setRefundPage(1) }} style={{ ...inputStyle, width: '155px' }}>
@@ -2539,7 +2540,6 @@ export default function AdminPage() {
                           <option value="denied">Denied</option>
                         </select>
                         {(refundSearch || refundStatusFilter !== 'all') && <button type="button" onClick={() => { setRefundSearch(''); setRefundStatusFilter('all'); setRefundPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
-                        <button onClick={() => { setRefundForm({ Full_Name: '', Email: '', Phone: '', Course_Name: '', Amount: '', Reason: '', Status: 'pending' }); setRefundEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Refund</button>
                       </div>
                     </div>
 
