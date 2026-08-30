@@ -66,6 +66,12 @@ const paymentStatusColors = (status) => {
 
 const normalizeStatus = (status) => String(status || '').trim().toLowerCase().replace(/[\s_-]+/g, ' ')
 
+const statusLabel = (status) => String(status || '')
+  .split(' ')
+  .filter(Boolean)
+  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+  .join(' ')
+
 const slotLimitForCourse = (course) => {
   const id = String(course?.id || '')
   const name = String(course?.title || course?.planName || '').toUpperCase()
@@ -171,9 +177,11 @@ export default function DashboardPage() {
   const [courseSearch, setCourseSearch] = useState('')
   const [courseStatusFilter, setCourseStatusFilter] = useState('all')
   const [coursePage, setCoursePage] = useState(1)
+  const [courseLimit, setCourseLimit] = useState('10')
   const [paymentSearch, setPaymentSearch] = useState('')
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('all')
   const [paymentPage, setPaymentPage] = useState(1)
+  const [paymentLimit, setPaymentLimit] = useState('10')
   const [upcomingPage, setUpcomingPage] = useState(1)
   const [supportUnread, setSupportUnread] = useState(0)
   const [sUsername, setSUsername] = useState('')
@@ -220,6 +228,22 @@ export default function DashboardPage() {
     const nextTab = dashboardTabs.has(tab) ? tab : 'dashboard'
     setActiveTab(current => current === nextTab ? current : nextTab)
   }, [searchParams])
+
+  // A status may be changed by the admin while this page is open. In that
+  // case, return to "All" instead of leaving the table on an invalid filter.
+  useEffect(() => {
+    if (courseStatusFilter !== 'all' && !courses.some(course => normalizeStatus(course.status || 'enrolled') === courseStatusFilter)) {
+      setCourseStatusFilter('all')
+      setCoursePage(1)
+    }
+  }, [courses, courseStatusFilter])
+
+  useEffect(() => {
+    if (paymentStatusFilter !== 'all' && !payments.some(payment => normalizeStatus(payment.status || 'pending') === paymentStatusFilter)) {
+      setPaymentStatusFilter('all')
+      setPaymentPage(1)
+    }
+  }, [payments, paymentStatusFilter])
 
   useEffect(() => {
     const warnBeforeLeaving = (event) => {
@@ -747,6 +771,14 @@ export default function DashboardPage() {
     .reduce((sum, payment) => sum + netPaymentAmount(payment), 0)
   const pendingRefunds = courses.filter(course => normalizeStatus(course.status) === 'refund pending').length
   const activeCourses = courses.filter(course => !['refund pending', 'refunded', 'cancelled', 'canceled'].includes(normalizeStatus(course.status)))
+  // Keep each dropdown tied to the statuses that are actually present in its table.
+  // This prevents users from selecting a filter that can never return a result.
+  const courseStatusOptions = [...new Set(courses.map(course => normalizeStatus(course.status || 'enrolled')))]
+    .filter(Boolean)
+    .sort((a, b) => statusLabel(a).localeCompare(statusLabel(b)))
+  const paymentStatusOptions = [...new Set(payments.map(payment => normalizeStatus(payment.status || 'pending')))]
+    .filter(Boolean)
+    .sort((a, b) => statusLabel(a).localeCompare(statusLabel(b)))
   const matchedCourses = [...courses].filter(course => {
     const query = courseSearch.trim().toLowerCase()
     const status = normalizeStatus(course.status || 'enrolled')
@@ -759,18 +791,22 @@ export default function DashboardPage() {
     const order = { enrolled: 0, paid: 0, 'in progress': 1, pending: 2, 'refund pending': 3, completed: 4, refunded: 5, cancelled: 6, canceled: 6 }
     return (order[normalizeStatus(a.status)] ?? 1) - (order[normalizeStatus(b.status)] ?? 1)
   })
-  const coursePages = Math.max(1, Math.ceil(matchedCourses.length / 10))
+  const coursePages = Math.max(1, Math.ceil(matchedCourses.length / Number(courseLimit)))
   const safeCoursePage = Math.min(coursePage, coursePages)
-  const visibleCourses = matchedCourses.slice((safeCoursePage - 1) * 10, safeCoursePage * 10)
+  const visibleCourses = matchedCourses.slice((safeCoursePage - 1) * Number(courseLimit), safeCoursePage * Number(courseLimit))
   const matchedPayments = payments.filter(payment => {
     const query = paymentSearch.trim().toLowerCase()
-    const status = normalizeStatus(payment.status)
+    const status = normalizeStatus(payment.status || 'pending')
     return (!query || [payment.ref, payment.email, payment.item, payment.date, payment.amount].some(value => String(value || '').toLowerCase().includes(query)))
       && (paymentStatusFilter === 'all' || status === paymentStatusFilter)
   })
-  const paymentPages = Math.max(1, Math.ceil(matchedPayments.length / 10))
+  const paymentPages = Math.max(1, Math.ceil(matchedPayments.length / Number(paymentLimit)))
   const safePaymentPage = Math.min(paymentPage, paymentPages)
-  const visiblePayments = matchedPayments.slice((safePaymentPage - 1) * 10, safePaymentPage * 10)
+  const visiblePayments = matchedPayments.slice((safePaymentPage - 1) * Number(paymentLimit), safePaymentPage * Number(paymentLimit))
+  const pageNumbers = (page, pages) => Array.from(
+    { length: Math.min(5, pages) },
+    (_, index) => Math.max(1, Math.min(pages - 4, page - 2)) + index,
+  )
   const courseDetailPayment = courseDetail && [...payments].reverse().find(payment =>
     (courseDetail.paymentRef && String(payment?.ref || '') === String(courseDetail.paymentRef))
     || (courseDetail.enrollmentId && (Array.isArray(payment?.enrollmentIds) && payment.enrollmentIds.some(id => String(id) === String(courseDetail.enrollmentId))
@@ -1177,10 +1213,6 @@ export default function DashboardPage() {
                       <p>Everything you need for your courses, lessons, and account—in one place.</p>
                     </div>
                     <div className="dash-overview-header-actions">
-                      <div className="dash-overview-package-count">
-                        <strong>{activeCourses.length}</strong>
-                        <span>Active {activeCourses.length === 1 ? 'package' : 'packages'}</span>
-                      </div>
                       <button type="button" className="dash-overview-header-button" onClick={() => switchTab('courses')}>
                         View courses <span aria-hidden="true">→</span>
                       </button>
@@ -1328,8 +1360,15 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:'0 0 1.5rem' }}>Here are your currently enrolled courses... you can add more packages.</p>
-                    <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search enrolled courses" placeholder="Search course, city or price…" value={courseSearch} onChange={event => { setCourseSearch(event.target.value); setCoursePage(1) }} className="dash-input" style={{ flex:'1 1 240px' }} /><select aria-label="Filter courses by status" value={courseStatusFilter} onChange={event => { setCourseStatusFilter(event.target.value); setCoursePage(1) }} className="dash-input" style={{ width:'190px' }}><option value="all">All course statuses</option><option value="enrolled">Enrolled</option><option value="completed">Completed</option><option value="refund pending">Refund Pending</option><option value="refunded">Refunded</option><option value="cancelled">Cancelled</option></select></div>
+                    <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search enrolled courses" placeholder="Search course, city or price…" value={courseSearch} onChange={event => { setCourseSearch(event.target.value); setCoursePage(1) }} className="dash-input" style={{ flex:'1 1 240px' }} /><select aria-label="Filter courses by status" value={courseStatusFilter} onChange={event => { setCourseStatusFilter(event.target.value); setCoursePage(1) }} className="dash-input" style={{ width:'190px' }}><option value="all">All course statuses</option>{courseStatusOptions.map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}</select></div>
                     <button onClick={() => navigate('/pricing')} className="dash-btn-primary" style={{ marginBottom:'2rem' }}>Add more packages</button>
+                    {matchedCourses.length > 0 && <div aria-label="Course pagination" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'.75rem', flexWrap:'wrap', margin:'0 0 1rem' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'.7rem', flexWrap:'wrap' }}>
+                        <select aria-label="Courses per page" value={courseLimit} onChange={event => { setCourseLimit(event.target.value); setCoursePage(1) }} className="dash-input" style={{ width:'125px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
+                        <span style={{ color:'#475569' }}>Page {safeCoursePage} of {coursePages} · {matchedCourses.length} courses</span>
+                      </div>
+                      <div style={{ display:'flex', gap:'.45rem', alignItems:'center' }}><button type="button" disabled={safeCoursePage <= 1} onClick={() => setCoursePage(page => Math.max(1, page - 1))}>Previous</button>{pageNumbers(safeCoursePage, coursePages).map(page => <button type="button" key={page} aria-label={`Course page ${page}`} aria-current={page === safeCoursePage ? 'page' : undefined} onClick={() => setCoursePage(page)} style={page === safeCoursePage ? { background:SKY_BLUE, color:'#fff', borderColor:SKY_BLUE } : undefined}>{page}</button>)}<button type="button" disabled={safeCoursePage >= coursePages} onClick={() => setCoursePage(page => Math.min(coursePages, page + 1))}>Next</button></div>
+                    </div>}
                     <div style={{ display:'flex', flexDirection:'column', gap:'0.75rem' }}>
                       {courses.length === 0 && (
                         <div style={{ textAlign:'center', padding:'2.5rem 1rem' }}>
@@ -1379,7 +1418,6 @@ export default function DashboardPage() {
                         )
                       })}
                       {courses.length > 0 && matchedCourses.length === 0 && <p style={{ textAlign:'center', color:'#475569', padding:'1.5rem' }}>No courses match the selected filters.</p>}
-                      {matchedCourses.length > 0 && <div aria-label="Course pagination" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'.75rem', flexWrap:'wrap', paddingTop:'.75rem' }}><span style={{ color:'#475569' }}>Page {safeCoursePage} of {coursePages} · {matchedCourses.length} courses</span><div style={{ display:'flex', gap:'.45rem' }}><button type="button" disabled={safeCoursePage <= 1} onClick={() => setCoursePage(page => Math.max(1, page - 1))}>Previous</button><button type="button" disabled={safeCoursePage >= coursePages} onClick={() => setCoursePage(page => Math.min(coursePages, page + 1))}>Next</button></div></div>}
                     </div>
                   </div>
                 </div>
@@ -1482,7 +1520,7 @@ export default function DashboardPage() {
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT},${GOLD})`, backgroundSize:'200% 100%', animation:'dashShimmer 5s linear infinite' }} />
                     <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600, animation:'dashTextReveal 0.8s ease both' }}>Billing</p>
                     <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'#0F172A', margin:'0 0 1.5rem', fontWeight:800, textTransform:'uppercase' }}>PAYMENT HISTORY</h2>
-                    <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search payments" placeholder="Search reference, item or email…" value={paymentSearch} onChange={event => { setPaymentSearch(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ flex:'1 1 260px' }} /><select aria-label="Filter payments by status" value={paymentStatusFilter} onChange={event => { setPaymentStatusFilter(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ width:'180px' }}><option value="all">All statuses</option><option value="paid">Paid</option><option value="pending">Pending</option><option value="refunded">Refunded</option></select></div>
+                    <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search payments" placeholder="Search reference, item or email…" value={paymentSearch} onChange={event => { setPaymentSearch(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ flex:'1 1 260px' }} /><select aria-label="Filter payments by status" value={paymentStatusFilter} onChange={event => { setPaymentStatusFilter(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ width:'180px' }}><option value="all">All statuses</option>{paymentStatusOptions.map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}</select></div>
                     <div className="dash-stat-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1rem', marginBottom:'2rem' }}>
                       <div style={{ background:'linear-gradient(135deg,rgba(5,150,105,0.04),rgba(5,150,105,0.01))', border:'1px solid rgba(5,150,105,0.1)', borderRadius:'var(--radius-md)', padding:'1.25rem' }}>
                         <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#059669', margin:'0 0 0.25rem', fontWeight:600 }}>Total Paid</p>
@@ -1497,7 +1535,13 @@ export default function DashboardPage() {
                         <p style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', color:SKY_BLUE, margin:0, fontWeight:800 }}>{payments.length}</p>
                       </div>
                     </div>
-                    {matchedPayments.length > 0 && <div aria-label="Payment pagination" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'.75rem', flexWrap:'wrap', margin:'0 0 1rem' }}><span style={{ color:'#475569' }}>Page {safePaymentPage} of {paymentPages} · {matchedPayments.length} payments</span><div style={{ display:'flex', gap:'.45rem' }}><button type="button" disabled={safePaymentPage <= 1} onClick={() => setPaymentPage(page => Math.max(1, page - 1))}>Previous</button><button type="button" disabled={safePaymentPage >= paymentPages} onClick={() => setPaymentPage(page => Math.min(paymentPages, page + 1))}>Next</button></div></div>}
+                    {matchedPayments.length > 0 && <div aria-label="Payment pagination" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'.75rem', flexWrap:'wrap', margin:'0 0 1rem' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'.7rem', flexWrap:'wrap' }}>
+                        <select aria-label="Payments per page" value={paymentLimit} onChange={event => { setPaymentLimit(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ width:'125px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
+                        <span style={{ color:'#475569' }}>Page {safePaymentPage} of {paymentPages} · {matchedPayments.length} payments</span>
+                      </div>
+                      <div style={{ display:'flex', gap:'.45rem', alignItems:'center' }}><button type="button" disabled={safePaymentPage <= 1} onClick={() => setPaymentPage(page => Math.max(1, page - 1))}>Previous</button>{pageNumbers(safePaymentPage, paymentPages).map(page => <button type="button" key={page} aria-label={`Payment page ${page}`} aria-current={page === safePaymentPage ? 'page' : undefined} onClick={() => setPaymentPage(page)} style={page === safePaymentPage ? { background:SKY_BLUE, color:'#fff', borderColor:SKY_BLUE } : undefined}>{page}</button>)}<button type="button" disabled={safePaymentPage >= paymentPages} onClick={() => setPaymentPage(page => Math.min(paymentPages, page + 1))}>Next</button></div>
+                    </div>}
                     <div className="dash-table-scroll">
                     <table style={{ width:'100%', borderCollapse:'separate', borderSpacing:'0', minWidth:'700px' }}>
                       <thead>

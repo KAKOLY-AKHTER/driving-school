@@ -101,7 +101,9 @@ export default function PaymentPage() {
     setReceiptDownloading(true)
     setReceiptError('')
     try {
-      const profile = user ? await api.getUser(user.uid) : {}
+      // A receipt must remain downloadable even if the profile request is
+      // temporarily unavailable immediately after PayPal redirects back.
+      const profile = user ? await api.getUser(user.uid).catch(() => ({})) : {}
       const payment = paymentResult.payment || {}
       await downloadPaymentReceipt({
         payment: {
