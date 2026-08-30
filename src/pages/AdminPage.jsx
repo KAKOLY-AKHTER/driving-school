@@ -207,7 +207,7 @@ function TablePager({ page, pages, total, label, onChange, children }) {
   return <div className="admin-table-pager" aria-label={`${label} pagination`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', margin: '0 0 1rem' }}><div style={{ display: 'flex', alignItems: 'center', gap: '.65rem', flexWrap: 'wrap' }}>{children}<span style={{ color: '#334155', fontSize: '.9rem' }}>Page {current} of {Math.max(1, pages)} · {total} {label}</span></div><div style={{ display: 'flex', gap: '.45rem', flexWrap: 'wrap' }}><button type="button" disabled={current <= 1} onClick={() => onChange(current - 1)} style={{ ...buttonStyle(), cursor: current <= 1 ? 'not-allowed' : 'pointer', opacity: current <= 1 ? .55 : 1 }}>Previous</button>{pageNumbers.map(number => <button type="button" key={number} aria-current={number === current ? 'page' : undefined} onClick={() => onChange(number)} style={buttonStyle(number === current)}>{number}</button>)}<button type="button" disabled={current >= pages} onClick={() => onChange(current + 1)} style={{ ...buttonStyle(), cursor: current >= pages ? 'not-allowed' : 'pointer', opacity: current >= pages ? .55 : 1 }}>Next</button></div></div>
 }
 
-function AdminPhoneBookingModal({ users, onClose, onCreated }) {
+function AdminPhoneBookingModal({ users, pricing = [], onClose, onCreated }) {
   const [bookingFor, setBookingFor] = useState('registered')
   const [studentQuery, setStudentQuery] = useState('')
   const [studentId, setStudentId] = useState('')
@@ -220,6 +220,10 @@ function AdminPhoneBookingModal({ users, onClose, onCreated }) {
   const [timeSlot, setTimeSlot] = useState('')
   const [adminNote, setAdminNote] = useState('')
   const [availableTimes, setAvailableTimes] = useState([])
+  const [availableDateKeys, setAvailableDateKeys] = useState([])
+  const [availabilityMonth, setAvailabilityMonth] = useState(() => new Date(`${localDateKey()}T12:00:00`))
+  const [datesLoading, setDatesLoading] = useState(true)
+  const [datesError, setDatesError] = useState('')
   const [availabilityLoading, setAvailabilityLoading] = useState(false)
   const [availabilityError, setAvailabilityError] = useState('')
   const [error, setError] = useState('')
@@ -233,6 +237,57 @@ function AdminPhoneBookingModal({ users, onClose, onCreated }) {
   const activeCourses = (Array.isArray(selectedStudent?.courses) ? selectedStudent.courses : [])
     .filter(course => enrollmentStatusGroup(course) === 'active')
   const selectedCourse = courseIndex === '' ? null : activeCourses[Number(courseIndex)]
+  const planSuggestions = [...new Set([
+    ...pricing.map(plan => String(plan?.planName || '').trim()),
+    ...Object.values(COURSE_MAP),
+  ].filter(Boolean))]
+  const availableDateSet = new Set(availableDateKeys)
+  const todayKey = localDateKey()
+  const availabilityYear = availabilityMonth.getFullYear()
+  const availabilityMonthIndex = availabilityMonth.getMonth()
+  const availabilityMonthStart = new Date(availabilityYear, availabilityMonthIndex, 1)
+  const availabilityMonthEnd = new Date(availabilityYear, availabilityMonthIndex + 1, 0)
+  const availabilityMonthStartDay = availabilityMonthStart.getDay()
+  const availabilityMonthDays = availabilityMonthEnd.getDate()
+  const currentMonthStart = new Date(`${todayKey}T12:00:00`)
+  currentMonthStart.setDate(1)
+
+  useEffect(() => {
+    if (!date) {
+      setAvailableTimes([])
+      setTimeSlot('')
+      setAvailabilityError('')
+      setAvailabilityLoading(false)
+      return undefined
+    }
+    let cancelled = false
+    const from = localDateKey()
+    const end = new Date(`${from}T12:00:00`)
+    end.setMonth(end.getMonth() + 3)
+    const to = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`
+    setDatesLoading(true)
+    setDatesError('')
+    api.getAvailability({ from, to })
+      .then(result => {
+        if (cancelled) return
+        const openDates = Object.entries(result?.dates || {})
+          .filter(([dateKey, slots]) => dateKey >= from && Array.isArray(slots) && slots.some(slot => slot?.status === 'available'))
+          .map(([dateKey]) => dateKey)
+          .sort()
+        setAvailableDateKeys(openDates)
+        setDate(current => openDates.includes(current) ? current : (openDates[0] || ''))
+        if (openDates[0]) setAvailabilityMonth(new Date(`${openDates[0]}T12:00:00`))
+      })
+      .catch(loadError => {
+        if (!cancelled) {
+          setAvailableDateKeys([])
+          setDate('')
+          setDatesError(loadError?.message || 'Available lesson dates could not be loaded.')
+        }
+      })
+      .finally(() => { if (!cancelled) setDatesLoading(false) })
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -315,10 +370,10 @@ function AdminPhoneBookingModal({ users, onClose, onCreated }) {
             <div><label htmlFor="phone-caller-name" style={fieldLabel}>Caller full name *</label><input id="phone-caller-name" required value={callerName} onChange={event => setCallerName(event.target.value)} style={field} placeholder="Example: Maria Smith" autoFocus /></div>
             <div><label htmlFor="phone-caller-phone" style={fieldLabel}>Caller phone number *</label><input id="phone-caller-phone" required value={callerPhone} onChange={event => setCallerPhone(event.target.value)} style={field} placeholder="Example: +1 925 555 0100" /></div>
             <div><label htmlFor="phone-caller-email" style={fieldLabel}>Caller email (optional)</label><input id="phone-caller-email" type="email" value={callerEmail} onChange={event => setCallerEmail(event.target.value)} style={field} placeholder="Example: maria@email.com" /></div>
-            <div><label htmlFor="phone-caller-service" style={fieldLabel}>Requested plan or service *</label><input id="phone-caller-service" required value={callerService} onChange={event => setCallerService(event.target.value)} style={field} placeholder="Example: Essential Plan" /></div>
+            <div><label htmlFor="phone-caller-service" style={fieldLabel}>Requested plan or service *</label><input id="phone-caller-service" required list="phone-caller-plan-suggestions" value={callerService} onChange={event => setCallerService(event.target.value)} style={field} placeholder="Choose or type a plan" /><datalist id="phone-caller-plan-suggestions">{planSuggestions.map(plan => <option key={plan} value={plan} />)}</datalist><p style={{ margin: '.35rem 0 0', color: '#64748B', fontSize: '.78rem' }}>Start typing to choose a current pricing plan, or enter another service.</p></div>
           </>}
-          <div><label htmlFor="phone-booking-date" style={fieldLabel}>Lesson date *</label><input id="phone-booking-date" required min={localDateKey()} type="date" value={date} onChange={event => setDate(event.target.value)} style={field} /></div>
-          <div><label htmlFor="phone-booking-time" style={fieldLabel}>Open lesson time *</label><select id="phone-booking-time" required disabled={availabilityLoading || !availableTimes.length} value={timeSlot} onChange={event => setTimeSlot(event.target.value)} style={{ ...field, background: availabilityLoading ? '#F8FAFC' : '#fff' }}><option value="">{availabilityLoading ? 'Checking open times…' : availableTimes.length ? 'Choose an open time' : 'No open times'}</option>{availableTimes.map(time => <option key={time} value={time}>{time}</option>)}</select>{availabilityError && <p style={{ margin: '.35rem 0 0', color: '#B91C1C', fontSize: '.82rem' }}>{availabilityError}</p>}</div>
+          <div style={{ gridColumn: '1 / -1' }}><label style={fieldLabel}>Choose an available lesson date *</label><div role="group" aria-label="Available lesson dates" style={{ padding: '.8rem', border: '1px solid #D7E4F2', borderRadius: '11px', background: '#F8FBFF' }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.6rem', marginBottom: '.7rem' }}><button type="button" aria-label="Previous availability month" disabled={availabilityMonthStart <= currentMonthStart} onClick={() => setAvailabilityMonth(new Date(availabilityYear, availabilityMonthIndex - 1, 1))} style={{ width: '34px', height: '34px', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', color: DARK, cursor: availabilityMonthStart <= currentMonthStart ? 'not-allowed' : 'pointer', opacity: availabilityMonthStart <= currentMonthStart ? .45 : 1 }}>&lsaquo;</button><strong style={{ color: DARK }}>{availabilityMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</strong><button type="button" aria-label="Next availability month" onClick={() => setAvailabilityMonth(new Date(availabilityYear, availabilityMonthIndex + 1, 1))} style={{ width: '34px', height: '34px', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', color: DARK, cursor: 'pointer' }}>&rsaquo;</button></div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,minmax(0,1fr))', gap: '.28rem', textAlign: 'center' }}>{['S','M','T','W','T','F','S'].map((day, index) => <span key={`${day}-${index}`} aria-hidden="true" style={{ color: '#64748B', fontSize: '.68rem', fontWeight: 800 }}>{day}</span>)}{Array.from({ length: availabilityMonthStartDay }, (_, index) => <span key={`blank-${index}`} />)}{Array.from({ length: availabilityMonthDays }, (_, index) => { const day = index + 1; const dateKey = `${availabilityYear}-${String(availabilityMonthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; const isAvailable = availableDateSet.has(dateKey); const selected = date === dateKey; return <button type="button" key={dateKey} aria-label={`${dateKey}${isAvailable ? ', available' : ', unavailable'}`} disabled={!isAvailable || datesLoading} onClick={() => { setDate(dateKey); setTimeSlot('') }} style={{ minHeight: '34px', border: `1px solid ${selected ? SKY_BLUE : isAvailable ? '#86EFAC' : '#E2E8F0'}`, borderRadius: '8px', background: selected ? SKY_BLUE : isAvailable ? '#F0FDF4' : '#F8FAFC', color: selected ? '#fff' : isAvailable ? '#15803D' : '#CBD5E1', fontWeight: selected || isAvailable ? 800 : 600, cursor: isAvailable && !datesLoading ? 'pointer' : 'not-allowed' }}>{day}</button> })}</div></div>{datesLoading && <p style={{ margin: '.45rem 0 0', color: '#475569', fontSize: '.82rem' }}>Loading available calendar dates…</p>}{!datesLoading && !datesError && !availableDateKeys.length && <p style={{ margin: '.45rem 0 0', color: '#B45309', fontSize: '.82rem' }}>No available lesson dates have been opened in the next three months.</p>}{datesError && <p style={{ margin: '.45rem 0 0', color: '#B91C1C', fontSize: '.82rem' }}>{datesError}</p>}{date && <p style={{ margin: '.45rem 0 0', color: '#15803D', fontSize: '.82rem', fontWeight: 750 }}>Selected: {new Date(`${date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</p>}</div>
+          <div style={{ gridColumn: '1 / -1' }}><label htmlFor="phone-booking-time" style={fieldLabel}>Open lesson time *</label><select id="phone-booking-time" required disabled={availabilityLoading || !date || !availableTimes.length} value={timeSlot} onChange={event => setTimeSlot(event.target.value)} style={{ ...field, background: availabilityLoading ? '#F8FAFC' : '#fff' }}><option value="">{availabilityLoading ? 'Checking open times…' : !date ? 'Choose an available date first' : availableTimes.length ? 'Choose an open time' : 'No open times'}</option>{availableTimes.map(time => <option key={time} value={time}>{time}</option>)}</select>{availabilityError && <p style={{ margin: '.35rem 0 0', color: '#B91C1C', fontSize: '.82rem' }}>{availabilityError}</p>}</div>
           <div style={{ gridColumn: '1 / -1' }}><label htmlFor="phone-booking-note" style={fieldLabel}>Internal note (optional)</label><textarea id="phone-booking-note" maxLength="500" value={adminNote} onChange={event => setAdminNote(event.target.value)} style={{ ...field, minHeight: '88px', resize: 'vertical' }} placeholder="Example: Called in by student; payment verified by staff." /></div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.7rem', marginTop: '1.35rem' }}><button type="button" onClick={onClose} disabled={saving} style={{ minHeight: '42px', padding: '.6rem .9rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#334155', fontWeight: 800, cursor: saving ? 'wait' : 'pointer' }}>Cancel</button><button type="submit" disabled={saving || !timeSlot || (bookingFor === 'registered' ? !selectedStudent || !selectedCourse : !callerName.trim() || !callerPhone.trim() || !callerService.trim())} style={{ minHeight: '42px', padding: '.6rem 1rem', border: 0, borderRadius: '9px', background: saving || !timeSlot || (bookingFor === 'registered' ? !selectedStudent || !selectedCourse : !callerName.trim() || !callerPhone.trim() || !callerService.trim()) ? '#94A3B8' : `linear-gradient(135deg,${SKY_BLUE},#0A2A5E)`, color: '#fff', fontWeight: 900, cursor: saving || !timeSlot || (bookingFor === 'registered' ? !selectedStudent || !selectedCourse : !callerName.trim() || !callerPhone.trim() || !callerService.trim()) ? 'not-allowed' : 'pointer', boxShadow: '0 6px 17px rgba(1,69,168,.18)' }}>{saving ? 'Creating Booking…' : bookingFor === 'caller' ? 'Create Pending Phone Booking' : 'Create Upcoming Booking'}</button></div>
@@ -844,6 +899,9 @@ export default function AdminPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [contactEdit, setContactEdit] = useState(null)
   const [contactForm, setContactForm] = useState({ firstName: '', lastName: '', phone: '', email: '', comments: '', status: '' })
+  const [contactConversation, setContactConversation] = useState(null)
+  const [contactReplyDraft, setContactReplyDraft] = useState('')
+  const [contactReplySaving, setContactReplySaving] = useState(false)
   const [settings, setSettings] = useState({ phone: '', email: '', address: '', subaddress: '', scheduleLabel: '', scheduleLink: '' })
   const [settingsMsg, setSettingsMsg] = useState('')
   const [settingsSaving, setSettingsSaving] = useState(false)
@@ -1439,6 +1497,48 @@ export default function AdminPage() {
     setContactEdit(contact._id)
   }
 
+  const applyContactUpdate = (updatedContact) => {
+    if (!updatedContact?._id) return
+    setContacts(previous => previous.map(contact => String(contact._id) === String(updatedContact._id) ? updatedContact : contact))
+    setContactConversation(current => String(current?._id) === String(updatedContact._id) ? updatedContact : current)
+  }
+
+  const openContactConversation = async (contact) => {
+    const isNew = normalizeStatus(contact?.status || 'new') === 'new'
+    const optimisticContact = isNew ? { ...contact, status: 'read' } : contact
+    setContactConversation(optimisticContact)
+    setContactReplyDraft('')
+    if (!isNew) return
+    applyContactUpdate(optimisticContact)
+    setStats(previous => ({ ...previous, pendingContacts: Math.max(0, Number(previous.pendingContacts || 0) - 1) }))
+    try {
+      const result = await api.adminReadContact(contact._id)
+      if (result?.contact) applyContactUpdate(result.contact)
+    } catch (error) {
+      setMsg(error?.message || 'Message opened, but its read status could not be saved.')
+      setTimeout(() => setMsg(''), 3000)
+    }
+  }
+
+  const sendContactReply = async (event) => {
+    event.preventDefault()
+    if (!contactConversation || !contactReplyDraft.trim()) return
+    setContactReplySaving(true)
+    try {
+      const result = await api.adminReplyContact(contactConversation._id, contactReplyDraft.trim())
+      if (result?.contact) applyContactUpdate(result.contact)
+      setContactReplyDraft('')
+      setMsg(result?.emailDelivery?.status === 'failed'
+        ? 'Reply saved, but the reply email could not be sent.'
+        : 'Reply saved and the message status is now Replied.')
+    } catch (error) {
+      setMsg(error?.message || 'Contact reply could not be sent.')
+    } finally {
+      setContactReplySaving(false)
+      setTimeout(() => setMsg(''), 3500)
+    }
+  }
+
   const handleSaveContact = async () => {
     try {
       await api.adminUpdateContact(contactEdit, contactForm)
@@ -1618,7 +1718,8 @@ export default function AdminPage() {
   const activeDialogKey = confirmDialog ? 'confirmation'
     : userDetailsDialog ? 'user-details'
       : detailsDialog ? 'details'
-    : contactEdit ? 'contact'
+    : contactConversation ? 'contact-conversation'
+      : contactEdit ? 'contact'
     : pricingEdit ? 'pricing'
       : locationEdit ? 'location'
         : areasEdit ? 'area'
@@ -1638,8 +1739,9 @@ export default function AdminPage() {
     else if (areasEdit) requestEditorClose('map editor', () => setAreasEdit(null))
     else if (locationEdit) requestEditorClose('location editor', () => setLocationEdit(null))
     else if (pricingEdit) requestEditorClose('pricing editor', () => setPricingEdit(null))
+    else if (contactConversation) setContactConversation(null)
     else if (contactEdit) requestEditorClose('contact editor', () => setContactEdit(null))
-  }, [areasEdit, closeUserDetails, confirmDialog, contactEdit, detailsDialog, locationEdit, pricingEdit, refundDetails, refundEdit, requestEditorClose, socialsEdit, userDetailsDialog])
+  }, [areasEdit, closeUserDetails, confirmDialog, contactConversation, contactEdit, detailsDialog, locationEdit, pricingEdit, refundDetails, refundEdit, requestEditorClose, socialsEdit, userDetailsDialog])
 
   useEffect(() => {
     const dialogOpen = Boolean(activeDialogKey)
@@ -1867,7 +1969,7 @@ export default function AdminPage() {
     { id: 'users', label: 'Users', icon: SVG.users },
     { id: 'bookings', label: 'Bookings', icon: SVG.calendar },
     { id: 'calendar', label: 'Admin Calendar', icon: SVG.calendar },
-    { id: 'contacts', label: 'Contacts', icon: SVG.mail },
+    { id: 'contacts', label: 'Contacts', icon: SVG.mail, badge: stats.pendingContacts, badgeLabel: 'new contact message' },
     { id: 'live-support', label: 'Live Support', icon: SVG.mail, badge: stats.unreadSupport, badgeLabel: 'unread support message' },
     { id: 'enrolled', label: 'Enrolled Courses', icon: SVG.book },
     { id: 'refunds', label: 'Refunds', icon: SVG.refund, badge: stats.pendingRefunds, badgeLabel: 'pending refund request' },
@@ -2391,14 +2493,14 @@ export default function AdminPage() {
                             <td style={tdStyle}><span style={{ fontWeight: 600 }}>{c.firstName} {c.lastName}</span></td>
                             <td style={tdStyle}>{c.phone}</td>
                             <td style={tdStyle}>{c.email}</td>
-                            <td style={{ ...tdStyle, maxWidth: '220px' }}><button type="button" aria-label={`View full message from ${c.firstName || ''} ${c.lastName || ''}`} onClick={() => setDetailsDialog({ title: 'Contact Message', subtitle: `${c.firstName || ''} ${c.lastName || ''}`.trim(), content: c.comments || '—' })} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: 0, background: 'transparent', padding: 0, color: SKY_BLUE, textDecoration: 'underline', cursor: 'pointer', textAlign: 'left' }}>{c.comments || '—'}</button></td>
+                            <td style={{ ...tdStyle, maxWidth: '220px' }}><button type="button" aria-label={`Open message from ${c.firstName || ''} ${c.lastName || ''}`} onClick={() => openContactConversation(c)} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: 0, background: 'transparent', padding: 0, color: SKY_BLUE, textDecoration: 'underline', cursor: 'pointer', textAlign: 'left' }}>{c.comments || '—'}</button></td>
                             <td style={tdStyle}>
                               <span style={{ padding: '0.2rem 0.5rem', background: normalizeStatus(c.status || 'new') === 'new' ? '#EFF6FF' : normalizeStatus(c.status) === 'read' ? '#FFF7ED' : '#F0FDF4', color: normalizeStatus(c.status || 'new') === 'new' ? SKY_BLUE : normalizeStatus(c.status) === 'read' ? '#B45309' : '#15803D', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>{c.status || 'new'}</span>
                             </td>
                             <td style={tdStyle}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</td>
                             <td className="admin-actions-cell" style={tdStyle}>
-                              <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                <button onClick={() => handleEditContact(c)} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Edit</button>
+                              <div style={{ display: 'flex', gap: '0.4rem', whiteSpace: 'nowrap' }}>
+                                <button type="button" onClick={() => openContactConversation(c)} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem .55rem', fontFamily: 'var(--font-mono)', fontSize: '.7rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Open / Reply</button>
                                 <AdminDeleteIconButton label={`Delete contact message from ${c.firstName || ''} ${c.lastName || ''}`.trim()} title="Delete contact message" onClick={() => handleDeleteContact(c._id)} />
                               </div>
                             </td>
@@ -3037,6 +3139,36 @@ Near and Long pricing is applied automatically from the selected city and verifi
                 </div>
               )}
 
+              {contactConversation && (
+                <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(event) => { if (event.target === event.currentTarget && !contactReplySaving) setContactConversation(null) }}>
+                  <section role="dialog" aria-modal="true" aria-labelledby="contact-conversation-title" style={{ width: '100%', maxWidth: '760px', maxHeight: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: '20px', background: '#fff', boxShadow: '0 24px 80px rgba(0,0,0,.28)' }}>
+                    <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', padding: '1.2rem 1.35rem', borderBottom: '1px solid #DCE6F2', background: 'linear-gradient(135deg,#F8FBFF,#fff)' }}>
+                      <div><p style={{ margin: 0, color: GOLD_DEEP, fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 900 }}>Contact message</p><h3 id="contact-conversation-title" style={{ margin: '.25rem 0 0', color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>{`${contactConversation.firstName || ''} ${contactConversation.lastName || ''}`.trim() || 'Website visitor'}</h3><p style={{ margin: '.25rem 0 0', color: '#475569', fontSize: '.86rem' }}>{contactConversation.email || 'No email'}{contactConversation.phone ? ` · ${contactConversation.phone}` : ''}</p></div>
+                      <button type="button" aria-label="Close contact conversation" onClick={() => setContactConversation(null)} disabled={contactReplySaving} style={{ width: '38px', height: '38px', border: '1px solid #CBD5E1', borderRadius: '10px', background: '#fff', color: '#334155', fontSize: '1.4rem', cursor: contactReplySaving ? 'wait' : 'pointer' }}>&times;</button>
+                    </header>
+                    <div aria-live="polite" style={{ flex: '1 1 auto', minHeight: '250px', overflowY: 'auto', padding: '1.25rem', display: 'grid', alignContent: 'start', gap: '1.15rem', background: 'linear-gradient(135deg,#F8FAFC,#EFF6FF 55%,#fff)' }}>
+                      {(Array.isArray(contactConversation.messages) && contactConversation.messages.length ? contactConversation.messages : [{ from: 'visitor', text: contactConversation.comments || '—', timestamp: contactConversation.createdAt }]).map((message, index) => {
+                        const isAdmin = message?.from === 'admin'
+                        const timestamp = message?.timestamp ? new Date(message.timestamp) : null
+                        return <div key={`${message?.timestamp || 'contact'}-${index}`} style={{ display: 'flex', justifyContent: isAdmin ? 'flex-end' : 'flex-start' }}>
+                          <article style={{ position: 'relative', maxWidth: '78%', padding: isAdmin ? '1rem 1.05rem' : '1.1rem 1.15rem', border: isAdmin ? '1px solid #0B4BA8' : '2px solid #0A1628', borderRadius: isAdmin ? '17px 17px 4px 17px' : '17px 17px 17px 4px', background: isAdmin ? 'linear-gradient(135deg,#0755AE,#0A2A5E)' : '#FFF200', color: isAdmin ? '#fff' : '#0A1628', boxShadow: isAdmin ? '0 9px 20px rgba(1,69,168,.18)' : '5px 5px 0 rgba(10,22,40,.9)' }}>
+                            {!isAdmin && <span aria-hidden="true" style={{ position: 'absolute', top: '-16px', left: '18px', color: '#0A1628', fontFamily: 'Georgia,serif', fontSize: '2.2rem', fontWeight: 900, lineHeight: 1 }}>&ldquo;</span>}
+                            <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.55, fontWeight: isAdmin ? 600 : 700 }}>{message?.text || '—'}</p>
+                            <p style={{ margin: '.65rem 0 0', opacity: .78, fontSize: '.74rem', fontWeight: 700 }}>{isAdmin ? 'School team' : `${contactConversation.firstName || 'Visitor'} ${contactConversation.lastName || ''}`.trim()} {timestamp && !Number.isNaN(timestamp.getTime()) ? `· ${timestamp.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : ''}</p>
+                            {!isAdmin && <span aria-hidden="true" style={{ position: 'absolute', width: '22px', height: '22px', left: '22px', bottom: '-13px', background: '#FFF200', borderLeft: '2px solid #0A1628', borderBottom: '2px solid #0A1628', transform: 'skewY(-38deg) rotate(-20deg)' }} />}
+                          </article>
+                        </div>
+                      })}
+                    </div>
+                    <form onSubmit={sendContactReply} style={{ padding: '1rem 1.25rem 1.2rem', borderTop: '1px solid #DCE6F2', background: '#fff' }}>
+                      <label htmlFor="contact-reply" style={{ display: 'block', marginBottom: '.45rem', color: '#334155', fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 850 }}>Reply to visitor</label>
+                      <div style={{ display: 'flex', alignItems: 'end', gap: '.65rem' }}><textarea id="contact-reply" aria-label="Reply to contact message" rows="3" maxLength="2000" required value={contactReplyDraft} onChange={event => setContactReplyDraft(event.target.value)} placeholder="Write a reply…" style={{ ...inputStyle, minHeight: '78px', resize: 'vertical', flex: 1 }} /><button type="submit" disabled={contactReplySaving || !contactReplyDraft.trim()} style={{ minHeight: '48px', padding: '.72rem 1rem', border: 0, borderRadius: '10px', background: contactReplySaving || !contactReplyDraft.trim() ? '#94A3B8' : `linear-gradient(135deg,${SKY_BLUE},#0A2A5E)`, color: '#fff', fontWeight: 900, cursor: contactReplySaving || !contactReplyDraft.trim() ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>{contactReplySaving ? 'Sending…' : 'Send reply'}</button></div>
+                      <p style={{ margin: '.5rem 0 0', color: '#64748B', fontSize: '.78rem' }}>Sending a reply changes the message status to <strong>Replied</strong>.</p>
+                    </form>
+                  </section>
+                </div>
+              )}
+
               {contactEdit && (
                 <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(12px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={(e) => { if (e.target === e.currentTarget) requestEditorClose('contact editor', () => setContactEdit(null)) }}>
                   <div role="dialog" aria-modal="true" aria-labelledby="contact-dialog-title" style={{ background: '#fff', borderRadius: 'var(--radius-xl)', width: '100%', maxWidth: '500px', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', padding: '2rem', animation: 'dashFadeIn 0.3s ease' }}>
@@ -3458,6 +3590,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
       {phoneBookingOpen && (
         <AdminPhoneBookingModal
           users={users}
+          pricing={pricing}
           onClose={() => setPhoneBookingOpen(false)}
           onCreated={handlePhoneBookingCreated}
         />

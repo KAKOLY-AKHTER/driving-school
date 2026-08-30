@@ -134,6 +134,8 @@ export const api = {
   adminDisconnectGoogleCalendar: () => request('/api/admin/google-calendar', { method: 'DELETE' }),
   adminContacts: () => request('/api/admin/contacts'),
   adminUpdateContact: (id, data) => request(`/api/admin/contacts/${pathPart(id)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  adminReadContact: (id) => request(`/api/admin/contacts/${pathPart(id)}/read`, { method: 'PUT' }),
+  adminReplyContact: (id, text) => request(`/api/admin/contacts/${pathPart(id)}/replies`, { method: 'POST', body: JSON.stringify({ text }) }),
   adminDeleteContact: (id) => request(`/api/admin/contacts/${pathPart(id)}`, { method: 'DELETE' }),
   addCourse: (uid, course) => request(`/api/users/${pathPart(uid)}/courses`, { method: 'POST', body: JSON.stringify(course) }),
   removeCourse: (uid, courseId, enrollmentId = '') => request(`/api/users/${pathPart(uid)}/courses/${pathPart(courseId)}${enrollmentId ? `?enrollmentId=${pathPart(enrollmentId)}` : ''}`, { method: 'DELETE' }),

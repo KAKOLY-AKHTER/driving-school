@@ -244,6 +244,34 @@ async function deliverContactEmails(contact) {
   return { status: errors.length === 0 ? 'sent' : sentIds.length ? 'partial' : 'failed', sentIds, ...(errors.length ? { error: errors.join(' | ') } : {}) }
 }
 
+async function deliverContactReplyEmail(contact, reply) {
+  const { apiKey, from, adminEmail } = resendConfiguration()
+  const recipient = normalizeEmail(contact?.email)
+  if (!apiKey || !from || !isEmail(recipient)) {
+    return { status: 'skipped', reason: 'Contact reply email environment variables are incomplete.' }
+  }
+  const name = `${cleanText(contact?.firstName, 80)} ${cleanText(contact?.lastName, 80)}`.trim() || 'there'
+  const safeName = escapeEmailHtml(name)
+  const safeReply = escapeEmailHtml(reply).replaceAll('\n', '<br>')
+  const html = emailShell({
+    eyebrow: 'Reply from A Precision Driving School',
+    title: `Hello, ${safeName}.`,
+    body: `<p>A member of our school team replied to your website enquiry:</p><div style="padding:16px;border-left:4px solid #fdbc01;background:#f7faff">${safeReply}</div><p>You can reply directly to this email if you need further assistance.</p>`,
+    footer: 'A Precision Driving School · Website contact reply',
+  })
+  try {
+    const result = await sendResendEmail({
+      to: recipient,
+      subject: 'Reply from A Precision Driving School',
+      html,
+      replyTo: adminEmail || undefined,
+    })
+    return result.skipped ? { status: 'skipped', reason: 'Contact reply email environment variables are incomplete.' } : { status: 'sent', id: result.id }
+  } catch (error) {
+    return { status: 'failed', error: cleanText(error?.message, 240) || 'Contact reply email could not be sent.' }
+  }
+}
+
 async function deliverEnrollmentConfirmationEmail(student, course) {
   const { apiKey, from, adminEmail } = resendConfiguration()
   const email = cleanText(student?.email, 320).toLowerCase()
@@ -2335,7 +2363,17 @@ app.post('/api/contact', rateLimit({ windowMs: 10 * 60_000, max: 5 }), async (re
     }
     if (!isEmail(email)) return res.status(400).json({ error: 'Please enter a valid email address.' })
     const createdAt = new Date().toISOString()
-    const contact = { firstName, lastName, phone, email, comments, createdAt, emailDelivery: { status: 'pending' } }
+    const contact = {
+      firstName,
+      lastName,
+      phone,
+      email,
+      comments,
+      createdAt,
+      status: 'new',
+      messages: [{ from: 'visitor', text: comments, timestamp: createdAt }],
+      emailDelivery: { status: 'pending' },
+    }
     const insertResult = await contactCol.insertOne(contact)
     const emailDelivery = await deliverContactEmails(contact).catch(error => ({
       status: 'failed',
@@ -5049,6 +5087,53 @@ app.put('/api/admin/contacts/:id', async (req, res) => {
     res.json({ ok: true })
   } catch (e) {
     res.status(500).json({ error: e.message })
+  }
+})
+
+app.put('/api/admin/contacts/:id/read', async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid contact message id.')
+    const _id = new ObjectId(req.params.id)
+    const contact = await contactCol.findOne({ _id })
+    if (!contact) throw new HttpError(404, 'Contact message not found.')
+    const currentStatus = cleanText(contact.status || 'new', 20).toLowerCase()
+    const nextStatus = currentStatus === 'replied' ? 'replied' : 'read'
+    const now = new Date().toISOString()
+    await contactCol.updateOne(
+      { _id },
+      { $set: { status: nextStatus, ...(contact.readAt ? {} : { readAt: now }), updatedAt: now } }
+    )
+    const updated = await contactCol.findOne({ _id })
+    res.json({ ok: true, contact: updated })
+  } catch (error) {
+    if (error instanceof HttpError) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Contact message could not be marked as read')
+  }
+})
+
+app.post('/api/admin/contacts/:id/replies', rateLimit({ windowMs: 60_000, max: 20 }), async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) throw new HttpError(400, 'Invalid contact message id.')
+    const text = cleanText(req.body?.text, 2000)
+    if (!text) throw new HttpError(400, 'Write a reply before sending.')
+    const _id = new ObjectId(req.params.id)
+    const contact = await contactCol.findOne({ _id })
+    if (!contact) throw new HttpError(404, 'Contact message not found.')
+    const timestamp = new Date().toISOString()
+    const reply = { from: 'admin', text, timestamp, adminUid: req.auth.uid }
+    const emailDelivery = await deliverContactReplyEmail(contact, text)
+    await contactCol.updateOne(
+      { _id },
+      {
+        $push: { messages: reply },
+        $set: { status: 'replied', repliedAt: timestamp, updatedAt: timestamp, replyEmailDelivery: { ...emailDelivery, attemptedAt: timestamp } },
+      }
+    )
+    const updated = await contactCol.findOne({ _id })
+    res.json({ ok: true, contact: updated, emailDelivery })
+  } catch (error) {
+    if (error instanceof HttpError) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Contact reply could not be sent')
   }
 })
 
