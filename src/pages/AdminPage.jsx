@@ -15,6 +15,7 @@ import AdminUserDetailsModal from '../components/AdminUserDetailsModal'
 import PasswordInput from '../components/PasswordInput'
 import AdminDeleteIconButton from '../components/AdminDeleteIconButton'
 import ProfilePhotoUploader from '../components/ProfilePhotoUploader'
+import { openEnrollmentInvoice } from '../utils/printDocument'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -99,6 +100,13 @@ const enrollmentStatusGroup = (course) => {
   if (status === 'refunded') return 'refunded'
   if (status === 'cancelled' || status === 'canceled') return 'cancelled'
   return 'active'
+}
+
+const enrollmentStatusValue = (course) => {
+  const status = normalizeStatus(course?.status || 'enrolled')
+  if (status === 'completed') return 'completed'
+  if (status === 'cancelled' || status === 'canceled') return 'cancelled'
+  return 'enrolled'
 }
 
 const courseEnrollmentFingerprint = (course) => String(
@@ -855,6 +863,7 @@ export default function AdminPage() {
   const [enrollLimit, setEnrollLimit] = useState('10')
   const [enrollSearch, setEnrollSearch] = useState('')
   const [enrollStatusFilter, setEnrollStatusFilter] = useState('all')
+  const [enrollmentStatusUpdating, setEnrollmentStatusUpdating] = useState('')
   const [enrollmentEdit, setEnrollmentEdit] = useState(null)
   const [enrollmentForm, setEnrollmentForm] = useState({ title: '', status: 'Enrolled', city: '', cityZip: '', cityDistance: '', price: '', slotUsed: 0, slotMaximum: 0, enrolledAt: '' })
   const [refunds, setRefunds] = useState([])
@@ -1189,7 +1198,8 @@ export default function AdminPage() {
   const openEnrollmentEditor = ({ account, course }) => {
     const used = Number(course.slotAllowance?.used ?? course.slotUsage?.used ?? course.slotUsed ?? (Array.isArray(course.pickupSlots) ? course.pickupSlots.length : 0))
     const maximum = Number(course.slotAllowance?.maximum ?? course.slotUsage?.maximum ?? course.slotMaximum ?? 0)
-    setEnrollmentForm({ title: course.title || COURSE_MAP[course.id] || '', status: course.status || 'Enrolled', city: course.city || '', cityZip: course.cityZip || '', cityDistance: course.cityDistance || '', price: course.price || '', slotUsed: Number.isFinite(used) ? used : 0, slotMaximum: Number.isFinite(maximum) ? maximum : 0, enrolledAt: String(course.enrolledAt || '').slice(0, 10) })
+    const status = enrollmentStatusValue(course)
+    setEnrollmentForm({ title: course.title || COURSE_MAP[course.id] || '', status: status === 'completed' ? 'Completed' : status === 'cancelled' ? 'Cancelled' : 'Enrolled', city: course.city || '', cityZip: course.cityZip || '', cityDistance: course.cityDistance || '', price: course.price || '', slotUsed: Number.isFinite(used) ? used : 0, slotMaximum: Number.isFinite(maximum) ? maximum : 0, enrolledAt: String(course.enrolledAt || '').slice(0, 10) })
     setEnrollmentEdit({ account, course })
   }
 
@@ -1207,6 +1217,45 @@ export default function AdminPage() {
       setMsg(error?.message || 'Enrollment could not be updated.')
       setTimeout(() => setMsg(''), 2500)
     }
+  }
+
+  const updateEnrollmentStatus = async ({ account, course, key }, nextStatus) => {
+    const currentStatus = enrollmentStatusValue(course)
+    if (nextStatus === currentStatus || enrollmentStatusUpdating) return
+    setEnrollmentStatusUpdating(key)
+    try {
+      const nextLabel = nextStatus === 'completed' ? 'Completed' : nextStatus === 'cancelled' ? 'Cancelled' : 'Enrolled'
+      const result = await api.adminUpdateUserCourse(account.uid, {
+        enrollmentId: course.enrollmentId || '', courseId: course.id || '', enrolledAt: course.enrolledAt || '', course: { status: nextLabel },
+      })
+      setUsers(previous => previous.map(item => item.uid !== account.uid ? item : { ...item, courses: (item.courses || []).map(entry => (entry.enrollmentId === course.enrollmentId || (entry.id === course.id && entry.enrolledAt === course.enrolledAt)) ? { ...entry, ...(result?.course || { status: nextLabel }) } : entry) }))
+      setMsg(`Enrollment status changed to ${nextLabel}.`)
+      setTimeout(() => setMsg(''), 2200)
+    } catch (error) {
+      setMsg(error?.message || 'Enrollment status could not be updated.')
+      setTimeout(() => setMsg(''), 2500)
+    } finally {
+      setEnrollmentStatusUpdating('')
+    }
+  }
+
+  const downloadEnrollmentInvoice = ({ account, course }) => {
+    const used = Number(course.slotAllowance?.used ?? course.slotUsage?.used ?? course.slotUsed ?? (Array.isArray(course.pickupSlots) ? course.pickupSlots.length : 0))
+    const maximum = Number(course.slotAllowance?.maximum ?? course.slotUsage?.maximum ?? course.slotMaximum)
+    const opened = openEnrollmentInvoice({
+      school: { name: 'A Precision Driving School', address: 'California, United States', email: 'info@aprecisiondrivingschool.com', website: 'aprecisiondrivingschool.com' },
+      student: { name: adminUserName(account), email: account.email, phone: account.phone, address: account.address },
+      enrollment: {
+        reference: course.paymentRef || course.enrollmentId || `${account.uid}-${course.id || 'course'}`,
+        id: course.enrollmentId || 'Not recorded', course: course.title || COURSE_MAP[course.id] || `Course ${course.id || ''}`,
+        amount: course.paidAmount || course.price || '—', status: enrollmentStatusValue(course) === 'completed' ? 'Completed' : enrollmentStatusValue(course) === 'cancelled' ? 'Cancelled' : 'Enrolled',
+        paymentStatus: course.paymentStatus || (normalizeStatus(course.status) === 'refunded' ? 'Refunded' : 'Paid'),
+        enrolledAt: course.enrolledAt ? new Date(course.enrolledAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Not recorded',
+        issuedAt: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+        location: course.city ? `${course.city}${course.cityZip ? `, CA ${course.cityZip}` : ''}` : 'Not recorded', lessonSlots: Number.isFinite(used) && Number.isFinite(maximum) ? `${used} / ${maximum}` : 'Not recorded',
+      },
+    })
+    if (!opened) { setMsg('Please allow pop-ups to download the invoice.'); setTimeout(() => setMsg(''), 2500) }
   }
 
   const handleDeleteEnrollment = ({ account, course }) => requestConfirmation(
@@ -1659,10 +1708,7 @@ export default function AdminPage() {
   const visiblePricing = filteredPricing.slice((safePricingPage - 1) * 10, safePricingPage * 10)
   const enrolledQuery = enrollSearch.trim().toLowerCase()
   const filteredEnrollmentRows = enrollmentRows.filter(({ account, course }) => {
-    const normalizedCourseStatus = normalizeStatus(course?.status || 'enrolled')
-    const matchesStatus = enrollStatusFilter === 'all'
-      || normalizedCourseStatus === enrollStatusFilter
-      || (enrollStatusFilter === 'cancelled' && normalizedCourseStatus === 'canceled')
+    const matchesStatus = enrollStatusFilter === 'all' || enrollmentStatusValue(course) === enrollStatusFilter
     const matchesSearch = !enrolledQuery || [
       adminUserName(account),
       account.email,
@@ -2389,14 +2435,8 @@ export default function AdminPage() {
                         <input aria-label="Search enrolled users" type="search" placeholder="Search student, email, plan, city…" value={enrollSearch} onChange={e => { setEnrollSearch(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '280px' }} />
                         <select aria-label="Filter enrollments by status" value={enrollStatusFilter} onChange={e => { setEnrollStatusFilter(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '170px', fontSize: '1.05rem' }}>
                           <option value="all">All statuses</option>
-                          <option value="active">Active</option>
                           <option value="enrolled">Enrolled</option>
-                          <option value="paid">Paid</option>
-                          <option value="pending">Pending</option>
-                          <option value="in progress">In Progress</option>
                           <option value="completed">Completed</option>
-                          <option value="refund pending">Refund Pending</option>
-                          <option value="refunded">Refunded</option>
                           <option value="cancelled">Cancelled</option>
                         </select>
                         {(enrollSearch || enrollStatusFilter !== 'all') && <button type="button" onClick={() => { setEnrollSearch(''); setEnrollStatusFilter('all'); setEnrollPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
@@ -2422,7 +2462,9 @@ export default function AdminPage() {
                         </thead>
                         <tbody>
                           {visibleEnrollmentRows.map(({ account, course, key }) => {
-                            const statusMeta = courseStatusMeta(course)
+                            const enrollmentStatus = enrollmentStatusValue(course)
+                            const statusLabel = enrollmentStatus === 'completed' ? 'Completed' : enrollmentStatus === 'cancelled' ? 'Cancelled' : 'Enrolled'
+                            const statusMeta = courseStatusMeta({ ...course, status: statusLabel })
                             const used = Number(course.slotAllowance?.used ?? course.slotUsage?.used ?? course.slotUsed ?? (Array.isArray(course.pickupSlots) ? course.pickupSlots.length : 0))
                             const maximum = Number(course.slotAllowance?.maximum ?? course.slotUsage?.maximum ?? course.slotMaximum)
                             const hasSlotRecord = Array.isArray(course.pickupSlots)
@@ -2443,9 +2485,9 @@ export default function AdminPage() {
                                 <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{course.city ? <>{course.city}{course.cityZip ? `, CA ${course.cityZip}` : ''}</> : <span title="Legacy record" style={{ color: '#64748B' }}>Not recorded</span>}{course.cityDistance ? <span style={{ display: 'block', color: '#334155', fontSize: '.78rem' }}>{locationDistanceLabel(course.cityDistance)}</span> : null}</td>
                                 <td style={{ ...tdStyle, fontWeight: 800 }}>{course.price || '—'}</td>
                                 <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{hasSlotRecord ? (Number.isFinite(used) && Number.isFinite(maximum) ? `${used} / ${maximum}` : Number.isFinite(used) ? used : 'Not recorded') : <span title="Legacy record" style={{ color: '#64748B' }}>Not recorded</span>}</td>
-                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><span style={{ display: 'inline-flex', padding: '.25rem .55rem', borderRadius: '999px', background: statusMeta.background, color: statusMeta.color, fontFamily: 'var(--font-mono)', fontSize: '.7rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 800, whiteSpace: 'nowrap' }}>{statusMeta.label}</span></td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><select aria-label={`Change enrollment status for ${adminUserName(account)}`} value={enrollmentStatus} disabled={Boolean(enrollmentStatusUpdating)} onChange={event => updateEnrollmentStatus({ account, course, key }, event.target.value)} style={{ minWidth: '145px', padding: '.45rem .62rem', border: `1px solid ${statusMeta.color}55`, borderRadius: '9px', background: statusMeta.background, color: statusMeta.color, fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.05em', textTransform: 'uppercase', fontWeight: 800, cursor: enrollmentStatusUpdating ? 'wait' : 'pointer' }}><option value="enrolled">Enrolled</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></td>
                                 <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{enrolledDate && !Number.isNaN(enrolledDate.getTime()) ? enrolledDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
-                                <td style={tdStyle}><div style={{ display: 'flex', gap: '.4rem' }}><button type="button" onClick={() => openEnrollmentEditor({ account, course })} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '.35rem .6rem', fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer' }}>Edit</button><AdminDeleteIconButton label={`Delete enrollment for ${adminUserName(account)}`} title="Delete enrollment" onClick={() => handleDeleteEnrollment({ account, course })} /></div></td>
+                                <td style={tdStyle}><div style={{ display: 'flex', gap: '.4rem' }}><button type="button" onClick={() => downloadEnrollmentInvoice({ account, course })} style={{ background: '#F0FDF4', border: '1.5px solid #86EFAC', color: '#15803D', borderRadius: 'var(--radius-sm)', padding: '.35rem .6rem', fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer' }}>Download invoice</button><button type="button" onClick={() => openEnrollmentEditor({ account, course })} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '.35rem .6rem', fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer' }}>Edit</button><AdminDeleteIconButton label={`Delete enrollment for ${adminUserName(account)}`} title="Delete enrollment" onClick={() => handleDeleteEnrollment({ account, course })} /></div></td>
                               </tr>
                             )
                           })}
@@ -3285,7 +3327,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: '1rem' }}>
                       {[['title', 'Course title', 'text'], ['city', 'Pickup city', 'text'], ['cityZip', 'ZIP code', 'text'], ['price', 'Paid price', 'text'], ['slotUsed', 'Lesson slots used', 'number'], ['slotMaximum', 'Lesson slots allowed', 'number'], ['enrolledAt', 'Enrollment date', 'date']].map(([key, label, type]) => <label key={key} style={{ color: '#334155', fontWeight: 700 }}>{label}<input type={type} min={type === 'number' ? '0' : undefined} value={enrollmentForm[key]} onChange={event => setEnrollmentForm(previous => ({ ...previous, [key]: type === 'number' ? Number(event.target.value) : event.target.value }))} style={{ ...inputStyle, marginTop: '.35rem' }} /></label>)}
                       <label style={{ color: '#334155', fontWeight: 700 }}>Location distance<select value={enrollmentForm.cityDistance} onChange={event => setEnrollmentForm(previous => ({ ...previous, cityDistance: event.target.value }))} style={{ ...inputStyle, marginTop: '.35rem' }}><option value="">Not recorded</option><option value="Near">Near</option><option value="Long">Long</option></select></label>
-                      <label style={{ color: '#334155', fontWeight: 700 }}>Enrollment status<select value={enrollmentForm.status} onChange={event => setEnrollmentForm(previous => ({ ...previous, status: event.target.value }))} style={{ ...inputStyle, marginTop: '.35rem' }}><option>Enrolled</option><option>Completed</option><option>Cancelled</option><option>Refund Pending</option><option>Refunded</option></select></label>
+                      <label style={{ color: '#334155', fontWeight: 700 }}>Enrollment status<select value={enrollmentForm.status} onChange={event => setEnrollmentForm(previous => ({ ...previous, status: event.target.value }))} style={{ ...inputStyle, marginTop: '.35rem' }}><option>Enrolled</option><option>Completed</option><option>Cancelled</option></select></label>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.75rem', marginTop: '1.5rem' }}><button type="button" onClick={() => setEnrollmentEdit(null)} style={{ padding: '.7rem 1rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', fontWeight: 800 }}>Cancel</button><button type="button" onClick={saveEnrollment} style={{ padding: '.7rem 1rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 800 }}>Save changes</button></div>
                   </div>
