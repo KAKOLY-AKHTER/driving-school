@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { createUserWithEmailAndPassword, deleteUser, updateProfile } from 'firebase/auth'
 import { auth } from '../firebase'
 import { api } from '../api'
@@ -8,6 +8,7 @@ import { useCart } from '../contexts/CartContext'
 import { usePageMeta } from '../usePageMeta'
 import { saveBookingReturn, writeGuestCart } from '../utils/bookingStorage'
 import PasswordInput from '../components/PasswordInput'
+import { locationPlanPrice } from '../pricingUtils'
 
 const SKY_BLUE = '#0145A8'
 const DARK = '#0A1628'
@@ -50,12 +51,19 @@ export default function BookingRegistrationPage() {
     { noIndex: true }
   )
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
   const { items } = useCart()
+  const requestedPlanId = useMemo(() => new URLSearchParams(location.search).get('plan') || '', [location.search])
+  const directRegistration = items.length === 0
   const [creating, setCreating] = useState(false)
   const [completedUid, setCompletedUid] = useState('')
   const [error, setError] = useState('')
   const [sameAsHome, setSameAsHome] = useState(false)
+  const [packages, setPackages] = useState([])
+  const [packagesLoading, setPackagesLoading] = useState(true)
+  const [packagesError, setPackagesError] = useState('')
+  const [selectedPackageId, setSelectedPackageId] = useState(requestedPlanId)
   const [form, setForm] = useState(() => ({
     email: '',
     password: '',
@@ -81,6 +89,33 @@ export default function BookingRegistrationPage() {
     return sum + (Number.isFinite(charge) ? charge : priceNumber(item.price))
   }, 0), [items])
 
+  const selectedPackage = packages.find(plan => String(plan?.id) === String(selectedPackageId)) || null
+  const selectedPackageNearPrice = locationPlanPrice(selectedPackage, 'Near')
+  const selectedPackageLongPrice = locationPlanPrice(selectedPackage, 'Long')
+
+  useEffect(() => {
+    let active = true
+    setPackagesLoading(true)
+    setPackagesError('')
+    api.getPricing()
+      .then(plans => {
+        if (!active) return
+        const available = (Array.isArray(plans) ? plans : [])
+          .filter(plan => String(plan?.id) !== '1')
+          .sort((a, b) => (Number(a?.order) || 0) - (Number(b?.order) || 0))
+        if (!available.length) throw new Error('No driving lesson packages are currently available.')
+        setPackages(available)
+        setSelectedPackageId(current => available.some(plan => String(plan.id) === String(current)) ? current : '')
+      })
+      .catch(loadError => {
+        if (active) setPackagesError(loadError?.message || 'Packages could not be loaded.')
+      })
+      .finally(() => {
+        if (active) setPackagesLoading(false)
+      })
+    return () => { active = false }
+  }, [])
+
   const computedHomeAddress = [form.homeAddress, form.city, form.state, form.zipCode]
     .map(value => String(value || '').trim())
     .filter(Boolean)
@@ -89,11 +124,13 @@ export default function BookingRegistrationPage() {
   useEffect(() => {
     if (creating) return
     if (completedUid && user?.uid === completedUid) {
-      navigate('/payment', { replace: true })
+      navigate(directRegistration ? `/pricing?plan=${encodeURIComponent(selectedPackageId)}` : '/payment', { replace: true })
       return
     }
-    if (!completedUid && user) navigate('/cart', { replace: true })
-  }, [completedUid, creating, navigate, user])
+    if (!completedUid && user) {
+      navigate(directRegistration && selectedPackageId ? `/pricing?plan=${encodeURIComponent(selectedPackageId)}` : '/cart', { replace: true })
+    }
+  }, [completedUid, creating, directRegistration, navigate, selectedPackageId, user])
 
   const update = event => {
     const { name, type, checked, value } = event.target
@@ -102,7 +139,9 @@ export default function BookingRegistrationPage() {
   }
 
   const validate = () => {
-    if (!items.length) return 'Your booking selection is empty. Please select a plan first.'
+    if (directRegistration && !selectedPackageId) return 'Please select a package.'
+    if (directRegistration && !selectedPackage) return 'The selected package is no longer available. Please choose another package.'
+    if (!directRegistration && !items.length) return 'Your booking selection is empty. Please select a plan first.'
     if (!form.email.trim()) return 'Please enter your email address.'
     if (form.password.length < 8) return 'Password must contain at least 8 characters.'
     if (form.password !== form.confirmPassword) return 'Passwords do not match.'
@@ -151,11 +190,11 @@ export default function BookingRegistrationPage() {
         pickupAddress: sameAsHome ? computedHomeAddress : form.pickupAddress.trim(),
         medications: form.medications.trim(),
         notes: form.notes.trim(),
-        courseType: items.map(item => item.id).join(',').slice(0, 120),
+        courseType: (directRegistration ? selectedPackageId : items.map(item => item.id).join(',')).slice(0, 120),
         completedModules: [],
         termsAcceptedAt: new Date().toISOString(),
       })
-      saveBookingReturn('/payment')
+      saveBookingReturn(directRegistration ? `/pricing?plan=${encodeURIComponent(selectedPackageId)}` : '/payment')
       setCompletedUid(createdUser.uid)
     } catch (registrationError) {
       writeGuestCart(bookingSnapshot)
@@ -201,6 +240,7 @@ export default function BookingRegistrationPage() {
         .booking-register-payment-note{margin:1rem 0 0;padding:.9rem 1rem;border:1px solid #BFDBFE;border-radius:12px;background:#EFF6FF;color:#516B89;font-size:.84rem;line-height:1.55}.booking-register-payment-note strong{color:#0B3C78}
         .booking-register-actions{display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-top:1.5rem}.booking-register-back,.booking-register-submit{min-height:52px;padding:.85rem 1.5rem;border-radius:999px;font-family:var(--font-body);font-size:.95rem;font-weight:850;cursor:pointer}.booking-register-back{border:1.5px solid #CBD5E1;background:#fff;color:${SKY_BLUE}}.booking-register-submit{border:0;background:linear-gradient(135deg,${SKY_BLUE},#0B63CE);color:#fff;box-shadow:0 10px 25px rgba(1,69,168,.22)}.booking-register-submit:disabled{opacity:.6;cursor:wait}
         .booking-register-error{margin:1rem 0 0;padding:.85rem 1rem;border:1px solid #FCA5A5;border-radius:10px;background:#FEF2F2;color:#B91C1C;font-weight:700}
+        .booking-register-package-note{margin:.7rem 0 0;padding:.8rem .9rem;border:1px solid #BFDBFE;border-radius:10px;background:#EFF6FF;color:#34506F;font-size:.84rem;line-height:1.55}
         .booking-register-login{text-align:center;margin:0 0 1.5rem;color:#334155}.booking-register-login a{color:${SKY_BLUE};font-weight:800}
         @media(max-width:700px){.booking-register-grid{grid-template-columns:1fr}.booking-register-wide{grid-column:auto}.booking-register-shell{padding:1.15rem}.booking-register-plan{flex-direction:column}.booking-register-actions>*{width:100%}}
       `}</style>
@@ -209,17 +249,49 @@ export default function BookingRegistrationPage() {
         <h1 className="booking-register-title">Account & Booking Form</h1>
         <p className="booking-register-login">
           Already have an account?{' '}
-          <Link to="/login" state={{ from: '/cart' }} onClick={() => saveBookingReturn('/cart')}>Sign in and continue</Link>
+          <Link
+            to="/login"
+            state={{ from: directRegistration && selectedPackageId ? `/pricing?plan=${encodeURIComponent(selectedPackageId)}` : '/cart' }}
+            onClick={() => saveBookingReturn(directRegistration && selectedPackageId ? `/pricing?plan=${encodeURIComponent(selectedPackageId)}` : '/cart')}
+          >Sign in and continue</Link>
         </p>
 
-        {!items.length ? (
-          <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-            <h2 style={{ color: DARK, fontFamily: 'var(--font-display)' }}>No booking selected</h2>
-            <p style={{ color: '#334155' }}>Select a plan, location and lesson time before completing this form.</p>
-            <Link to="/pricing" className="btn-gold">View Pricing Plans</Link>
-          </div>
-        ) : (
-          <form onSubmit={submit} noValidate>
+        <form onSubmit={submit} noValidate>
+            {directRegistration && (
+              <div className="booking-register-section" style={{ marginTop: 0 }}>
+                <h2 className="booking-register-heading">Package</h2>
+                <div className="booking-register-grid">
+                  <Field id="booking-package" label="Package" required wide>
+                    <select
+                      id="booking-package"
+                      className={inputClass}
+                      value={selectedPackageId}
+                      onChange={event => { setSelectedPackageId(event.target.value); setError('') }}
+                      disabled={packagesLoading}
+                      required
+                    >
+                      <option value="">{packagesLoading ? 'Loading packages…' : '-- Select Package --'}</option>
+                      {packages.map(plan => {
+                        const nearPrice = locationPlanPrice(plan, 'Near')
+                        const longPrice = locationPlanPrice(plan, 'Long')
+                        const priceLabel = longPrice && longPrice !== nearPrice
+                          ? `${nearPrice} near / ${longPrice} long`
+                          : nearPrice
+                        return <option key={plan.id} value={plan.id}>{plan.planName} - {priceLabel}</option>
+                      })}
+                    </select>
+                    {packagesError && <div className="booking-register-error" role="alert">{packagesError}</div>}
+                    {selectedPackage && (
+                      <p className="booking-register-package-note">
+                        <strong>{selectedPackage.planName}</strong> — {selectedPackageNearPrice}
+                        {selectedPackageLongPrice && selectedPackageLongPrice !== selectedPackageNearPrice ? ` near / ${selectedPackageLongPrice} long-distance` : ''}.
+                        {' '}After account registration, you will choose the city, lesson date and available time before payment.
+                      </p>
+                    )}
+                  </Field>
+                </div>
+              </div>
+            )}
             <div className="booking-register-section">
               <h2 className="booking-register-heading">Account Register</h2>
               <div className="booking-register-grid">
@@ -287,7 +359,7 @@ export default function BookingRegistrationPage() {
               </div>
             </div>
 
-            <div className="booking-register-section">
+            {!directRegistration && <div className="booking-register-section">
               <h2 className="booking-register-heading">Booking Summary</h2>
               <div className="booking-register-summary">
                 {items.map(item => (
@@ -304,7 +376,7 @@ export default function BookingRegistrationPage() {
               </div>
               <div className="booking-register-total"><span>Total Amount</span><strong>${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
               <p className="booking-register-payment-note"><strong>Next step:</strong> Select Pay Now below to create your secure account and review the payment options on the payment page.</p>
-            </div>
+            </div>}
 
             <div className="booking-register-section">
               <h2 className="booking-register-heading">Agreement</h2>
@@ -316,11 +388,10 @@ export default function BookingRegistrationPage() {
 
             {error && <div className="booking-register-error" role="alert">{error}</div>}
             <div className="booking-register-actions">
-              <button type="button" className="booking-register-back" onClick={() => navigate('/pricing')}>← Back</button>
-              <button type="submit" className="booking-register-submit" disabled={creating}>{creating ? 'Preparing Payment...' : 'Pay Now'}</button>
+              <button type="button" className="booking-register-back" onClick={() => navigate(directRegistration ? '/schedule' : '/pricing')}>← Back</button>
+              <button type="submit" className="booking-register-submit" disabled={creating || (directRegistration && packagesLoading)}>{creating ? 'Creating Account...' : directRegistration ? 'Create Account & Choose Schedule' : 'Pay Now'}</button>
             </div>
           </form>
-        )}
       </div>
     </section>
   )

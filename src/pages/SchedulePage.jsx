@@ -1,4 +1,7 @@
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { api } from '../api'
+import { locationPlanPrice } from '../pricingUtils'
 import { useSiteSettings } from '../useSiteSettings'
 import { usePageMeta } from '../usePageMeta'
 
@@ -26,12 +29,12 @@ const PACKAGES = [
     highlight: false, icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
   },
   {
-    id: 8, name: 'Ideal', subtitle: 'Package C', hours: '6 Hours',
+    id: 4, name: 'Ideal', subtitle: 'Package C', hours: '6 Hours',
     detail: 'BTW + Online Driver Ed', price: '$615', desc: '6 Hrs BTW + Online Driver Ed',
     highlight: true, icon: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z',
   },
   {
-    id: 4, name: 'Premier', subtitle: 'Package E', hours: '10 Hours',
+    id: 5, name: 'Premier', subtitle: 'Package E', hours: '10 Hours',
     detail: 'Behind the Wheel', price: '$999', desc: '6 Hours + 4 Extra Hours',
     highlight: false, icon: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z',
   },
@@ -44,6 +47,41 @@ export default function SchedulePage() {
   )
   const navigate = useNavigate()
   const settings = useSiteSettings()
+  const [livePricing, setLivePricing] = useState([])
+  const [pricingLoading, setPricingLoading] = useState(true)
+  const [pricingError, setPricingError] = useState('')
+
+  useEffect(() => {
+    let active = true
+    setPricingLoading(true)
+    setPricingError('')
+    api.getPricing()
+      .then(plans => {
+        if (!active) return
+        if (!Array.isArray(plans) || !plans.length) throw new Error('Current package prices are unavailable.')
+        setLivePricing(plans)
+      })
+      .catch(error => {
+        if (active) setPricingError(error?.message || 'Current package prices are unavailable.')
+      })
+      .finally(() => {
+        if (active) setPricingLoading(false)
+      })
+    return () => { active = false }
+  }, [])
+
+  const packages = useMemo(() => PACKAGES.map(pkg => {
+    const livePlan = livePricing.find(plan => String(plan?.id) === String(pkg.id))
+    const nearPrice = locationPlanPrice(livePlan, 'Near') || pkg.price
+    const longPrice = locationPlanPrice(livePlan, 'Long') || nearPrice
+    return {
+      ...pkg,
+      id: livePlan?.id ?? pkg.id,
+      price: nearPrice,
+      longPrice,
+      registrationAvailable: Boolean(livePlan),
+    }
+  }), [livePricing])
   return (
     <>
       <style>{`
@@ -440,7 +478,7 @@ export default function SchedulePage() {
             display: 'grid', gridTemplateColumns: '1fr',
             gap: '1.25rem', marginBottom: '2.5rem',
           }}>
-            {PACKAGES.map((pkg) => (
+            {packages.map((pkg) => (
               <div key={pkg.id} className={`sch-pkg-card ${pkg.highlight ? 'sch-pkg-highlight' : ''}`}>
 
                 {pkg.highlight && <div className="sch-badge">Most Popular</div>}
@@ -469,7 +507,14 @@ export default function SchedulePage() {
                 <div style={{
                   fontFamily: 'var(--font-display)', fontSize: '2.2rem',
                   fontWeight: 800, color: GOLD, marginBottom: '0.25rem', lineHeight: 1,
-                }}>See current pricing</div>
+                }}>{pricingLoading ? 'Loading…' : pkg.price}</div>
+
+                {!pricingLoading && pkg.longPrice !== pkg.price && (
+                  <p style={{
+                    fontFamily: 'var(--font-body)', fontSize: '0.72rem',
+                    color: '#52657E', margin: '0 0 0.4rem', fontWeight: 700,
+                  }}>Long-distance locations: {pkg.longPrice}</p>
+                )}
 
                 <p style={{
                   fontFamily: 'var(--font-body)', fontSize: '0.8rem',
@@ -478,11 +523,12 @@ export default function SchedulePage() {
 
                 <button
                   type="button"
-                  onClick={() => navigate('/pricing')}
+                  onClick={() => navigate(`/booking/register?plan=${encodeURIComponent(pkg.id)}`)}
+                  disabled={pricingLoading || (!pkg.registrationAvailable && !pricingError)}
                   className={pkg.highlight ? 'sch-cta-gold' : 'sch-cta-ghost'}
-                  style={{ width: '100%', border: pkg.highlight ? 'none' : undefined, cursor: 'pointer' }}
+                  style={{ width: '100%', border: pkg.highlight ? 'none' : undefined, cursor: pricingLoading ? 'wait' : 'pointer', opacity: pricingLoading ? 0.65 : 1 }}
                 >
-                  View live price &amp; book
+                  Register
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
@@ -490,6 +536,12 @@ export default function SchedulePage() {
               </div>
             ))}
           </div>
+
+          {pricingError && (
+            <p role="status" style={{ margin: '-1rem 0 2rem', textAlign: 'center', color: '#9A3412', fontWeight: 700 }}>
+              Live prices could not be refreshed. The last configured package prices are shown.
+            </p>
+          )}
 
           {/* Login Card */}
           <div className="sch-login-card">
