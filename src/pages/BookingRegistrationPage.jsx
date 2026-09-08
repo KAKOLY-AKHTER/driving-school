@@ -54,10 +54,11 @@ export default function BookingRegistrationPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuth()
-  const { items } = useCart()
+  const { items, refreshCart } = useCart()
   const requestedPlanId = useMemo(() => new URLSearchParams(location.search).get('plan') || '', [location.search])
   const directRegistration = Boolean(requestedPlanId) || items.length === 0
   const [creating, setCreating] = useState(false)
+  const [preparingPayment, setPreparingPayment] = useState(false)
   const [completedUid, setCompletedUid] = useState('')
   const [error, setError] = useState('')
   const [sameAsHome, setSameAsHome] = useState(false)
@@ -143,13 +144,20 @@ export default function BookingRegistrationPage() {
   useEffect(() => {
     if (creating) return
     if (completedUid && user?.uid === completedUid) {
-      navigate('/payment', { replace: true })
-      return
+      let active = true
+      const openPaymentPage = async () => {
+        setPreparingPayment(true)
+        await refreshCart()
+        if (active) navigate('/payment', { replace: true })
+      }
+      openPaymentPage()
+      return () => { active = false }
     }
     if (!completedUid && user) {
       navigate(directRegistration && selectedPackageId ? `/pricing?plan=${encodeURIComponent(selectedPackageId)}` : '/cart', { replace: true })
     }
-  }, [completedUid, creating, directRegistration, navigate, selectedPackageId, user])
+    return undefined
+  }, [completedUid, creating, directRegistration, navigate, refreshCart, selectedPackageId, user])
 
   const update = event => {
     const { name, type, checked, value } = event.target
@@ -240,6 +248,9 @@ export default function BookingRegistrationPage() {
           pickupSlots: [],
         })
         if (!result?.ok) throw new Error(result?.error || 'The selected package could not be prepared for payment.')
+        // Keep a short-lived local copy so the payment page never renders an
+        // empty state while the newly authenticated cart is being refreshed.
+        writeGuestCart(result.items || [])
       }
       saveBookingReturn('/payment')
       setCompletedUid(createdUser.uid)
@@ -267,9 +278,11 @@ export default function BookingRegistrationPage() {
   return (
     <section className="booking-register-page">
       <style>{`
-        .booking-register-page{padding:clamp(9.5rem,13vw,12rem) 1rem 5rem;background:radial-gradient(circle at 80% 10%,rgba(1,69,168,.06),transparent 28rem),#F7F9FC;min-height:100vh}
+        .booking-register-page{padding:clamp(11rem,15vw,13.5rem) 1rem 5rem;background:radial-gradient(circle at 80% 10%,rgba(1,69,168,.06),transparent 28rem),#F7F9FC;min-height:100vh}
         .booking-register-shell{width:min(1120px,100%);margin:0 auto;background:#fff;border:1px solid #DCE6F1;border-top:7px solid ${SKY_BLUE};border-radius:16px;box-shadow:0 24px 70px rgba(15,35,65,.1);padding:clamp(1.3rem,4vw,3.2rem)}
-        .booking-register-title{text-align:center;margin:0 0 2rem;font-family:var(--font-display);font-size:clamp(2rem,5vw,3.2rem);color:${DARK};font-weight:900}
+        .booking-register-intro{text-align:center;margin:0 auto 1.7rem;max-width:760px}.booking-register-eyebrow{display:inline-flex;align-items:center;gap:.65rem;margin:0 0 .7rem;color:${SKY_BLUE};font-family:var(--font-mono);font-size:.72rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase}.booking-register-eyebrow:before,.booking-register-eyebrow:after{content:'';width:34px;height:2px;border-radius:999px;background:${GOLD}}
+        .booking-register-title{text-align:center;margin:0;font-family:var(--font-display);font-size:clamp(2.15rem,5vw,3.45rem);line-height:1.08;color:${DARK};font-weight:900}.booking-register-title span{color:${SKY_BLUE}}
+        .booking-register-subtitle{margin:.8rem auto 0;color:#52657E;font-size:clamp(.92rem,2vw,1.05rem);line-height:1.65}
         .booking-register-section{margin-top:2rem}
         .booking-register-heading{display:flex;align-items:center;gap:.75rem;margin:0 0 1.25rem;font-family:var(--font-body);font-size:1.18rem;color:${SKY_BLUE};font-weight:850;text-transform:uppercase;letter-spacing:.04em}
         .booking-register-heading:before{content:'';width:5px;height:28px;background:linear-gradient(${SKY_BLUE},#3B82F6);border-radius:999px}
@@ -289,11 +302,15 @@ export default function BookingRegistrationPage() {
         .booking-register-error{margin:1rem 0 0;padding:.85rem 1rem;border:1px solid #FCA5A5;border-radius:10px;background:#FEF2F2;color:#B91C1C;font-weight:700}
         .booking-register-package-note{margin:.7rem 0 0;padding:.8rem .9rem;border:1px solid #BFDBFE;border-radius:10px;background:#EFF6FF;color:#34506F;font-size:.84rem;line-height:1.55}
         .booking-register-login{text-align:center;margin:0 0 1.5rem;color:#334155}.booking-register-login a{color:${SKY_BLUE};font-weight:800}
-        @media(max-width:700px){.booking-register-grid{grid-template-columns:1fr}.booking-register-wide{grid-column:auto}.booking-register-shell{padding:1.15rem}.booking-register-plan{flex-direction:column}.booking-register-actions>*{width:100%}}
+        @media(max-width:700px){.booking-register-page{padding-top:9rem}.booking-register-grid{grid-template-columns:1fr}.booking-register-wide{grid-column:auto}.booking-register-shell{padding:1.15rem}.booking-register-plan{flex-direction:column}.booking-register-actions>*{width:100%}}
       `}</style>
 
       <div className="booking-register-shell">
-        <h1 className="booking-register-title">Account & Booking Form</h1>
+        <header className="booking-register-intro">
+          <p className="booking-register-eyebrow">Student Registration</p>
+          <h1 className="booking-register-title">Register &amp; <span>Secure Your Package</span></h1>
+          <p className="booking-register-subtitle">Complete your information below. You will review your selected package and pay securely on the next page.</p>
+        </header>
         <p className="booking-register-login">
           Already have an account?{' '}
           <Link
@@ -473,7 +490,7 @@ export default function BookingRegistrationPage() {
             {error && <div className="booking-register-error" role="alert">{error}</div>}
             <div className="booking-register-actions">
               <button type="button" className="booking-register-back" onClick={() => navigate(directRegistration ? '/schedule' : '/pricing')}>← Back</button>
-              <button type="submit" className="booking-register-submit" disabled={creating || (directRegistration && packagesLoading)}>{creating ? 'Preparing Payment...' : 'Pay Now'}</button>
+              <button type="submit" className="booking-register-submit" disabled={creating || preparingPayment || (directRegistration && packagesLoading)}>{creating || preparingPayment ? 'Preparing Payment...' : 'Pay Now'}</button>
             </div>
           </form>
       </div>
