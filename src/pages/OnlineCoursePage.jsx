@@ -71,7 +71,7 @@ export default function OnlineCoursePage() {
         <div className="oc-container">
           <div className="oc-panel">
             <div style={{ color:'#ffd04a', fontWeight:800, fontSize:'.8rem', letterSpacing:'.12em', textTransform:'uppercase' }}>California State Approved</div>
-            <h1 style={{ margin:'.55rem 0', fontFamily:'var(--font-display)', fontSize:'clamp(2rem,5vw,3.2rem)', lineHeight:1.05 }}>California DMV-Approved</h1>
+            <h1 style={{ margin:'.55rem 0', fontFamily:'var(--font-display)', fontSize:'clamp(2rem,5vw,3.2rem)', lineHeight:1.05, color:'#fff' }}>California DMV-Approved</h1>
             <p style={{ margin:'0 0 1rem', color:'rgba(255,255,255,0.88)' }}>DMV License #E4566</p>
             <ul style={{ paddingLeft:'1.2rem', lineHeight:1.9, color:'rgba(255,255,255,.85)' }}>
               <li>100% online and mobile friendly</li><li>No hidden fees</li><li>Guaranteed to pass</li><li>Certificate of completion included</li>
