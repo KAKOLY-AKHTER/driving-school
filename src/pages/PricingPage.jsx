@@ -34,6 +34,7 @@ const slotLimitForPlan = (tier) => {
   const id = String(tier?.id || '')
   const name = String(tier?.planName || '').toUpperCase()
   if (id === '2') return 1
+  if (id === '12' || name.includes('4 HOURS BEHIND THE WHEEL')) return 2
   if (id === '5') return 5
   if (id === '3' || id === '4') return 3
   if (id === '6' || id === '7' || id === '8') return 1

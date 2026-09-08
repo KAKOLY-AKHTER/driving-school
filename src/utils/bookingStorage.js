@@ -71,6 +71,7 @@ export const normalizeCartItem = (item) => {
     title,
     price: cleanText(item.price, 40),
     chargeAmount: Number.isFinite(chargeAmount) && chargeAmount >= 0 ? chargeAmount : undefined,
+    purchaseOnly: item.purchaseOnly === true,
     continuation: item.continuation === true,
     enrollmentId: cleanText(item.enrollmentId, 160),
     holdExpired: item.holdExpired === true,

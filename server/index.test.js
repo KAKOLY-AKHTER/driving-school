@@ -31,6 +31,7 @@ const {
   packageSlotAllowance,
   pickupSlotsFromCourse,
   splitCheckoutItems,
+  slotLimitForTier,
   validateContinuationSlotCount,
   validateAvailabilitySlot,
   validateClosedAvailabilityDates,
@@ -418,6 +419,10 @@ test('Near and Long locations select the matching server-authoritative plan pric
     label: '$275',
     distance: 'Long',
   })
+})
+
+test('four-hour registration package includes two bookable lesson slots', () => {
+  assert.equal(slotLimitForTier({ id: '12', planName: 'PACKAGE D: 4 HOURS BEHIND THE WHEEL' }), 2)
 })
 
 test('admin pricing accepts dollar values and rejects malformed prices', () => {

@@ -90,6 +90,8 @@ export default function PaymentPage() {
   }, 0), [items])
   const discount = Number(appliedCoupon?.discount || 0)
   const total = Math.max(0, Number(appliedCoupon?.total ?? subtotal))
+  const includesUnscheduledPurchase = items.some(item => item.purchaseOnly === true)
+    || (Array.isArray(paymentResult?.courses) && paymentResult.courses.some(course => course.purchaseOnly === true))
 
   const selectedSlots = useMemo(() => items.flatMap(item => {
     const slots = Array.isArray(item.pickupSlots) ? item.pickupSlots : []
@@ -290,7 +292,7 @@ export default function PaymentPage() {
           <div className="payment-success" role="status">
             <div className="payment-success-icon" aria-hidden="true">✓</div>
             <h2>Payment completed</h2>
-            <p>Your PayPal payment was verified and your selected course and lesson times are now enrolled.</p>
+            <p>{includesUnscheduledPurchase ? 'Your PayPal payment was verified and your selected course is now active. You can book the included lesson times from your dashboard.' : 'Your PayPal payment was verified and your selected course and lesson times are now enrolled.'}</p>
             <div className="payment-success-reference">
               PayPal order: <strong>{paymentResult.orderId}</strong>
               {paymentResult.captureId && <><br />Capture: <strong>{paymentResult.captureId}</strong></>}
@@ -318,7 +320,7 @@ export default function PaymentPage() {
               <h2>Your booking details stay protected.</h2>
               <p>The payment processor will securely handle card or bank information. A Precision Driving School will only receive the payment result and transaction reference.</p>
               <div className="payment-assurances">
-                <div className="payment-assurance"><span className="payment-check">✓</span><div><b>Clear order summary</b><span>Confirm plans, locations, lesson times and the total before paying.</span></div></div>
+                <div className="payment-assurance"><span className="payment-check">✓</span><div><b>Clear order summary</b><span>{includesUnscheduledPurchase ? 'Confirm the selected package and total before paying. Lesson times can be booked after payment.' : 'Confirm plans, locations, lesson times and the total before paying.'}</span></div></div>
                 <div className="payment-assurance"><span className="payment-check">✓</span><div><b>No duplicate enrollment</b><span>Your course should be activated only after verified payment confirmation.</span></div></div>
                 <div className="payment-assurance"><span className="payment-check">✓</span><div><b>Payment receipt</b><span>Once connected, the provider transaction reference will appear in your dashboard.</span></div></div>
               </div>

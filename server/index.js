@@ -418,13 +418,14 @@ const ADMIN_USER_PROFILE_FIELDS = [
   'uid', 'firstName', 'middleName', 'lastName', 'displayName', 'name', 'username',
   'email', 'phone', 'dob', 'gender', 'address', 'city', 'state', 'zipCode',
   'pickupAddress', 'parentPhone', 'permit', 'issueDate', 'expiryDate', 'courseType',
+  'payerName', 'payerRelationship', 'payerPhone', 'payerEmail', 'payerSecondaryPhone', 'payerAddress', 'payerConsentAt',
   'medications', 'notes', 'termsAcceptedAt', 'submittedAt', 'photoURL',
   'completedModules', 'createdAt', 'updatedAt', 'isAdmin',
 ]
 const ADMIN_COURSE_FIELDS = [
   'id', 'enrollmentId', 'title', 'planName', 'status', 'refundStatus', 'enrolledAt',
   'createdAt', 'updatedAt', 'paidAmount', 'price', 'city', 'location', 'distance',
-  'pickupAddress', 'pickupSlots', 'slotMaximum', 'slotUsed', 'lastBookingAt',
+  'pickupAddress', 'pickupSlots', 'slotMaximum', 'slotUsed', 'lastBookingAt', 'purchaseOnly',
   'couponCode', 'paymentRef', 'completedModules',
 ]
 const ADMIN_PAYMENT_FIELDS = [
@@ -474,6 +475,8 @@ const USER_TEXT_FIELDS = new Map([
   ['username', 160], ['dob', 20], ['phone', 30], ['email', 320], ['address', 500], ['city', 100],
   ['state', 80], ['zipCode', 20], ['courseType', 120], ['photoURL', 2000], ['permit', 160],
   ['parentPhone', 30], ['gender', 20], ['pickupAddress', 500],
+  ['payerName', 160], ['payerRelationship', 100], ['payerPhone', 30], ['payerEmail', 320],
+  ['payerSecondaryPhone', 30], ['payerAddress', 500], ['payerConsentAt', 40],
   ['medications', 1000], ['notes', 2000], ['termsAcceptedAt', 40], ['submittedAt', 40], ['issueDate', 40], ['expiryDate', 40],
 ])
 function sanitizeUserProfile(value) {
@@ -481,13 +484,14 @@ function sanitizeUserProfile(value) {
   const output = {}
   for (const [field, maxLength] of USER_TEXT_FIELDS) {
     if (value[field] === undefined) continue
-    output[field] = field === 'email'
+    output[field] = field === 'email' || field === 'payerEmail'
       ? normalizeEmail(value[field])
       : field === 'photoURL'
         ? cleanHttpUrl(value[field])
         : cleanText(value[field], maxLength)
   }
   if (output.email && !isEmail(output.email)) throw new HttpError(400, 'Please enter a valid email address.')
+  if (output.payerEmail && !isEmail(output.payerEmail)) throw new HttpError(400, 'Please enter a valid primary payer email address.')
   if (value.completedModules !== undefined) {
     if (!Array.isArray(value.completedModules)) throw new HttpError(400, 'Completed modules must be a list.')
     output.completedModules = [...new Set(value.completedModules.map(item => cleanText(item, 120)).filter(Boolean))].slice(0, 200)
@@ -1325,6 +1329,7 @@ function checkoutFingerprint(items = []) {
     city: cleanText(item.city, 120),
     cityZip: cleanText(item.cityZip, 10),
     cityDistance: cleanText(item.cityDistance, 20),
+    purchaseOnly: item.purchaseOnly === true,
     continuation: item.continuation === true,
     chargeAmount: moneyString(item.chargeAmount),
     pickupSlots: (Array.isArray(item.pickupSlots) ? item.pickupSlots : [])
@@ -1606,6 +1611,7 @@ function pickupSlotsFromCourse(course, tier = course) {
 function slotLimitForTier(tier) {
   const id = String(tier?.id || '')
   const name = String(tier?.planName || '').toUpperCase()
+  if (id === '12' || name.includes('4 HOURS BEHIND THE WHEEL')) return 2
   if (id === '2' || name.includes('BASIC PLAN')) return 1
   if (id === '5' || name.includes('PREMIER')) return 5
   if (id === '3' || name.includes('ESSENTIAL')) return 3
@@ -3097,10 +3103,12 @@ app.post('/api/users/:uid/cart', async (req, res) => {
     const result = await withMongoTransaction(async (session) => {
       const tier = await pricingTierById(courseId, session)
       if (!tier) throw new HttpError(400, 'The selected pricing plan is not available.')
+      const purchaseOnly = req.body?.purchaseOnly === true
       const slots = pickupSlotsFromCourse(req.body, tier)
-      const customDmvAppointment = isDmvRentalTier(tier) && slots.every(slot => isCustomAppointmentTime(slot.timeSlot))
-      await assertSlotsOpenForBooking(slots, session, 409, { dateAvailabilityOnly: customDmvAppointment })
-      const bookingLocation = await bookingLocationByName(req.body?.city, session)
+      if (purchaseOnly && slots.length) throw new HttpError(400, 'A package-only purchase cannot include lesson times.')
+      const customDmvAppointment = slots.length > 0 && isDmvRentalTier(tier) && slots.every(slot => isCustomAppointmentTime(slot.timeSlot))
+      if (!purchaseOnly) await assertSlotsOpenForBooking(slots, session, 409, { dateAvailabilityOnly: customDmvAppointment })
+      const bookingLocation = purchaseOnly ? null : await bookingLocationByName(req.body?.city, session)
       const locationPrice = pricingForBookingLocation(tier, bookingLocation)
       const user = await usersCol.findOne({ uid }, { session, projection: { courses: 1 } })
       const courses = user?.courses || []
@@ -3110,6 +3118,9 @@ app.post('/api/users/:uid/cart', async (req, res) => {
       }
       const activeCourseIndex = findCourseEnrollmentIndex(courses, courseId, '', { activeOnly: true })
       let activeCourse = activeCourseIndex >= 0 ? courses[activeCourseIndex] : null
+      if (purchaseOnly && activeCourse) {
+        throw new HttpError(409, `${tier.planName} is already active on this account. Book its remaining lessons from the student dashboard.`)
+      }
       const enrollmentId = cleanText(activeCourse?.enrollmentId, 160) || randomUUID()
 
       const cart = await cartsCol.findOne({ uid }, { session })
@@ -3145,7 +3156,7 @@ app.post('/api/users/:uid/cart', async (req, res) => {
           activeCourse = { ...activeCourse, enrollmentId }
         }
       } else {
-        validateSlotCountForTier(slots, tier)
+        if (!purchaseOnly) validateSlotCountForTier(slots, tier)
         allowance = packageSlotAllowance({}, tier, [], slots.length)
       }
       for (const slot of slots) {
@@ -3155,15 +3166,16 @@ app.post('/api/users/:uid/cart', async (req, res) => {
       const course = {
         id: courseId,
         title: cleanText(tier.planName, 160),
+        purchaseOnly,
         price: locationPrice.label,
         originalPlanPrice: locationPrice.label,
         nearPrice: normalizePlanPrice(tier.planPrice),
         longPrice: normalizePlanPrice(tier.planPriceTwo || tier.planPrice),
         priceBasis: locationPrice.distance,
         chargeAmount: activeCourse ? 0 : locationPrice.amount,
-        city: bookingLocation.name,
-        cityZip: bookingLocation.zipCode || '',
-        cityDistance: bookingLocation.distance,
+        city: purchaseOnly ? cleanText(req.body?.city, 100) : bookingLocation.name,
+        cityZip: bookingLocation?.zipCode || '',
+        cityDistance: bookingLocation?.distance || 'Near',
         pickupSlots: slots.map(slot => ({ date: slot.date, time: slot.timeSlot })),
         continuation: Boolean(activeCourse),
         enrollmentId,
@@ -3259,9 +3271,11 @@ async function processCartCheckout(req, { quoteOnly = false, couponCode = '', co
         seenCourseIds.add(courseId)
         const tier = await pricingTierById(courseId, session)
         if (!tier) throw new HttpError(400, 'A pricing plan in your cart is no longer available.')
+        const purchaseOnly = item.purchaseOnly === true
         const slots = pickupSlotsFromCourse(item, tier)
-        const customDmvAppointment = isDmvRentalTier(tier) && slots.every(slot => isCustomAppointmentTime(slot.timeSlot))
-        const bookingLocation = await bookingLocationByName(item.city, session)
+        if (purchaseOnly && slots.length) throw new HttpError(409, 'A package-only purchase cannot include lesson times.')
+        const customDmvAppointment = slots.length > 0 && isDmvRentalTier(tier) && slots.every(slot => isCustomAppointmentTime(slot.timeSlot))
+        const bookingLocation = purchaseOnly ? null : await bookingLocationByName(item.city, session)
         const locationPrice = pricingForBookingLocation(tier, bookingLocation)
         const requestedEnrollmentId = cleanText(item.enrollmentId, 160)
         let activeCourseIndex = requestedEnrollmentId
@@ -3274,7 +3288,10 @@ async function processCartCheckout(req, { quoteOnly = false, couponCode = '', co
         if (activeCourseIndex < 0) {
           activeCourseIndex = findCourseEnrollmentIndex(existingCourses, courseId, '', { activeOnly: true })
         }
-        const continuation = activeCourseIndex >= 0
+        if (purchaseOnly && activeCourseIndex >= 0) {
+          throw new HttpError(409, `${tier.planName} is already active on this account. Book its remaining lessons from the student dashboard.`)
+        }
+        const continuation = !purchaseOnly && activeCourseIndex >= 0
         const activeCourse = continuation ? existingCourses[activeCourseIndex] : null
         const enrollmentId = cleanText(activeCourse?.enrollmentId, 160) || requestedEnrollmentId || randomUUID()
         if (existingCourses.some(course =>
@@ -3309,13 +3326,14 @@ async function processCartCheckout(req, { quoteOnly = false, couponCode = '', co
             }
           }
         } else {
-          validateSlotCountForTier(slots, tier, 409, `The ${tier.planName} selection`)
+          if (!purchaseOnly) validateSlotCountForTier(slots, tier, 409, `The ${tier.planName} selection`)
           allowance = packageSlotAllowance({}, tier, [], slots.length)
         }
-        await assertSlotsOpenForBooking(slots, session, 409, { dateAvailabilityOnly: customDmvAppointment })
+        if (!purchaseOnly) await assertSlotsOpenForBooking(slots, session, 409, { dateAvailabilityOnly: customDmvAppointment })
         verifiedItems.push({
           ...item,
           id: courseId,
+          purchaseOnly,
           title: tier.planName,
           price: locationPrice.label,
           originalPlanPrice: locationPrice.label,
@@ -3323,9 +3341,9 @@ async function processCartCheckout(req, { quoteOnly = false, couponCode = '', co
           longPrice: normalizePlanPrice(tier.planPriceTwo || tier.planPrice),
           priceBasis: locationPrice.distance,
           chargeAmount: continuation ? 0 : locationPrice.amount,
-          city: bookingLocation.name,
-          cityZip: bookingLocation.zipCode || '',
-          cityDistance: bookingLocation.distance,
+          city: purchaseOnly ? cleanText(item.city, 100) : bookingLocation.name,
+          cityZip: bookingLocation?.zipCode || '',
+          cityDistance: bookingLocation?.distance || 'Near',
           continuation,
           activeCourseIndex,
           enrollmentId,
@@ -3388,17 +3406,19 @@ async function processCartCheckout(req, { quoteOnly = false, couponCode = '', co
             { session }
           )
         }
-        await cartsCol.updateOne(
-          { uid },
-          {
-            $set: {
-              'items.$[].holdExpiresAt': extendedExpiry.toISOString(),
-              'items.$[].holdExpired': false,
-              updatedAt: new Date().toISOString(),
+        if (holds.length) {
+          await cartsCol.updateOne(
+            { uid },
+            {
+              $set: {
+                'items.$[booked].holdExpiresAt': extendedExpiry.toISOString(),
+                'items.$[booked].holdExpired': false,
+                updatedAt: new Date().toISOString(),
+              },
             },
-          },
-          { session }
-        )
+            { session, arrayFilters: [{ 'booked.purchaseOnly': { $ne: true } }] }
+          )
+        }
         return {
           quoteOnly: true,
           amount: quoteAmount,
@@ -3439,6 +3459,7 @@ async function processCartCheckout(req, { quoteOnly = false, couponCode = '', co
           return ({
           id: item.id,
           title: item.title,
+          purchaseOnly: item.purchaseOnly === true,
           price: item.price,
           city: item.city || '',
           cityZip: item.cityZip || '',
@@ -6009,6 +6030,13 @@ const DEFAULT_PRICING = [
     { text: '10-Hour Training', permission: 'Included' },
     { text: '', permission: 'Select' },
   ], order: 4 },
+  { id: '12', planName: 'PACKAGE D: 4 HOURS BEHIND THE WHEEL', planPrice: '$399', planPriceTwo: '$399', options: [
+    { text: '4 Hours Behind-the-Wheel', permission: 'Included' },
+    { text: '4 Hours Professional Training', permission: 'Included' },
+    { text: 'Free Pickup & Drop', permission: 'Included' },
+    { text: '', permission: 'Select' },
+    { text: '', permission: 'Select' },
+  ], order: 5 },
   { id: '6', planName: 'DMV Drive Test Car Rental', planPrice: '$225', planPriceTwo: '$290', options: [
     { text: 'DMV Drive Test Car Rental with 30 minutes practice', permission: 'Included' },
     { text: 'Use the school\'s car for DMV Drive Test.', permission: 'Included' },
@@ -6371,6 +6399,13 @@ async function seedPricing() {
     await pricingCol.insertMany(DEFAULT_PRICING.map(t => ({ ...t, createdAt: new Date().toISOString() })))
     console.log('Seeded default pricing packages')
     return
+  }
+
+  const fourHourPlan = DEFAULT_PRICING.find(plan => plan.id === '12')
+  const existingFourHourPlan = await pricingCol.findOne({ id: { $in: ['12', 12] } }, { projection: { _id: 1 } })
+  if (!existingFourHourPlan && fourHourPlan) {
+    await pricingCol.insertOne({ ...fourHourPlan, createdAt: new Date().toISOString() })
+    console.log('Seeded the four-hour registration package')
   }
 
   const legacyCount = await pricingCol.countDocuments({

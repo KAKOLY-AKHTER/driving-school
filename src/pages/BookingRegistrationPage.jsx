@@ -14,23 +14,24 @@ const SKY_BLUE = '#0145A8'
 const DARK = '#0A1628'
 const GOLD = '#FDBC01'
 
+const REGISTRATION_PACKAGES = [
+  { id: '2', label: 'Package A: 2 Hours of Behind the Wheel' },
+  { id: '3', label: 'Package B: 6 Hours of Behind the Wheel' },
+  { id: '5', label: 'Package C: 10 Hours of Behind the Wheel' },
+  { id: '4', label: 'IDEAL FOR STUDENTS' },
+  { id: '12', label: 'Package D: 4 Hours of Behind the Wheel' },
+]
+
 const priceNumber = value => {
   const amount = Number.parseFloat(String(value || '').replace(/[^0-9.]/g, ''))
   return Number.isFinite(amount) ? amount : 0
 }
 
+const priceLabel = value => `$${priceNumber(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
 const phoneIsValid = value => {
   const digits = String(value || '').replace(/\D/g, '')
   return digits.length >= 7 && digits.length <= 15
-}
-
-const splitFullName = value => {
-  const parts = String(value || '').trim().split(/\s+/).filter(Boolean)
-  return {
-    firstName: parts[0] || '',
-    middleName: parts.length > 2 ? parts.slice(1, -1).join(' ') : '',
-    lastName: parts.length > 1 ? parts.at(-1) : '',
-  }
 }
 
 function Field({ id, label, required = false, wide = false, children }) {
@@ -55,7 +56,7 @@ export default function BookingRegistrationPage() {
   const { user } = useAuth()
   const { items } = useCart()
   const requestedPlanId = useMemo(() => new URLSearchParams(location.search).get('plan') || '', [location.search])
-  const directRegistration = items.length === 0
+  const directRegistration = Boolean(requestedPlanId) || items.length === 0
   const [creating, setCreating] = useState(false)
   const [completedUid, setCompletedUid] = useState('')
   const [error, setError] = useState('')
@@ -68,12 +69,21 @@ export default function BookingRegistrationPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    fullName: '',
+    firstName: '',
+    middleName: '',
+    lastName: '',
     studentPhone: '',
     parentPhone: '',
+    payerName: '',
+    payerRelationship: '',
+    payerEmail: '',
+    payerSecondaryPhone: '',
+    payerAddress: '',
     gender: '',
     dob: '',
     permit: '',
+    issueDate: '',
+    expiryDate: '',
     homeAddress: '',
     city: items[0]?.city || '',
     state: 'California',
@@ -81,6 +91,7 @@ export default function BookingRegistrationPage() {
     pickupAddress: '',
     medications: '',
     notes: '',
+    payerConsent: false,
     acceptedTerms: false,
   }))
 
@@ -91,7 +102,6 @@ export default function BookingRegistrationPage() {
 
   const selectedPackage = packages.find(plan => String(plan?.id) === String(selectedPackageId)) || null
   const selectedPackageNearPrice = locationPlanPrice(selectedPackage, 'Near')
-  const selectedPackageLongPrice = locationPlanPrice(selectedPackage, 'Long')
 
   useEffect(() => {
     let active = true
@@ -100,10 +110,14 @@ export default function BookingRegistrationPage() {
     api.getPricing()
       .then(plans => {
         if (!active) return
-        const available = (Array.isArray(plans) ? plans : [])
-          .filter(plan => String(plan?.id) !== '1')
-          .sort((a, b) => (Number(a?.order) || 0) - (Number(b?.order) || 0))
-        if (!available.length) throw new Error('No driving lesson packages are currently available.')
+        const livePlans = Array.isArray(plans) ? plans : []
+        const available = REGISTRATION_PACKAGES
+          .map(definition => {
+            const plan = livePlans.find(item => String(item?.id) === definition.id)
+            return plan ? { ...plan, registrationLabel: definition.label } : null
+          })
+          .filter(Boolean)
+        if (available.length !== REGISTRATION_PACKAGES.length) throw new Error('One or more registration packages are not configured yet.')
         setPackages(available)
         setSelectedPackageId(current => available.some(plan => String(plan.id) === String(current)) ? current : '')
       })
@@ -124,7 +138,7 @@ export default function BookingRegistrationPage() {
   useEffect(() => {
     if (creating) return
     if (completedUid && user?.uid === completedUid) {
-      navigate(directRegistration ? `/pricing?plan=${encodeURIComponent(selectedPackageId)}` : '/payment', { replace: true })
+      navigate('/payment', { replace: true })
       return
     }
     if (!completedUid && user) {
@@ -145,13 +159,18 @@ export default function BookingRegistrationPage() {
     if (!form.email.trim()) return 'Please enter your email address.'
     if (form.password.length < 8) return 'Password must contain at least 8 characters.'
     if (form.password !== form.confirmPassword) return 'Passwords do not match.'
-    if (!form.fullName.trim()) return 'Please enter the student’s full name.'
+    if (!form.firstName.trim() || !form.lastName.trim()) return 'Please enter the student’s first and last name.'
     if (!phoneIsValid(form.studentPhone)) return 'Please enter a valid student phone number.'
     if (!phoneIsValid(form.parentPhone)) return 'Please enter a valid parent or guardian phone number.'
+    if (!form.payerName.trim() || !form.payerRelationship.trim()) return 'Please enter the primary payer’s name and relationship to the student.'
+    if (!form.payerEmail.trim() || !/^\S+@\S+\.\S+$/.test(form.payerEmail.trim())) return 'Please enter a valid primary payer email address.'
+    if (!form.payerAddress.trim()) return 'Please enter the primary payer’s home address.'
+    if (!form.gender) return 'Please select the student’s gender.'
     if (!form.dob) return 'Please select the student’s date of birth.'
     if (!form.homeAddress.trim() || !form.city.trim()) return 'Please enter the complete home address and city.'
     if (!/^\d{5}(?:-\d{4})?$/.test(form.zipCode.trim())) return 'Please enter a valid ZIP code.'
     if (!sameAsHome && !form.pickupAddress.trim()) return 'Please enter the pickup address or select “Same as home address”.'
+    if (!form.payerConsent) return 'The primary payer must give permission for the student to schedule lessons.'
     if (!form.acceptedTerms) return 'Please accept the Terms of Service to continue.'
     return ''
   }
@@ -168,21 +187,33 @@ export default function BookingRegistrationPage() {
     setError('')
     let createdUser = null
     const bookingSnapshot = [...items]
+    if (directRegistration) writeGuestCart([])
     try {
       const credential = await createUserWithEmailAndPassword(auth, form.email.trim(), form.password)
       createdUser = credential.user
-      const names = splitFullName(form.fullName)
-      await updateProfile(createdUser, { displayName: form.fullName.trim() })
+      const displayName = [form.firstName, form.middleName, form.lastName].map(value => value.trim()).filter(Boolean).join(' ')
+      await updateProfile(createdUser, { displayName })
       await api.saveUser(createdUser.uid, {
-        ...names,
-        displayName: form.fullName.trim(),
-        name: form.fullName.trim(),
+        firstName: form.firstName.trim(),
+        middleName: form.middleName.trim(),
+        lastName: form.lastName.trim(),
+        displayName,
+        name: displayName,
         dob: form.dob,
         phone: form.studentPhone.trim(),
         parentPhone: form.parentPhone.trim(),
+        payerName: form.payerName.trim(),
+        payerRelationship: form.payerRelationship.trim(),
+        payerPhone: form.parentPhone.trim(),
+        payerEmail: form.payerEmail.trim(),
+        payerSecondaryPhone: form.payerSecondaryPhone.trim(),
+        payerAddress: form.payerAddress.trim(),
+        payerConsentAt: new Date().toISOString(),
         gender: form.gender,
         email: form.email.trim(),
         permit: form.permit.trim(),
+        issueDate: form.issueDate,
+        expiryDate: form.expiryDate,
         address: form.homeAddress.trim(),
         city: form.city.trim(),
         state: form.state,
@@ -194,7 +225,18 @@ export default function BookingRegistrationPage() {
         completedModules: [],
         termsAcceptedAt: new Date().toISOString(),
       })
-      saveBookingReturn(directRegistration ? `/pricing?plan=${encodeURIComponent(selectedPackageId)}` : '/payment')
+      if (directRegistration) {
+        const result = await api.addToCart(createdUser.uid, {
+          id: selectedPackage.id,
+          title: selectedPackage.registrationLabel || selectedPackage.planName,
+          price: locationPlanPrice(selectedPackage, 'Near'),
+          city: form.city.trim(),
+          purchaseOnly: true,
+          pickupSlots: [],
+        })
+        if (!result?.ok) throw new Error(result?.error || 'The selected package could not be prepared for payment.')
+      }
+      saveBookingReturn('/payment')
       setCompletedUid(createdUser.uid)
     } catch (registrationError) {
       writeGuestCart(bookingSnapshot)
@@ -271,21 +313,13 @@ export default function BookingRegistrationPage() {
                       required
                     >
                       <option value="">{packagesLoading ? 'Loading packages…' : '-- Select Package --'}</option>
-                      {packages.map(plan => {
-                        const nearPrice = locationPlanPrice(plan, 'Near')
-                        const longPrice = locationPlanPrice(plan, 'Long')
-                        const priceLabel = longPrice && longPrice !== nearPrice
-                          ? `${nearPrice} near / ${longPrice} long`
-                          : nearPrice
-                        return <option key={plan.id} value={plan.id}>{plan.planName} - {priceLabel}</option>
-                      })}
+                      {packages.map(plan => <option key={plan.id} value={plan.id}>{plan.registrationLabel} - {priceLabel(locationPlanPrice(plan, 'Near'))}</option>)}
                     </select>
                     {packagesError && <div className="booking-register-error" role="alert">{packagesError}</div>}
                     {selectedPackage && (
                       <p className="booking-register-package-note">
-                        <strong>{selectedPackage.planName}</strong> — {selectedPackageNearPrice}
-                        {selectedPackageLongPrice && selectedPackageLongPrice !== selectedPackageNearPrice ? ` near / ${selectedPackageLongPrice} long-distance` : ''}.
-                        {' '}After account registration, you will choose the city, lesson date and available time before payment.
+                        <strong>{selectedPackage.registrationLabel}</strong> — {priceLabel(selectedPackageNearPrice)}.
+                        {' '}Complete this form and select Pay Now to continue directly to the secure payment page.
                       </p>
                     )}
                   </Field>
@@ -295,7 +329,7 @@ export default function BookingRegistrationPage() {
             <div className="booking-register-section">
               <h2 className="booking-register-heading">Account Register</h2>
               <div className="booking-register-grid">
-                <Field id="booking-email" label="Email" required wide>
+                <Field id="booking-email" label="Username / Email" required wide>
                   <input id="booking-email" className={inputClass} name="email" type="email" autoComplete="email" value={form.email} onChange={update} required />
                 </Field>
                 <Field id="booking-password" label="Password" required>
@@ -310,14 +344,32 @@ export default function BookingRegistrationPage() {
             <div className="booking-register-section">
               <h2 className="booking-register-heading">Student Information</h2>
               <div className="booking-register-grid">
-                <Field id="booking-name" label="Student First, Middle and Last Name" required>
-                  <input id="booking-name" className={inputClass} name="fullName" autoComplete="name" maxLength="160" value={form.fullName} onChange={update} required />
+                <Field id="booking-first-name" label="Student's First Name" required>
+                  <input id="booking-first-name" className={inputClass} name="firstName" autoComplete="given-name" maxLength="80" value={form.firstName} onChange={update} required />
+                </Field>
+                <Field id="booking-middle-name" label="Student's Middle Name">
+                  <input id="booking-middle-name" className={inputClass} name="middleName" autoComplete="additional-name" maxLength="80" value={form.middleName} onChange={update} />
+                </Field>
+                <Field id="booking-last-name" label="Student's Last Name" required>
+                  <input id="booking-last-name" className={inputClass} name="lastName" autoComplete="family-name" maxLength="80" value={form.lastName} onChange={update} required />
                 </Field>
                 <Field id="booking-student-phone" label="Student Phone" required>
                   <input id="booking-student-phone" className={inputClass} name="studentPhone" type="tel" autoComplete="tel" maxLength="30" value={form.studentPhone} onChange={update} required />
                 </Field>
-                <Field id="booking-parent-phone" label="Parent / Guardian Phone" required>
+                <Field id="booking-parent-phone" label="Primary Payer Phone Number" required>
                   <input id="booking-parent-phone" className={inputClass} name="parentPhone" type="tel" maxLength="30" value={form.parentPhone} onChange={update} required />
+                </Field>
+                <Field id="booking-payer-name" label="Primary Payer Name" required>
+                  <input id="booking-payer-name" className={inputClass} name="payerName" autoComplete="name" maxLength="160" value={form.payerName} onChange={update} required />
+                </Field>
+                <Field id="booking-payer-relationship" label="Primary Payer Relationship to Student" required>
+                  <input id="booking-payer-relationship" className={inputClass} name="payerRelationship" maxLength="100" value={form.payerRelationship} onChange={update} required />
+                </Field>
+                <Field id="booking-payer-email" label="Primary Payer Email" required>
+                  <input id="booking-payer-email" className={inputClass} name="payerEmail" type="email" autoComplete="email" maxLength="320" value={form.payerEmail} onChange={update} required />
+                </Field>
+                <Field id="booking-payer-secondary-phone" label="Primary Payer Secondary Phone Number">
+                  <input id="booking-payer-secondary-phone" className={inputClass} name="payerSecondaryPhone" type="tel" maxLength="30" value={form.payerSecondaryPhone} onChange={update} />
                 </Field>
                 <Field id="booking-gender" label="Gender">
                   <div id="booking-gender" className="booking-register-radio-row">
@@ -332,8 +384,17 @@ export default function BookingRegistrationPage() {
                 <Field id="booking-permit" label="Permit Number (if applicable)">
                   <input id="booking-permit" className={inputClass} name="permit" maxLength="160" value={form.permit} onChange={update} />
                 </Field>
+                <Field id="booking-issue-date" label="Permit Issue Date">
+                  <input id="booking-issue-date" className={inputClass} name="issueDate" type="date" value={form.issueDate} onChange={update} />
+                </Field>
+                <Field id="booking-expiry-date" label="Permit Expiration Date">
+                  <input id="booking-expiry-date" className={inputClass} name="expiryDate" type="date" min={form.issueDate || undefined} value={form.expiryDate} onChange={update} />
+                </Field>
                 <Field id="booking-home-address" label="Home Address" required>
                   <textarea id="booking-home-address" className={inputClass} name="homeAddress" autoComplete="street-address" maxLength="500" value={form.homeAddress} onChange={update} required />
+                </Field>
+                <Field id="booking-payer-address" label="Primary Payer Home Address" required>
+                  <textarea id="booking-payer-address" className={inputClass} name="payerAddress" autoComplete="street-address" maxLength="500" value={form.payerAddress} onChange={update} required />
                 </Field>
                 <Field id="booking-city" label="City" required>
                   <input id="booking-city" className={inputClass} name="city" autoComplete="address-level2" maxLength="100" value={form.city} onChange={update} required />
@@ -378,8 +439,26 @@ export default function BookingRegistrationPage() {
               <p className="booking-register-payment-note"><strong>Next step:</strong> Select Pay Now below to create your secure account and review the payment options on the payment page.</p>
             </div>}
 
+            {directRegistration && selectedPackage && (
+              <div className="booking-register-section">
+                <h2 className="booking-register-heading">Payment Summary</h2>
+                <div className="booking-register-summary">
+                  <div className="booking-register-plan">
+                    <strong>{selectedPackage.registrationLabel}</strong>
+                    <span>{priceLabel(selectedPackageNearPrice)}</span>
+                  </div>
+                </div>
+                <div className="booking-register-total"><span>Total Amount</span><strong>{priceLabel(selectedPackageNearPrice)}</strong></div>
+                <p className="booking-register-payment-note"><strong>Next step:</strong> Pay Now creates the student account and opens the secure payment page. Lesson dates can be booked from the student dashboard after payment.</p>
+              </div>
+            )}
+
             <div className="booking-register-section">
               <h2 className="booking-register-heading">Agreement</h2>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '.7rem', color: '#334155', lineHeight: 1.55, cursor: 'pointer', marginBottom: '.9rem' }}>
+                <input type="checkbox" name="payerConsent" checked={form.payerConsent} onChange={update} style={{ width: '19px', height: '19px', marginTop: '2px', accentColor: SKY_BLUE, flexShrink: 0 }} />
+                <span>The primary payer gives permission for the above student to schedule their own lessons.</span>
+              </label>
               <label style={{ display: 'flex', alignItems: 'flex-start', gap: '.7rem', color: '#334155', lineHeight: 1.55, cursor: 'pointer' }}>
                 <input type="checkbox" name="acceptedTerms" checked={form.acceptedTerms} onChange={update} style={{ width: '19px', height: '19px', marginTop: '2px', accentColor: SKY_BLUE, flexShrink: 0 }} />
                 <span>I accept the <Link to="/terms" target="_blank" rel="noreferrer" style={{ color: SKY_BLUE, fontWeight: 800 }}>Terms of Service</Link> and consent to the school using these details to manage my lessons.</span>
@@ -389,7 +468,7 @@ export default function BookingRegistrationPage() {
             {error && <div className="booking-register-error" role="alert">{error}</div>}
             <div className="booking-register-actions">
               <button type="button" className="booking-register-back" onClick={() => navigate(directRegistration ? '/schedule' : '/pricing')}>← Back</button>
-              <button type="submit" className="booking-register-submit" disabled={creating || (directRegistration && packagesLoading)}>{creating ? 'Creating Account...' : directRegistration ? 'Create Account & Choose Schedule' : 'Pay Now'}</button>
+              <button type="submit" className="booking-register-submit" disabled={creating || (directRegistration && packagesLoading)}>{creating ? 'Preparing Payment...' : 'Pay Now'}</button>
             </div>
           </form>
       </div>
