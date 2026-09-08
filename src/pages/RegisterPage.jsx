@@ -1,10 +1,12 @@
 import { cloneElement, useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
+import { createUserWithEmailAndPassword, deleteUser, updateProfile } from 'firebase/auth'
 import { auth } from '../firebase'
 import { api } from '../api'
+import { useAuth } from '../contexts/AuthContext'
+import { useCart } from '../contexts/CartContext'
 import { usePageMeta } from '../usePageMeta'
-import { consumeBookingReturn } from '../utils/bookingStorage'
+import { saveBookingReturn, writeGuestCart } from '../utils/bookingStorage'
 import PasswordInput from '../components/PasswordInput'
 
 const GOLD = '#FDBC01'
@@ -25,13 +27,8 @@ const STATES = [
 ]
 
 const COURSE_TYPES = [
-  { value: '1', name: 'Online Driver Ed', detail: '30-hour online course', price: '$39.99' },
-  { value: '7', name: 'Duplicate Certificate 400C', detail: 'Replacement certificate', price: '$15' },
-  { value: '2', name: 'Basic BTW', detail: 'Package A · 2 Hours', price: '$210' },
-  { value: '12', name: 'Basic BTW', detail: 'Package D · 4 Hours', price: '$399' },
-  { value: '3', name: 'Essential BTW', detail: 'Package B · 6 Hours', price: '$599' },
-  { value: '8', name: 'Ideal BTW + Online Ed', detail: 'Package C · 6 Hours', price: '$615' },
-  { value: '4', name: 'Premier BTW', detail: 'Package E · 10 Hours', price: '$999' },
+  { value: '1', name: 'Online Driver Ed', detail: '30-hour online course', price: '$39.99', optionLabel: 'Online Driver Ed (US $): 39.99' },
+  { value: '13', name: 'Duplicate Certificate 400C', detail: 'Replacement certificate', price: '$15.00', optionLabel: 'Duplicate Certificate 400C (US $): 15.00' },
 ]
 
 const STEPS = [
@@ -51,8 +48,11 @@ export default function RegisterPage() {
   const [stepError, setStepError] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
   const [regLoading, setRegLoading] = useState(false)
+  const [completedUid, setCompletedUid] = useState('')
   const navigate = useNavigate()
   const location = useLocation()
+  const { user } = useAuth()
+  const { refreshCart } = useCart()
 
   const [form, setForm] = useState({
     firstName: '', middleName: '', lastName: '', dob: '', phone: '', email: '',
@@ -63,13 +63,25 @@ export default function RegisterPage() {
   })
 
   useEffect(() => {
-    if (location.state?.packageId) {
-      const pkgIdStr = String(location.state.packageId)
+    const requestedCourse = new URLSearchParams(location.search).get('course') || location.state?.packageId
+    if (requestedCourse) {
+      const pkgIdStr = String(requestedCourse)
       if (COURSE_TYPES.some(c => c.value === pkgIdStr)) {
         setForm(prev => ({ ...prev, courseType: pkgIdStr }))
       }
     }
-  }, [location.state])
+  }, [location.search, location.state])
+
+  useEffect(() => {
+    if (!completedUid || user?.uid !== completedUid) return undefined
+    let active = true
+    const openPaymentPage = async () => {
+      await refreshCart()
+      if (active) navigate('/payment', { replace: true })
+    }
+    openPaymentPage()
+    return () => { active = false }
+  }, [completedUid, navigate, refreshCart, user])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -133,9 +145,12 @@ export default function RegisterPage() {
     }
     setRegError('')
     setRegLoading(true)
+    let createdUser = null
+    let paymentPrepared = false
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password)
       const user = userCredential.user
+      createdUser = user
 
       const fullName = `${form.firstName} ${form.lastName}`.trim()
 
@@ -159,10 +174,24 @@ export default function RegisterPage() {
         createdAt: new Date().toISOString(),
       }
       await api.saveUser(user.uid, profileData)
-
-      const requestedReturn = location.state?.from === '/cart' ? '/cart' : ''
-      navigate(requestedReturn || consumeBookingReturn() || '/dashboard', { replace: true })
+      const selectedCourse = COURSE_TYPES.find(course => course.value === form.courseType)
+      const cartResult = await api.addToCart(user.uid, {
+        id: selectedCourse.value,
+        title: selectedCourse.name,
+        price: selectedCourse.price,
+        city: form.city,
+        purchaseOnly: true,
+        pickupSlots: [],
+      })
+      if (!cartResult?.ok) throw new Error(cartResult?.error || 'The selected course could not be prepared for payment.')
+      writeGuestCart(cartResult.items || [])
+      saveBookingReturn('/payment')
+      paymentPrepared = true
+      setCompletedUid(user.uid)
     } catch (err) {
+      if (createdUser) {
+        try { await deleteUser(createdUser) } catch { /* The account can be recovered through sign-in. */ }
+      }
       if (err.code === 'auth/email-already-in-use') setRegError('An account with this email already exists.')
       else if (err.code === 'auth/weak-password') setRegError('Password must be at least 8 characters.')
       else if (err.code === 'auth/invalid-email') setRegError('Invalid email address.')
@@ -171,7 +200,7 @@ export default function RegisterPage() {
         setRegError('Registration failed. Please try again.')
       }
     }
-    setRegLoading(false)
+    if (!paymentPrepared) setRegLoading(false)
   }
 
   const next = () => {
@@ -614,7 +643,7 @@ export default function RegisterPage() {
                   <Field label="First Name" required error={fieldErrors.firstName}><input name="firstName" value={form.firstName} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
                   <Field label="Middle Name"><input name="middleName" value={form.middleName} onChange={handleChange} className="rw-input" style={inputStyle} /></Field>
                   <Field label="Last Name" required error={fieldErrors.lastName}><input name="lastName" value={form.lastName} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
-                  <Field label="Date of Birth" required error={fieldErrors.dob}><input name="dob" value={form.dob} onChange={handleChange} required placeholder="MM-DD-YYYY" className="rw-input" style={inputStyle} /></Field>
+                  <Field label="Date of Birth" required error={fieldErrors.dob}><input name="dob" type="date" value={form.dob} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
                   <Field label="Phone Number" required error={fieldErrors.phone}><input name="phone" value={form.phone} onChange={handleChange} required placeholder="999-999-9999" className="rw-input" style={inputStyle} /></Field>
                   <Field label="Email" required error={fieldErrors.email}><input name="email" type="email" value={form.email} onChange={handleChange} required className="rw-input" style={inputStyle} /></Field>
                 </div>
@@ -662,25 +691,12 @@ export default function RegisterPage() {
                   background: '#ffffff', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-md)',
                   padding: '1.5rem', marginBottom: '1.5rem',
                 }}>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: '#475569', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.9rem' }}>Select a course</p>
-                  <div className="rw-course-options">
-                  {COURSE_TYPES.map(c => (
-                    <label key={c.value} className="rw-course-option" style={{
-                      display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem',
-                      border: form.courseType === c.value ? `2px solid ${GOLD}` : '1.5px solid #E2EBF5',
-                      borderRadius: '12px', cursor: 'pointer',
-                      background: form.courseType === c.value ? 'linear-gradient(135deg, rgba(253,188,1,0.10), rgba(253,188,1,0.025))' : '#ffffff',
-                      transition: 'all 0.25s ease', position: 'relative',
-                    }}>
-                      <input type="radio" name="courseType" value={c.value} checked={form.courseType === c.value} onChange={handleChange} style={{ accentColor: GOLD, width: '18px', height: '18px' }} />
-                      <span style={{ minWidth: 0, flex: 1 }}>
-                        <strong style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: DARK, fontWeight: 800, lineHeight: 1.35 }}>{c.name}</strong>
-                        <span style={{ display: 'block', marginTop: '0.2rem', fontFamily: 'var(--font-body)', fontSize: '0.76rem', color: '#475569', fontWeight: 600 }}>{c.detail}</span>
-                      </span>
-                      <strong style={{ color: SKY_BLUE, fontSize: '0.92rem', whiteSpace: 'nowrap' }}>{c.price}</strong>
-                    </label>
-                  ))}
-                  </div>
+                  <Field label="Course Type" required>
+                    <select name="courseType" value={form.courseType} onChange={handleChange} required className="rw-input rw-select" style={inputStyle}>
+                      {COURSE_TYPES.map(course => <option key={course.value} value={course.value}>{course.optionLabel}</option>)}
+                    </select>
+                  </Field>
+                  <p style={{ margin:'.7rem 0 0', color:'#52657E', fontFamily:'var(--font-body)', fontSize:'.82rem' }}>{COURSE_TYPES.find(course => course.value === form.courseType)?.detail}</p>
                 </div>
 
                 <div style={{
@@ -729,9 +745,9 @@ export default function RegisterPage() {
                     <path d="M20 6 9 17l-5-5" />
                   </svg>
                   <div>
-                    <h4 style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: '#063B82', fontWeight: 700, margin: '0 0 0.35rem 0' }}>No payment details required</h4>
+                    <h4 style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', color: '#063B82', fontWeight: 700, margin: '0 0 0.35rem 0' }}>Secure payment on the next page</h4>
                     <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#365A84', margin: 0, lineHeight: 1.6 }}>
-                      Online payment will be enabled after the secure payment provider is connected. You can complete your account registration now without entering any card information.
+                      Review your registration here, then continue to the secure Payment Details page. Card or PayPal information is entered only through the payment provider and is never stored by this website.
                     </p>
                   </div>
                 </div>
@@ -743,7 +759,7 @@ export default function RegisterPage() {
                   </SummaryCard>
                   <SummaryCard title="What happens next">
                     <SumLine label="Account" value="Created securely" />
-                    <SumLine label="Access" value="Student dashboard" />
+                    <SumLine label="Next step" value="Secure payment" />
                   </SummaryCard>
                 </div>
 
@@ -792,7 +808,7 @@ export default function RegisterPage() {
                   </SummaryCard>
                   <SummaryCard title="Enrollment">
                     <SumLine label="Account" value="Ready to create" />
-                    <SumLine label="Payment" value="Not required at registration" />
+                    <SumLine label="Payment" value="Due on the next page" />
                   </SummaryCard>
                 </div>
 
@@ -847,7 +863,7 @@ export default function RegisterPage() {
                       </div>
                     )}
                     <button type="button" onClick={handleSubmit} disabled={regLoading} className="rw-cta-gold" style={{ opacity: regLoading ? 0.6 : 1 }}>
-                      {regLoading ? 'Creating Account...' : 'Register & Pay'}
+                      {regLoading ? 'Preparing Payment...' : 'Pay Now'}
                       {!regLoading && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>}
                     </button>
                   </>

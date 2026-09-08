@@ -76,7 +76,7 @@ export default function OnlineCoursePage() {
             <ul style={{ paddingLeft:'1.2rem', lineHeight:1.9, color:'rgba(255,255,255,.85)' }}>
               <li>100% online and mobile friendly</li><li>No hidden fees</li><li>Guaranteed to pass</li><li>Certificate of completion included</li>
             </ul>
-            <Link to="/register" id="course-pricing" className="oc-btn" style={{ width:'100%', marginTop:'.75rem' }}>Buy Plan — $39.99</Link>
+            <Link to="/online-drivers-ed/register?course=1" id="course-pricing" className="oc-btn" style={{ width:'100%', marginTop:'.75rem' }}>Buy Plan — $39.99</Link>
           </div>
         </div>
       </section>

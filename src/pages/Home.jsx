@@ -68,7 +68,7 @@ export default function Home() {
             )}
           </div>
         </section>
-      ) : <Pricing light tiers={pricing} />}
+      ) : <Pricing light tiers={pricing.filter(plan => String(plan?.id) !== '13')} />}
       <About />
       <TrustBar />
       <TheRoute />

@@ -78,6 +78,7 @@ const PAYMENT_STATUS_FILTERS = ['paid', 'refunded']
 const slotLimitForCourse = (course) => {
   const id = String(course?.id || '')
   const name = String(course?.title || course?.planName || '').toUpperCase()
+  if (id === '1' || id === '13' || name.includes('ONLINE DRIVERS ED') || name.includes('DUPLICATE CERTIFICATE')) return 0
   if (id === '2' || name.includes('BASIC PLAN')) return 1
   if (id === '5' || name.includes('PREMIER')) return 5
   if (id === '3' || name.includes('ESSENTIAL')) return 3
@@ -87,7 +88,8 @@ const slotLimitForCourse = (course) => {
 }
 
 const courseSlotUsage = (course) => {
-  const maximum = Number(course?.slotAllowance?.maximum ?? course?.slotUsage?.maximum ?? course?.slotLimit) || slotLimitForCourse(course)
+  const storedMaximum = Number(course?.slotAllowance?.maximum ?? course?.slotUsage?.maximum ?? course?.slotLimit)
+  const maximum = Number.isFinite(storedMaximum) && storedMaximum >= 0 ? storedMaximum : slotLimitForCourse(course)
   const selected = Array.isArray(course?.pickupSlots) ? course.pickupSlots.length : 0
   const used = Math.min(maximum, Number(course?.slotAllowance?.used ?? course?.slotUsage?.used ?? selected) || 0)
   const remaining = Math.max(0, Number(course?.slotAllowance?.remaining ?? (maximum - used)) || 0)

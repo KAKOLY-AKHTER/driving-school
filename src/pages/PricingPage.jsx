@@ -558,7 +558,7 @@ export default function PricingPage() {
           <button type="button" className="public-retry-button" onClick={() => setPricingLoadVersion(value => value + 1)}>Retry pricing</button>
         </section>
       ) : (
-        <Pricing light onEnroll={handleChoose} tiers={tiers} />
+        <Pricing light onEnroll={handleChoose} tiers={tiers.filter(plan => String(plan?.id) !== '13')} />
       )}
 
       {step === 'full' && selectedTier && (

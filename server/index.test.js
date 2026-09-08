@@ -425,6 +425,11 @@ test('four-hour registration package includes two bookable lesson slots', () => 
   assert.equal(slotLimitForTier({ id: '12', planName: 'PACKAGE D: 4 HOURS BEHIND THE WHEEL' }), 2)
 })
 
+test('online course and duplicate certificate do not include driving lesson slots', () => {
+  assert.equal(slotLimitForTier({ id: '1', planName: 'TEEN ONLINE DRIVERS ED' }), 0)
+  assert.equal(slotLimitForTier({ id: '13', planName: 'DUPLICATE CERTIFICATE 400C' }), 0)
+})
+
 test('admin pricing accepts dollar values and rejects malformed prices', () => {
   const plan = sanitizePricing({
     id: '2',

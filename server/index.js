@@ -1611,6 +1611,7 @@ function pickupSlotsFromCourse(course, tier = course) {
 function slotLimitForTier(tier) {
   const id = String(tier?.id || '')
   const name = String(tier?.planName || '').toUpperCase()
+  if (id === '1' || id === '13' || name.includes('ONLINE DRIVERS ED') || name.includes('DUPLICATE CERTIFICATE')) return 0
   if (id === '12' || name.includes('4 HOURS BEHIND THE WHEEL')) return 2
   if (id === '2' || name.includes('BASIC PLAN')) return 1
   if (id === '5' || name.includes('PREMIER')) return 5
@@ -6002,6 +6003,13 @@ const DEFAULT_PRICING = [
     { text: 'Get Certificate of Completion', permission: 'Included' },
     { text: 'Fast Certificate Processing..', permission: 'Included' },
   ], order: 0 },
+  { id: '13', planName: 'DUPLICATE CERTIFICATE 400C', planPrice: '$15', planPriceTwo: '$15', options: [
+    { text: 'Replacement California DMV Certificate 400C', permission: 'Included' },
+    { text: 'Student information verification', permission: 'Included' },
+    { text: 'Secure online payment', permission: 'Included' },
+    { text: '', permission: 'Select' },
+    { text: '', permission: 'Select' },
+  ], order: 0.5 },
   { id: '2', planName: 'BASIC PLAN', planPrice: '$210', planPriceTwo: '$210', options: [
     { text: 'Online Course', permission: 'Included' },
     { text: '2 hours professional Training only', permission: 'Included' },
@@ -6401,11 +6409,13 @@ async function seedPricing() {
     return
   }
 
-  const fourHourPlan = DEFAULT_PRICING.find(plan => plan.id === '12')
-  const existingFourHourPlan = await pricingCol.findOne({ id: { $in: ['12', 12] } }, { projection: { _id: 1 } })
-  if (!existingFourHourPlan && fourHourPlan) {
-    await pricingCol.insertOne({ ...fourHourPlan, createdAt: new Date().toISOString() })
-    console.log('Seeded the four-hour registration package')
+  const requiredPlans = DEFAULT_PRICING.filter(plan => ['12', '13'].includes(plan.id))
+  for (const plan of requiredPlans) {
+    const existingPlan = await pricingCol.findOne({ id: { $in: [plan.id, Number(plan.id)] } }, { projection: { _id: 1 } })
+    if (!existingPlan) {
+      await pricingCol.insertOne({ ...plan, createdAt: new Date().toISOString() })
+      console.log(`Seeded required pricing package ${plan.id}`)
+    }
   }
 
   const legacyCount = await pricingCol.countDocuments({
