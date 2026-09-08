@@ -22,7 +22,7 @@ export default function SignupPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuth()
-  const requestedReturn = location.state?.from === '/cart' ? '/cart' : ''
+  const requestedReturn = ['/cart', '/payment'].includes(location.state?.from) ? location.state.from : ''
   const returnPathRef = useRef('')
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', confirmPassword: '' })
   const [error, setError] = useState('')

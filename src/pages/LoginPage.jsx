@@ -21,7 +21,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
-  const requestedReturn = location.state?.from === '/cart' ? '/cart' : ''
+  const requestedReturn = ['/cart', '/payment'].includes(location.state?.from) ? location.state.from : ''
   const returnPathRef = useRef('')
 
   const finishLogin = () => {

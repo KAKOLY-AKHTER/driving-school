@@ -109,7 +109,7 @@ export const writeGuestCart = (items) => {
 
 export const saveBookingReturn = (path = '/cart') => {
   if (!storageAvailable()) return
-  const safePath = path === '/pricing' || path.startsWith('/pricing?') ? path : '/cart'
+  const safePath = path === '/cart' || path === '/payment' || path === '/pricing' || path.startsWith('/pricing?') ? path : '/cart'
   writeStorage(BOOKING_RETURN_KEY, safePath)
 }
 
@@ -117,5 +117,5 @@ export const consumeBookingReturn = () => {
   if (!storageAvailable()) return ''
   const path = readStorage(BOOKING_RETURN_KEY) || ''
   writeStorage(BOOKING_RETURN_KEY, null)
-  return path === '/cart' || path === '/pricing' || path.startsWith('/pricing?') ? path : ''
+  return path === '/cart' || path === '/payment' || path === '/pricing' || path.startsWith('/pricing?') ? path : ''
 }
