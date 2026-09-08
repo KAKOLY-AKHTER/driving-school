@@ -104,6 +104,11 @@ export default function BookingRegistrationPage() {
   const selectedPackageNearPrice = locationPlanPrice(selectedPackage, 'Near')
 
   useEffect(() => {
+    const validRequestedPackage = REGISTRATION_PACKAGES.some(plan => plan.id === String(requestedPlanId))
+    setSelectedPackageId(validRequestedPackage ? String(requestedPlanId) : '')
+  }, [requestedPlanId])
+
+  useEffect(() => {
     let active = true
     setPackagesLoading(true)
     setPackagesError('')
