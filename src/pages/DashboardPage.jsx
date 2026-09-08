@@ -851,7 +851,6 @@ export default function DashboardPage() {
     { id: 'courses', label: 'Courses', sublabel: 'Your courses', icon: I.book },
     { id: 'bookings', label: 'Lessons', sublabel: 'Your bookings', icon: I.calendar },
     { id: 'payments', label: 'Payments', sublabel: 'Invoices', icon: I.profile },
-    ...(showCourse ? [{ id: 'course', label: 'Driver Ed', sublabel: 'Online modules', icon: I.book }] : []),
     { id: 'settings', label: 'Settings', sublabel: 'Account', icon: I.shield },
     { id: 'live-support', label: 'Live Support', sublabel: 'School team', icon: I.profile, badge: supportUnread },
     { id: 'support', label: 'Support', sublabel: 'AI assistant', icon: I.profile },
