@@ -132,6 +132,79 @@ function DriverLicensePrivilegeLesson({ onPrevious, onNext }) {
   )
 }
 
+function ObeyingLawsLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson">
+      <div className="oe-lesson-heading-row">
+        <h3 className="oe-chapter-kicker">1.2 Obeying the Laws</h3>
+        <div className="oe-mini-nav" aria-label="Lesson navigation">
+          <button type="button" onClick={onPrevious} aria-label="Previous lesson">&#9664;</button>
+          <button type="button" onClick={onNext} aria-label="Next lesson">&#9654;</button>
+        </div>
+      </div>
+
+      <p className="oe-laws-intro">Laws and regulations are in place for the sole purpose of safety. A driver must obey the rules of the road in order to keep themselves and other drivers safe on the roadways. Follow and pay attention to all traffic signs and signals when operating a motor vehicle.</p>
+
+      <section className="oe-copy-section oe-sign-section oe-stop-section">
+        <h4>Why Stop Completely at STOP Signs?</h4>
+        <div className="oe-sign-row">
+          <img src="/stop.png" alt="Stop sign" />
+          <p><strong>A STOP sign and red lights</strong> are traffic control devices that tell a driver that they must stop their vehicle. STOP signs are implemented to control the traffic flow and to keep drivers from having a collision. A stop sign means that you must completely stop behind the limit line, crosswalk, and intersection. Choosing to stop completely could mean the difference between life and death.</p>
+        </div>
+      </section>
+
+      <section className="oe-copy-section oe-sign-section oe-yield-section">
+        <div className="oe-sign-row">
+          <img src="/yield.png" alt="Yield sign" />
+          <div>
+            <h4>What Does “YIELD” Mean?</h4>
+            <p>This sign means <strong>“to give way.”</strong> The driver at a YIELD sign:</p>
+            <ul>
+              <li>Shall give way to oncoming traffic.</li>
+              <li>Shall let other drivers, pedestrians, and bicycles have the right-of-way.</li>
+              <li>May need to stop at a YIELD sign until it is clear to pull out into traffic.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section className="oe-copy-section">
+        <h4>Common Courtesy Is a Key to Safety</h4>
+        <p>Being courteous can help avoid accidents and keep traffic moving in an orderly fashion.</p>
+        <ul>
+          <li>Always drive with a good attitude toward other drivers.</li>
+          <li>Never insist on taking the right-of-way.</li>
+        </ul>
+        <p>Drivers are faced with multiple decisions while driving a motor vehicle that can cause stress and tension. When drivers are courteous to one another it will reduce this stress. For example: Give other drivers the right-of-way or allow them space when they are trying to change lanes.</p>
+      </section>
+
+      <section className="oe-copy-section">
+        <h4>Treat Other Drivers the Way You Want To Be Treated</h4>
+        <p>Do something nice and it is done back to you. This is true on roadways as well. For example:</p>
+        <ul>
+          <li>Give space in your lane for merging traffic, move over and let faster drivers pass, give drivers that are signaling a lane change a way in, etc.</li>
+          <li>Do not honk in anger, scream, cut off others, tailgate, or flash your headlights because you would not want another driver to do this to you.</li>
+        </ul>
+      </section>
+
+      <section className="oe-copy-section">
+        <h4>The Roadway Is Shared By ALL Drivers</h4>
+        <p>Safely sharing the roadway with other drivers and pedestrians is essential for avoiding collisions.</p>
+        <ul>
+          <li>Always be aware of your surroundings and watch out for other drivers.</li>
+          <li>If you are blocking traffic by going too slow, safely allow them to pass.</li>
+          <li>Never assume other drivers will give you the right-of-way.</li>
+        </ul>
+      </section>
+
+      <div className="oe-bottom-nav">
+        <button type="button" onClick={onPrevious}>&larr; Previous</button>
+        <button type="button" onClick={onNext}>Next &rarr;</button>
+      </div>
+    </article>
+  )
+}
+
 export default function OnlineEducationCoursePage() {
   usePageMeta('30 Hour Drivers Ed Curriculum — A Precision Driving School', 'Protected online driver education curriculum.', { noIndex: true })
   const navigate = useNavigate()
@@ -140,8 +213,9 @@ export default function OnlineEducationCoursePage() {
   const [openChapters, setOpenChapters] = useState(() => new Set([0]))
   const [started, setStarted] = useState(false)
   const chapter = useMemo(() => CHAPTERS[activeChapter], [activeChapter])
-  const selectedLesson = activeLesson >= 0 ? chapter.topics[activeLesson] : chapter.lesson
   const isDriverLicenseLesson = activeChapter === 0 && activeLesson === 0
+  const isObeyingLawsLesson = activeChapter === 0 && activeLesson === 1
+  const isDetailedLesson = isDriverLicenseLesson || isObeyingLawsLesson
 
   const selectChapter = index => {
     setActiveChapter(index)
@@ -190,6 +264,14 @@ export default function OnlineEducationCoursePage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const goToLesson = (chapterIndex, lessonIndex) => {
+    setActiveChapter(chapterIndex)
+    setActiveLesson(lessonIndex)
+    setStarted(false)
+    setOpenChapters(current => new Set(current).add(chapterIndex))
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
     <div className="oe-course-page">
       <style>{`
@@ -203,8 +285,9 @@ export default function OnlineEducationCoursePage() {
         .oe-points{display:grid;gap:.62rem;max-width:780px;padding:0;list-style:none}.oe-points li{position:relative;margin:0;padding:.72rem .85rem .72rem 2.65rem;border:1px solid #dbe5f1;border-radius:8px;background:#fff;color:#26364b;box-shadow:0 4px 12px rgba(15,45,82,.045)}.oe-points li::before{content:'✓';position:absolute;left:.82rem;top:.69rem;width:1.15rem;height:1.15rem;display:grid;place-items:center;border-radius:50%;background:#0145a8;color:#fff;font-size:.68rem;font-weight:900;box-shadow:0 0 0 3px #e6f0ff}.oe-points li:hover{border-color:#f0c84c;background:#fffdf5}
         .oe-copy-section ul,.oe-note-box ul{margin:.38rem 0 .8rem;padding:0;list-style:none}.oe-copy-section li,.oe-note-box li{position:relative;margin:.3rem 0;padding-left:1.3rem}.oe-copy-section li::before,.oe-note-box li::before{content:'';position:absolute;left:.12rem;top:.64em;width:.48rem;height:.48rem;border-radius:50%;background:#fdbc01;box-shadow:0 0 0 3px rgba(253,188,1,.16)}.oe-copy-section ul ul{margin:.42rem 0 .15rem .5rem;padding-left:.55rem}.oe-copy-section ul ul li::before{width:.4rem;height:.4rem;top:.68em;background:#fff;border:2px solid #0145a8;box-shadow:none}.oe-note-box li::before{background:#0145a8;box-shadow:0 0 0 3px rgba(1,69,168,.12)}
         .oe-lesson-title,.oe-panel-title,.oe-chapter-kicker,.oe-copy-section h4,.oe-overview-links h4{font-weight:900}.oe-intro{font-weight:900}.oe-points{width:calc(100% - 1.15rem);margin:1rem 0 1rem 1.15rem}.oe-copy-section>ul,.oe-note-box>ul{width:calc(100% - 1.15rem);margin-left:1.15rem}.oe-copy-section ul ul{width:calc(100% - .85rem);margin-left:.85rem}.oe-overview-links{width:calc(100% - 1.15rem);margin:1.4rem 0 .25rem 1.15rem;padding:1rem;border:1px solid #dbe5f1;border-radius:9px;background:#fff;box-shadow:0 5px 16px rgba(15,45,82,.045)}.oe-overview-links h4{margin:0 0 .65rem;color:#06285f;font-family:var(--font-display);font-size:1rem}.oe-overview-link-list{display:grid;gap:.35rem}.oe-overview-link-list button{display:grid;grid-template-columns:42px minmax(0,1fr) 20px;align-items:center;gap:.35rem;width:100%;padding:.56rem .65rem;border:0;border-bottom:1px solid #e7edf5;background:transparent;color:#0145a8;text-align:left;cursor:pointer}.oe-overview-link-list button:last-child{border-bottom:0}.oe-overview-link-list button>span:first-child{color:#8a6500;font:800 .72rem var(--font-mono)}.oe-overview-link-list button strong{font-size:.88rem;font-weight:900}.oe-overview-link-list button>span:last-child{text-align:right;font-size:1rem;transition:transform .18s ease}.oe-overview-link-list button:hover{border-radius:5px;background:#fff8dd;color:#06285f}.oe-overview-link-list button:hover>span:last-child{transform:translateX(3px)}
+        .oe-laws-intro{margin:1.15rem 0;padding:1rem 1.1rem;border-left:5px solid #0145a8;border-radius:0 8px 8px 0;background:#eaf2ff;color:#173152;font-weight:700;line-height:1.65}.oe-sign-section{position:relative;overflow:hidden}.oe-stop-section{border-left:4px solid #dc2626}.oe-yield-section{border-left:4px solid #fdbc01}.oe-sign-row{display:grid;grid-template-columns:145px minmax(0,1fr);align-items:center;gap:1.15rem}.oe-sign-row img{display:block;width:130px;max-height:145px;margin:auto;object-fit:contain;filter:drop-shadow(0 7px 12px rgba(15,23,42,.13))}.oe-sign-row p{line-height:1.62}.oe-sign-row strong{font-weight:900;color:#071b34}
         @media(max-width:900px){.oe-course-head-inner{height:76px}.oe-course-logo{width:66px;height:66px}.oe-course-layout{grid-template-columns:1fr}.oe-lesson-body{min-height:auto}.oe-course-nav-inner{overflow-x:auto}.oe-course-nav a,.oe-course-nav button{white-space:nowrap}}
-        @media(max-width:520px){.oe-course-head-inner{height:70px}.oe-course-logo{width:60px;height:60px}.oe-logout{min-height:34px;padding:.45rem .7rem}.oe-course-layout{width:min(100% - 1rem,1200px)}.oe-lesson-body{padding:1rem}.oe-full-lesson{font-size:.84rem}.oe-lesson-heading-row{align-items:center}.oe-mini-nav button{width:30px;height:28px}.oe-bottom-nav button{min-width:0}.oe-tip-row{grid-template-columns:38px minmax(0,1fr);padding:.7rem}.oe-tip-row img{width:32px}.oe-points,.oe-copy-section>ul,.oe-note-box>ul,.oe-overview-links{width:calc(100% - .55rem);margin-left:.55rem}.oe-copy-section ul ul{width:calc(100% - .5rem);margin-left:.5rem}.oe-overview-links{padding:.75rem}.oe-overview-link-list button{grid-template-columns:38px minmax(0,1fr) 16px;padding:.52rem .4rem}}
+        @media(max-width:520px){.oe-course-head-inner{height:70px}.oe-course-logo{width:60px;height:60px}.oe-logout{min-height:34px;padding:.45rem .7rem}.oe-course-layout{width:min(100% - 1rem,1200px)}.oe-lesson-body{padding:1rem}.oe-full-lesson{font-size:.84rem}.oe-lesson-heading-row{align-items:center}.oe-mini-nav button{width:30px;height:28px}.oe-bottom-nav button{min-width:0}.oe-tip-row{grid-template-columns:38px minmax(0,1fr);padding:.7rem}.oe-tip-row img{width:32px}.oe-points,.oe-copy-section>ul,.oe-note-box>ul,.oe-overview-links{width:calc(100% - .55rem);margin-left:.55rem}.oe-copy-section ul ul{width:calc(100% - .5rem);margin-left:.5rem}.oe-overview-links{padding:.75rem}.oe-overview-link-list button{grid-template-columns:38px minmax(0,1fr) 16px;padding:.52rem .4rem}.oe-sign-row{grid-template-columns:1fr;gap:.75rem}.oe-sign-row img{width:105px;max-height:115px}.oe-laws-intro{padding:.85rem .9rem}}
       `}</style>
       <header className="oe-course-header"><div className="oe-course-head-inner"><img className="oe-course-logo" src="/driving-logo.png" alt="A Precision Driving School" /><button className="oe-logout" type="button" onClick={handleLogout}>Log Out</button></div></header>
       <nav className="oe-course-nav" aria-label="Course navigation"><div className="oe-course-nav-inner"><Link to="/">Home</Link><button type="button" onClick={showCourseMap}>Course Map</button><Link to="/contact">Contact us</Link></div></nav>
@@ -236,10 +319,12 @@ export default function OnlineEducationCoursePage() {
           </ul>
         </aside>
         <section className="oe-lesson-card" aria-live="polite">
-          <h2 className="oe-lesson-title">{selectedLesson}</h2>
-          <div className={`oe-lesson-body${isDriverLicenseLesson ? ' detailed' : ''}`}>
+          <h2 className="oe-lesson-title">{chapter.lesson}</h2>
+          <div className={`oe-lesson-body${isDetailedLesson ? ' detailed' : ''}`}>
             {isDriverLicenseLesson ? (
               <DriverLicensePrivilegeLesson onPrevious={goToPreviousLesson} onNext={goToNextLesson} />
+            ) : isObeyingLawsLesson ? (
+              <ObeyingLawsLesson onPrevious={() => goToLesson(0, 0)} onNext={() => goToLesson(0, 2)} />
             ) : (
               <>
                 <p className="oe-lesson-position">{activeLesson < 0 ? `Chapter ${activeChapter + 1} overview` : `Lesson ${activeChapter + 1}.${activeLesson + 1}`}</p>
