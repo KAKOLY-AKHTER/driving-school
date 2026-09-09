@@ -52,7 +52,11 @@ export function EyesVisionLesson({ onPrevious, onNext }) {
       <LessonHeader title="2.1 The Eyes and Vision" onPrevious={onPrevious} onNext={onNext} />
 
       <section className="oe-vision-intro">
-        <img src="/eye1.png" alt="Illustration of eyes wearing glasses" />
+        <div className="oe-eye-graphic">
+          <img src="/eye1.png" alt="Illustration of eyes wearing glasses" />
+          <span className="oe-eye-iris oe-eye-iris-left" aria-hidden="true" />
+          <span className="oe-eye-iris oe-eye-iris-right" aria-hidden="true" />
+        </div>
         <p><strong>Vision plays a key role in safe driving.</strong> Seeing all around your vehicle is crucial for detecting and avoiding hazardous situations. Good vision is essential for spotting trouble in time to avoid a collision.</p>
       </section>
 
@@ -272,6 +276,79 @@ export function EyesVisionLesson({ onPrevious, onNext }) {
           <li>Dizziness</li>
         </ul>
         <p>The Food and Drug Administration requires lenses to be impact-resistant and made from optical-quality glass or plastic. This does not mean they are shatterproof, but they can withstand moderate impact. Polycarbonate is the most shatter-resistant material commonly available and is an excellent choice for children’s sunglasses and impact-related sports.</p>
+      </section>
+
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
+export function LimitingPhysicalConditionsLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-conditions-lesson">
+      <LessonHeader title="2.3 Other Limiting Physical Conditions" onPrevious={onPrevious} onNext={onNext} />
+
+      <p className="oe-conditions-lead">The following are other physical conditions that could limit a driver&apos;s ability to safely operate a vehicle.</p>
+
+      <div className="oe-condition-grid">
+        <section className="oe-condition-card">
+          <h4>Fatigue</h4>
+          <p>When you are tired, you are less alert. The body naturally wants to sleep at night, and most drivers are less alert after midnight. You may not see hazards as soon or react as quickly, increasing the chance of a collision. If you are sleepy, the only safe action is to get off the road and rest. Otherwise, you risk your life and the lives of everyone sharing the road.</p>
+        </section>
+
+        <section className="oe-condition-card">
+          <h4>Illness</h4>
+          <p>Depending on the condition, illness can be a hazard to your safety and the safety of others. Consult a doctor to determine whether your condition allows you to drive a motor vehicle safely. The decision is best left to a medical professional.</p>
+          <p>Do not take the wheel when your responses are slow or your judgment is impaired. Ask a friend or loved one to drive you to appointments rather than traveling on your own.</p>
+        </section>
+
+        <section className="oe-condition-card">
+          <h4>Deformities</h4>
+          <p>Consult a qualified doctor who specializes in your particular condition. They can best determine whether you are capable of operating a motor vehicle. Disclose any physical condition that could affect your driving skills. Vehicle modifications and adaptive equipment are available to help people with specific physical limitations drive safely.</p>
+        </section>
+
+        <section className="oe-condition-card">
+          <h4>Steadiness</h4>
+          <p>Steadiness can be affected by physiological, physical, or emotional factors. These factors may limit your ability to safely handle the steering wheel and control a vehicle. If you are not steady, neither will your vehicle be on the road. Consider not driving for your safety and the safety of others.</p>
+        </section>
+
+        <section className="oe-condition-card">
+          <h4>Muscular Condition</h4>
+          <p>Certain muscular conditions can keep you from being a safe driver. Depending on the condition, special equipment may be required to operate the vehicle safely. Consult your physician for details because every case must be evaluated individually.</p>
+        </section>
+      </div>
+
+      <section className="oe-copy-section oe-disqualifying-section">
+        <h4>Disqualifying Conditions</h4>
+        <p>Some conditions may prevent an applicant from receiving a driver&apos;s license.</p>
+        <ul className="oe-nested-list">
+          <li>Each condition should be determined on an individual basis. Depending on the severity of the case or condition, an applicant may or may not qualify for a license.</li>
+          <li>Consult your physician for details about your particular condition and whether driving is a safe option.</li>
+          <li>In some cases, a person can compensate for a physical condition by demonstrating safe driving ability during a driving test.</li>
+          <li>Examples of potentially disqualifying conditions include:
+            <ul>
+              <li>Cerebral palsy</li>
+              <li>Epilepsy</li>
+              <li>Cardiac conditions</li>
+              <li>Paralysis</li>
+              <li>Mental incapacity</li>
+              <li>Dementia</li>
+              <li>Lapses of consciousness</li>
+              <li>Vision conditions</li>
+            </ul>
+          </li>
+        </ul>
+      </section>
+
+      <section className="oe-copy-section oe-carbon-section">
+        <h4>Effects of Carbon Monoxide Poisoning</h4>
+        <div className="oe-carbon-media">
+          <img src="/poision.png" alt="Vehicle exhaust pipes" />
+          <div>
+            <p><strong>Carbon monoxide is a deadly gas</strong> emitted by a vehicle as it burns gasoline. Never run a vehicle in a sealed or closed structure, such as a garage with the door closed.</p>
+            <p>Emission problems may allow this poisonous gas to enter the vehicle while you are driving. Have your vehicle checked regularly by a qualified mechanic.</p>
+          </div>
+        </div>
       </section>
 
       <LessonFooter onPrevious={onPrevious} onNext={onNext} />
