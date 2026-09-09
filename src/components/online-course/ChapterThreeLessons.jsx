@@ -100,3 +100,61 @@ export function GravityLesson({ onPrevious, onNext }) {
     </article>
   )
 }
+
+export function InertiaEnergyLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-inertia-lesson">
+      <LessonHeader title="3.2 Inertia and Energy" onPrevious={onPrevious} onNext={onNext} />
+
+      <section className="oe-inertia-intro">
+        <p>The law of inertia states that an object in motion tends to remain in motion, while an object at rest tends to remain at rest, unless another force acts on it.</p>
+        <p>While driving, inertia keeps a vehicle moving until a force—such as the brakes, road friction, a fixed object, or another vehicle—changes its motion.</p>
+        <p>During a sudden stop, occupants and unsecured objects continue moving forward. Loose items can become dangerous projectiles, so secure cargo and make sure everyone is properly restrained.</p>
+      </section>
+
+      <section className="oe-copy-section oe-seatbelt-section">
+        <h4>Counteracting Inertia&apos;s Effects with Seat Belts</h4>
+        <div className="oe-seatbelt-media">
+          <img src="/buckling.png" alt="Buckle up and wear a seat belt" />
+          <p>Safety belts help prevent or limit injuries caused by inertia. If a driver brakes suddenly or a collision occurs, an unrestrained body continues moving forward. A correctly fastened seat belt holds the driver and passengers securely in position and spreads crash forces across the stronger parts of the body.</p>
+        </div>
+      </section>
+
+      <div className="oe-video-wrap oe-inertia-video">
+        <iframe
+          src="https://www.youtube.com/embed/2XKOzibVqJg"
+          title="Understanding car crashes and Newton's First Law"
+          loading="lazy"
+          referrerPolicy="strict-origin-when-cross-origin"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        />
+      </div>
+
+      <section className="oe-energy-definitions" aria-label="Energy definitions">
+        <article>
+          <h4>Potential Energy</h4>
+          <p>Potential energy is stored energy related to an object&apos;s position or condition. A vehicle at the top of a hill has gravitational potential energy that can become motion as it travels downhill.</p>
+        </article>
+        <article>
+          <h4>Kinetic Energy</h4>
+          <p>Kinetic energy is the energy of motion. A moving vehicle continues moving until forces such as braking friction, road resistance, or a collision slow or stop it.</p>
+        </article>
+      </section>
+
+      <section className="oe-copy-section oe-kinetic-section">
+        <h4>Effects of Kinetic Energy on Driving</h4>
+        <ul>
+          <li><strong>Speed has a major effect:</strong> doubling speed quadruples kinetic energy. Under similar conditions, braking distance increases approximately with the square of speed.</li>
+          <li>Gravity reduces a vehicle&apos;s speed as it travels uphill. A lower gear may be needed to maintain steady, controlled movement.</li>
+          <li>Gravity increases speed downhill. Select a lower gear before a steep descent and use the brakes smoothly to keep the vehicle under control.</li>
+          <li>Brakes slow a vehicle by using friction to convert kinetic energy into heat. Excessive or continuous braking can cause the brakes to overheat and lose effectiveness.</li>
+          <li>Your total stopping distance includes perception distance, reaction distance, and braking distance. It grows rapidly as speed increases and is also affected by the road, weather, tires, brakes, and vehicle load.</li>
+          <li>In a collision, kinetic energy is transferred into vehicle deformation, sound, heat, friction, and the motion of the objects involved.</li>
+        </ul>
+      </section>
+
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
