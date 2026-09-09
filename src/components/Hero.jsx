@@ -1,6 +1,16 @@
+import { Link } from 'react-router-dom'
 import './HeroSlider.css'
 
 export default function Hero() {
+  const scrollToPricing = () => {
+    const pricingSection = document.getElementById('pricing')
+    if (!pricingSection) return
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const targetTop = pricingSection.getBoundingClientRect().top + window.scrollY - 84
+    window.scrollTo({ top: Math.max(0, targetTop), behavior: prefersReducedMotion ? 'auto' : 'smooth' })
+  }
+
   return (
     <>
     <style>{`
@@ -22,11 +32,11 @@ export default function Hero() {
         justify-content: center;
         width: 100%;
         min-width: 0;
-        min-height: 42px;
-        padding: 0.5rem 0.6rem;
+        min-height: 46px;
+        padding: 0.6rem 0.7rem;
         border-radius: 9px;
         box-sizing: border-box;
-        font-size: clamp(0.56rem, 0.85vw, 0.66rem);
+        font-size: clamp(0.6rem, 0.9vw, 0.7rem);
         letter-spacing: 0.07em;
         line-height: 1.35;
         text-align: center;
@@ -49,6 +59,76 @@ export default function Hero() {
         border-color: var(--color-gold);
         color: var(--color-gold);
       }
+      .hero-scroll-wrap {
+        position: absolute;
+        z-index: 2;
+        right: 0;
+        bottom: 1.2rem;
+        left: 0;
+        display: flex;
+        justify-content: center;
+        pointer-events: none;
+      }
+      .hero-scroll-cue {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: #fff3b0;
+        cursor: pointer;
+        filter: drop-shadow(0 4px 10px rgba(0,0,0,0.72));
+        pointer-events: auto;
+      }
+      .hero-scroll-label {
+        padding-left: 0.3em;
+        font-family: var(--font-mono);
+        font-size: 0.64rem;
+        font-weight: 800;
+        letter-spacing: 0.3em;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+      .hero-scroll-mouse {
+        position: relative;
+        width: 23px;
+        height: 34px;
+        border: 1.5px solid #ffd84a;
+        border-radius: 999px;
+        background: rgba(3,20,43,0.2);
+      }
+      .hero-scroll-wheel {
+        position: absolute;
+        top: 6px;
+        left: 50%;
+        width: 3px;
+        height: 7px;
+        border-radius: 999px;
+        background: #ffd84a;
+        transform: translateX(-50%);
+        animation: heroScrollWheel 1.8s ease-in-out infinite;
+      }
+      .hero-scroll-line {
+        width: 2px;
+        height: 25px;
+        background: linear-gradient(to bottom, #ffd84a, transparent);
+        animation: heroScrollLine 1.8s ease-in-out infinite;
+      }
+      @keyframes heroScrollWheel {
+        0% { opacity: 0; transform: translate(-50%, -1px); }
+        30%, 70% { opacity: 1; }
+        100% { opacity: 0; transform: translate(-50%, 10px); }
+      }
+      @keyframes heroScrollLine {
+        0%, 100% { opacity: 0.45; transform: scaleY(0.8); }
+        50% { opacity: 1; transform: scaleY(1); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .hero-scroll-wheel,
+        .hero-scroll-line { animation: none; }
+      }
       @media (max-width: 600px) {
         .hero-content {
           display: flex !important;
@@ -60,10 +140,10 @@ export default function Hero() {
         .hero-title { font-size: 2.2rem !important; margin-bottom: 0.8rem !important; }
         .hero-subtitle { font-size: 0.9rem !important; margin-bottom: 1rem !important; }
         .hero-cta { grid-template-columns: 1fr; width: 100%; }
-        .hero-cta .hero-action-button { min-height: 42px; }
+        .hero-cta .hero-action-button { min-height: 46px; }
         .hero-section {
           padding-top: 14rem !important;
-          padding-bottom: 4rem !important;
+          padding-bottom: 8rem !important;
           min-height: auto !important;
           align-items: flex-start !important;
         }
@@ -136,13 +216,21 @@ export default function Hero() {
 
           {/* 4. CTA Buttons */}
           <div className="hero-cta">
-            <button type="button" className="hero-action-button btn-gold">Register For Driving Lessons</button>
-            <button type="button" className="hero-action-button btn-ghost">Register For Online Drivers Ed</button>
+            <Link to="/schedule" className="hero-action-button btn-gold">Register For Driving Lessons</Link>
+            <Link to="/online-drivers-ed" className="hero-action-button btn-ghost">Register For Online Drivers Ed</Link>
             <button type="button" className="hero-action-button btn-gold">Online Education Student Login</button>
             <button type="button" className="hero-action-button btn-ghost">Behind The Wheel Student Login</button>
           </div>
 
         </div>
+      </div>
+
+      <div className="hero-scroll-wrap">
+        <button type="button" className="hero-scroll-cue" onClick={scrollToPricing} aria-label="Scroll to pricing plans">
+          <span className="hero-scroll-label">Scroll</span>
+          <span className="hero-scroll-mouse"><span className="hero-scroll-wheel" /></span>
+          <span className="hero-scroll-line" />
+        </button>
       </div>
 
     </section>
