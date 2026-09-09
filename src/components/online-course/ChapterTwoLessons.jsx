@@ -539,3 +539,100 @@ export function EssentialAttitudesLesson({ onPrevious, onNext }) {
     </article>
   )
 }
+
+export function UndesirableDrivingBehaviorsLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-behaviors-lesson">
+      <LessonHeader title="2.5 Undesirable Driving Behaviors" onPrevious={onPrevious} onNext={onNext} />
+
+      <p className="oe-behaviors-lead">The following are undesirable driving behaviors that can result in collisions.</p>
+
+      <section className="oe-behavior-feature">
+        <img src="/car1.png" alt="Angry driver behaving aggressively" />
+        <div>
+          <h4>Aggressiveness</h4>
+          <p>Aggressive behavior causes collisions and raises tempers. It often involves neglecting the rules of the road, which can lead to traffic citations and dangerous situations. Aggressive drivers pose a serious risk to everyone using the roadway.</p>
+        </div>
+      </section>
+
+      <div className="oe-video-wrap oe-behavior-video">
+        <iframe src="https://www.youtube.com/embed/NUkklawULUA" title="World's Most Aggressive Drivers" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
+      </div>
+
+      <section className="oe-copy-section oe-behavior-copy-section">
+        <h4>Egotism</h4>
+        <ul>
+          <li>Some drivers enter the roadway believing they are the best driver on the road. This overconfidence can raise tempers and interfere with sound judgment.</li>
+          <li>Egotistical drivers may act as though they own the road and disregard the rights of other road users.</li>
+          <li>They may speed, take unnecessary risks, make unsafe rapid starts, or behave aggressively.</li>
+          <li>They may fail to make room for merging vehicles, ignore the right-of-way, block others from passing, follow emergency vehicles too closely, or merge too quickly or slowly and cut off other drivers.</li>
+        </ul>
+
+        <h4>Emotional Instability</h4>
+        <p>Driving while angry or upset can result in aggressive behavior, poor judgment, and poor vehicle control. If you experience these feelings, do not drive until you have calmed down and can give the driving task your full attention.</p>
+      </section>
+
+      <section className="oe-copy-section oe-behavior-copy-section">
+        <h4>Inattentiveness</h4>
+        <div className="oe-behavior-media-row">
+          <img src="/car2.png" alt="Distracted driver in a car" />
+          <p>Failing to pay attention to the driving task and the environment around your vehicle can cause a collision. Even a moment of psychological or situational distraction may prevent you from reacting quickly to a hazard. Apply proper driving practices, look well ahead and down the roadway, and remain focused on driving.</p>
+        </div>
+
+        <h4>Exhibitionism</h4>
+        <div className="oe-behavior-media-row">
+          <img src="/car3.png" alt="Driver showing off with unsafe vehicle maneuvers" />
+          <p>Do not show off by racing, peeling out, oversteering, or speeding. Such behavior creates an unsafe environment for others and violates the rules and regulations of the road.</p>
+        </div>
+      </section>
+
+      <section className="oe-copy-section oe-irresponsibility-section">
+        <h4>Irresponsibility</h4>
+        <p>Irresponsible driving causes collisions, injuries, and deaths. Every driver must take this responsibility seriously because even a small error can have devastating consequences. Tailgating, speeding, cutting off other drivers, and weaving through traffic are all irresponsible behaviors.</p>
+        <p>Your life and your passengers&apos; lives are in your hands while you drive. Impaired driving places many lives at risk. Think before you act or get behind the wheel.</p>
+      </section>
+
+      <section className="oe-copy-section oe-reckless-section">
+        <h4>Reckless Driving and Street Racing (AB 2190)</h4>
+        <p><em>Effective in 2007, California AB 2190 (Benoit) increased penalties when reckless driving or a motor-vehicle speed contest causes specified great bodily injury to another person.</em></p>
+        <p>Depending on the offense and circumstances, penalties may include imprisonment and fines. The law made qualifying first-offense conduct punishable as either a felony or a misdemeanor.</p>
+        <p>Specified injuries include:</p>
+        <ul className="oe-reckless-injuries">
+          <li>Loss of consciousness</li>
+          <li>Concussion</li>
+          <li>Bone fracture</li>
+          <li>Protracted loss or impairment of a bodily member or organ</li>
+          <li>A wound requiring extensive suturing</li>
+          <li>Serious disfigurement</li>
+          <li>Brain injury</li>
+          <li>Paralysis</li>
+        </ul>
+      </section>
+
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
+export function ChapterTwoTestLesson({ onStart }) {
+  return (
+    <article className="oe-full-lesson oe-test-lesson">
+      <div className="oe-test-title-row">
+        <span>Chapter Assessment</span>
+        <h3>2.6 Chapter 2</h3>
+      </div>
+      <section className="oe-test-card">
+        <div className="oe-test-message">
+          <h4>Congratulations!</h4>
+          <p>You have completed the reading for Chapter 2. You&apos;ll need to get <strong>9 answers correct</strong> (out of 12) in order to proceed. <strong>Good luck!</strong></p>
+        </div>
+        <div className="oe-test-score"><strong>9 / 12</strong><span>Correct answers required</span></div>
+        <button className="oe-test-start" type="button" onClick={onStart} aria-label="Start here and return to Chapter 2" aria-describedby="chapter-two-return-note">
+          <img src="/start.png" alt="" aria-hidden="true" />
+        </button>
+        <img className="oe-quiz-image" src="/quize.png" alt="Chapter 2 quiz illustration" />
+        <p className="oe-test-return-note" id="chapter-two-return-note">Select <button className="oe-test-return-link" type="button" onClick={onStart}>Start Here</button> to return to the Chapter 2 overview.</p>
+      </section>
+    </article>
+  )
+}
