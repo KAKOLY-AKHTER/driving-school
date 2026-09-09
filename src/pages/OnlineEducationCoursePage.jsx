@@ -33,40 +33,52 @@ function DriverLicensePrivilegeLesson({ onPrevious, onNext }) {
       <img className="oe-license-hero" src="/driver-lisence1.png" alt="Driver license privilege illustration" />
 
       <section className="oe-copy-section">
-        <h4>What does your license mean to you?</h4>
-        <ul>
-          <li>You have passed written and driving tests covering the rules and regulations of the road.</li>
-          <li>You have been given the responsibility of driving a motor vehicle and understand how to operate it safely.</li>
-          <li>You must take your responsibilities seriously. Negligent driving may cause the loss, suspension, or revocation of your driver&apos;s license.</li>
+        <h4>What does your license means to you?</h4>
+        <ul className="oe-nested-list">
+          <li>Your license means that:
+            <ul>
+              <li>You have passed a written and driving test on the rules and regulations of the road.</li>
+              <li>You have been given the responsibility of driving a motor vehicle and that you understand how to operate a motor vehicle.</li>
+              <li>You must take your responsibilities seriously. You are responsible for all of your acts when you are behind the wheel of an automobile. Being a negligent driver may cause you the loss, suspension, or revocation of your driver&apos;s license.</li>
+            </ul>
+          </li>
         </ul>
       </section>
 
       <section className="oe-copy-section">
         <h4>What does your license mean to others?</h4>
-        <p>Your license tells other drivers that:</p>
-        <ul>
-          <li>You have the information and skills to handle and operate a motor vehicle.</li>
-          <li>You know and understand the rules and regulations of the roadways.</li>
-          <li>You value the privilege granted by the State of California to drive.</li>
+        <ul className="oe-nested-list">
+          <li>Your license tells other drivers that:
+            <ul>
+              <li>You have the information and the skills to handle and operate a motor vehicle.</li>
+              <li>You know and understand the rules and regulations of the roadways.</li>
+              <li>You value the fact that the State of California gave you the privilege to drive.</li>
+            </ul>
+          </li>
         </ul>
       </section>
 
       <aside className="oe-note-box">
-        <strong>Remember:</strong> Other roadway users are affected by your driving habits and behavior. If you drive negligently or irresponsibly, death or injury may result. Parents may also be responsible for the actions of a teenage driver.
+        <strong>Note:</strong>
+        <p>Be aware that the other users of the roadways are subjected to your driving habits and behavior.</p>
+        <ul>
+          <li>If you are, or act, as a negligent or irresponsible driver, death or injury may come to others.</li>
+          <li>If you are a teenager and act negligently and irresponsibly, your parents will be responsible for your actions. The parents of a teen are financially liable for their teen drivers&apos; actions.</li>
+        </ul>
       </aside>
 
       <section className="oe-copy-section">
         <h4>Operating a Motor Vehicle Is a Serious Responsibility</h4>
-        <p>Driving requires focus and clear thinking because lives are at stake. Stay in the right frame of mind, remain aware of your surroundings, and make sound judgments.</p>
+        <p>It is important to focus and think clearly when you are driving because lives are at stake. Be in the right mind and be aware of what you are doing at all times. Make good judgments when you drive.</p>
         <h4>The Motor Vehicle Is a Weapon</h4>
-        <p>A motor vehicle can cause serious damage to you and everyone around it—even at low speeds.</p>
-        <h4>Automobile Areas Dangerous as a Loaded Gun</h4>
-        <p>Distracted driving can cause serious injury and death. Keep your eyes and attention on the road so you can react in time.</p>
-        <p>Factors that can cause danger include:</p>
+        <p>The car that you drive could cause serious damage to you and those that are around your vehicle. Remember that even at low speeds of 1-35 MPH, you can seriously hurt or even kill a person or an animal.</p>
+        <h4>Automobile Areas Dangerous As a Loaded Gun</h4>
+        <p>Distracted drivers can cause serious injuries and death on the roadways. If your eyes and attention are on the road and your surroundings, you are in a position to react in time to avoid an accident.</p>
+        <p>Factors that can cause danger to the driver and others:</p>
         <ul>
-          <li>Drunk or drug-impaired driving</li>
+          <li>Drunk driving</li>
           <li>Cell phones and texting</li>
-          <li>Driving while tired</li>
+          <li>Driving tired</li>
           <li>Speed</li>
           <li>Vehicle malfunction</li>
           <li>Bad weather and road conditions</li>
@@ -85,20 +97,23 @@ function DriverLicensePrivilegeLesson({ onPrevious, onNext }) {
 
       <section className="oe-copy-section">
         <h4 className="oe-underlined">Parking Responsibility</h4>
-        <ul>
-          <li>Always set your emergency brake when parking. This adds security if the vehicle begins to roll.</li>
-          <li>For an automatic transmission, set the gear in Park.</li>
-          <li>For a standard transmission, use first gear or reverse depending on whether the surface is flat, uphill, or downhill.</li>
-          <li>Follow the same parking rules for all vehicles when parking on a hill.</li>
+        <ul className="oe-nested-list">
+          <li>Always set your emergency brake when parking your vehicle. This will give added security that your car will not roll away.
+            <ul>
+              <li>If your vehicle has an automatic transmission, make sure that you set the gear in the park position.</li>
+              <li>Standard transmission (stick shift) cars are parked in either first gear or reverse, depending if you are on a flat surface, uphill, or downhill position.</li>
+            </ul>
+          </li>
+          <li>All types of vehicles should follow the same rules when parking on a hill.</li>
         </ul>
         <h4><em>Uphill, Against the Curb</em></h4>
         <ul>
-          <li>Turn the front wheels left so the back of the front-right tire rests against the curb.</li>
-          <li>Set the emergency brake before leaving the vehicle.</li>
+          <li>Turn the vehicle&apos;s front wheels to the left so that the back of the front-right tire rests against the curb.</li>
+          <li>Be sure to set use your emergency brake before you exit your car.</li>
         </ul>
         <h4><em>Downhill</em></h4>
         <ul>
-          <li>Turn the wheels right so the front of the tire rests against the curb.</li>
+          <li>Turn the vehicle&apos;s wheels to the right so that the front of the tire is up against the curb.</li>
         </ul>
       </section>
 
@@ -106,7 +121,7 @@ function DriverLicensePrivilegeLesson({ onPrevious, onNext }) {
 
       <div className="oe-tip-row">
         <img src="/driver-lisence3-png.png" alt="Tip" />
-        <p>Keep your vehicle in top working condition and arrange regular maintenance checks. Be safe and aware.</p>
+        <p>Always keep your vehicle in top working condition. Get in a habit of having your vehicle in for a regular maintenance check. Be safe and be aware.</p>
       </div>
 
       <div className="oe-bottom-nav">
@@ -184,6 +199,7 @@ export default function OnlineEducationCoursePage() {
         .oe-course-layout{width:min(1200px,calc(100% - 2rem));margin:1.25rem auto 3rem;display:grid;grid-template-columns:330px minmax(0,1fr);gap:1.1rem;align-items:start}.oe-curriculum,.oe-lesson-card{overflow:hidden;border:1px solid #cbd5e1;border-radius:7px;background:#fff;box-shadow:0 8px 24px rgba(15,45,82,.07)}.oe-panel-title{margin:0;padding:.85rem 1rem;background:#0733a0;color:#fff;font-family:var(--font-display);font-size:1.08rem}.oe-chapter-list{margin:0;padding:0;list-style:none}.oe-chapter-item{border-bottom:1px solid #dbe2ea}.oe-chapter-item:last-child{border-bottom:0}.oe-chapter-btn{display:grid;grid-template-columns:23px minmax(0,1fr) 18px;align-items:center;gap:.25rem;width:100%;padding:.75rem .7rem;border:0;background:#f5f7fa;color:#34291f;font-size:.72rem;font-weight:700;text-align:left;text-transform:uppercase;cursor:pointer;line-height:1.35}.oe-chapter-btn:hover{background:#fff8dd}.oe-chapter-btn.active{background:#fff1b8;color:#0733a0}.oe-check{color:#ef3340;font-size:1rem;font-weight:900}.oe-chevron{color:#0145a8;font-size:.8rem;text-align:center;transition:transform .2s ease}.oe-chapter-btn[aria-expanded="true"] .oe-chevron{transform:rotate(180deg)}.oe-sublesson-list{display:grid;padding:.35rem 0 .55rem;background:#fff}.oe-sublesson{width:100%;padding:.38rem .8rem .38rem 2.75rem;border:0;background:#fff;color:#334155;font-size:.76rem;line-height:1.3;text-align:left;cursor:pointer}.oe-sublesson:hover{background:#eef5ff;color:#0145a8}.oe-sublesson.active{background:#e7f0ff;color:#0145a8;font-weight:800;box-shadow:inset 3px 0 #fdbc01}
         .oe-lesson-title{margin:0;padding:.85rem 1.2rem;background:#0733a0;color:#fff;font-family:var(--font-display);font-size:1.08rem}.oe-lesson-body{padding:clamp(1.2rem,3vw,2rem);background:#f9fafb;min-height:520px}.oe-chapter-kicker{margin:0 0 .8rem;color:#0145a8;font-family:var(--font-display);font-size:clamp(1.25rem,2.5vw,1.8rem);font-style:italic}.oe-intro{font-weight:800;font-size:1rem}.oe-chapter-image{display:block;width:min(210px,48%);height:auto;margin:1.2rem auto;object-fit:contain;filter:drop-shadow(0 12px 22px rgba(1,69,168,.15))}.oe-responsibility{width:130px;height:130px;margin:1.3rem auto;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#68b9ff,#0569bd 58%,#043b77);color:#fff;text-align:center;font:900 .72rem var(--font-mono);letter-spacing:.08em;box-shadow:0 15px 30px rgba(1,69,168,.2)}.oe-points{max-width:760px;margin:1rem auto;line-height:1.6}.oe-lesson-position{text-align:center;color:#637892;font:700 .68rem var(--font-mono);letter-spacing:.08em;text-transform:uppercase}.oe-start-wrap{text-align:center;margin-top:1.6rem}.oe-start{padding:.78rem 1.15rem;border:0;border-radius:6px;background:#273242;color:#fff;font-weight:800;cursor:pointer}.oe-start.started{background:#15803d}.oe-lesson-note{max-width:760px;margin:1rem auto 0;padding:.85rem 1rem;border:1px solid #bbf7d0;border-radius:7px;background:#f0fdf4;color:#166534;text-align:center}.oe-course-footer{padding:1rem;background:#0733a0;color:#dbeafe;text-align:center;font-size:.78rem}
         .oe-lesson-body.detailed{padding:clamp(1rem,2.4vw,1.7rem)}.oe-full-lesson{max-width:820px;margin:auto;color:#172033;font-size:.9rem;line-height:1.52}.oe-lesson-heading-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;border-bottom:1px solid #d8e2ef;padding-bottom:.65rem}.oe-lesson-heading-row .oe-chapter-kicker{margin:0;font-style:normal}.oe-mini-nav{display:flex;gap:.25rem;flex:0 0 auto}.oe-mini-nav button,.oe-bottom-nav button{border:0;border-radius:4px;background:#263242;color:#fff;font-weight:800;cursor:pointer}.oe-mini-nav button{width:34px;height:30px}.oe-mini-nav button:hover,.oe-bottom-nav button:hover{background:#0145a8}.oe-lesson-lead{margin:1.2rem 0 .4rem;text-transform:uppercase;font-weight:900}.oe-license-hero{display:block;width:min(640px,100%);max-height:230px;object-fit:contain;margin:.8rem auto 1.25rem}.oe-copy-section{margin:1.1rem 0}.oe-copy-section h4{margin:.85rem 0 .2rem;font-size:.96rem;color:#101827}.oe-copy-section p{margin:.2rem 0}.oe-copy-section ul{margin:.25rem 0 .75rem;padding-left:1.45rem}.oe-copy-section li{margin:.12rem 0}.oe-underlined{text-decoration:underline}.oe-note-box{margin:1rem 0;padding:.9rem 1rem;border-left:4px solid #fdbc01;border-radius:0 6px 6px 0;background:#fff8dd;color:#3f3423}.oe-video-wrap{position:relative;width:min(720px,100%);aspect-ratio:16/9;margin:1.5rem auto;overflow:hidden;border-radius:8px;background:#071426;box-shadow:0 12px 28px rgba(4,31,74,.18)}.oe-video-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}.oe-parking-image{display:block;width:min(540px,100%);height:auto;margin:1.25rem auto}.oe-tip-row{display:grid;grid-template-columns:48px minmax(0,1fr);align-items:center;gap:.9rem;margin:1.4rem 0;padding:.8rem 1rem;border:1px solid #dbe5f1;border-radius:7px;background:#fff}.oe-tip-row img{display:block;width:38px;height:auto}.oe-tip-row p{margin:0}.oe-bottom-nav{display:flex;justify-content:space-between;gap:1rem;margin-top:1.5rem;padding-top:1rem;border-top:1px solid #d8e2ef}.oe-bottom-nav button{min-width:110px;padding:.65rem .9rem}
+        .oe-full-lesson{font-size:.94rem;line-height:1.65}.oe-lesson-heading-row{align-items:center;padding:0 0 .9rem;border-bottom:2px solid #e4ebf4}.oe-lesson-heading-row .oe-chapter-kicker{font-size:clamp(1.25rem,2.3vw,1.65rem);font-style:normal;font-weight:700}.oe-lesson-lead{margin:1.25rem 0;padding:.85rem 1rem;border-left:5px solid #fdbc01;border-radius:0 7px 7px 0;background:#06285f;color:#fff;font-size:.92rem;letter-spacing:.025em}.oe-license-hero{padding:.65rem;border-radius:9px;background:#fff}.oe-copy-section{margin:1rem 0;padding:1rem 1.1rem;border:1px solid #dce5f0;border-radius:9px;background:#fff;box-shadow:0 5px 16px rgba(15,45,82,.045)}.oe-copy-section h4{margin:.9rem 0 .25rem;color:#06285f;font-size:.97rem}.oe-copy-section h4:first-child{margin-top:0}.oe-copy-section ul,.oe-note-box ul{padding-left:1.35rem}.oe-copy-section li,.oe-note-box li{margin:.25rem 0}.oe-nested-list>li::marker{color:#0145a8}.oe-nested-list ul{margin-top:.25rem;list-style-type:circle}.oe-note-box{padding:1rem 1.1rem;border:1px solid #f4d367;border-left:5px solid #fdbc01;background:linear-gradient(135deg,#fffdf4,#fff8db);box-shadow:0 5px 16px rgba(92,67,4,.06)}.oe-note-box strong{display:block;color:#06285f;font-size:1rem}.oe-note-box p{margin:.25rem 0 .55rem}.oe-video-wrap{border:4px solid #fff;box-shadow:0 14px 32px rgba(4,31,74,.2)}.oe-parking-image{padding:.7rem;border:1px solid #dce5f0;border-radius:9px;background:#fff;box-shadow:0 8px 20px rgba(15,45,82,.07)}.oe-tip-row{border-left:5px solid #0145a8;box-shadow:0 5px 16px rgba(15,45,82,.05)}.oe-bottom-nav button{border-radius:6px;padding:.72rem 1rem;box-shadow:0 5px 12px rgba(10,28,53,.14)}
         @media(max-width:900px){.oe-course-head-inner{height:76px}.oe-course-logo{width:66px;height:66px}.oe-course-layout{grid-template-columns:1fr}.oe-lesson-body{min-height:auto}.oe-course-nav-inner{overflow-x:auto}.oe-course-nav a,.oe-course-nav button{white-space:nowrap}}
         @media(max-width:520px){.oe-course-head-inner{height:70px}.oe-course-logo{width:60px;height:60px}.oe-logout{min-height:34px;padding:.45rem .7rem}.oe-course-layout{width:min(100% - 1rem,1200px)}.oe-lesson-body{padding:1rem}.oe-full-lesson{font-size:.84rem}.oe-lesson-heading-row{align-items:center}.oe-mini-nav button{width:30px;height:28px}.oe-bottom-nav button{min-width:0}.oe-tip-row{grid-template-columns:38px minmax(0,1fr);padding:.7rem}.oe-tip-row img{width:32px}}
       `}</style>
