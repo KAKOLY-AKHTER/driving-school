@@ -21,9 +21,9 @@ export default function Hero() {
       .hero-cta {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0.85rem;
+        gap: 0.65rem;
         width: 100%;
-        max-width: 720px;
+        max-width: 620px;
         box-sizing: border-box;
       }
       .hero-content {
@@ -36,12 +36,12 @@ export default function Hero() {
         justify-content: center;
         width: 100%;
         min-width: 0;
-        min-height: 64px;
-        padding: 0.85rem 0.9rem;
-        border-radius: 14px;
+        min-height: 50px;
+        padding: 0.65rem 0.75rem;
+        border-radius: 10px;
         box-sizing: border-box;
-        font-size: clamp(0.68rem, 1.15vw, 0.8rem);
-        letter-spacing: 0.1em;
+        font-size: clamp(0.64rem, 1vw, 0.74rem);
+        letter-spacing: 0.08em;
         line-height: 1.35;
         text-align: center;
         white-space: normal;
@@ -166,7 +166,7 @@ export default function Hero() {
         .hero-title { font-size: 2.2rem !important; margin-bottom: 0.8rem !important; }
         .hero-subtitle { font-size: 0.9rem !important; margin-bottom: 1rem !important; }
         .hero-cta { grid-template-columns: 1fr; width: 100%; }
-        .hero-action-button { min-height: 58px; }
+        .hero-cta .hero-action-button { min-height: 48px; }
         .hero-section {
           padding-top: 14rem !important;
           padding-bottom: 4rem !important;
