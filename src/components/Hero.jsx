@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import './HeroSlider.css'
 
 export default function Hero() {
@@ -19,22 +18,39 @@ export default function Hero() {
   return (
     <>
     <style>{`
-      .hero-cta .btn-gold,
-      .hero-cta .btn-ghost {
-        padding: 1rem 2.4rem;
-        font-size: 0.8rem;
-        box-shadow: 0 6px 20px rgba(0,0,0,0.45), 0 0 0 4px rgba(255,255,255,0.14);
+      .hero-cta {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.85rem;
+        width: min(100%, 720px);
       }
-      .hero-cta .btn-ghost {
-        background: rgba(10,22,40,0.6);
+      .hero-action-button {
+        min-height: 64px;
+        padding: 0.85rem 1.1rem;
         border: 2px solid var(--color-gold);
-        color: var(--color-gold);
-        backdrop-filter: blur(2px);
-        box-shadow: 0 6px 20px rgba(0,0,0,0.45), 0 0 0 4px rgba(253,188,1,0.18);
+        border-radius: 14px;
+        background: rgba(3, 35, 91, 0.88);
+        color: #fff;
+        font-family: var(--font-body);
+        font-size: clamp(0.78rem, 1.35vw, 0.96rem);
+        font-weight: 700;
+        line-height: 1.35;
+        text-align: center;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.42), 0 0 0 3px rgba(253,188,1,0.1);
+        backdrop-filter: blur(3px);
+        cursor: pointer;
+        transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
       }
-      .hero-cta .btn-ghost:hover {
-        background: rgba(253,188,1,0.18);
-        border-color: var(--color-gold);
+      .hero-action-button:hover {
+        transform: translateY(-2px);
+        background: var(--color-gold);
+        color: #052c67;
+        box-shadow: 0 10px 28px rgba(0,0,0,0.48), 0 0 20px rgba(253,188,1,0.25);
+      }
+      .hero-action-button:focus-visible {
+        outline: 3px solid #fff;
+        outline-offset: 3px;
       }
       .hero-scroll-wrap {
         position: absolute;
@@ -138,7 +154,8 @@ export default function Hero() {
         .hero-logo { margin-bottom: 1.5rem !important; }
         .hero-title { font-size: 2.2rem !important; margin-bottom: 0.8rem !important; }
         .hero-subtitle { font-size: 0.9rem !important; margin-bottom: 1rem !important; }
-        .hero-cta { justify-content: center !important; }
+        .hero-cta { grid-template-columns: 1fr; width: 100%; }
+        .hero-action-button { min-height: 58px; }
         .hero-section {
           padding-top: 14rem !important;
           padding-bottom: 4rem !important;
@@ -217,13 +234,11 @@ export default function Hero() {
           />
 
           {/* 4. CTA Buttons */}
-          <div className="hero-cta" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <Link to="/schedule" className="btn-gold">
-              Book Driving Lessons
-            </Link>
-            <Link to="/register" className="btn-ghost">
-              Online Drivers Ed
-            </Link>
+          <div className="hero-cta">
+            <button type="button" className="hero-action-button">Register For Driving Lessons</button>
+            <button type="button" className="hero-action-button">Register For Online Drivers Ed</button>
+            <button type="button" className="hero-action-button">Online Education Student Login</button>
+            <button type="button" className="hero-action-button">Behind The Wheel Student Login</button>
           </div>
 
         </div>
