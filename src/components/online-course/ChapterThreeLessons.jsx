@@ -158,3 +158,182 @@ export function InertiaEnergyLesson({ onPrevious, onNext }) {
     </article>
   )
 }
+
+export function MomentumFrictionLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-momentum-lesson">
+      <LessonHeader title="3.3 Momentum and Friction" onPrevious={onPrevious} onNext={onNext} />
+
+      <section className="oe-copy-section oe-momentum-section">
+        <h4>Momentum</h4>
+        <div className="oe-force-media-row oe-momentum-media">
+          <img src="/momentum.png" alt="Vehicle moving at speed" />
+          <div>
+            <p>Momentum describes how difficult it is to stop a moving object. It depends on the object&apos;s mass and velocity: a heavier or faster vehicle has more momentum.</p>
+            <ul>
+              <li>Doubling speed doubles momentum when the vehicle&apos;s mass stays the same.</li>
+              <li>Increasing speed from 10 mph to 50 mph increases momentum five times.</li>
+              <li>A heavier vehicle has more momentum than a lighter vehicle traveling at the same speed.</li>
+            </ul>
+          </div>
+        </div>
+        <div className="oe-force-callout">
+          <h5>Controlling momentum</h5>
+          <p>During a controlled stop, the brakes, tires, road surface, aerodynamic drag, and engine braking work together to reduce the vehicle&apos;s momentum. In a collision, remaining motion is transferred through deformation, heat, sound, and movement of the objects involved.</p>
+        </div>
+      </section>
+
+      <section className="oe-copy-section oe-friction-section">
+        <h4>Friction</h4>
+        <p>Friction is the resistance created when surfaces move—or try to move—against one another. Drivers depend on friction between the tires and roadway for accelerating, steering, and braking.</p>
+        <div className="oe-friction-facts">
+          <article>
+            <h5>Friction changes with:</h5>
+            <ul>
+              <li>Tire tread, condition, and correct inflation</li>
+              <li>Vehicle load and weight distribution</li>
+              <li>Road material and surface condition</li>
+              <li>Rain, snow, ice, oil, mud, sand, and debris</li>
+            </ul>
+          </article>
+          <article>
+            <h5>Friction occurs:</h5>
+            <ul>
+              <li>Between the tires and the road</li>
+              <li>Inside the brakes when they are applied</li>
+              <li>In moving engine and transmission components</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section className="oe-copy-section oe-roads-tires-section">
+        <h4>Friction Effects on Roads and Tires</h4>
+        <div className="oe-force-media-row">
+          <img src="/tire.png" alt="Technician inspecting a tire" />
+          <div>
+            <p>Worn, damaged, overloaded, underinflated, or overinflated tires may reduce usable traction and make the vehicle harder to control.</p>
+            <ul>
+              <li>Check tire pressure when the tires are cold and follow the vehicle manufacturer&apos;s specification.</li>
+              <li>Inspect tread and tire condition regularly.</li>
+              <li>Slow down and leave more stopping space when the road is wet or slippery.</li>
+              <li>Accelerate, steer, and brake smoothly to preserve available traction.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section className="oe-copy-section oe-braking-friction-section">
+        <h4>Friction Effects on Braking</h4>
+        <ul>
+          <li>Brakes use friction to convert a vehicle&apos;s kinetic energy into heat. Long or repeated braking can overheat the brakes and reduce their effectiveness.</li>
+          <li>Anti-lock braking systems help prevent wheel lock during hard braking so the driver can retain steering control. Follow the vehicle owner&apos;s manual for correct use.</li>
+          <li>Loss of traction is less likely when you reduce speed early and use the brakes smoothly.</li>
+        </ul>
+        <div className="oe-force-media-row oe-skid-media">
+          <img src="/barking.png" alt="Slippery roadway warning sign" />
+          <p>A skid occurs when one or more tires lose traction. Road contamination, excessive speed, abrupt steering, or braking beyond the available grip can cause a skid.</p>
+        </div>
+      </section>
+
+      <section className="oe-copy-section oe-components-friction-section">
+        <h4>Friction Effects on Vehicle Components</h4>
+        <div className="oe-force-media-row oe-components-media">
+          <div>
+            <ul>
+              <li>Release a manual clutch smoothly; an abrupt release can cause wheelspin or loss of control.</li>
+              <li>Do not ride the brakes or drive with the clutch partially engaged.</li>
+              <li>Select a lower gear before a long downhill grade to reduce continuous brake use.</li>
+              <li>Use the manufacturer-specified lubricants and service intervals to limit damaging friction and wear.</li>
+            </ul>
+          </div>
+          <img src="/settings.png" alt="Gears representing moving vehicle components" />
+        </div>
+      </section>
+
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
+export function CentrifugalForceLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-centrifugal-lesson">
+      <LessonHeader title="3.4 Centrifugal Force" onPrevious={onPrevious} onNext={onNext} />
+
+      <section className="oe-curve-intro">
+        <p>When a vehicle follows a curve, tire traction supplies the inward <strong>centripetal force</strong> that changes its direction. The occupants feel an apparent outward pull—often called the centrifugal effect—because inertia tends to keep them moving in a straight line.</p>
+      </section>
+
+      <section className="oe-copy-section oe-turning-section">
+        <h4>Forces Acting in a Turn</h4>
+        <ul>
+          <li>A vehicle&apos;s inertia resists the change from straight-line motion.</li>
+          <li>Tire traction must provide enough inward force to keep the vehicle on the curved path.</li>
+          <li>Higher speed, a tighter curve, or reduced traction makes maintaining the intended path more difficult.</li>
+        </ul>
+        <div className="oe-curve-media">
+          <img src="/bike.png" alt="Motorcyclist leaning through a curve" />
+          <div>
+            <h5>Two-wheel vehicles</h5>
+            <p>A bicyclist or motorcyclist leans into a turn to balance the forces acting on the vehicle. All road users, including car drivers, must enter curves at a safe speed and keep their movements smooth.</p>
+            <h5>Managing the curve</h5>
+            <p>Look well ahead, reduce speed before entering, maintain a steady lane position, and accelerate gently only after the curve begins to open. Never exceed a posted advisory speed.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="oe-copy-section oe-curve-safety-section">
+        <h4>Slow Down Before Entering a Curve</h4>
+        <p>Complete most braking before the turn. Braking or steering abruptly in a curve asks the tires to provide more grip and can cause a skid, especially on wet, icy, sandy, or oily pavement. If you must slow while turning, do so progressively and keep the vehicle balanced.</p>
+        <div className="oe-curve-note">
+          <strong>Remember:</strong> You must be able to stop within the distance you can see. Hills, sharp curves, weather, and surface conditions may require a much lower speed than the posted limit.
+        </div>
+      </section>
+
+      <section className="oe-copy-section oe-impact-section">
+        <h4>Factors That Determine Impact Severity</h4>
+        <p>Crash severity rises rapidly with speed. Vehicle mass, direction of travel, angle of impact, restraint use, and the design of the vehicles and objects involved also influence the outcome.</p>
+        <h5>Vehicle structure and crumple zones</h5>
+        <ul>
+          <li>Crumple zones deform in a controlled way to absorb energy and lengthen the time over which occupants slow down.</li>
+          <li>The passenger compartment is designed to remain as intact as possible.</li>
+          <li>Seat belts and airbags work with the vehicle structure; airbags are not a substitute for seat belts.</li>
+        </ul>
+      </section>
+
+      <aside className="oe-true-false-card">
+        <img src="/true.png" alt="True or false question" />
+        <div>
+          <h4>True or False?</h4>
+          <p><strong>False:</strong> A relaxed, sleeping, or impaired occupant is not protected from crash forces. Never drive impaired or drowsy, and always wear a seat belt correctly. The safest crash is the one you prevent.</p>
+        </div>
+      </aside>
+
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
+export function ChapterThreeTestLesson({ onStart }) {
+  return (
+    <article className="oe-full-lesson oe-test-lesson">
+      <div className="oe-test-title-row">
+        <span>Chapter Assessment</span>
+        <h3>3.5 Chapter 3</h3>
+      </div>
+      <section className="oe-test-card">
+        <div className="oe-test-message">
+          <h4>Congratulations!</h4>
+          <p>You have completed the reading for Chapter 3. You&apos;ll need to get <strong>9 answers correct</strong> (out of 12) in order to proceed. <strong>Good luck!</strong></p>
+        </div>
+        <div className="oe-test-score"><strong>9 / 12</strong><span>Correct answers required</span></div>
+        <button className="oe-test-start" type="button" onClick={onStart} aria-label="Start here and return to Chapter 3" aria-describedby="chapter-three-return-note">
+          <img src="/start.png" alt="" aria-hidden="true" />
+        </button>
+        <img className="oe-quiz-image" src="/quize.png" alt="Chapter 3 quiz illustration" />
+        <p className="oe-test-return-note" id="chapter-three-return-note">Select <button className="oe-test-return-link" type="button" onClick={onStart}>Start Here</button> to return to the Chapter 3 overview.</p>
+      </section>
+    </article>
+  )
+}
