@@ -28,6 +28,8 @@ const OnlineCourseDetailsPage = lazy(() => import('./pages/OnlineCourseDetailsPa
 const OnlineCoursePricingPage = lazy(() => import('./pages/OnlineCoursePricingPage'))
 const OnlineCoursePermitPage = lazy(() => import('./pages/OnlineCoursePermitPage'))
 const OnlineCourseDriverLicensePage = lazy(() => import('./pages/OnlineCourseDriverLicensePage'))
+const OnlineEducationLoginPage = lazy(() => import('./pages/OnlineEducationLoginPage'))
+const OnlineEducationCoursePage = lazy(() => import('./pages/OnlineEducationCoursePage'))
 const BlogPage = lazy(() => import('./pages/BlogPage'))
 
 function PageLoader() {
@@ -50,7 +52,7 @@ function NotFoundPage() {
   )
 }
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, loginPath = '/login' }) {
   const { user, loading } = useAuth()
   const location = useLocation()
   if (loading) return (
@@ -58,7 +60,7 @@ function ProtectedRoute({ children }) {
       <div style={{ width: '40px', height: '40px', border: '3px solid rgba(253,188,1,0.2)', borderTopColor: '#FDBC01', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
     </div>
   )
-  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  if (!user) return <Navigate to={loginPath} replace state={{ from: location.pathname }} />
   return children
 }
 
@@ -131,7 +133,7 @@ function LayoutSetup({ children }) {
 
 function AppRoutes() {
   const location = useLocation()
-  const hideShell = location.pathname === '/dashboard' || location.pathname === '/admin' || location.pathname === '/admin/login' || location.pathname === '/admin/setup'
+  const hideShell = location.pathname === '/dashboard' || location.pathname === '/admin' || location.pathname === '/admin/login' || location.pathname === '/admin/setup' || location.pathname === '/online-drivers-ed/login' || location.pathname === '/online-drivers-ed/course'
 
   return (
     <>
@@ -148,6 +150,12 @@ function AppRoutes() {
               <Route path="/online-drivers-ed/pricing" element={<OnlineCoursePricingPage />} />
               <Route path="/online-drivers-ed/permit" element={<OnlineCoursePermitPage />} />
               <Route path="/online-drivers-ed/driver-license" element={<OnlineCourseDriverLicensePage />} />
+              <Route path="/online-drivers-ed/login" element={<OnlineEducationLoginPage />} />
+              <Route path="/online-drivers-ed/course" element={
+                <ProtectedRoute loginPath="/online-drivers-ed/login">
+                  <OnlineEducationCoursePage />
+                </ProtectedRoute>
+              } />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/blog" element={<BlogPage />} />
               <Route path="/blog/:slug" element={<BlogPage />} />
