@@ -283,6 +283,84 @@ export function EyesVisionLesson({ onPrevious, onNext }) {
   )
 }
 
+export function EarsHearingLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-hearing-lesson">
+      <LessonHeader title="2.2 The Ears and Hearing" onPrevious={onPrevious} onNext={onNext} />
+
+      <section className="oe-hearing-intro">
+        <img src="/ear.png" alt="Person listening carefully" />
+        <div>
+          <h4>Auditory Acuity</h4>
+          <p>Sharp hearing is important for safe driving. Your hearing can:</p>
+          <ul className="oe-nested-list">
+            <li>Warn you of danger, such as a vehicle in your blind spot.</li>
+            <li>Help you respond to:
+              <ul>
+                <li>Someone sounding a horn.</li>
+                <li>Emergency-vehicle sirens.</li>
+                <li>Bells at railroad crossings.</li>
+              </ul>
+            </li>
+            <li>Alert you to possible engine trouble or other mechanical failure.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div className="oe-hearing-condition-grid">
+        <section className="oe-hearing-condition">
+          <h4>Partial Deafness</h4>
+          <p>A hearing impairment that limits a person&apos;s ability to hear low- to medium-volume sounds or sounds at certain frequencies.</p>
+        </section>
+        <section className="oe-hearing-condition">
+          <h4>Total Deafness</h4>
+          <p>A hearing impairment that results in the inability to hear sounds, including very loud sounds.</p>
+        </section>
+      </div>
+
+      <section className="oe-copy-section oe-hearing-section">
+        <h4>Compensation for Hearing Impairment</h4>
+        <ul>
+          <li>A person can improve the ability to drive safely by consulting a doctor and using a properly fitted hearing aid where appropriate.</li>
+          <li>A driver with partial or total hearing loss can rely more strongly on visual awareness, including scanning the surrounding environment more frequently.</li>
+        </ul>
+
+        <h4>Hearing Care</h4>
+        <p>Auditory acuity may deteriorate with age. Have your hearing checked periodically by a qualified medical professional because gradual changes can occur so slowly that they may not be immediately noticeable.</p>
+
+        <h4>Considerations for Hearing and Driving</h4>
+        <ul className="oe-nested-list">
+          <li>To hear surrounding traffic while driving:
+            <ul>
+              <li>Keep the vehicle&apos;s audio-system volume low.</li>
+              <li>When safe and suitable, keep a window slightly open so outside warning sounds are easier to hear.</li>
+            </ul>
+          </li>
+          <li>Do not wear a headset or earplugs that cover both ears while driving.</li>
+        </ul>
+      </section>
+
+      <section className="oe-copy-section oe-hearing-history">
+        <h4>Brief History of the Hearing Aid</h4>
+        <div className="oe-hearing-history-gallery">
+          <img src="/aid1.png" alt="Have you heard message with an ear symbol" />
+          <img src="/aid2.png" alt="Early portable hearing device" />
+        </div>
+
+        <p>A hearing aid is a device that helps people with hearing loss hear sounds more clearly. One of the earliest devices, known as the metal ear, appeared in the 17th century and was worn over the ears. Hearing aids developed in the early 19th century were often bulky devices designed to sit on a table. Ear trumpets and cones later became widely used.</p>
+        <p>Frederick Rein of London became the first full-scale manufacturer of hearing aids around 1800, producing ear trumpets, hearing fans, and conversation tubes. These portable instruments amplified sound, but their size created a difficult tradeoff: larger instruments amplified more effectively, while smaller and more portable versions provided less benefit.</p>
+        <p>By the late 1800s, acoustic horns used a tube with a sound-capturing cone at one end and an earpiece at the other. The demand for less visible hearing aids helped move design toward smaller devices that could fit in or around the ear.</p>
+
+        <img className="oe-hearing-aid-lineup" src="/aid3.png" alt="A range of modern hearing aids" />
+
+        <p>Efforts to make hearing aids less visible sometimes caused devices to be hidden in furniture, clothing, and accessories. Social stigma could discourage people from using the assistance they needed. Miniaturization eventually shifted the focus toward helping people hear effectively, and during the 20th century hearing aids evolved from mechanical devices to advanced electrical and electronic designs.</p>
+      </section>
+
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
 export function LimitingPhysicalConditionsLesson({ onPrevious, onNext }) {
   return (
     <article className="oe-full-lesson oe-conditions-lesson">
