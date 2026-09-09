@@ -18,19 +18,119 @@ const CHAPTERS = [
   { title: 'Final Test', lesson: 'Final Test', intro: 'Review the complete curriculum before beginning the final knowledge assessment.', points: ['Revisit any chapter that needs more study.', 'Read every question carefully.', 'Apply safe-driving principles to each situation.'], topics: ['Final Test'] },
 ]
 
+function DriverLicensePrivilegeLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson">
+      <div className="oe-lesson-heading-row">
+        <h3 className="oe-chapter-kicker">1.1 Driver&apos;s License: A Privilege</h3>
+        <div className="oe-mini-nav" aria-label="Lesson navigation">
+          <button type="button" onClick={onPrevious} aria-label="Previous lesson">&#9664;</button>
+          <button type="button" onClick={onNext} aria-label="Next lesson">&#9654;</button>
+        </div>
+      </div>
+
+      <p className="oe-lesson-lead">Having a driver&apos;s license is a privilege, not a right.</p>
+      <img className="oe-license-hero" src="/driver-lisence1.png" alt="Driver license privilege illustration" />
+
+      <section className="oe-copy-section">
+        <h4>What does your license mean to you?</h4>
+        <ul>
+          <li>You have passed written and driving tests covering the rules and regulations of the road.</li>
+          <li>You have been given the responsibility of driving a motor vehicle and understand how to operate it safely.</li>
+          <li>You must take your responsibilities seriously. Negligent driving may cause the loss, suspension, or revocation of your driver&apos;s license.</li>
+        </ul>
+      </section>
+
+      <section className="oe-copy-section">
+        <h4>What does your license mean to others?</h4>
+        <p>Your license tells other drivers that:</p>
+        <ul>
+          <li>You have the information and skills to handle and operate a motor vehicle.</li>
+          <li>You know and understand the rules and regulations of the roadways.</li>
+          <li>You value the privilege granted by the State of California to drive.</li>
+        </ul>
+      </section>
+
+      <aside className="oe-note-box">
+        <strong>Remember:</strong> Other roadway users are affected by your driving habits and behavior. If you drive negligently or irresponsibly, death or injury may result. Parents may also be responsible for the actions of a teenage driver.
+      </aside>
+
+      <section className="oe-copy-section">
+        <h4>Operating a Motor Vehicle Is a Serious Responsibility</h4>
+        <p>Driving requires focus and clear thinking because lives are at stake. Stay in the right frame of mind, remain aware of your surroundings, and make sound judgments.</p>
+        <h4>The Motor Vehicle Is a Weapon</h4>
+        <p>A motor vehicle can cause serious damage to you and everyone around it—even at low speeds.</p>
+        <h4>Automobile Areas Dangerous as a Loaded Gun</h4>
+        <p>Distracted driving can cause serious injury and death. Keep your eyes and attention on the road so you can react in time.</p>
+        <p>Factors that can cause danger include:</p>
+        <ul>
+          <li>Drunk or drug-impaired driving</li>
+          <li>Cell phones and texting</li>
+          <li>Driving while tired</li>
+          <li>Speed</li>
+          <li>Vehicle malfunction</li>
+          <li>Bad weather and road conditions</li>
+        </ul>
+      </section>
+
+      <div className="oe-video-wrap">
+        <iframe
+          src="https://www.youtube.com/embed/6Hcfph_g3JE"
+          title="Safe Driving Tips"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerPolicy="strict-origin-when-cross-origin"
+          allowFullScreen
+        />
+      </div>
+
+      <section className="oe-copy-section">
+        <h4 className="oe-underlined">Parking Responsibility</h4>
+        <ul>
+          <li>Always set your emergency brake when parking. This adds security if the vehicle begins to roll.</li>
+          <li>For an automatic transmission, set the gear in Park.</li>
+          <li>For a standard transmission, use first gear or reverse depending on whether the surface is flat, uphill, or downhill.</li>
+          <li>Follow the same parking rules for all vehicles when parking on a hill.</li>
+        </ul>
+        <h4><em>Uphill, Against the Curb</em></h4>
+        <ul>
+          <li>Turn the front wheels left so the back of the front-right tire rests against the curb.</li>
+          <li>Set the emergency brake before leaving the vehicle.</li>
+        </ul>
+        <h4><em>Downhill</em></h4>
+        <ul>
+          <li>Turn the wheels right so the front of the tire rests against the curb.</li>
+        </ul>
+      </section>
+
+      <img className="oe-parking-image" src="/driver-lisence2.png" alt="Correct wheel positions for downhill and uphill parking" />
+
+      <div className="oe-tip-row">
+        <img src="/driver-lisence3-png.png" alt="Tip" />
+        <p>Keep your vehicle in top working condition and arrange regular maintenance checks. Be safe and aware.</p>
+      </div>
+
+      <div className="oe-bottom-nav">
+        <button type="button" onClick={onPrevious}>&larr; Previous</button>
+        <button type="button" onClick={onNext}>Next &rarr;</button>
+      </div>
+    </article>
+  )
+}
+
 export default function OnlineEducationCoursePage() {
   usePageMeta('30 Hour Drivers Ed Curriculum — A Precision Driving School', 'Protected online driver education curriculum.', { noIndex: true })
   const navigate = useNavigate()
   const [activeChapter, setActiveChapter] = useState(0)
-  const [activeLesson, setActiveLesson] = useState(0)
+  const [activeLesson, setActiveLesson] = useState(-1)
   const [openChapters, setOpenChapters] = useState(() => new Set([0]))
   const [started, setStarted] = useState(false)
   const chapter = useMemo(() => CHAPTERS[activeChapter], [activeChapter])
-  const selectedLesson = chapter.topics[activeLesson] || chapter.lesson
+  const selectedLesson = activeLesson >= 0 ? chapter.topics[activeLesson] : chapter.lesson
+  const isDriverLicenseLesson = activeChapter === 0 && activeLesson === 0
 
   const selectChapter = index => {
     setActiveChapter(index)
-    setActiveLesson(0)
+    setActiveLesson(-1)
     setStarted(false)
     setOpenChapters(current => {
       const next = new Set(current)
@@ -50,13 +150,29 @@ export default function OnlineEducationCoursePage() {
   const showCourseMap = () => {
     setOpenChapters(new Set(CHAPTERS.map((_, index) => index)))
     setActiveChapter(0)
-    setActiveLesson(0)
+    setActiveLesson(-1)
     setStarted(false)
   }
 
   const handleLogout = async () => {
     await signOut(auth)
     navigate('/online-drivers-ed/login', { replace: true })
+  }
+
+  const goToPreviousLesson = () => {
+    setActiveChapter(0)
+    setActiveLesson(-1)
+    setStarted(false)
+    setOpenChapters(current => new Set(current).add(0))
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const goToNextLesson = () => {
+    setActiveChapter(0)
+    setActiveLesson(1)
+    setStarted(false)
+    setOpenChapters(current => new Set(current).add(0))
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   return (
@@ -67,8 +183,9 @@ export default function OnlineEducationCoursePage() {
         .oe-course-nav{background:#06338f;box-shadow:0 4px 16px rgba(4,32,86,.18)}.oe-course-nav-inner{width:min(1200px,calc(100% - 2rem));min-height:44px;margin:auto;display:flex;align-items:center;gap:.2rem}.oe-course-nav a,.oe-course-nav button{padding:.65rem .9rem;border:0;background:none;color:#fff;font:700 .82rem var(--font-body);text-decoration:none;cursor:pointer}.oe-course-nav a:hover,.oe-course-nav button:hover{background:rgba(255,255,255,.12)}
         .oe-course-layout{width:min(1200px,calc(100% - 2rem));margin:1.25rem auto 3rem;display:grid;grid-template-columns:330px minmax(0,1fr);gap:1.1rem;align-items:start}.oe-curriculum,.oe-lesson-card{overflow:hidden;border:1px solid #cbd5e1;border-radius:7px;background:#fff;box-shadow:0 8px 24px rgba(15,45,82,.07)}.oe-panel-title{margin:0;padding:.85rem 1rem;background:#0733a0;color:#fff;font-family:var(--font-display);font-size:1.08rem}.oe-chapter-list{margin:0;padding:0;list-style:none}.oe-chapter-item{border-bottom:1px solid #dbe2ea}.oe-chapter-item:last-child{border-bottom:0}.oe-chapter-btn{display:grid;grid-template-columns:23px minmax(0,1fr) 18px;align-items:center;gap:.25rem;width:100%;padding:.75rem .7rem;border:0;background:#f5f7fa;color:#34291f;font-size:.72rem;font-weight:700;text-align:left;text-transform:uppercase;cursor:pointer;line-height:1.35}.oe-chapter-btn:hover{background:#fff8dd}.oe-chapter-btn.active{background:#fff1b8;color:#0733a0}.oe-check{color:#ef3340;font-size:1rem;font-weight:900}.oe-chevron{color:#0145a8;font-size:.8rem;text-align:center;transition:transform .2s ease}.oe-chapter-btn[aria-expanded="true"] .oe-chevron{transform:rotate(180deg)}.oe-sublesson-list{display:grid;padding:.35rem 0 .55rem;background:#fff}.oe-sublesson{width:100%;padding:.38rem .8rem .38rem 2.75rem;border:0;background:#fff;color:#334155;font-size:.76rem;line-height:1.3;text-align:left;cursor:pointer}.oe-sublesson:hover{background:#eef5ff;color:#0145a8}.oe-sublesson.active{background:#e7f0ff;color:#0145a8;font-weight:800;box-shadow:inset 3px 0 #fdbc01}
         .oe-lesson-title{margin:0;padding:.85rem 1.2rem;background:#0733a0;color:#fff;font-family:var(--font-display);font-size:1.08rem}.oe-lesson-body{padding:clamp(1.2rem,3vw,2rem);background:#f9fafb;min-height:520px}.oe-chapter-kicker{margin:0 0 .8rem;color:#0145a8;font-family:var(--font-display);font-size:clamp(1.25rem,2.5vw,1.8rem);font-style:italic}.oe-intro{font-weight:800;font-size:1rem}.oe-chapter-image{display:block;width:min(210px,48%);height:auto;margin:1.2rem auto;object-fit:contain;filter:drop-shadow(0 12px 22px rgba(1,69,168,.15))}.oe-responsibility{width:130px;height:130px;margin:1.3rem auto;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#68b9ff,#0569bd 58%,#043b77);color:#fff;text-align:center;font:900 .72rem var(--font-mono);letter-spacing:.08em;box-shadow:0 15px 30px rgba(1,69,168,.2)}.oe-points{max-width:760px;margin:1rem auto;line-height:1.6}.oe-lesson-position{text-align:center;color:#637892;font:700 .68rem var(--font-mono);letter-spacing:.08em;text-transform:uppercase}.oe-start-wrap{text-align:center;margin-top:1.6rem}.oe-start{padding:.78rem 1.15rem;border:0;border-radius:6px;background:#273242;color:#fff;font-weight:800;cursor:pointer}.oe-start.started{background:#15803d}.oe-lesson-note{max-width:760px;margin:1rem auto 0;padding:.85rem 1rem;border:1px solid #bbf7d0;border-radius:7px;background:#f0fdf4;color:#166534;text-align:center}.oe-course-footer{padding:1rem;background:#0733a0;color:#dbeafe;text-align:center;font-size:.78rem}
+        .oe-lesson-body.detailed{padding:clamp(1rem,2.4vw,1.7rem)}.oe-full-lesson{max-width:820px;margin:auto;color:#172033;font-size:.9rem;line-height:1.52}.oe-lesson-heading-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;border-bottom:1px solid #d8e2ef;padding-bottom:.65rem}.oe-lesson-heading-row .oe-chapter-kicker{margin:0;font-style:normal}.oe-mini-nav{display:flex;gap:.25rem;flex:0 0 auto}.oe-mini-nav button,.oe-bottom-nav button{border:0;border-radius:4px;background:#263242;color:#fff;font-weight:800;cursor:pointer}.oe-mini-nav button{width:34px;height:30px}.oe-mini-nav button:hover,.oe-bottom-nav button:hover{background:#0145a8}.oe-lesson-lead{margin:1.2rem 0 .4rem;text-transform:uppercase;font-weight:900}.oe-license-hero{display:block;width:min(640px,100%);max-height:230px;object-fit:contain;margin:.8rem auto 1.25rem}.oe-copy-section{margin:1.1rem 0}.oe-copy-section h4{margin:.85rem 0 .2rem;font-size:.96rem;color:#101827}.oe-copy-section p{margin:.2rem 0}.oe-copy-section ul{margin:.25rem 0 .75rem;padding-left:1.45rem}.oe-copy-section li{margin:.12rem 0}.oe-underlined{text-decoration:underline}.oe-note-box{margin:1rem 0;padding:.9rem 1rem;border-left:4px solid #fdbc01;border-radius:0 6px 6px 0;background:#fff8dd;color:#3f3423}.oe-video-wrap{position:relative;width:min(720px,100%);aspect-ratio:16/9;margin:1.5rem auto;overflow:hidden;border-radius:8px;background:#071426;box-shadow:0 12px 28px rgba(4,31,74,.18)}.oe-video-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}.oe-parking-image{display:block;width:min(540px,100%);height:auto;margin:1.25rem auto}.oe-tip-row{display:grid;grid-template-columns:48px minmax(0,1fr);align-items:center;gap:.9rem;margin:1.4rem 0;padding:.8rem 1rem;border:1px solid #dbe5f1;border-radius:7px;background:#fff}.oe-tip-row img{display:block;width:38px;height:auto}.oe-tip-row p{margin:0}.oe-bottom-nav{display:flex;justify-content:space-between;gap:1rem;margin-top:1.5rem;padding-top:1rem;border-top:1px solid #d8e2ef}.oe-bottom-nav button{min-width:110px;padding:.65rem .9rem}
         @media(max-width:900px){.oe-course-head-inner{height:76px}.oe-course-logo{width:66px;height:66px}.oe-course-layout{grid-template-columns:1fr}.oe-lesson-body{min-height:auto}.oe-course-nav-inner{overflow-x:auto}.oe-course-nav a,.oe-course-nav button{white-space:nowrap}}
-        @media(max-width:520px){.oe-course-head-inner{height:70px}.oe-course-logo{width:60px;height:60px}.oe-logout{min-height:34px;padding:.45rem .7rem}.oe-course-layout{width:min(100% - 1rem,1200px)}.oe-lesson-body{padding:1rem}}
+        @media(max-width:520px){.oe-course-head-inner{height:70px}.oe-course-logo{width:60px;height:60px}.oe-logout{min-height:34px;padding:.45rem .7rem}.oe-course-layout{width:min(100% - 1rem,1200px)}.oe-lesson-body{padding:1rem}.oe-full-lesson{font-size:.84rem}.oe-lesson-heading-row{align-items:center}.oe-mini-nav button{width:30px;height:28px}.oe-bottom-nav button{min-width:0}.oe-tip-row{grid-template-columns:38px minmax(0,1fr);padding:.7rem}.oe-tip-row img{width:32px}}
       `}</style>
       <header className="oe-course-header"><div className="oe-course-head-inner"><img className="oe-course-logo" src="/driving-logo.png" alt="A Precision Driving School" /><button className="oe-logout" type="button" onClick={handleLogout}>Log Out</button></div></header>
       <nav className="oe-course-nav" aria-label="Course navigation"><div className="oe-course-nav-inner"><Link to="/">Home</Link><button type="button" onClick={showCourseMap}>Course Map</button><Link to="/contact">Contact us</Link></div></nav>
@@ -99,7 +216,32 @@ export default function OnlineEducationCoursePage() {
             })}
           </ul>
         </aside>
-        <section className="oe-lesson-card" aria-live="polite"><h2 className="oe-lesson-title">{selectedLesson}</h2><div className="oe-lesson-body"><p className="oe-lesson-position">Lesson {activeChapter + 1}.{activeLesson + 1} of {CHAPTERS.length} chapters</p><h3 className="oe-chapter-kicker">Chapter {activeChapter + 1}: {chapter.title}</h3><p className="oe-intro">{chapter.intro}</p>{activeChapter === 0 ? <img className="oe-chapter-image" src="/chapter1.png" alt="Responsibility lesson illustration" /> : <div className="oe-responsibility">DRIVE<br />RESPONSIBLY</div>}<ul className="oe-points">{chapter.points.map(point => <li key={point}>{point}</li>)}</ul><div className="oe-start-wrap"><button type="button" className={`oe-start${started ? ' started' : ''}`} onClick={() => setStarted(true)}>{started ? 'Lesson Started' : 'Begin Lesson'}</button>{started && <p className="oe-lesson-note">Lesson opened. Use the curriculum dropdowns to continue through each topic.</p>}</div></div></section>
+        <section className="oe-lesson-card" aria-live="polite">
+          <h2 className="oe-lesson-title">{selectedLesson}</h2>
+          <div className={`oe-lesson-body${isDriverLicenseLesson ? ' detailed' : ''}`}>
+            {isDriverLicenseLesson ? (
+              <DriverLicensePrivilegeLesson onPrevious={goToPreviousLesson} onNext={goToNextLesson} />
+            ) : (
+              <>
+                <p className="oe-lesson-position">{activeLesson < 0 ? `Chapter ${activeChapter + 1} overview` : `Lesson ${activeChapter + 1}.${activeLesson + 1}`}</p>
+                <h3 className="oe-chapter-kicker">Chapter {activeChapter + 1}: {chapter.title}</h3>
+                <p className="oe-intro">{chapter.intro}</p>
+                {activeChapter === 0 ? <img className="oe-chapter-image" src="/chapter1.png" alt="Responsibility lesson illustration" /> : <div className="oe-responsibility">DRIVE<br />RESPONSIBLY</div>}
+                <ul className="oe-points">{chapter.points.map(point => <li key={point}>{point}</li>)}</ul>
+                <div className="oe-start-wrap">
+                  <button
+                    type="button"
+                    className={`oe-start${started ? ' started' : ''}`}
+                    onClick={() => activeLesson < 0 ? selectLesson(activeChapter, 0) : setStarted(true)}
+                  >
+                    {started ? 'Lesson Started' : 'Begin Lesson'}
+                  </button>
+                  {started && <p className="oe-lesson-note">Lesson opened. Use the curriculum dropdowns to continue through each topic.</p>}
+                </div>
+              </>
+            )}
+          </div>
+        </section>
       </main>
       <footer className="oe-course-footer">Copyright © {new Date().getFullYear()} A Precision Driving School. All rights reserved.</footer>
     </div>
