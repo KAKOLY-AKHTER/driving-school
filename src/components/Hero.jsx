@@ -217,7 +217,7 @@ export default function Hero() {
           {/* 4. CTA Buttons */}
           <div className="hero-cta">
             <Link to="/schedule" className="hero-action-button btn-gold">Register For Driving Lessons</Link>
-            <Link to="/online-drivers-ed" className="hero-action-button btn-ghost">Register For Online Drivers Ed</Link>
+            <Link to="/online-drivers-ed/register?course=1" className="hero-action-button btn-ghost">Register For Online Drivers Ed</Link>
             <button type="button" className="hero-action-button btn-gold">Online Education Student Login</button>
             <button type="button" className="hero-action-button btn-ghost">Behind The Wheel Student Login</button>
           </div>
