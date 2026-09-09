@@ -1,29 +1,15 @@
 import './HeroSlider.css'
 
 export default function Hero() {
-  const scrollToPricing = () => {
-    const pricingSection = document.getElementById('pricing')
-    if (!pricingSection) return
-
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const compactNavbarOffset = 84
-    const targetTop = pricingSection.getBoundingClientRect().top + window.scrollY - compactNavbarOffset
-
-    window.scrollTo({
-      top: Math.max(0, targetTop),
-      behavior: prefersReducedMotion ? 'auto' : 'smooth',
-    })
-  }
-
   return (
     <>
     <style>{`
       .hero-cta {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0.65rem;
+        gap: 0.5rem;
         width: 100%;
-        max-width: 620px;
+        max-width: 520px;
         box-sizing: border-box;
       }
       .hero-content {
@@ -36,12 +22,12 @@ export default function Hero() {
         justify-content: center;
         width: 100%;
         min-width: 0;
-        min-height: 50px;
-        padding: 0.65rem 0.75rem;
-        border-radius: 10px;
+        min-height: 42px;
+        padding: 0.5rem 0.6rem;
+        border-radius: 9px;
         box-sizing: border-box;
-        font-size: clamp(0.64rem, 1vw, 0.74rem);
-        letter-spacing: 0.08em;
+        font-size: clamp(0.56rem, 0.85vw, 0.66rem);
+        letter-spacing: 0.07em;
         line-height: 1.35;
         text-align: center;
         white-space: normal;
@@ -63,98 +49,6 @@ export default function Hero() {
         border-color: var(--color-gold);
         color: var(--color-gold);
       }
-      .hero-scroll-wrap {
-        position: absolute;
-        z-index: 2;
-        bottom: 1.35rem;
-        left: 0;
-        right: 0;
-        display: flex;
-        justify-content: center;
-        pointer-events: none;
-      }
-      .hero-scroll-cue {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.42rem;
-        opacity: 0.98;
-        padding: 0;
-        color: inherit;
-        border: 0;
-        background: transparent;
-        cursor: pointer;
-        filter: drop-shadow(0 4px 10px rgba(0,0,0,0.72));
-        transition: transform 0.22s ease, filter 0.22s ease;
-        pointer-events: auto;
-      }
-      .hero-scroll-cue:hover {
-        transform: translateY(3px);
-        filter: drop-shadow(0 5px 13px rgba(0,0,0,0.78)) drop-shadow(0 0 8px rgba(253,188,1,0.28));
-      }
-      .hero-scroll-cue:focus-visible {
-        outline: 2px solid #ffd84a;
-        outline-offset: 7px;
-        border-radius: 999px;
-      }
-      .hero-scroll-label {
-        padding-left: 0.32em;
-        color: #fff3b0;
-        font-family: var(--font-mono);
-        font-size: 0.68rem;
-        font-weight: 800;
-        line-height: 1;
-        letter-spacing: 0.32em;
-        text-transform: uppercase;
-        text-shadow: 0 2px 5px rgba(0,0,0,0.9), 0 0 10px rgba(253,188,1,0.35);
-      }
-      .hero-scroll-mouse {
-        position: relative;
-        display: block;
-        width: 25px;
-        height: 37px;
-        border: 1.5px solid rgba(255,216,74,0.95);
-        border-radius: 999px;
-        background: rgba(3,20,43,0.2);
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 0 12px rgba(253,188,1,0.22);
-      }
-      .hero-scroll-wheel {
-        position: absolute;
-        top: 7px;
-        left: 50%;
-        width: 3px;
-        height: 7px;
-        border-radius: 999px;
-        background: #ffd84a;
-        box-shadow: 0 0 8px rgba(255,216,74,0.9);
-        transform: translateX(-50%);
-        animation: heroScrollWheel 1.8s ease-in-out infinite;
-      }
-      .hero-scroll-line {
-        display: block;
-        width: 2px;
-        height: 30px;
-        background: linear-gradient(to bottom, #ffd84a 0%, rgba(253,188,1,0.72) 48%, transparent 100%);
-        box-shadow: 0 0 8px rgba(253,188,1,0.6);
-        transform-origin: top;
-        animation: heroScrollLine 1.8s ease-in-out infinite;
-      }
-      @keyframes heroScrollWheel {
-        0% { opacity: 0; transform: translate(-50%, -1px); }
-        28% { opacity: 1; }
-        72% { opacity: 1; }
-        100% { opacity: 0; transform: translate(-50%, 11px); }
-      }
-      @keyframes heroScrollLine {
-        0%, 100% { opacity: 0.48; transform: scaleY(0.78); }
-        50% { opacity: 1; transform: scaleY(1); }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .hero-scroll-wheel,
-        .hero-scroll-line {
-          animation: none;
-        }
-      }
       @media (max-width: 600px) {
         .hero-content {
           display: flex !important;
@@ -166,17 +60,13 @@ export default function Hero() {
         .hero-title { font-size: 2.2rem !important; margin-bottom: 0.8rem !important; }
         .hero-subtitle { font-size: 0.9rem !important; margin-bottom: 1rem !important; }
         .hero-cta { grid-template-columns: 1fr; width: 100%; }
-        .hero-cta .hero-action-button { min-height: 48px; }
+        .hero-cta .hero-action-button { min-height: 42px; }
         .hero-section {
           padding-top: 14rem !important;
           padding-bottom: 4rem !important;
           min-height: auto !important;
           align-items: flex-start !important;
         }
-        .hero-scroll-wrap { bottom: 0.75rem; }
-        .hero-scroll-label { font-size: 0.58rem; }
-        .hero-scroll-mouse { width: 22px; height: 32px; }
-        .hero-scroll-line { height: 22px; }
       }
     `}</style>
     <section
@@ -253,17 +143,6 @@ export default function Hero() {
           </div>
 
         </div>
-      </div>
-
-      {/* Scroll indicator */}
-      <div className="hero-scroll-wrap">
-        <button type="button" className="hero-scroll-cue" onClick={scrollToPricing} aria-label="Scroll to pricing plans">
-          <span className="hero-scroll-label">Scroll</span>
-          <span className="hero-scroll-mouse">
-            <span className="hero-scroll-wheel" />
-          </span>
-          <span className="hero-scroll-line" />
-        </button>
       </div>
 
     </section>
