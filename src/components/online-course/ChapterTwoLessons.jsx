@@ -355,3 +355,109 @@ export function LimitingPhysicalConditionsLesson({ onPrevious, onNext }) {
     </article>
   )
 }
+
+export function EssentialAttitudesLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-attitudes-lesson">
+      <LessonHeader title="2.4 Essential Attitudes" onPrevious={onPrevious} onNext={onNext} />
+
+      <section className="oe-attitude-intro">
+        <img src="/atitude.png" alt="Attitude control dial" />
+        <p>Drivers must possess a good, healthy attitude when operating a vehicle. A positive attitude helps a driver remain safe during difficult and stressful situations, including heavy traffic, bad weather, and encounters with inattentive drivers. Essential driving attitudes include courtesy, consideration for others, alertness, good judgment, responsibility, and foresight.</p>
+      </section>
+
+      <section className="oe-copy-section oe-attitude-section">
+        <h4>Motivation and Readiness</h4>
+        <div className="oe-attitude-media oe-attitude-media-left">
+          <img src="/focus.png" alt="Focus and attitude word puzzle" />
+          <div>
+            <p><strong><em>Motivation</em></strong> involves learning the concepts and skills needed to become a safe driver through driver education and training, then applying what you have learned to real driving situations. You must be motivated to maintain a safe driving attitude.</p>
+            <p><strong><em>Readiness</em></strong> means being mentally prepared for different traffic conditions and possessing the knowledge and skills needed to respond. A ready driver is completely focused on the task at hand.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="oe-copy-section oe-attitude-section">
+        <h4>Analysis of Habit Patterns</h4>
+        <ul className="oe-nested-list">
+          <li>Young drivers often develop habits that are difficult to break. Student drivers should pay close attention to detail and make the learning stage an opportunity to develop sound driving habits.</li>
+          <li>Continually monitor your own driving to identify poor habits and attitudes before they become automatic.</li>
+          <li>Young drivers may:
+            <ul>
+              <li>Overestimate their capabilities.</li>
+              <li>Rate some traffic situations as less risky than middle-aged and older drivers do.</li>
+              <li>Underestimate danger in high-risk situations while overestimating danger in low- to medium-risk situations.</li>
+            </ul>
+          </li>
+        </ul>
+      </section>
+
+      <section className="oe-copy-section oe-attitude-section oe-suggestions-section">
+        <h4>Suggestions</h4>
+        <div className="oe-attitude-media oe-attitude-media-compact">
+          <img src="/suggestion.png" alt="Student having a helpful idea" />
+          <div>
+            <p>Once you identify a poor driving habit or attitude, consciously apply the appropriate behavior and practice it consistently until the correct response becomes automatic.</p>
+            <p>Practice safe responses to hazards repeatedly while learning to drive. Training and continued practice are the best ways to overcome poor driving habits and attitudes.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="oe-copy-section oe-attitude-section oe-defensive-section">
+        <h4>Learn to Be a Defensive Driver</h4>
+        <div className="oe-attitude-media oe-attitude-media-compact">
+          <img src="/defensive.png" alt="Driver avoiding an angry confrontation" />
+          <ul>
+            <li>Use all the skills taught in your driving course and always watch for the actions of other road users.</li>
+            <li>Avoid confrontations and road rage so you and your passengers can arrive safely at your destination.</li>
+            <li>Learn effective driving practices, make them your goal, and consistently put them into action.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section className="oe-copy-section oe-attitude-section">
+        <h4>Maintenance of Habit Patterns</h4>
+        <ul>
+          <li>Build a good habit pattern by repeating the correct steps until you can perform them consistently.</li>
+          <li>Practice each maneuver properly until it becomes a safe driving habit.</li>
+          <li>Good driving habits help you become the best and safest driver you can be.</li>
+        </ul>
+      </section>
+
+      <section className="oe-copy-section oe-attitude-section oe-behavior-section">
+        <h4 className="oe-underlined">Behavior Variables</h4>
+
+        <h5>Emotional Tension</h5>
+        <p>Driving while emotionally tense is unsafe. Other road users may irritate you and cause you to react irrationally or make choices you would not normally make when calm. Those choices may place you, your passengers, and other road users in danger.</p>
+        <p><strong>Safe driving requires your full concentration.</strong></p>
+        <ul>
+          <li>If you are preoccupied with your emotions, you cannot focus fully on driving. Do not drive while severely tense or emotionally distressed.</li>
+          <li>The safest choice is not to drive. Pull over safely, let someone else drive, or wait until you have calmed down.</li>
+        </ul>
+
+        <h5>Environmental Conditions</h5>
+        <p>Conditions inside and outside the vehicle can affect your ability to concentrate, remain courteous, and drive safely. Give yourself time to breathe and focus. Common environmental factors include:</p>
+        <ul className="oe-attitude-factor-list">
+          <li>Road conditions and construction</li>
+          <li>Traffic</li>
+          <li>Unfamiliar routes</li>
+          <li>Loud music</li>
+          <li>Doing other things while driving</li>
+        </ul>
+
+        <h5>Driving Traits</h5>
+        <p>Drivers may copy the habits of family members. For example, a parent who speeds through traffic, drives erratically, or takes unnecessary risks can unintentionally teach a young driver that such behavior is acceptable. Emotional or behavioral conditions can also affect a person&apos;s driving ability.</p>
+
+        <h5>Physical Conditions</h5>
+        <p>Physical conditions can affect the way a person drives. A stiff neck or back problem, for example, can limit the ability to look around the vehicle and check for hazards.</p>
+      </section>
+
+      <aside className="oe-attitude-tip">
+        <img src="/tipe.png" alt="Safety tip" />
+        <p>Establishing good habits on the roadway requires repeated correct performance, proper training, attention, experience, practice, and more practice.</p>
+      </aside>
+
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
