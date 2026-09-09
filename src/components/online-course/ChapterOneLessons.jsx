@@ -73,7 +73,7 @@ export function SmokeFreeCarsLesson({ onPrevious, onNext }) {
     <article className="oe-full-lesson oe-smoke-lesson">
       <LessonHeader title="1.5 Smoke-Free Cars" onPrevious={onPrevious} onNext={onNext} />
       <section className="oe-smoke-intro">
-        <p>On <strong>January 1, 2008</strong>, a law went into effect which bans smoking in cars when there are children younger than 18 present. Those caught violating the law will face up to a <strong>$100 fine</strong>.</p>
+        <p>On <strong>January 1, 2008</strong>, a law went into effect that bans smoking in cars when children younger than 18 are present. Those caught violating the law will face up to a <strong>$100 fine</strong>.</p>
         <img src="/smoke.png" alt="No smoking sign" />
         <p>California is the <strong>third state</strong> to ban smoking in cars carrying minors but the first with a policy that protects all children under 18.</p>
       </section>
@@ -106,13 +106,13 @@ export function AutomobileHistoryLesson({ onPrevious, onNext }) {
         <h4>Development of the Automobile — Where It All Began</h4>
         <div className="oe-auto-media-row">
           <img src="/auto1.png" alt="Early automobile" />
-          <p>In the 1880&apos;s, <strong>Karl Benz</strong> installed a small motor on a tricycle and the automobile was born. In 1896, <strong>Frank and Charles Duryea</strong> built the first American motorcar in Springfield, Massachusetts. They manufactured the first of 13 of these gas-powered inventions.</p>
+          <p>In the 1880s, <strong>Karl Benz</strong> installed a small motor on a tricycle and the automobile was born. In 1896, <strong>Frank and Charles Duryea</strong> built the first American motorcar in Springfield, Massachusetts. They manufactured the first 13 of these gas-powered inventions.</p>
         </div>
       </section>
 
       <section className="oe-auto-section">
         <h4>Sociological Changes Caused by the Automobile</h4>
-        <h5>The turn of the century (1900&apos;s)</h5>
+        <h5>The turn of the century (1900s)</h5>
         <div className="oe-auto-media-row">
           <img src="/auto2.png" alt="Automobile from the turn of the twentieth century" />
           <p>In 1896, Buffalo, New York was the first major city to pave all of its streets. At the turn of the century, 8,000 automobiles were on the road. <strong>General Motors incorporated in 1908.</strong> The first mile of rural highway was paved. Since more than 40 percent of the workforce was involved in farming, rural roads were important links. The first gas station opened in St. Louis, Missouri at the turn of the century. Speedometers were installed on Oldsmobile automobiles. In 1903, Henry Ford founded the Ford Motor Company. Five years later he introduced the Model T.</p>
@@ -120,8 +120,8 @@ export function AutomobileHistoryLesson({ onPrevious, onNext }) {
       </section>
 
       <section className="oe-auto-section">
-        <h4>The 1900&apos;s</h4>
-        <p>By 1915, 2.3 million automobiles were registered in the United States. About half of those were Ford&apos;s Model T. Model T&apos;s were affordable, easy to service, and available in any color you wanted as long as that color was black. In 1910, Barney Oldfield set a new speed record with a Blitzen-Benz at Daytona Beach, Florida, at more than 131 miles an hour. The first Indianapolis 500 race was held in 1911. The Lincoln Highway, the nation&apos;s first coast-to-coast highway, was marked between New York and San Francisco. Carl Fisher spearheaded the effort. He wasn&apos;t the first to have this dream, but he figured out how to organize and fund the project. Wisconsin was the first state to assign numbers and letters to roads and highways.</p>
+        <h4>The 1900s</h4>
+        <p>By 1915, 2.3 million automobiles were registered in the United States. About half of those were Ford&apos;s Model T. Model Ts were affordable, easy to service, and available in any color you wanted as long as that color was black. In 1910, Barney Oldfield set a new speed record with a Blitzen-Benz at Daytona Beach, Florida, at more than 131 miles an hour. The first Indianapolis 500 race was held in 1911. The Lincoln Highway, the nation&apos;s first coast-to-coast highway, was marked between New York and San Francisco. Carl Fisher spearheaded the effort. He wasn&apos;t the first to have this dream, but he figured out how to organize and fund the project. Wisconsin was the first state to assign numbers and letters to roads and highways.</p>
       </section>
 
       <section className="oe-auto-section oe-auto-highlight">
@@ -145,7 +145,7 @@ export function AutomobileHistoryLesson({ onPrevious, onNext }) {
         </div>
         <div className="oe-auto-media-row oe-auto-small-media">
           <img src="/auto5.png" alt="Road leading toward the future" />
-          <p>We will see in the future new inventive ideas that will lead us into the new millennium and beyond. No doubt that these ideas will continue to change the way we think, act and respond. They may even change the way we live.</p>
+          <p>In the future, we will see inventive new ideas that lead us into the new millennium and beyond. There is no doubt that these ideas will continue to change the way we think, act, and respond. They may even change the way we live.</p>
         </div>
         <div className="oe-auto-media-row oe-auto-fact-row">
           <img src="/auto6.png" alt="It is true" />
@@ -171,11 +171,11 @@ export function ChapterOneTestLesson({ onStart }) {
           <p>You have completed the reading for Chapter 1. You&apos;ll need to get <strong>9 answers correct</strong> (out of 12) in order to proceed. <strong>Good luck!</strong></p>
         </div>
         <div className="oe-test-score"><strong>9 / 12</strong><span>Correct answers required</span></div>
-        <button className="oe-test-start" type="button" onClick={onStart} aria-label="Start here and return to Chapter 1">
-          <img src="/start.png" alt="Start here" />
+        <button className="oe-test-start" type="button" onClick={onStart} aria-label="Start here and return to Chapter 1" aria-describedby="chapter-one-return-note">
+          <img src="/start.png" alt="" aria-hidden="true" />
         </button>
         <img className="oe-quiz-image" src="/quize.png" alt="Chapter 1 quiz illustration" />
-        <p className="oe-test-return-note">Select <strong>Start Here</strong> to return to the Chapter 1 overview.</p>
+        <p className="oe-test-return-note" id="chapter-one-return-note">Select <button className="oe-test-return-link" type="button" onClick={onStart}>Start Here</button> to return to the Chapter 1 overview.</p>
       </section>
     </article>
   )

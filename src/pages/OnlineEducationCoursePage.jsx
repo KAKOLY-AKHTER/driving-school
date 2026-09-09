@@ -34,7 +34,7 @@ function DriverLicensePrivilegeLesson({ onPrevious, onNext }) {
       <img className="oe-license-hero" src="/driver-lisence1.png" alt="Driver license privilege illustration" />
 
       <section className="oe-copy-section">
-        <h4>What does your license means to you?</h4>
+        <h4>What Does Your License Mean to You?</h4>
         <ul className="oe-nested-list">
           <li>Your license means that:
             <ul>
@@ -47,7 +47,7 @@ function DriverLicensePrivilegeLesson({ onPrevious, onNext }) {
       </section>
 
       <section className="oe-copy-section">
-        <h4>What does your license mean to others?</h4>
+        <h4>What Does Your License Mean to Others?</h4>
         <ul className="oe-nested-list">
           <li>Your license tells other drivers that:
             <ul>
@@ -73,7 +73,7 @@ function DriverLicensePrivilegeLesson({ onPrevious, onNext }) {
         <p>It is important to focus and think clearly when you are driving because lives are at stake. Be in the right mind and be aware of what you are doing at all times. Make good judgments when you drive.</p>
         <h4>The Motor Vehicle Is a Weapon</h4>
         <p>The car that you drive could cause serious damage to you and those that are around your vehicle. Remember that even at low speeds of 1-35 MPH, you can seriously hurt or even kill a person or an animal.</p>
-        <h4>Automobile Areas Dangerous As a Loaded Gun</h4>
+        <h4>An Automobile Is as Dangerous as a Loaded Gun</h4>
         <p>Distracted drivers can cause serious injuries and death on the roadways. If your eyes and attention are on the road and your surroundings, you are in a position to react in time to avoid an accident.</p>
         <p>Factors that can cause danger to the driver and others:</p>
         <ul>
@@ -102,7 +102,7 @@ function DriverLicensePrivilegeLesson({ onPrevious, onNext }) {
           <li>Always set your emergency brake when parking your vehicle. This will give added security that your car will not roll away.
             <ul>
               <li>If your vehicle has an automatic transmission, make sure that you set the gear in the park position.</li>
-              <li>Standard transmission (stick shift) cars are parked in either first gear or reverse, depending if you are on a flat surface, uphill, or downhill position.</li>
+              <li>Standard transmission (stick shift) cars are parked in either first gear or reverse, depending on whether the vehicle is on a flat surface, uphill, or downhill.</li>
             </ul>
           </li>
           <li>All types of vehicles should follow the same rules when parking on a hill.</li>
@@ -110,7 +110,7 @@ function DriverLicensePrivilegeLesson({ onPrevious, onNext }) {
         <h4><em>Uphill, Against the Curb</em></h4>
         <ul>
           <li>Turn the vehicle&apos;s front wheels to the left so that the back of the front-right tire rests against the curb.</li>
-          <li>Be sure to set use your emergency brake before you exit your car.</li>
+          <li>Be sure to set your emergency brake before you exit your car.</li>
         </ul>
         <h4><em>Downhill</em></h4>
         <ul>
@@ -122,7 +122,7 @@ function DriverLicensePrivilegeLesson({ onPrevious, onNext }) {
 
       <div className="oe-tip-row">
         <img src="/driver-lisence3-png.png" alt="Tip" />
-        <p>Always keep your vehicle in top working condition. Get in a habit of having your vehicle in for a regular maintenance check. Be safe and be aware.</p>
+        <p>Always keep your vehicle in top working condition. Get into the habit of taking your vehicle in for regular maintenance checks. Be safe and be aware.</p>
       </div>
 
       <div className="oe-bottom-nav">
@@ -297,6 +297,7 @@ export default function OnlineEducationCoursePage() {
         .oe-smoke-intro{margin:1.15rem 0;padding:1.1rem;border:1px solid #f1c7c7;border-left:5px solid #dc2626;border-radius:9px;background:linear-gradient(135deg,#fff,#fff7f7);box-shadow:0 6px 18px rgba(90,18,18,.06)}.oe-smoke-intro p{margin:0;color:#26364b;line-height:1.65}.oe-smoke-intro strong,.oe-smoke-content strong{color:#9f1717;font-weight:900}.oe-smoke-intro img{display:block;width:min(320px,70%);max-height:280px;margin:1rem auto;object-fit:contain;filter:drop-shadow(0 10px 18px rgba(35,17,17,.14))}.oe-smoke-content{border-left:4px solid #0145a8}.oe-smoke-content>p{margin:.8rem 0}.oe-smoke-content>p:first-child{margin-top:0}.oe-smoke-content>p:last-child{margin-bottom:0}
         .oe-auto-lead{margin:1.15rem 0;padding:.9rem 1rem;border-left:5px solid #fdbc01;border-radius:0 8px 8px 0;background:#06285f;color:#fff;font-weight:900}.oe-auto-section{margin:.85rem 0;padding:1rem 1.1rem;border:1px solid #dbe5f1;border-left:4px solid #0145a8;border-radius:9px;background:#fff;box-shadow:0 5px 16px rgba(15,45,82,.05)}.oe-auto-section:nth-of-type(even){border-left-color:#fdbc01}.oe-auto-section h4{margin:0 0 .55rem;color:#06285f;font-size:1rem;font-weight:900}.oe-auto-section h5{margin:-.15rem 0 .65rem;color:#617087;font-size:.82rem;font-weight:800}.oe-auto-section p{margin:.2rem 0;color:#34445a;line-height:1.58}.oe-auto-media-row{display:grid;grid-template-columns:minmax(190px,280px) minmax(0,1fr);align-items:center;gap:1.2rem}.oe-auto-media-row img{display:block;width:100%;max-height:210px;margin:auto;object-fit:contain;filter:drop-shadow(0 8px 14px rgba(15,23,42,.13))}.oe-auto-highlight{background:linear-gradient(135deg,#fffdf4,#fff8dd)}.oe-auto-small-media{grid-template-columns:180px minmax(0,1fr);margin-top:1rem;padding-top:1rem;border-top:1px solid #e3eaf3}.oe-auto-small-media img{max-height:155px}.oe-auto-fact-row{grid-template-columns:150px minmax(0,1fr);margin-top:1rem;padding:.8rem;border-radius:7px;background:#eef5ff}.oe-auto-fact-row img{max-height:70px}.oe-auto-section strong{color:#06285f;font-weight:900}
         .oe-test-title-row{margin-bottom:1rem}.oe-test-title-row>span{display:inline-block;margin-bottom:.3rem;color:#8a6500;font:800 .67rem var(--font-mono);letter-spacing:.1em;text-transform:uppercase}.oe-test-title-row h3{margin:0;color:#06285f;font-family:var(--font-display);font-size:clamp(1.75rem,4vw,2.5rem);font-weight:900}.oe-test-card{position:relative;min-height:390px;padding:clamp(1.1rem,3vw,2rem);overflow:hidden;border:1px solid #dbe5f1;border-top:5px solid #fdbc01;border-radius:12px;background:linear-gradient(135deg,#fff 0%,#f4f8ff 100%);box-shadow:0 10px 28px rgba(15,45,82,.08)}.oe-test-message{max-width:690px}.oe-test-message h4{margin:0 0 .35rem;color:#06285f;font-size:1.3rem;font-weight:900}.oe-test-message p{margin:0;color:#34445a;line-height:1.65}.oe-test-message strong{color:#0145a8;font-weight:900}.oe-test-score{display:flex;align-items:center;gap:.75rem;width:max-content;margin:1rem 0;padding:.65rem .85rem;border-radius:8px;background:#06285f;color:#fff}.oe-test-score strong{color:#ffd457;font-size:1.2rem}.oe-test-score span{font-size:.75rem;font-weight:800}.oe-test-start{display:block;margin:.7rem 0;padding:.6rem .75rem;border:2px solid transparent;border-radius:7px;background:#fff;cursor:pointer;box-shadow:0 5px 14px rgba(15,45,82,.1);transition:transform .18s ease,border-color .18s ease}.oe-test-start:hover{transform:translateY(-2px);border-color:#fdbc01}.oe-test-start img{display:block;width:164px;height:auto}.oe-quiz-image{display:block;width:min(220px,55%);height:auto;margin:.35rem 0 0 1.2rem;filter:drop-shadow(0 10px 16px rgba(15,23,42,.12))}.oe-test-return-note{margin:1rem 0 0;color:#64748b;font-size:.78rem}.oe-test-return-note strong{color:#0145a8}
+        .oe-test-start:focus-visible{outline:3px solid #0145a8;outline-offset:3px}.oe-test-return-link{display:inline;padding:0;border:0;background:transparent;color:#0145a8;font:inherit;font-weight:900;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:.18em;cursor:pointer}.oe-test-return-link:hover{color:#06285f}.oe-test-return-link:focus-visible{border-radius:3px;outline:3px solid #fdbc01;outline-offset:3px}.oe-full-lesson p,.oe-full-lesson li{overflow-wrap:break-word}.oe-copy-section h4,.oe-auto-section h4,.oe-law-card h4{letter-spacing:-.01em}.oe-mini-nav button,.oe-bottom-nav button{transition:background-color .18s ease,transform .18s ease,box-shadow .18s ease}.oe-mini-nav button:active,.oe-bottom-nav button:active{transform:translateY(1px)}
         @media(max-width:900px){.oe-course-head-inner{height:76px}.oe-course-logo{width:66px;height:66px}.oe-course-layout{grid-template-columns:1fr}.oe-lesson-body{min-height:auto}.oe-course-nav-inner{overflow-x:auto}.oe-course-nav a,.oe-course-nav button{white-space:nowrap}}
         @media(max-width:620px){.oe-importance-intro{grid-template-columns:1fr;gap:.8rem}.oe-importance-intro img{width:155px;max-height:175px}.oe-importance-intro p{font-size:.9rem}.oe-law-card{padding:.85rem .9rem}.oe-fee-table{min-width:430px}.oe-auto-media-row,.oe-auto-small-media,.oe-auto-fact-row{grid-template-columns:1fr;gap:.75rem}.oe-auto-media-row img{width:min(280px,90%);max-height:180px}.oe-auto-small-media img{width:min(180px,70%);max-height:145px}.oe-auto-fact-row img{width:min(145px,65%);max-height:65px}.oe-auto-section{padding:.85rem .9rem}.oe-test-card{min-height:350px}.oe-test-start{margin-inline:auto}.oe-quiz-image{margin:.5rem auto}.oe-test-return-note{text-align:center}}
         @media(max-width:520px){.oe-course-head-inner{height:70px}.oe-course-logo{width:60px;height:60px}.oe-logout{min-height:34px;padding:.45rem .7rem}.oe-course-layout{width:min(100% - 1rem,1200px)}.oe-lesson-body{padding:1rem}.oe-full-lesson{font-size:.84rem}.oe-lesson-heading-row{align-items:center}.oe-mini-nav button{width:30px;height:28px}.oe-bottom-nav button{min-width:0}.oe-tip-row{grid-template-columns:38px minmax(0,1fr);padding:.7rem}.oe-tip-row img{width:32px}.oe-points,.oe-copy-section>ul,.oe-note-box>ul,.oe-overview-links{width:calc(100% - .55rem);margin-left:.55rem}.oe-copy-section ul ul{width:calc(100% - .5rem);margin-left:.5rem}.oe-overview-links{padding:.75rem}.oe-overview-link-list button{grid-template-columns:38px minmax(0,1fr) 16px;padding:.52rem .4rem}.oe-sign-row{grid-template-columns:1fr;gap:.75rem}.oe-sign-row img{width:105px;max-height:115px}.oe-laws-intro{padding:.85rem .9rem}}
