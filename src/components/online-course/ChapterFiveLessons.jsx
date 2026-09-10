@@ -531,3 +531,228 @@ export function CarSafetyEquipmentLesson({ onPrevious, onNext }) {
     </article>
   )
 }
+
+export function VehicleMaintenanceLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-maintenance-lesson">
+      <LessonHeader title="5.5 Vehicle Maintenance" onPrevious={onPrevious} onNext={onNext} />
+
+      <section className="oe-maintenance-section">
+        <div className="oe-maintenance-intro">
+          <img src="/vic1.png" alt="A mechanic inspecting a car engine" />
+          <p>Regular vehicle maintenance is critical to ensure the safety, reliability, drivability, comfort and longevity of a car. During the regular maintenance, car&apos;s subsystems are inspected, tested and a number of parts maybe replaced to avoid major damage or for safety reasons.</p>
+        </div>
+        <ul className="oe-maintenance-list">
+          <li>The actual schedule of car maintenance varies depending on the year, make and model of a car. It also depends on driving conditions and driver behavior.</li>
+          <li>Car makers recommend an ideal service schedule based on following parameters that impact the vehicle:
+            <ul>
+              <li>Number of trips and distance traveled per trip per day</li>
+              <li>Extreme hot or cold climate conditions</li>
+              <li>Mountainous, dusty or de-iced roads</li>
+              <li>Heavy stop-and-go vs. long-distance cruising</li>
+              <li>Towing a trailer or other heavy load</li>
+              <li>Driving conditions and behavior of the car owner or driver.</li>
+            </ul>
+          </li>
+        </ul>
+      </section>
+
+      <section className="oe-maintenance-section">
+        <h4>Common car maintenance tasks include:</h4>
+        <img className="oe-maintenance-image compact" src="/vic2.png" alt="Car maintenance tools and equipment" />
+        <ul className="oe-maintenance-list">
+          <li>Check/replace the engine oil and replace oil filters</li>
+          <li>Check/replace fuel filters</li>
+          <li>Inspect or replace windshield wipers</li>
+          <li>Check or refill windshield washer fluid</li>
+          <li>Inspect tires for pressure and wear</li>
+          <li>Tire balancing</li>
+          <li>Tire rotation</li>
+          <li>Wheel alignment</li>
+          <li>Check, clean or replace battery terminals and top up battery fluid</li>
+          <li>Inspect or replace brake pads</li>
+        </ul>
+        <ul className="oe-maintenance-list oe-maintenance-spaced-list">
+          <li>Check or flush brake fluid</li>
+          <li>Check or flush transmission fluid</li>
+          <li>Check or flush power steering fluid</li>
+        </ul>
+        <img className="oe-maintenance-image wide" src="/vic3.png" alt="Vehicle undergoing maintenance in a repair shop" />
+        <ul className="oe-maintenance-list">
+          <li>Check and flush engine coolant</li>
+          <li>Inspect or replace spark plugs</li>
+          <li>Inspect or replace air filter</li>
+          <li>Inspect or replace timing belt and other belts</li>
+          <li>Lubricate locks, latches, and hinges</li>
+          <li>Check all lights</li>
+          <li>Tighten chassis nuts and bolts</li>
+          <li>Check if rubber boots are cracked and need replacement</li>
+          <li>Test electronics (ABS)</li>
+          <li>Read fault codes from the engine control unit</li>
+          <li>Car wash</li>
+        </ul>
+
+        <aside className="oe-maintenance-tip">
+          <img src="/tipe.png" alt="Tip" />
+          <div>
+            <p>Breakdowns and costly repairs can be avoided by keeping your exhaust system in good working order.</p>
+            <p>Realize that changes in noise level, smelling an abnormal amount of fumes and rattling underneath your vehicle signal problems with your exhaust system.</p>
+          </div>
+        </aside>
+
+        <p>The exhaust system should be inspected for leaks and secure attachment along with other regular maintenance.</p>
+        <ul className="oe-maintenance-list">
+          <li>It is illegal to modify your exhaust system so as to increase the noise level of your vehicle or install a by-pass devise that allows it to increase.</li>
+          <li>Your exhaust system should not have leaks that increase the noise level. Leaks in your exhaust system are dangerous because they expose you to carbon monoxide and other toxic gases.</li>
+          <li>The law requires (in most cases) that you have an emission test every two years at the time of registration or at time of sale. It is a good idea to have your smog control components checked at the time of a tune-up.</li>
+        </ul>
+      </section>
+
+      <section className="oe-maintenance-section">
+        <h4>Maximizing Vehicle Economic Operation</h4>
+        <p>There are several things you can do to maximize the economic operation of your motor vehicle.</p>
+        <ul className="oe-maintenance-list">
+          <li>Avoid making fast starts and stops and cornering too fast. They are not only unsafe, but increase the cost of operating and maintaining your vehicle by wasting fuel and wearing out tires and brakes.</li>
+          <li>Drive slower
+            <ul>
+              <li>Faster driving requires more fuel to get you the same distance. Obey speed limits and you will save fuel and reduce the risk to others, as well as saving money.</li>
+            </ul>
+          </li>
+          <li>Anticipate when you will need to stop.
+            <ul>
+              <li>Excessive quick braking wears your brakes and tires. Look ahead while you are driving so you can anticipate when you will need to stop and can do so smoothly and gently.</li>
+            </ul>
+          </li>
+          <li>Periodic or preventative maintenance of your vehicle will also lower your long-term operation costs. Periodic tune-ups reduce fuel consumption by making your vehicle run more efficiently. The money you spend on periodic maintenance can also save you large expenses due to major engine failure and breakdown.</li>
+        </ul>
+
+        <div className="oe-video-wrap oe-maintenance-video">
+          <iframe src="https://www.youtube.com/embed/IKoJ3kW2hiI" title="Simple Steps Save Lives: These 5 Things Once a Month" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
+        </div>
+      </section>
+
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
+export function OwningOperatingCostLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-owning-cost-lesson">
+      <LessonHeader title="5.6 Owning and Operating Cost and Safety Measures" onPrevious={onPrevious} onNext={onNext} />
+
+      <section className="oe-owning-section">
+        <p>The cost of owning and operating a vehicle consist of:</p>
+        <div className="oe-owning-media dollar">
+          <img src="/dol1.png" alt="Dollar sign representing vehicle costs" />
+          <ul className="oe-owning-list">
+            <li>The costs directly related to the number of miles driven such as gasoline, replacing tires, oil changes and replacing other components that wear out with use.</li>
+            <li>The costs for insurance, registration, depreciation and maintenance that must be performed regardless of miles driven.</li>
+          </ul>
+        </div>
+        <ul className="oe-owning-list">
+          <li>Depreciation is a significant cost in owning a vehicle. Depreciation is the amount you have paid for the privilege of owning and driving the vehicle in addition to what you have paid for gas, maintenance, insurance and so on. As your car accumulates more miles or gets older (regardless of how many miles it has been driven), it is worth less when you sell it. Depreciation is particularly high during the period immediately after buying a new car. The yearly depreciation cost decreases as the car gets older.</li>
+          <li>In selecting a vehicle you must consider how you will use it in your work and recreation, the number and age of passengers to be transported and the need for dependability. Consider all of these costs when making a decision about what type of vehicle to purchase.</li>
+          <li>Depreciation is particularly high during the period immediately after buying a new car and the yearly depreciation cost decreases as the car gets older.
+            <ul>
+              <li>If you drive your car very little, gas mileage and maintenance may not be a significant consideration but depreciation, insurance and registration will be.</li>
+              <li>If you drive your car a lot, gas mileage and day-to-day repairs will be significant cost considerations.</li>
+            </ul>
+          </li>
+        </ul>
+      </section>
+
+      <section className="oe-owning-section">
+        <h4>Purchasing</h4>
+        <p>It is important to consider all the costs of owning and operating a vehicle, not just the price you are paying, when determining whether you can afford the car.</p>
+        <ul className="oe-owning-list">
+          <li>If you buy a new rather than used car, your costs for financing, depreciation, registration and insurance will be higher but your maintenance costs will probably be lower. The dependability of the vehicle will probably be better and the crash worthiness and fuel efficiency may be better.</li>
+          <li>If buying a used car, it is wise to have the vehicle inspected for mechanical condition prior to purchase.</li>
+          <li>When purchasing a vehicle from a dealer, the dealer submits fees, use tax and other documents to register the vehicle with the DMV.
+            <ul>
+              <li>If you finance a car, the interest you pay on the money you have borrowed may be significant.</li>
+              <li>You may be required to pay for insurance that you would not have otherwise chosen and if you fail to make payments the car can be repossessed and your credit history may be negatively affected.</li>
+            </ul>
+          </li>
+          <li>When purchasing from a private party, the seller provides a bill of sale, smog certification and an endorsed Certificate of Title. The seller also submits a Notice of Release of Liability to the DMV within 5 days. The buyer pays the use tax and is responsible for registering vehicle with the DMV within 10 days.</li>
+          <li>When considering the purchase of a used vehicle, it is important that you know what the mechanical condition of the vehicle is. A simple test drive or a simple look under the hood cannot do this. You must take the vehicle to a qualified and trusted mechanic. Preferably use a mechanic who you know very well and have had great experiences with. They will be able to get into the vehicle and check its entire engine and electrical system. If the mechanic gives the vehicle a &quot;clean bill of health&quot; then you can make an educated decision of whether to purchase the vehicle or not.</li>
+        </ul>
+      </section>
+
+      <section className="oe-owning-section">
+        <h4>Registration</h4>
+        <ul className="oe-owning-list">
+          <li>Every vehicle needs to be registered with the state. This can be done through the Department of Motor Vehicles. You can call the department and get a quote on the vehicle that you are interested in purchasing. Remember, registration is paid every year on or before the date of purchase (vehicle 1st registered) of the vehicle. The registration fees reduce yearly as the value of your vehicle&apos;s worth is reduced.</li>
+          <li>When a vehicle is registered, the DMV issues a set of registration tags that must be displayed on the rear license plate of the vehicle.</li>
+        </ul>
+      </section>
+
+      <section className="oe-owning-section">
+        <h4>Protecting Yourself</h4>
+        <div className="oe-owning-media insurance">
+          <img src="/dol2.png" alt="Umbrella representing insurance protection" />
+          <div>
+            <p>The primary use of car insurance is to provide financial protection against physical damage and/or bodily injury resulting from traffic collisions as well as against liabilities that could arise. Vehicle insurance may additionally offer financial protection against theft of the vehicle and possibly damage to the vehicle sustained from things other than traffic collisions.</p>
+            <ul className="oe-owning-list">
+              <li>The specific terms of vehicle insurance vary with legal regulations in each region. In many jurisdictions, it is compulsory to have vehicle insured before the vehicle can be driven on public roads.</li>
+              <li>If a minor is allowed to drive your vehicle, note that the parent&apos;s insurance premiums may significantly increase. In some instances, the insurance alone may not be sufficient to pay for the damages for which the parents are liable if the minor causes an accident.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section className="oe-owning-section">
+        <h4>Common Sense Rules and Personal Safety</h4>
+        <ul className="oe-owning-list">
+          <li>Always lock your car doors while driving and roll windows up far enough to keep anyone from reaching inside.</li>
+          <li>At stop signs and lights keep the car in gear and stay alert.</li>
+          <li>Travel on well-lighted, busy streets.</li>
+          <li>Keep your purse and other valuables out of sight, even when you are driving in your locked car.</li>
+          <li>Park in safe, well-lighted areas near your destination.</li>
+          <li>Always lock your car, even for a short absence.</li>
+          <li>Before unlocking your car, quickly check to make sure no one is hiding on your seats or floors, front and back.</li>
+          <li>Never pick up a hitchhiker. Even the most harmless-looking stranger can be dangerous.</li>
+          <li>When you arrive home, leave your headlights on until you have the car in the garage and the house door unlocked. If you can, have a remote control garage door opener installed; it will allow you to remain in your locked car until you&apos;re inside your locked garage.</li>
+          <li>Check the daily routes you travel and learn the where the gas stations, convenience stores, and police and fire stations are along your route. If trouble should arise, drive straight to one of these locations.</li>
+        </ul>
+        <img className="oe-theft-image" src="/dol3.png" alt="A person attempting to steal a vehicle" />
+        <p>Here are some facts about vehicle theft:</p>
+        <ul className="oe-owning-list compact">
+          <li>Every 33 seconds a car is stolen</li>
+          <li>More than a million cars are stolen each year</li>
+          <li>40% have keys in the ignition</li>
+          <li>Most are stolen by young opportunists</li>
+          <li>80% are unlocked.</li>
+        </ul>
+
+        <h4 className="oe-owning-subheading">Protective measures to prevent theft of your vehicle.</h4>
+        <ul className="oe-owning-list compact">
+          <li>Always lock all doors</li>
+          <li>Roll your windows up tight</li>
+          <li>Park in heavily traveled areas</li>
+          <li>Don&apos;t leave any valuables in sight</li>
+          <li>Don&apos;t hide spare keys around the vehicle since thieves can find them.</li>
+          <li>Don&apos;t think it can&apos;t happen to you</li>
+          <li>Engrave an identifying number on a hidden place on the car and on any valuable components to help the police identify recovered property.</li>
+        </ul>
+      </section>
+
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
+export function ChapterFiveTestLesson({ onStart }) {
+  return (
+    <article className="oe-full-lesson oe-test-lesson oe-chapter-four-test oe-chapter-five-test">
+      <h3>5.7 Chapter 5</h3>
+      <section className="oe-chapter-four-test-card">
+        <p><strong>Congratulations!</strong> You have completed the reading for chapter 5. You&apos;ll need to get 9 answers correct (out of 12) in order to proceed. <strong>Good luck!</strong></p>
+        <button className="oe-chapter-four-test-start" type="button" onClick={onStart} aria-label="Start here and return to Chapter 5">
+          <img src="/start.png" alt="Start Here" />
+        </button>
+        <img className="oe-chapter-four-quiz-image" src="/quize.png" alt="Chapter 5 quiz illustration" />
+      </section>
+    </article>
+  )
+}
