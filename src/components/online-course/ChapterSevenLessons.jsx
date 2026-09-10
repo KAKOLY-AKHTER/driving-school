@@ -327,6 +327,88 @@ export function RoadwayCausesLesson({ onPrevious, onNext }) {
   </article>
 }
 
+export function VehicleSafetyFeaturesLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-vehicle-safety-features-lesson">
+      <LessonHeader title="7.6 Vehicle Safety Features Applications" onPrevious={onPrevious} onNext={onNext} />
+      <p className="oe-vehicle-safety-intro">Defensive driving also entails using your vehicle&apos;s equipment properly and knowing how and when to use it to avoid a collision. All automobiles are also equipped with safety features that will help to minimize the damage to the car and to the occupants in the event of a crash. Maintenance is needed on this equipment to ensure that it is fully functioning and available in times of emergency.</p>
+      <img className="oe-vehicle-safety-car" src="/car.png" alt="Vehicle safety features identified on a car" />
+
+      <section className="oe-vehicle-feature-section">
+        <h4>Horns and Headlights</h4>
+        <div className="oe-video-wrap oe-vehicle-feature-video">
+          <iframe src="https://www.youtube.com/embed/556-_Cs52ss" title="Vehicle safety rules of the road" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
+        </div>
+        <ul>
+          <li>Your horn and headlights are effective tools that you can use to avoid a collision with another vehicle, pedestrian or animal. You should sound your horn or flash your lights to alert another driver of your presence and whenever it is necessary to help avoid a collision.</li>
+          <li>On narrow mountain roads, drive as far to the right as possible and sound your horn when you cannot see at least 200 feet ahead due to curves, hills, weather or other obstacles.</li>
+          <li>Do not honk your horn:
+            <ul>
+              <li>Because someone is driving or walking slower than you would like</li>
+              <li>To chastise other drivers who have made a mistake</li>
+              <li>Because you are angry</li>
+            </ul>
+          </li>
+          <li>You may also legally flash your headlights under certain circumstances to get the attention of another driver who may not see you.</li>
+        </ul>
+      </section>
+
+      <section className="oe-vehicle-feature-section">
+        <h4>Turn Signals</h4>
+        <div className="oe-video-wrap oe-vehicle-feature-video">
+          <iframe src="https://www.youtube.com/embed/Y2hK06BktLY" title="Headlights and emergency signals" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
+        </div>
+        <ul>
+          <li>You should use your turn signals any time you are changing direction. Signaling lets other drivers know what your intentions are. You should also watch for other drivers signaling their intentions. Use your turn signals even when you do not see any other vehicles around.</li>
+          <li>Always use your turn signals when pulling next to or away from a curb or whenever you are entering traffic from a stop or driveway.</li>
+          <li>Use your turn signals before turning or changing lanes. You should signal at least 5 seconds before changing lanes. If your signal lights are not working, you may use arm signals.</li>
+          <li>Just because you use your turn signal, you should not automatically assume that the space you wish to occupy is clear or that other drivers will make room for you. Always look over your shoulder and check your blind spot before making a lane change.</li>
+          <li>Signal continuously during the last 100 feet before turning. If you plan to turn beyond an intersection, do not signal until you are actually in the intersection. Signaling too early may confuse other drivers and they might pull into your path.</li>
+          <li>If you plan to turn at an intersection that is close to another side road or business driveway, be especially careful. If you signal too early, drivers leaving the side road or driveway may think you are turning before the intersection and pull out in front of you. It would be better to signal after the driveway, but before the intersection.</li>
+          <li>Remember to check your signal after turning, pulling into traffic or changing lanes. Turn it off if it hasn&apos;t done so automatically.</li>
+          <li>On sunny days, signal lights may be hard to see. If the sun is bright, it is a good idea to use arm signals in addition to your signal lights.</li>
+        </ul>
+      </section>
+
+      <section className="oe-vehicle-feature-section">
+        <h4>Brakes</h4>
+        <ul>
+          <li>Driving defensively requires that you understand the techniques for stopping in an emergency situation and the techniques for skid avoidance and recovery.</li>
+          <li>Most drivers hit the brakes first to avoid a collision. However, sometimes this locks the wheels, if you do not have antilock brakes. This, in turn, causes the vehicle to skid, which makes things worse because you lose control of your vehicle.</li>
+          <li>To stop quickly in an emergency situation, follow these braking tips.
+            <ul>
+              <li>Apply a firm and steady pressure on the brake. If the car begins to skid, let up on the brake pedal until the wheels begin to roll again. Then increase the pressure on the brake again, using firm and steady pressure.</li>
+              <li>Repeat this process until the vehicle stops.</li>
+            </ul>
+          </li>
+        </ul>
+        <p className="oe-vehicle-feature-note"><strong>Note:</strong> Remember that you should never pump antilock brakes. Simply apply firm, steady pressure until the vehicle stops.</p>
+      </section>
+
+      <section className="oe-vehicle-feature-section oe-seat-belts-section">
+        <h4>Seat Belts</h4>
+        <p>Every vehicle and every driver must have and use their safety restraints. California&apos;s Mandatory Seat Belt Law requires that all passengers and the driver wear a seatbelt. It is the driver&apos;s responsibility to ensure their passengers are wearing a seatbelt.</p>
+      </section>
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
+export function ChapterSevenTestLesson({ onStart }) {
+  return (
+    <article className="oe-full-lesson oe-test-lesson oe-chapter-four-test oe-chapter-seven-test">
+      <h3>7.7 Chapter 7</h3>
+      <section className="oe-chapter-four-test-card">
+        <p><strong>Congratulations!!</strong> You have completed the reading for chapter 7. You&apos;ll need to get 9 answers correct (out of 12) in order to proceed. <strong>Good luck!</strong></p>
+        <button className="oe-chapter-four-test-start" type="button" onClick={onStart} aria-label="Start here and return to Chapter 7">
+          <img src="/start.png" alt="Start Here" />
+        </button>
+        <img className="oe-chapter-four-quiz-image" src="/quize.png" alt="Chapter 7 quiz illustration" />
+      </section>
+    </article>
+  )
+}
+
 export function AccidentOverviewLesson({ onPrevious, onNext }) {
   return (
     <article className="oe-full-lesson oe-accident-overview-lesson">
