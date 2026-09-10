@@ -385,3 +385,206 @@ export function TrafficControlSignsLesson({ onPrevious, onNext }) {
     </article>
   )
 }
+
+const regulatorySignCards = [
+  {
+    image: '/stop.png',
+    alt: 'Red octagonal STOP sign',
+    title: 'STOP Sign',
+    tone: 'red',
+    description: 'Make a full stop before entering the crosswalk or at the limit line. If neither is present, stop before entering the intersection. Check traffic in every direction and proceed only when it is safe.',
+  },
+  {
+    image: '/yield.png',
+    alt: 'Triangular YIELD sign',
+    title: 'YIELD Sign',
+    tone: 'red',
+    description: 'Slow down and be ready to stop. Let any vehicle, bicyclist, or pedestrian with the right-of-way pass before you proceed.',
+  },
+  {
+    image: '/do-not.png',
+    alt: 'DO NOT ENTER sign',
+    title: 'DO NOT ENTER',
+    tone: 'red',
+    description: 'Do not enter the road or ramp where this sign is posted. It commonly faces traffic that would otherwise enter in the wrong direction.',
+  },
+  {
+    image: '/wrong.png',
+    alt: 'WRONG WAY sign',
+    title: 'WRONG WAY',
+    tone: 'red',
+    description: 'You are facing traffic in the opposite direction. When it is safe, back out or turn around and return to the correct roadway.',
+  },
+  {
+    image: '/one-way.png',
+    alt: 'Black and white ONE WAY sign',
+    title: 'ONE WAY',
+    tone: 'blue',
+    description: 'Traffic on this road moves only in the direction shown by the arrow. Enter and travel only in that direction.',
+  },
+  {
+    image: '/turn.png',
+    alt: 'No right turn, no left turn, and no U-turn signs',
+    title: 'Prohibited Turns',
+    tone: 'red',
+    description: 'A red circle and slash means the pictured movement is prohibited. Obey NO RIGHT TURN, NO LEFT TURN, and NO U-TURN signs.',
+  },
+]
+
+const warningSignCards = [
+  {
+    image: '/plus.png',
+    alt: 'Yellow crossroad warning sign',
+    title: 'Crossroad Ahead',
+    description: 'Another road intersects the road ahead. Reduce speed, scan for entering or crossing traffic, and be ready to yield or stop.',
+  },
+  {
+    image: '/dimond.png',
+    alt: 'Yellow traffic signal ahead warning sign',
+    title: 'Traffic Signal Ahead',
+    description: 'A traffic signal is ahead. Watch the signal early and prepare to stop without sudden braking.',
+  },
+  {
+    image: '/arrow1.png',
+    alt: 'Yellow merge warning sign',
+    title: 'Merging Traffic',
+    description: 'Another lane joins your lane ahead. Adjust speed and space so traffic can merge safely.',
+  },
+  {
+    image: '/arrow2.png',
+    alt: 'Yellow two-way traffic warning sign',
+    title: 'Two-Way Traffic',
+    description: 'Opposing traffic begins ahead. Stay to the right and expect vehicles traveling toward you.',
+  },
+  {
+    image: '/arrow3.png',
+    alt: 'Yellow divided highway ends warning sign',
+    title: 'Divided Highway Ends',
+    description: 'The median or divider ends ahead and opposing lanes will no longer be separated. Keep right and stay alert.',
+  },
+]
+
+export function TrafficRegulatorySignsLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-regulatory-signs-lesson">
+      <LessonHeader title="4.3 Traffic Regulatory Signs" onPrevious={onPrevious} onNext={onNext} />
+
+      <section className="oe-regulatory-intro">
+        <div>
+          <p className="oe-regulatory-eyebrow">Read. Recognize. Respond.</p>
+          <h4>Road Signs Communicate Rules and Hazards</h4>
+          <p>Traffic signs regulate movement, warn of changing road conditions, and guide road users to destinations and services. Recognize each sign by its shape, color, symbol, and complete message—and always obey posted instructions.</p>
+        </div>
+        <img src="/road-sign.png" alt="Collection of regulatory, warning, construction, and guide signs" />
+      </section>
+
+      <section className="oe-regulatory-section" aria-labelledby="regulatory-signs-heading">
+        <div className="oe-regulatory-heading">
+          <span aria-hidden="true">01</span>
+          <div><p>Rules you must follow</p><h4 id="regulatory-signs-heading">Regulatory Signs</h4></div>
+        </div>
+        <div className="oe-regulatory-card-grid">
+          {regulatorySignCards.map(sign => (
+            <article className={`oe-regulatory-card ${sign.tone}`} key={sign.title}>
+              <div className="oe-regulatory-image-wrap"><img src={sign.image} alt={sign.alt} /></div>
+              <div><h5>{sign.title}</h5><p>{sign.description}</p></div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="oe-copy-section oe-parking-section">
+        <h4>Parking and Curbside Regulations</h4>
+        <div className="oe-parking-media">
+          <img src="/parking.png" alt="Accessible parking, no parking, loading zone, and timed parking signs" />
+          <div>
+            <p>Parking signs tell you who may park, when parking is permitted, and how long a vehicle may remain. Read every panel before leaving your vehicle.</p>
+            <ul>
+              <li>Accessible spaces require the proper placard or license plate.</li>
+              <li>Do not park where a NO PARKING restriction applies.</li>
+              <li>Loading zones and timed spaces may be limited by hours or days shown on the sign.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section className="oe-pedestrian-safety-grid" aria-label="Pedestrian and school-area warnings">
+        <article>
+          <img src="/ahead.png" alt="Pedestrian and school crossing warning signs" />
+          <div><h4>Pedestrian Crossing</h4><p>Slow down, scan both sides of the roadway, and yield to pedestrians in or entering the crosswalk.</p></div>
+        </article>
+        <article>
+          <img src="/school.png" alt="School crossing warning sign" />
+          <div><h4>School Areas</h4><p>Watch carefully for children, obey crossing guards and posted speed limits, and be prepared for sudden movement near the roadway.</p></div>
+        </article>
+      </section>
+
+      <section className="oe-regulatory-section" aria-labelledby="warning-signs-heading">
+        <div className="oe-regulatory-heading yellow">
+          <span aria-hidden="true">02</span>
+          <div><p>Conditions ahead</p><h4 id="warning-signs-heading">Warning Signs</h4></div>
+        </div>
+        <div className="oe-warning-intro">
+          <img src="/caution.png" alt="Yellow diamond-shaped caution sign" />
+          <p>Warning signs alert you to potential hazards and changes in roadway conditions. Most are yellow and diamond-shaped. Obey every warning sign regardless of its shape or color.</p>
+        </div>
+        <div className="oe-warning-card-grid">
+          {warningSignCards.map(sign => (
+            <article className="oe-warning-card" key={sign.title}>
+              <img src={sign.image} alt={sign.alt} />
+              <div><h5>{sign.title}</h5><p>{sign.description}</p></div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="oe-information-sign-grid" aria-label="Transit and guide signs">
+        <article>
+          <div className="oe-information-image-wrap"><img src="/public-bus.png" alt="Public transit bus and bicycle lane sign with posted hours" /></div>
+          <div><p className="oe-regulatory-eyebrow">Lane regulation</p><h4>Public Transit Bus Lanes</h4><p>Bus-only or restricted-lane signs identify who may use the lane and when. Follow the vehicle symbols, posted hours, and any instructions that allow crossing the lane to make a turn.</p></div>
+        </article>
+        <article>
+          <div className="oe-information-image-wrap"><img src="/guide.png" alt="Blue guide and traveler service symbols" /></div>
+          <div><p className="oe-regulatory-eyebrow">Information</p><h4>Guide and Service Signs</h4><p>Guide signs direct you to destinations, routes, recreation areas, and services such as hospitals, fuel, food, lodging, telephones, and accessibility facilities.</p></div>
+        </article>
+      </section>
+
+      <section className="oe-work-zone-section" aria-labelledby="work-zone-heading">
+        <div className="oe-regulatory-heading orange">
+          <span aria-hidden="true">03</span>
+          <div><p>Temporary traffic control</p><h4 id="work-zone-heading">Construction and Work Zones</h4></div>
+        </div>
+        <div className="oe-work-zone-signs">
+          <img src="/road-orange.png" alt="Orange ONE LANE ROAD AHEAD construction sign" />
+          <div><h5>Orange Means Road Work</h5><p>Orange signs warn of construction, maintenance, lane closures, detours, workers, and equipment. Slow down early and follow the temporary traffic pattern.</p></div>
+          <img src="/man.png" alt="Orange flagger warning sign" />
+        </div>
+        <div className="oe-work-zone-tips">
+          <img src="/under.png" alt="Under construction barricade illustration" />
+          <div>
+            <h5>Work-Zone Safety</h5>
+            <ul>
+              <li>Obey the posted speed limit, stay alert, and expect sudden slowing or stopping.</li>
+              <li>Leave extra following distance and avoid unnecessary lane changes or distractions.</li>
+              <li>Watch for workers and equipment; merge when directed and never cross cones or drums.</li>
+              <li>Move over for stopped road-work vehicles with flashing lights when safe; otherwise slow down.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <div className="oe-video-wrap oe-regulatory-video">
+        <iframe
+          src="https://www.youtube.com/embed/wZN3hoBNqUY"
+          title="Traffic control devices and roadway warning signs"
+          loading="lazy"
+          referrerPolicy="strict-origin-when-cross-origin"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        />
+      </div>
+
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
