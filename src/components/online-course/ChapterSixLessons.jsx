@@ -191,8 +191,58 @@ function SpeedLawCodeSections() {
   return (
     <section className="oe-driving-section oe-speed-code-section">
       <h4 className="oe-speed-code-title">CVC Code: Established Speed Laws</h4>
+      <SpeedLawDetails />
       <article><h5>CVC 22400: Minimum Speed Law</h5><h6>Slow Moving Vehicles</h6><p>Vehicles proceeding at a speed less than the flow of traffic and moving on a twolane highway where passing is unsafe, must turn off the roadway at the nearest place designated as a turnout or wherever sufficient area for a safe turnout exists if a line of 5 or more vehicles forms behind them.</p></article>
     </section>
+  )
+}
+
+function SpeedLawDetails() {
+  return <SpeedLawMinimumDetails />
+}
+
+function SpeedLawMinimumDetails() {
+  return (
+    <>
+      <p className="oe-minimum-speed-rest">No person shall drive so slowly as to impede or block the normal and reasonable movement of traffic, unless the reduced speed is necessary for safe operation or compliance with law.</p>
+      <SpeedLawDesignatedVehicles />
+    </>
+  )
+}
+
+function SpeedLawDesignatedVehicles() {
+  return (
+    <article className="oe-speed-additional-laws">
+      <h5>CVC 22406: Maximum Speed for Designated Vehicles</h5>
+      <p>No person may drive any of the following vehicles on a highway at a speed in excess of 55 miles per hour:</p>
+      <ul>
+        <li>A motor truck or truck tractor having three or more axles or drawing another vehicle.</li>
+        <li>A passenger vehicle or bus drawing another vehicle.</li>
+        <li>A school bus transporting any school pupil.</li>
+        <li>A farm labor vehicle when transporting passengers.</li>
+        <li>A vehicle transporting explosives.</li>
+        <li>A trailer bus.</li>
+      </ul>
+      <SpeedLawCommercialPenalties />
+    </article>
+  )
+}
+
+function SpeedLawCommercialPenalties() {
+  return (
+    <>
+      <h5>CVC 22406.1: Commercial Motor Vehicle Driver: Penalties</h5>
+      <ul>
+        <li>A commercial motor vehicle driver exceeding a posted speed limit by 15 miles per hour or more is guilty of a misdemeanor.</li>
+        <li>A commercial driver&apos;s license holder operating a noncommercial vehicle 15 miles per hour or more over the posted limit is guilty of an infraction.</li>
+        <li>Either violation is a serious traffic violation and is subject to the sanctions provided by law.</li>
+      </ul>
+      <h5>CVC 22413: Decreasing Speed Limit on Grades</h5>
+      <ul>
+        <li>A local authority may establish a 20 or 15 mph limit on a street with a grade exceeding 10 percent when an engineering and traffic survey finds 25 mph unreasonable or unsafe.</li>
+        <li>The declared maximum speed becomes effective when appropriate signs are erected on the street.</li>
+      </ul>
+    </>
   )
 }
 
@@ -527,6 +577,325 @@ function UTurns() {
         <p>Look for signs telling you that you cannot make a U-turn. If you do not see a sign, U-turn is usually is allowed. Obey all traffic signs and signals.</p>
       </div>
     </section>
+  )
+}
+
+export function SafeDrivingPassingLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-passing-lesson">
+      <LessonHeader title="6.5 Safe Driving Practices: Passing" onPrevious={onPrevious} onNext={onNext} />
+
+      <section className="oe-driving-section">
+        <h4 className="oe-passing-main-heading">Demands of Proper Passing</h4>
+        <img className="oe-passing-hero" src="/pass1.png" alt="Driver safely passing another vehicle" />
+        <h5>Use Good Judgment</h5>
+        <ul className="oe-driving-list">
+          <li>You must correctly judge the speed of the vehicle you are about to pass, as well as your own speed. Judge the distance that it will take to overcome and pass safely.</li>
+          <li>Oncoming traffic moves just as fast as you. Therefore, you must judge the speed of the driver with the distance to correctly pass.</li>
+          <li>It is hard to judge the speed of oncoming traffic one-third of a mile away, they do not seem to be coming as fast as they really are. You must be assured that you have clear distance ahead.</li>
+          <li>Be aware of the existence of any additional hazards.</li>
+        </ul>
+        <h5>Rapid Decision Making</h5>
+        <ul className="oe-driving-list">
+          <li>You must have rapid decision making, if you hesitate, you will never get a chance to pass or if you make a bad decision, you will be endangering lives.</li>
+          <li>At highway speeds, you will travel over 800 feet in 10 to 12 seconds. So will the oncoming traffic. That means you need over 800 feet (or about one-third of a mile) to pass safely.</li>
+          <li>You must make a rapid decision on whether or not you will have enough room, time and clearance to pass.</li>
+        </ul>
+        <h5>Safety When Being Passed</h5>
+        <ul className="oe-driving-list compact">
+          <li>You need to yield to a passing vehicle, allowing them to be successful in their pass.</li>
+          <li>Wait if you want to pass the vehicle that you are following, because the vehicle following you has already begun to pass you.</li>
+        </ul>
+        <h5>Maintaining Speed</h5>
+        <ul className="oe-driving-list"><li>Do not speed up when another vehicle is attempting to pass you. They need to safely complete their pass and accelerating becomes hazardous to you, the passer and vehicles in oncoming traffic.</li></ul>
+      </section>
+
+      <PassingAllowed />
+      <PassingProhibited />
+      <PassingHazards />
+      <PassingProcess />
+
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
+function PassingAllowed() {
+  return (
+    <section className="oe-driving-section">
+      <h4 className="oe-passing-main-heading">When Passing is Allowed</h4>
+      <p>Passing is not always allowed on highways and streets. Signs and pavement markings ensure safety while passing. Make sure to look for and obey all signs and pavement markings!</p>
+      <h5>Passing Lanes</h5>
+      <ul className="oe-driving-list">
+        <li>Before you pass, look ahead for road conditions and traffic that may cause other vehicles to move into your lane.</li>
+        <li>Never drive off the paved or main-traveled portion of the road or on the shoulder to pass. The edge of the main-traveled portion of the road has a painted white line on the roads surface. Passing other vehicles at crossroads, railroad crossings and shopping center entrances is dangerous.</li>
+        <li>Pass traffic on the left. You may pass on the right only when:
+          <ul>
+            <li>An open highway is clearly marked for two or more lanes of travel in your direction.</li>
+            <li>The driver ahead of you is turning left and you do not drive off the roadway. Never pass on the left if the driver is signaling a left turn.</li>
+          </ul>
+        </li>
+      </ul>
+      <img className="oe-passing-image compact" src="/pass2.png" alt="Safe and unsafe ways to pass a bicyclist" />
+      <ul className="oe-driving-list"><li>When passing a bicyclist, pass on the left (picture on the left). If you are in a narrow traffic lane, wait until the traffic clears in the opposite lane before passing a bicyclist. Do not squeeze past the bicyclist (Picture on the right).</li></ul>
+
+      <h5>Freeways</h5>
+      <ul className="oe-driving-list">
+        <li>Freeway passing differs from two-way roadways. It is much easier to pass on freeways, since all the traffic is well divided from the opposing traffic lanes and the traffic is all going in the same direction.</li>
+        <li>You may pass if the movement can be made safely and the freeway has two-or more lanes open for the driver to pass.</li>
+        <li>Passing is done by looking in your mirrors to check the traffic, then looking over your shoulder</li>
+        <li>Then when it is clear and safe to do so, you may change lanes to the left in order to pass the vehicle that you are following.</li>
+        <li>Once you have done this you need to use the same steps to move back over in front of the vehicle or vehicles that you have just passed.</li>
+        <li>You may pass where it is authorized and the lane markings are broken, not solid.</li>
+      </ul>
+
+      <h5>Two-Lane Roadways</h5>
+      <ul className="oe-driving-list compact">
+        <li>Look for specific Passing/No Passing signs and markings on roadways.</li>
+        <li>You may pass to the left when:
+          <ul>
+            <li>The line dividing opposing traffic is broken on your side of the roadway.</li>
+            <li>You have a visible clearance on the roadway of at least 1600 feet.</li>
+            <li>There are no oncoming vehicles.</li>
+            <li>Where road signs permit passing.</li>
+          </ul>
+        </li>
+        <li>Passing to the right is permitted only when
+          <ul>
+            <li>The driver of the other vehicle is making or is about to make a left turn.</li>
+            <li>An open roadway is clearly marked for two or more lanes of vehicles moving in the same direction.</li>
+          </ul>
+        </li>
+      </ul>
+    </section>
+  )
+}
+
+function PassingProhibited() {
+  return (
+    <section className="oe-driving-section">
+      <h4 className="oe-passing-main-heading">When Passing is Prohibited</h4>
+      <p>There are some cases where passing is prohibited on a highway or freeway. Signs and road markings will tell you when you cannot pass.</p>
+      <h5>Freeways</h5>
+      <div className="oe-passing-media">
+        <img src="/pass3.png" alt="Road worker directing traffic" />
+        <ul className="oe-driving-list compact">
+          <li>Wherever the road conditions are too hazardous for vehicles to pass one another.</li>
+          <li>When there is a lane closure or there is an accident blocking lanes.</li>
+          <li>Where designated lane use and markings tell you it is prohibited.</li>
+          <li>When road conditions; such as fog, snow, rain, ice, or something is on the road or blocking the road.</li>
+        </ul>
+      </div>
+      <h5>Two-Way Roadways</h5>
+      <ul className="oe-driving-list compact">
+        <li>You may not pass on a two-way roadway when:
+          <ul>
+            <li>Signs indicate that it is prohibited.</li>
+            <li>The road markings are solid on your side of the roadway.</li>
+            <li>You do not have enough space in which to pass safely.</li>
+            <li>You cannot see far enough down the roadway.</li>
+            <li>When there is a lane closure due to an accident, hazard, work crews or construction.</li>
+            <li>When you are approaching a crest of a hilltop.</li>
+          </ul>
+        </li>
+      </ul>
+      <img className="oe-passing-image" src="/pass4.png" alt="Unsafe passing near a hilltop" />
+      <ul className="oe-driving-list compact">
+        <li>When there is a vehicle using the left lane to turn left.</li>
+        <li>Weather conditions such as fog, rain, snow or ice prohibit a safe passing.</li>
+        <li>You are approaching or are on a curve.</li>
+      </ul>
+
+      <h4 className="oe-passing-main-heading">Special Situations</h4>
+      <h5>Without Sufficient Clearance</h5>
+      <ul className="oe-driving-list compact">
+        <li>Do not attempt to pass when you do not have enough distance in which to pass safely.</li>
+        <li>You could easily cause an accident with an oncoming vehicle or you will hit the vehicle.</li>
+        <li>Never cut off another driver when passing</li>
+      </ul>
+      <h5>On a Hill</h5>
+      <ul className="oe-driving-list compact">
+        <li>Only pass when you are traveling in a clearly marked passing zone of the roadway marked by road signs.</li>
+        <li>It is especially dangerous when there is only one lane in each direction.</li>
+        <li>Only pass where you have a complete view of the roadway and its conditions, and where you have enough roadway to pass.</li>
+        <li>You will want to have twice the clearance time when trying to pass going uphill, since vehicles that are oncoming usually are traveling faster going downhill.</li>
+      </ul>
+      <h5>Intersections or Railroad Crossings</h5>
+      <ul className="oe-driving-list compact">
+        <li>Do not pass in or through an intersection when there is only one lane in each direction.</li>
+        <li>Never pass at a railroad crossing unless there are at least two or more lanes traveling in the same direction.</li>
+      </ul>
+      <h5>School bus</h5>
+      <div className="oe-passing-media school-bus">
+        <img src="/pass5.png" alt="School bus with warning lights" />
+        <ul className="oe-driving-list"><li>You must never pass a stopped school bus that has the RED warning lights flashing! The exception to this is when there is a divided highway between the bus and your vehicle&apos;s lane. You may however, pass a school bus when the red lights are NOT flashing.</li></ul>
+      </div>
+      <h5>Bridges or Abutments</h5>
+      <p>You should reduce your speed when driving on narrow bridges and in tunnels. No vehicle shall be driven to the left side of the roadway when the view is obstructed upon approaching within 100 feet of any bridge, viaduct, or tunnel. (VC 21752)</p>
+    </section>
+  )
+}
+
+function PassingHazards() {
+  return (
+    <section className="oe-driving-section">
+      <h4 className="oe-passing-main-heading">Dangerous Passing Situations</h4>
+      <img className="oe-passing-image large" src="/pass6.png" alt="Vehicle dangerously passing a long line of traffic" />
+      <h5>Long Line of Cars Ahead</h5>
+      <p>Never attempt to pass a long line of vehicles that you are following. In most instances, there will be not enough time or space for you to pass. It is extremely dangerous and you put other drivers at risk as well as yourself. It is also possible that a vehicle within the pack of vehicles will pull out in front of you when they attempt to pass.</p>
+      <h5>Some recommendations to combat the long line of traffic</h5>
+      <ul className="oe-driving-list compact">
+        <li>Wait until the vehicles in front of you pass the slowest vehicle.</li>
+        <li>You may pass one car at a time if the cars are leaving gaps between each other.</li>
+        <li>Pull over and take a rest or a break for five or ten minutes, allowing the train of vehicles to get far ahead of you.</li>
+      </ul>
+      <h5>Intention to stop or turn</h5>
+      <ul className="oe-driving-list compact">
+        <li>Never pass a vehicle that is stopped as they may have forgotten to use their turn signal and may actually be making a turn.</li>
+        <li>Never try and pass a vehicle that is directly behind a slower moving vehicle until you are sure that they will not be pulling out to pass without signaling their intention.</li>
+        <li>Always use your signals to indicate your intentions to pass a vehicle. Otherwise, the vehicle or vehicles behind you will not know that you are passing.</li>
+      </ul>
+      <PassingHazardDetails />
+    </section>
+  )
+}
+
+function PassingHazardDetails() {
+  return (
+    <>
+      <h5>Oncoming car is too close</h5>
+      <ul className="oe-driving-list compact">
+        <li>Do not pass if you are not sure how close an oncoming vehicle is. Wait for a better location situation and clearance.</li>
+        <li>If the area in which you have to pass is less than 1,600 feet, then you do not have enough time to pass. You should wait for a larger clearing and better visibility. Remember, it is better to be safe than sorry!</li>
+      </ul>
+      <PassingHazardLimits />
+    </>
+  )
+}
+
+function PassingHazardLimits() {
+  return <PassingHazardLimitsContent />
+}
+
+function PassingHazardLimitsContent() {
+  return (
+    <>
+      <h5>Car Ahead is at or Near the Speed Limit</h5>
+      <p>CV 21755. Passing on Right Safely: A driver may overtake and pass another vehicle on the right only when the movement can be made safely and without leaving the paved or main traveled portion of the roadway.</p>
+      <PassingVisibility />
+    </>
+  )
+}
+
+function PassingVisibility() {
+  return (
+    <>
+      <h5>Sight Distance Ahead is Limited</h5>
+      <ul className="oe-driving-list compact">
+        <li>Do not pass if:</li>
+        <li>You cannot see clearly due to weather conditions such as rain, fog, snow, ice or dust storms.</li>
+        <li>Other conditions such as a hill crest, a curve, a large dip, a large truck, or trees and bushes could all block a driver&apos;s clear view of the road and its conditions.</li>
+      </ul>
+      <h5>Maneuver Cannot Be Completed Before Reaching a No Passing Zone</h5>
+      <ul className="oe-driving-list compact">
+        <li>If you start passing where the line on your side of the road is broken, you may continue to pass the vehicle you are passing even if it takes you into a no passing zone.</li>
+        <li>However, once you reach that area, you cannot begin to pass another vehicle on a two-lane road.</li>
+      </ul>
+    </>
+  )
+}
+
+function PassingProcess() {
+  return (
+    <section className="oe-driving-section">
+      <h4 className="oe-passing-main-heading">Identify Passing Situations</h4>
+      <h5>Passing Maneuver Times</h5>
+      <p>When passing another vehicle you must have sufficient time to complete the entire maneuver. Be aware of your speed, the speed of the vehicle that you are about to pass, the time it will take to overtake the vehicle and the time it will take you to pull back into your lane. Without having the sufficient time needed to complete the passing you will end up running vehicles off the road or hitting them.</p>
+      <h5>Identifying a Safe Distance Ahead</h5>
+      <p>You must be able to see a sufficient distance ahead. You will need 1,600 feet (1/3 of a mile) to pass. If you do not have enough space to overtake the vehicle you should not attempt to pass, otherwise you will end up in a head on collision.</p>
+      <h5>Establish a Safe Response for Hazards</h5>
+      <p>You should be prepared for any hazards while you are passing another vehicle.</p>
+      <ul className="oe-driving-list compact">
+        <li>A vehicle may be pulling out of a driveway right into your path of travel or some animal or debris could be in or jumping out into your path.</li>
+        <li>It is also important that you have a clear view of the roadway and what its conditions are.</li>
+        <li>Never pass where vehicles may be pulling out into the roadway.</li>
+      </ul>
+      <PassingTractionAndSteps />
+    </section>
+  )
+}
+
+function PassingTractionAndSteps() {
+  return (
+    <>
+      <h5>Checking for Road Traction</h5>
+      <ul className="oe-driving-list compact">
+        <li>If the road does not provides enough traction because it is made of dirt gravel, ice rain or snow then you are not in a position to pass another vehicle.</li>
+        <li>The actions of speeding up and changing lanes can send your vehicle sideways or out of control causing an accident with the vehicle that you are passing and or with the oncoming traffic.</li>
+      </ul>
+      <h4>Steps in Successful Passing</h4>
+      <ul className="oe-driving-list oe-passing-steps">
+        <li>Scan for Hazards
+          <ul><li>Look for roadwork, animals, pedestrians, bicycles and intersections.</li></ul>
+        </li>
+        <li>Look for Oncoming Vehicles
+          <ul>
+            <li>You must wait until all oncoming vehicles are passed you so you can see a sufficient distance down the roadway.</li>
+            <li>You must also be sure that there are no more oncoming vehicles.</li>
+          </ul>
+        </li>
+        <li>Check for Vehicles Approaching from Rear
+          <ul><li>Look in your rear view mirror to be sure that the vehicle that is following you is not going to attempt to pass you.</li></ul>
+        </li>
+        <li>Look for Merging Vehicles</li>
+        <li>Do not pass in an area where roads cross or where traffic merges together.
+          <ul>
+            <li>A vehicle may merge into the opposing traffic lane that you are using to pass another vehicle that will cause you to hit them head-on.</li>
+            <li>A vehicle may merge into the lane in front of the vehicle that you are passing, cutting off your end-of-pass gap.</li>
+          </ul>
+        </li>
+        <PassingFinalSteps />
+      </ul>
+    </>
+  )
+}
+
+function PassingFinalSteps() {
+  return (
+    <>
+      <li>Check for Blind Spots
+        <ul>
+          <li>Briefly look over both shoulders.</li>
+          <li>Do not rely solely on your mirrors!</li>
+          <li>Always look out for blind spots on the roadway, including a crest of a hill, a dip, a curve, trees or bushes.</li>
+          <li>Remember if you cannot see you cannot pass.</li>
+        </ul>
+      </li>
+      <li>Signal Your Intent
+        <ul>
+          <li>Use your turn signals, typically your left turn signal, to indicate that you intend to pass.</li>
+          <li>Always signal your intentions to pass in advance to warn the drivers of the vehicles behind you and in front of you.</li>
+        </ul>
+      </li>
+      <li>Obtain a Speed Advantage
+        <ul>
+          <li>Prepare to pass by increasing your speed to 10 miles per hour above the speed of the vehicle that you are passing.</li>
+          <li>Remember to obey the speed limit, even when passing.</li>
+        </ul>
+      </li>
+      <li>Re-Check Conditions Ahead
+        <ul><li>Always check and double check for oncoming and approaching hazards on the roadway.</li></ul>
+      </li>
+      <li>Create Return Space
+        <ul><li>Create an end-of-pass gap to place your vehicle after passing.</li></ul>
+      </li>
+      <li>Proceed to Pass
+        <ul><li>Accelerate and pass the vehicles one at a time. Make sure to follow each step with every car that you pass!</li></ul>
+      </li>
+      <li>Signal Return
+        <ul><li>Always signal when you intend to move back into the lane.</li></ul>
+      </li>
+    </>
   )
 }
 
