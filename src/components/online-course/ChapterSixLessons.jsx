@@ -195,3 +195,201 @@ function SpeedLawCodeSections() {
     </section>
   )
 }
+
+export function ProperLaneUseLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-lane-use-lesson">
+      <LessonHeader title="6.3 Proper Lane Use" onPrevious={onPrevious} onNext={onNext} />
+
+      <section className="oe-driving-section">
+        <h4>Designated Lane of Travel</h4>
+        <h5>Divided Highways</h5>
+        <img className="oe-lane-hero" src="/lane1.png" alt="Divided highway with traffic traveling in opposite directions" />
+        <p>A divided highway is a highway a where a wall or retainer is dividing the traffic driving in opposite directions.</p>
+
+        <h5>Lane Roadways</h5>
+        <div className="oe-lane-media-row oe-lane-roadway-row">
+          <img src="/lane2.png" alt="Roadway with marked traffic lanes" />
+          <ul className="oe-driving-list compact">
+            <li>A lane roadway is a roadway where there are at least two clearly marked lanes for traffic, going in one direction on the roadway.</li>
+            <li>The lane has either a double yellow line, or single yellow line in the center.</li>
+            <li>The lines can be broken or unbroken.</li>
+          </ul>
+        </div>
+
+        <h5>Three-Lane Highways</h5>
+        <div className="oe-lane-media-row oe-three-lane-row">
+          <img src="/lane3.png" alt="Three-lane highway lane numbering diagram" />
+          <ul className="oe-driving-list compact">
+            <li>These highways have three lanes of traffic all going in the same direction of travel.</li>
+            <li>The left or &quot;fast&quot; lane is called the &quot;Number one lane,&quot; the lanes to the right of the number one lane are called the number two and then the number three lanes. Drive in the lane with the smoothest flow of traffic. If you can choose among three lanes, pick the middle lane for the smoothest driving. To drive faster, pass, or turn left, use the left lane. When you choose to drive slowly or enter or exit the road, use the right lane.</li>
+          </ul>
+        </div>
+
+        <div className="oe-video-wrap oe-driving-video">
+          <iframe src="https://www.youtube.com/embed/K_nQhHS6jjk" title="Center Left Turn Lane" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
+        </div>
+
+        <h5>HOV Lanes</h5>
+        <div className="oe-hov-row">
+          <img src="/lane4.png" alt="High occupancy vehicle lane" />
+          <p>The HOV lanes, or high occupancy vehicle lane(s) are also known as the carpool lanes. These lanes are clearly marked and are restricted to vehicles with two (and sometimes three) or more occupants.</p>
+          <img src="/lane5.png" alt="Carpool with multiple occupants" />
+        </div>
+      </section>
+
+      <section className="oe-driving-section">
+        <h4>Position of Vehicle on Lane of Travel</h4>
+        <h5>Marked Lanes</h5>
+        <ul className="oe-driving-list compact"><li>The position of the vehicle in a marked lane is to the right side of your lane or in the center if there are two lanes. You want to stay in the center of your lane of travel.</li></ul>
+        <h5>Narrow Roadways</h5>
+        <ul className="oe-driving-list compact"><li>Position your vehicle to the far right of a narrow roadway and reduce your speed.</li></ul>
+        <h5>Mountain Roadways</h5>
+        <ul className="oe-driving-list compact">
+          <li>Position your vehicle to the extreme right of the roadway while driving on a mountain or curved roadway.</li>
+          <li>Use your headlights.</li>
+          <li>Honk your horn on blind curves.</li>
+        </ul>
+        <h5>Other Vehicles Approaching</h5>
+        <ul className="oe-driving-list compact"><li>When a car or vehicle is approaching you from the opposite direction or to pass you on the roadway, it is important to move your vehicle to the far right of your lane.</li></ul>
+      </section>
+
+      <section className="oe-driving-section">
+        <h4>Exceptions to Driving on the Right Side of Roadway.</h4>
+        <p>When passing a vehicle going in your direction, you will end up crossing over onto the opposing traffic&apos;s lane of travel. Extreme caution must be used. On a multi-lane highway, you will also be using the left lane within the same direction to pass a vehicle.</p>
+        <p>The following are exceptions to driving on the right side of the roadway:</p>
+        <ul className="oe-driving-list compact">
+          <li>When turning left at an intersection, a cross street or a private roadway.</li>
+          <li>When the right half of the road is closed or blocked.</li>
+          <li>On a one-way roadway.</li>
+          <li>When the road is not wide enough.</li>
+          <li>When weather conditions and road markings force you too.</li>
+        </ul>
+      </section>
+
+      <section className="oe-driving-section">
+        <h4>Required Lane Use and Use of Turnouts</h4>
+        <p><strong>Left turn lanes</strong> are to be used when turning left from a highway. This keeps traffic flowing and minimizes rear-end collisions. <strong>Turnout lanes</strong> are usually provided on a single-lane mountain and country roads to allow slower vehicles to pull over allowing lighter, faster traffic to pass safely. It is required for vehicles traveling slower than the other vehicles to use turnouts when five or more cars are behind you and allow traffic to clear before proceeding.</p>
+        <h5>Slow-Moving Vehicles</h5>
+        <ul className="oe-driving-list compact"><li>Any vehicle upon a highway traveling less than the normal speed of traffic moving in the same direction shall drive in the right-hand lane except when over taking and passing another vehicle traveling in the same direction.</li></ul>
+        <h5>Left Turns</h5>
+        <ul className="oe-driving-list compact"><li>Use left turn lanes when preparing for lefts turn at an intersection, cross road or private roadway.</li></ul>
+        <h5>Use Turnouts When Five Cars Are Behind You</h5>
+        <ul className="oe-driving-list compact"><li>It is required for vehicles that are traveling slower than the other vehicles (5 vehicles) traveling on the same road in the same direction to use the designated turnouts, and allow traffic to clear before proceeding.</li></ul>
+        <h5>Special Vehicles</h5>
+        <ul className="oe-driving-list compact"><li>On three and four-way highways in California, large trucks are restricted to the two right lanes. They generally travel in the far right lane and use the second lane to pass.</li></ul>
+      </section>
+
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
+export function BackingParkingLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-backing-lesson">
+      <LessonHeader title="6.6 Backing Up, Parallel Parking and Three-Point Turn" onPrevious={onPrevious} onNext={onNext} />
+
+      <section className="oe-driving-section">
+        <h4>Backing Up</h4>
+        <p>Backing up a vehicle takes practice. Vision is typically limited and extreme caution must be used at all times. It is difficult to see directly behind the car, even when using mirrors and glancing back.</p>
+        <img className="oe-backing-hero" src="/back.png" alt="Driver looking behind while backing up a car" />
+        <p>Before getting into your vehicle, check behind the car for small objects, children, children&apos;s toys and other hazards.</p>
+        <p>When backing up, you should:</p>
+        <ul className="oe-driving-list">
+          <li>Look in your rear view mirror and your side view mirrors. However, do not rely on your rear view and/or side mirrors to back up. You cannot see a wide enough view of traffic or hazards with your mirrors alone.</li>
+          <li>Watch behind your vehicle as you are backing up. Turn and look over your right shoulder to look behind you while you back up to make sure you are seeing all of the traffic.</li>
+          <li>Remember to always back up slowly using your brake and clutch to control your speed and avoid collisions.</li>
+        </ul>
+        <p>If your ability to turn your head and shoulders is restricted:</p>
+        <ul className="oe-driving-list compact">
+          <li>Avoid backing up if at all possible.</li>
+          <li>Find parking places that do not require backing up.</li>
+          <li>Carefully use all your mirrors and get passengers to help with the maneuver.</li>
+        </ul>
+        <div className="oe-video-wrap oe-driving-video">
+          <iframe src="https://www.youtube.com/embed/Il5KdPDJG98" title="Backing maneuver driving test" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
+        </div>
+
+        <h4>Sharp Turns</h4>
+        <ul className="oe-driving-list">
+          <li>Backing around corners or sharp curves should be avoided unless you have good visibility in all directions because it is very dangerous. A vehicle can come around the curve and run into the back end of your vehicle.</li>
+          <li>If you must make a sharp turn while backing up, use your left hand as the main steering hand to turn the steering wheel
+            <ul><li>Then, just as you would when driving forward, use your hand over hand movements, all while your body is positioned sideways and your head is turned towards the right rear.</li></ul>
+          </li>
+          <li>Once you have completed making the sharp turn straighten your steering wheel to the angle of the roadway or intended area that you are backing into. Always proceed at very slow speeds.</li>
+        </ul>
+      </section>
+
+      <section className="oe-driving-section">
+        <h4>Parallel Parking</h4>
+        <p>Many motorists consider parallel parking the most difficult part of driving. Practice, patience and self-confidence will help you master the task of properly backing and properly judging distances and angles. You must adjust parallel parking procedures to the particular situation.</p>
+        <div className="oe-video-wrap oe-driving-video">
+          <iframe src="https://www.youtube.com/embed/eRgeq8xrqTg" title="Parallel parking driving test" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
+        </div>
+
+        <h5 className="oe-backing-emphasis">The following instructions are basic and general instructions for parallel parking</h5>
+        <p>Select a space that is large enough for your vehicle on your side of the road. Check your mirrors before stopping and signal to alert other drivers. Pull up alongside the vehicle in front of the space, leaving about two feet between the other vehicle and yours.</p>
+        <p>Look behind you over both shoulders to make sure you will not interfere with pedestrians or oncoming traffic. Back up slowly and begin to turn your steering wheel all the way toward the near curb. Look through the rear window, not the rearview mirrors, as you back up. Check to the side and front occasionally to make sure that you are clearing the vehicle ahead.</p>
+        <p>When your front wheels are opposite the rear bumper of the vehicle ahead, turn the steering wheel the other way while continuing to back up. Make sure you clear the vehicle ahead. Look back and stop to avoid bumping the vehicle behind you.</p>
+        <p>Straighten your wheels, and pull forward. Allow room for the vehicles ahead and behind you to get out. In your final parking position, your wheels must be no more than 18 inches from the curb.</p>
+        <p>To get closer to the curb, alternately pull forward and back up, turning the steering wheel first towards the curb and then quickly straight again. After parking, remember that you may not open the door on the roadside if it will interfere with traffic.</p>
+
+        <h5 className="oe-backing-emphasis">To pull out of a parallel parking space</h5>
+        <p>Make sure your wheels are straight, back up to the vehicle behind you, and turn your wheels away from the curb. Steps to safely enter into traffic:</p>
+        <ol className="oe-driving-list oe-numbered-driving-list">
+          <li>Turn your head to look over your right shoulder and check through the backseat rear-window for pedestrians, bicyclists, motorcyclists and other vehicles that may become a hazard.</li>
+          <li>Use your vehicle&apos;s interior rearview mirror to help keep an eye on hazards behind your vehicle.</li>
+          <li>Signal your intentions to move from your parking space into traffic.</li>
+          <li>Check your vehicle&apos;s side view mirrors, especially on the driver&apos;s side, for approaching vehicles, pedestrians, bicyclists, in-line skaters, motorcyclists and other highway users.</li>
+          <li>Turn your head to look over your left shoulder out through the backseat rear-window, and begin to slowly drive forward, making sure you can enter traffic without hitting the vehicle parked ahead.</li>
+          <li>Again turn your head and look over your left shoulder to re-check through the backseat rear-window and pull out into the traffic lane only when it is safe to do so.</li>
+        </ol>
+      </section>
+
+      <ThreePointTurnInstructions />
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
+function ThreePointTurnInstructions() {
+  const steps = [
+    'Activate your right turn signal. This will alert other drivers that you intend to "do something". Assuming that there are not any driveways, this should alert the cars behind you know that you intend to stop. Tap your brakes to further alert drivers that you intend to stop.',
+    'Pull over as close to the curb as you can (approximately 6-10 inches) and stop.',
+    'Activate your left turn signal.',
+    'Check traffic in all directions to make sure that it is clear for at least 15-20 seconds in both directions. If there are drivers behind you, you can motion to them to go around you.',
+    'Turn your wheel as far to the left as possible and begin moving forward. Your goal is to end up perpendicular to the curb on the other side of the street. You should be 6-10 inches from the curb.',
+    'Activate your right turn signal (as this is the direction you\'ll be backing).',
+    'Recheck traffic flow to make sure it is still clear to reverse. Although your car is probably blocking all traffic, that doesn\'t mean another car hasn\'t pulled up directly behind your vehicle.',
+    'Turn your wheel as far to the right as possible.',
+    'Shift into reverse and begin backing.',
+    'Stop within 6-12 inches of the other curb.',
+    'Recheck traffic again to make sure it is clear.',
+    'Put your car into Drive and continue in your new direction.',
+  ]
+
+  return (
+    <section className="oe-driving-section">
+      <h4>How to Make a Three-Point Turn</h4>
+      <ol className="oe-driving-list oe-numbered-driving-list oe-three-point-list">
+        {steps.map(step => <li key={step}>{step}</li>)}
+      </ol>
+    </section>
+  )
+}
+
+export function ChapterSixTestLesson({ onStart }) {
+  return (
+    <article className="oe-full-lesson oe-test-lesson oe-chapter-four-test oe-chapter-six-test">
+      <h3>6.7 Chapter 6</h3>
+      <section className="oe-chapter-four-test-card">
+        <p><strong>Congratulations!</strong> You have completed the reading for chapter 6. You&apos;ll need to get 9 answers correct (out of 12) in order to proceed. <strong>Good luck!</strong></p>
+        <button className="oe-chapter-four-test-start" type="button" onClick={onStart} aria-label="Start here and return to Chapter 6">
+          <img src="/start.png" alt="Start Here" />
+        </button>
+        <img className="oe-chapter-four-quiz-image" src="/quize.png" alt="Chapter 6 quiz illustration" />
+      </section>
+    </article>
+  )
+}
