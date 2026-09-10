@@ -518,7 +518,7 @@ export function CarSafetyEquipmentLesson({ onPrevious, onNext }) {
 
         <h5>Hand Gestures</h5>
         <div className="oe-hand-gestures">
-          <img src="/care5.png" alt="Driver using a hand gesture" />
+          <img src="/care4.png" alt="Driver using a hand gesture" />
           <div className="oe-hand-gesture-copy">
             <p>To indicate a right turn the driver should lower the driver&apos;s window and put their left arm out in an &quot;L&quot; shape. The arm should be straight out from the shoulder and bent up towards the sky from the elbow to the hand. This will inform the other drivers of the right turn.</p>
             <p>To indicate a left turn, the driver should completely extend the arm straight out. This will inform the other drivers on the road of your intentions.</p>
