@@ -285,6 +285,251 @@ export function ProperLaneUseLesson({ onPrevious, onNext }) {
   )
 }
 
+export function SafeDrivingIntersectionsLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-intersections-lesson">
+      <LessonHeader title="6.4 Safe Driving Practices: Intersections" onPrevious={onPrevious} onNext={onNext} />
+
+      <section className="oe-driving-section">
+        <div className="oe-intersection-intro">
+          <img src="/safe1.png" alt="Road intersection illustration" />
+          <div>
+            <p>An intersection is any place where one lane of roadway meets another roadway.</p>
+            <p>Intersections include cross streets, side streets, alleys, freeway entrances and any other location where vehicles traveling on different highways or roads join each other. When approaching an intersection, it is important to determine as far ahead as possible whether the intersection you are approaching is controlled or not, so that you can anticipate the behavior of cross traffic, pedestrians and cars stopping ahead. Choose the correct lane for turning and reduce speed as appropriate.</p>
+            <p>Driving through an intersection is one of the most complex traffic situations motorists encounter. Intersection collisions account for more than 45 percent of all reported crashes.</p>
+          </div>
+        </div>
+        <ul className="oe-driving-list oe-intersection-rules">
+          <li>At intersections without &quot;STOP&quot; or &quot;YIELD&quot; signs, slow down and be ready to stop. Yield to traffic and pedestrians already in the intersection or just entering the intersection. Yield to the vehicle or bicycle that arrives first or to the vehicle or bicycle on your right if it reaches the intersection at the same time as you.</li>
+          <li>At &quot;T&quot; intersections without &quot;STOP&quot; or &quot;YIELD&quot; signs, yield to traffic and pedestrians on the through road. They have the right-of-way.</li>
+          <li>When you turn left, give the right-of-way to all vehicles approaching that are close enough to be dangerous. Also, look for motorcyclists, bicyclists and pedestrians.<br />Safety suggestion: While waiting to turn left, keep your wheels pointed straight ahead until it is safe to start your turn. If your wheels are pointed to the left and a vehicle hits you from behind, you could be pushed into oncoming traffic.</li>
+          <li>When you turn right, be sure to check for pedestrians crossing the street and bicyclists coming up behind you on the right.</li>
+          <li>On divided highways or highways with several lanes, watch for vehicles approaching in any lane you cross. Turn either left or right only when it is safe.</li>
+          <li>When there are &quot;STOP&quot; signs at all corners, stop first then follow the rules listed above.</li>
+          <li>If you have parked off the road or are leaving a parking lot, etc., yield to traffic before reentering the road.</li>
+          <li>Safe driving practices:</li>
+          <li>You should not rely on an oncoming vehicle&apos;s turn signal to guarantee that the vehicle will turn. Many people neglect to cancel a turn signal or begin signaling too far ahead of a turn. Make sure that the oncoming vehicle is slowing and preparing to turn before you proceed.</li>
+          <li>The law requires you to signal even when you don&apos;t see any cars around. You should always signal before turning or changing lanes. Make sure that your turn signal is turned off after you have completed your turn or lane change. It is also recommended that you use both arm signals and turn signal lights if it is difficult to see turn signal lights due to glare.</li>
+        </ul>
+      </section>
+
+      <ControlledIntersections />
+      <RoundaboutsAndTurns />
+      <SignalingAndTurnArrows />
+      <LeftAndRightTurns />
+      <UTurns />
+
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
+function LessonVideo({ videoId, title }) {
+  return (
+    <div className="oe-video-wrap oe-driving-video">
+      <iframe src={`https://www.youtube.com/embed/${videoId}`} title={title} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
+    </div>
+  )
+}
+
+function ControlledIntersections() {
+  return (
+    <section className="oe-driving-section">
+      <h4>Controlled Intersections</h4>
+      <div className="oe-controlled-images">
+        <img src="/safe2.png" alt="Three-color traffic signal" />
+        <img src="/safe3.png" alt="Traffic officer directing vehicles" />
+      </div>
+      <p>A controlled intersection is where you have traffic control devices, traffic signals, signs, or someone directing traffic.</p>
+      <LessonVideo videoId="oANRoSrG_eY" title="Signal Intersections - Rules of the Road" />
+
+      <h5 className="oe-signal-group-title">Yellow Light</h5>
+      <div className="oe-signal-row">
+        <img src="/safe4.png" alt="Solid yellow traffic light" />
+        <p><strong>Solid Yellow</strong><br />A yellow signal light means &quot;CAUTION.&quot; The red signal light is about to appear. When you see the yellow light, stop if you can do so safely. If you cannot stop safely, look into the intersection for vehicles, pedestrians or bicyclists that may enter the intersection and cross the intersection cautiously.</p>
+      </div>
+      <div className="oe-signal-row compact">
+        <img src="/safe5.png" alt="Yellow left arrow" />
+        <p><strong>Yellow Arrow</strong> A yellow arrow means the &quot;protected&quot; turning time period is ending. Be prepared to obey the next signal, which could be the green or red light or the red arrow.</p>
+      </div>
+      <p><strong>Flashing Yellow</strong><br />A flashing yellow signal light warns you to &quot;PROCEED WITH CAUTION.&quot; You do not need to stop for a flashing yellow light, but you must slow down and be especially alert before entering the intersection.</p>
+      <p><strong>Flashing Yellow Arrow</strong><br />This signal means turns are permitted (unprotected), but you must first yield to oncoming traffic and pedestrians and then proceed with caution.</p>
+
+      <h5 className="oe-signal-group-title">Red Light</h5>
+      <div className="oe-signal-row">
+        <img src="/safe6.png" alt="Solid red traffic light" />
+        <p><strong>Solid Red</strong><br />A red signal light means &quot;STOP.&quot; You can make a right turn against a red light after you stop then yield to pedestrians, bicyclists and vehicles close enough to be a hazard. Make the right turn only when it is safe. Do not turn if a &quot;NO TURN ON RED&quot; sign is posted.</p>
+      </div>
+      <div className="oe-signal-row compact">
+        <img src="/safe7.png" alt="Red right arrow" />
+        <p>A red arrow means &quot;STOP.&quot; Remain stopped until the green signal or green arrow appears. Do not turn against a red arrow.</p>
+      </div>
+      <p><strong>Flashing Red</strong> A flashing red signal light means &quot;STOP.&quot; After stopping, you may proceed when it is safe. Observe the right-of-way rules.</p>
+
+      <h5 className="oe-signal-group-title">Green Light</h5>
+      <h5>Solid Green</h5>
+      <div className="oe-signal-row wide">
+        <img src="/safe8.png" alt="Solid green traffic light" />
+        <p>Give the right-of-way to any vehicle, bicyclist or pedestrian in the intersection. A green light means &quot;GO.&quot; If you are turning left, make the turn only if you have enough space to complete the turn before creating a hazard for any oncoming vehicle, bicyclist or pedestrian. Do not enter the intersection if you cannot get completely across before the light turns red. If you block the intersection, you can be cited.</p>
+      </div>
+      <h5>Green Arrow</h5>
+      <div className="oe-signal-row compact">
+        <img src="/safe9.png" alt="Green left arrow" />
+        <p>A green arrow means &quot;GO.&quot; You must turn in the direction the arrow is pointing after you yield to any vehicle, bicyclist, or pedestrian still in the intersection. The green arrow allows you to make a &quot;protected&quot; turn. Oncoming vehicles, bicyclists and pedestrians are stopped by a red light as long as the green arrow is lighted.</p>
+      </div>
+
+      <h5>Traffic Signal Blackout</h5>
+      <p>The traffic signal blackout means that the light is not working. Proceed cautiously as if the intersection is controlled by &quot;STOP&quot; signs in all directions.</p>
+      <div className="oe-signal-row oe-stop-row">
+        <img src="/stop.png" alt="Stop sign" />
+        <p>At intersections with 4-way stop signs, stop first then yield to the vehicle that arrived first or to the vehicle on your right if you arrive at the same time as other vehicles.</p>
+      </div>
+      <LessonVideo videoId="QHFpGAmgct4" title="Intersections - Rules of the Road" />
+    </section>
+  )
+}
+
+function RoundaboutsAndTurns() {
+  return (
+    <section className="oe-driving-section">
+      <h4>Roundabouts</h4>
+      <p>A roundabout is an intersection where traffic travels around a central island in a counter-clockwise direction. Vehicles entering or exiting the roundabout must yield to all traffic including pedestrians.</p>
+      <p>When you approach a roundabout:</p>
+      <ul className="oe-driving-list compact">
+        <li>Slow down as you approach the roundabout.</li>
+        <li>Yield to pedestrians and bicyclists crossing the roadway.</li>
+        <li>Watch for signs and/or pavement markings that guide you or prohibit certain movements.</li>
+        <li>Enter the roundabout when there is a big enough gap in traffic.</li>
+        <li>Drive in a counter-clockwise direction. Do not stop or pass other vehicles.</li>
+        <li>Use your turn signals when you change lanes or exit the roundabout.</li>
+        <li>If you miss your exit, continue around until you return to your exit.</li>
+      </ul>
+      <p>For roundabouts with multiple lanes, choose your entry or exit lane based on your destination as shown in the graphic. For example, to:</p>
+      <img className="oe-intersection-diagram" src="/safe10.png" alt="Multi-lane roundabout routes" />
+      <ul className="oe-driving-list compact">
+        <li>Turn right at the intersection (blue car), choose the right-hand lane and exit in the right-hand lane.</li>
+        <li>Go straight through the intersection (red car), choose either lane, and exit in the lane you entered.</li>
+        <li>Turn left (yellow car), choose the left lane, and exit.</li>
+      </ul>
+
+      <h4>Uncontrolled Intersections</h4>
+      <p>At intersections with no stop or yield signs you should slow down and be ready to stop. You must yield to vehicles already in the intersection or just entering it. If you and another driver arrive at the intersection at the same time, the driver on the left must yield the right-of-way.</p>
+
+      <h4>Making Turns</h4>
+      <img className="oe-intersection-diagram medium" src="/safe11.png" alt="Vehicles making left and right turns at an intersection" />
+      <p>When making a left turn from a two-way street onto a two-way street, you should start from the left most lane, but may end in any lane traveling in the direction you are turning (unless otherwise controlled).</p>
+      <p>When making a right or left hand turn:</p>
+      <ul className="oe-driving-list compact">
+        <li>You must scan the intersection and the roadways entering it for pedestrians, bicycles and other vehicles</li>
+        <li>Be aware of controlled lanes and directional signals and plan your vehicle&apos;s position before and after the turn so as to avoid a collision or blocking traffic</li>
+        <li>If your view is blocked, you must yield and move very slowly until you have good visibility</li>
+        <li>If there is a bicycle lane that you must use to make a right turn, do not enter it more than 200 feet before the turn, and do not cut off a bicyclist who has the right-of-way in the bike lane.</li>
+      </ul>
+      <LessonVideo videoId="3i_3tYk2hn0" title="Signaling and Merging - Rules of the Road" />
+    </section>
+  )
+}
+
+function SignalingAndTurnArrows() {
+  return (
+    <section className="oe-driving-section">
+      <h5>Signaling</h5>
+      <ul className="oe-driving-list compact">
+        <li>You should use your electronic and hand signals.</li>
+        <li>Considerations:
+          <ul>
+            <li>Signal during the last 100 feet before turning.</li>
+            <li>On a freeway, signal for at least 5 seconds before turning or exiting.</li>
+            <li>Signal even when you don&apos;t see other vehicles around.</li>
+            <li>Be sure your turn signal is turned off after you have completed your turn or lane change so that you will not mislead other drivers.</li>
+            <li>Do not assume that because you have signaled a turn that there will be space for you to complete a turn.</li>
+            <li>Check your blind spots in addition to signaling an intention to make a turn.</li>
+          </ul>
+        </li>
+      </ul>
+      <h4>Turns and Arrows</h4>
+      <ul className="oe-driving-list">
+        <li>A green arrow means that you have right-of-way to turn in the direction the arrow is pointing after yielding to traffic, bicycles, and pedestrians already in the intersection. The turning vehicle is protected from oncoming traffic.</li>
+        <li>A yellow arrow means the protected turning time is about to end and to be prepared to obey the next signal which could be a green or red light or the red arrow.</li>
+        <li>A red arrow means stop until the green arrow or green signal appears and that you may not turn either right or left on a red arrow even if you stop first.</li>
+      </ul>
+    </section>
+  )
+}
+
+function LeftAndRightTurns() {
+  return (
+    <section className="oe-driving-section">
+      <h4>Left Turns</h4>
+      <div className="oe-left-turn-intro">
+        <img src="/safe12.png" alt="Green left turn arrow" />
+        <p>Making left turns through an intersection can be dangerous. It is difficult to see and judge the speed of oncoming traffic. Make sure you leave enough time/space to clear the oncoming vehicles when making a left turn. At a green light you may make a left turn only if there is no hazard from oncoming traffic and it is not prohibited.</p>
+      </div>
+      <ul className="oe-driving-list">
+        <li>When making a left turn at an uncontrolled intersection or a circular green light with no arrow, you must yield to oncoming traffic. It is a good practice to pull into the intersection in preparation for the turn. Once in the intersection you must complete your turn even if the light has turned yellow or red.</li>
+        <li>When you are making a left turn, oncoming vehicles often have the right-of-way. Safely turning left includes not turning too soon and &quot;cutting the corner&quot; of the lane belonging to vehicles coming toward you. For example: Signal and stop for a red traffic light at the limit line or corner. You may turn left into a street if there is no sign to prohibit the turn. Yield to pedestrians, bicyclists or other vehicles moving on their green light.</li>
+      </ul>
+      <img className="oe-intersection-diagram wide" src="/safe13.png" alt="Correct left turn without cutting the corner" />
+
+      <TurnDiagram title="LEFT TURN FROM ONE-WAY ROAD INTO ONE-WAY ROAD:" image="/safe14.png">
+        Prepare to turn by getting into the left lane or the left side of a single lane, as close as possible to the left curb or edge of the road. If the road you enter has two lanes, you must turn into its left lane.
+      </TurnDiagram>
+      <TurnDiagram title="LEFT TURN FROM TWO-WAY ROAD INTO TWO-WAY ROAD:" image="/safe15.png">
+        Approach the turn with your left wheels as close as possible to the centerline. Try to use the left side of the intersection to help ensure that you do not interfere with opposing traffic turning left. Stay to the right of the centerline of the road you enter but as close as possible to the centerline.
+      </TurnDiagram>
+      <ul className="oe-driving-list"><li>Be alert for traffic especially motorcycles approaching from the left and from the oncoming lane you are about to cross. Oncoming motorcycles are difficult to see and it is difficult to judge their speed and distance away. Drivers often fail to see an oncoming motorcycle and collide with it while making a turn across a traffic lane.</li></ul>
+      <TurnDiagram title="LEFT TURN FROM TWO-WAY ROAD INTO FOUR-LANE HIGHWAY:" image="/safe16.png">
+        Approach the turn with your left wheels as close as possible to the centerline. Enter the left lane, to the right of the centerline. When traffic permits, you may move out of the left lane.
+      </TurnDiagram>
+      <TurnDiagram title="LEFT TURN FROM TWO-WAY ROAD INTO ONE-WAY ROAD:" image="/safe17.png">
+        Approach the turn with your left wheels as close as possible to the centerline. Make the turn before reaching the center of the intersection, and turn into the left lane of the road you enter.
+      </TurnDiagram>
+
+      <h4>Right Turns</h4>
+      <div className="oe-right-turn-intro">
+        <img src="/safe18.png" alt="Right turn warning sign" />
+        <p>A right turn may be made on a red light after you have yielded to all traffic and pedestrians and if a NO TURN ON RED sign is not posted. You must make a complete stop before making your right turn. Safely turning right includes not turning wide. You should stay in the right lane until after you have finished your turn.</p>
+      </div>
+      <img className="oe-intersection-diagram wide" src="/safe19.png" alt="Correct right turn path" />
+      <p>To safely make a right turn, drive close to the right edge of the road. If there is a bike lane, drive into the bike lane no more than 200 feet before the turn. Watch for bicyclists or motorcyclists who may get between your vehicle and the curb. Begin signaling about 100 feet before the turn. Look over your right shoulder and reduce your speed. Stop behind the limit line, look both ways and turn when it is safe. Do not turn wide. Complete your turn in the right lane.</p>
+      <img className="oe-turn-lane-sign" src="/safe20.png" alt="Begin right turn lane yield to bikes sign" />
+      <p>Certain lanes are for right turns only. Make sure the lane that you are in is for a right turn, if there is a designated lane for turning right. Otherwise, you want to check the bike lane for bicyclists. When it is clear, move into the bike lane close to the curb to make your right turn.</p>
+    </section>
+  )
+}
+
+function TurnDiagram({ title, image, children }) {
+  return (
+    <div className="oe-turn-diagram-block">
+      <h5>{title}</h5>
+      <img src={image} alt={title.toLowerCase()} />
+      <p>{children}</p>
+    </div>
+  )
+}
+
+function UTurns() {
+  return (
+    <section className="oe-driving-section">
+      <h5>U Turns</h5>
+      <ul className="oe-driving-list compact">
+        <li>Unless otherwise prohibited by a sign, a U-turn is legal at an intersection whenever a traffic stop sign protects you from oncoming traffic.</li>
+        <li>A U-turn is legal at an intersection with a signal light, which is either green or a green arrow unless otherwise prohibited.</li>
+        <li>When attempting a U-turn at an intersection:</li>
+        <li>You must be sure it is not prohibited</li>
+        <li>Scan for pedestrians and bicycles as well as other vehicles that may be entering the intersection</li>
+        <li>You must start the turn from the leftmost lane available to you but may finish it in any lane.</li>
+      </ul>
+      <img className="oe-intersection-diagram wide" src="/safe21.png" alt="U-turn paths at a divided intersection" />
+      <h5>Check for Prohibitive Signs</h5>
+      <div className="oe-no-u-turn-row">
+        <img src="/safe22.png" alt="No U-turn signs" />
+        <p>Look for signs telling you that you cannot make a U-turn. If you do not see a sign, U-turn is usually is allowed. Obey all traffic signs and signals.</p>
+      </div>
+    </section>
+  )
+}
+
 export function BackingParkingLesson({ onPrevious, onNext }) {
   return (
     <article className="oe-full-lesson oe-backing-lesson">
