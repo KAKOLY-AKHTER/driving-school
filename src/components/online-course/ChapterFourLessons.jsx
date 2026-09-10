@@ -740,3 +740,89 @@ export function HighwayRoadMarkingsLesson({ onPrevious, onNext }) {
     </article>
   )
 }
+
+const curbMarkingGroups = [
+  {
+    name: 'White Curb',
+    className: 'white',
+    points: ['Allows very short stops, only to take or drop off passengers or to put mail in the mailbox.'],
+  },
+  {
+    name: 'Yellow Curb',
+    className: 'yellow',
+    points: [
+      'Loading zone',
+      'A driver may stop, but only long enough to load or unload freight or passengers.',
+      'Stop for no longer than the local ordinances allow.',
+      'Drivers of non-commercial vehicles are usually required to remain in their vehicle in this zone.',
+    ],
+  },
+  {
+    name: 'Red curbs',
+    className: 'red',
+    points: ['No stopping, standing or parking. However, buses may stop at a red zone marked for buses, as red curbs usually indicate a bus stop.'],
+  },
+  {
+    name: 'Blue Curb',
+    className: 'blue',
+    points: ['This indicates parking for the disabled only. In order to park in a blue zone the driver must display a placard or the license plate must be specially marked.'],
+  },
+  {
+    name: 'Green Curb',
+    className: 'green',
+    points: ['This indicates parking is for a limited amount of time. The time is usually posted on a sign next to or near the green zone or is painted on the curb.'],
+  },
+]
+
+export function CurbMarkingsLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-curb-markings-lesson">
+      <LessonHeader title="4.5 Curb Markings" onPrevious={onPrevious} onNext={onNext} />
+
+      <section className="oe-curb-intro">
+        <img src="/curb.png" alt="Street showing white, yellow, red, blue, and green curb markings" />
+        <p>Curb Markings are designed to regulate parking areas and spaces. They indicate that the parking is controlled, permitted, restricted, or not permitted.</p>
+      </section>
+
+      <section className="oe-curb-color-list" aria-label="Curb marking colors">
+        {curbMarkingGroups.map(group => (
+          <article className={`oe-curb-color-card ${group.className}`} key={group.name}>
+            <div className="oe-curb-color-swatch" aria-hidden="true" />
+            <div>
+              <h4>{group.name}</h4>
+              <ul>{group.points.map(point => <li key={point}>{point}</li>)}</ul>
+            </div>
+          </article>
+        ))}
+      </section>
+
+      <div className="oe-video-wrap oe-curb-video">
+        <iframe
+          src="https://www.youtube.com/embed/9HwjrJ7J-oU"
+          title="Parking and curb markings"
+          loading="lazy"
+          referrerPolicy="strict-origin-when-cross-origin"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        />
+      </div>
+
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
+export function ChapterFourTestLesson({ onStart }) {
+  return (
+    <article className="oe-full-lesson oe-test-lesson oe-chapter-four-test">
+      <h3>4.6 Chapter 4</h3>
+      <section className="oe-chapter-four-test-card">
+        <p><strong>Congratulations!</strong> You have completed the reading for chapter 4. You&apos;ll need to get 9 answers correct (out of 12) in order to proceed. <strong>Good luck!</strong></p>
+        <button className="oe-chapter-four-test-start" type="button" onClick={onStart} aria-label="Start here and return to Chapter 4">
+          <img src="/start.png" alt="Start Here" />
+        </button>
+        <img className="oe-chapter-four-quiz-image" src="/quize.png" alt="Chapter 4 quiz illustration" />
+      </section>
+    </article>
+  )
+}
