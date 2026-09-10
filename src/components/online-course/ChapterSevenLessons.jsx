@@ -215,6 +215,56 @@ export function AccidentFactorsLesson({ onPrevious, onNext }) {
   )
 }
 
+export function MechanicalFailureLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-mechanical-failure-lesson">
+      <LessonHeader title="7.4 Mechanical Failure: Causes and Prevention" onPrevious={onPrevious} onNext={onNext} />
+      <section className="oe-mechanical-intro">
+        <img src="/failure.png" alt="Vehicle with an overheated engine" />
+        <div><p>A significant number of collisions are caused by vehicle equipment failure such as:</p><ul><li>Bald or defective tires</li><li>Bad brakes</li><li>Inoperative lights</li><li>Degraded steering and suspension components.</li></ul></div>
+      </section>
+      <p>You should keep your vehicle in good working condition and perform routine maintenance to help avoid crashes caused by mechanical failure.</p>
+      <p>You should know how to react to avoid crashes when it happens to you. The first thing to remember is to stay calm. You will be able to think more clearly and respond appropriately if you do not panic.</p>
+
+      <section className="oe-mechanical-tip-row">
+        <img src="/tipe.png" alt="Tip" />
+        <div><h4>If your gas pedal is stuck down, you should:</h4><ul><li>Shift to neutral</li><li>Apply the brakes</li><li>Keep your eyes on the road to look for a way out</li><li>Warn other drivers by blinking and flashing your emergency lights</li><li>Try to drive the car safely off the road</li><li>Turn off your ignition when you no longer need to change direction and are stopped.</li><li>Turn on your emergency flashers.</li></ul></div>
+      </section>
+      <aside className="oe-mechanical-note"><strong>Note:</strong> Turning the ignition switch completely off while moving is never the correct response to an emergency situation. It may lock the steering wheel and you will be unable to steer the vehicle. Never turn your ignition off while your vehicle is still moving, no matter what sort of emergency situation you are experiencing.</aside>
+
+      <section className="oe-mechanical-section">
+        <h4>If you have a tire blowout or lose a wheel while driving, you should:</h4>
+        <p>Hold the steering wheel tightly and steer straight ahead. Slow down gradually by taking your foot off the gas pedal slowly but without applying the brakes. Slow to a stop off the road and apply the brakes only when the car is almost stopped. Turn on your emergency flashers.</p>
+      </section>
+      <section className="oe-mechanical-section">
+        <h4>If your brakes suddenly give out while driving, you should:</h4>
+        <ul><li>Downshift to lower gear or lower range (automatic transmissions) to help slow your vehicle.</li><li>Pump the brake pedal fast and hard to build up brake fluid pressure. You will know in three to four pumps if the brakes will work. Do not pump the brakes on vehicles with antilock brakes.</li><li>Use your parking or emergency brake to gently slow your vehicle but release it before the vehicle starts to skid.</li><li>Steer and swerve to avoid a collision or steer into something soft like bushes.</li><li>Sound your horn and flash your lights to alert other drivers.</li><li>When you are stopped, turn off the ignition and turn on your emergency flashers.</li></ul>
+      </section>
+      <section className="oe-mechanical-section"><h4>If your brakes get wet and do not work <span>(such as after you travel through a big puddle):</span></h4><p>Dry them by lightly pressing the gas pedal and brake pedal at the same time so that the vehicle drives against the pressure of the brakes. Do this only until the brakes begin working.</p></section>
+      <section className="oe-mechanical-section">
+        <h4>If your vehicle&apos;s engine is running hot, you should:</h4>
+        <ul><li>Turn off the air conditioner.</li><li>If you are in stop and go traffic change your route so that you can get air moving over the radiator.</li><li>Pull to the side of the road if you see steam.</li><li>Shut off the engine, turn on your emergency flashers, open the hood and wait 20 minutes before inspecting the radiator.</li><li>After 20 minutes, refill the radiator by pouring water or coolant into the overflow tank.</li><li>With the hood still up, inspect for leaks and call a tow truck if you cannot fix them.</li></ul>
+      </section>
+      <aside className="oe-mechanical-note"><strong>Note:</strong> Driving up on hills or mountains while using your air conditioning puts extra strain on your engine and may cause your vehicle to overheat. Use your air conditioning sparingly when driving up steep roads.</aside>
+      <section className="oe-mechanical-section">
+        <h4>If both of your headlights go out while driving at night, you should:</h4>
+        <ul><li>First wiggle the dimmer switch, which will often put the lights back on.</li><li>If the lights do not come on, put on your parking lights, turn indicators or emergency flashers to warn other drivers.</li><li>Pull off the road as quickly as possible and leave the emergency flashers on.</li></ul>
+      </section>
+      <aside className="oe-mechanical-note"><strong>Note:</strong><ul><li>You might try checking your battery terminals or fuses to see if they are loose or blown.</li><li>Do not try driving at night with only your parking lights working or with no lights working. This is extremely dangerous even for only a short period. Also, do not attempt to use your high-beam headlights and keep driving. You will not be able to dim them for other vehicles on the roadway.</li></ul></aside>
+      <section className="oe-mechanical-section">
+        <h4>If your engine stalls while you are driving, you should:</h4>
+        <ul><li>Turn on your emergency flashers immediately.</li><li>Move your vehicle to the side of the road as quickly and safely as possible. Also, realize that the steering wheel may take more force to turn because the power steering won&apos;t work.</li><li>Stop your vehicle. You may need more force on the brakes because power brakes will not work.</li><li>Turn on your emergency flashers.</li><li>Try to restart the engine. If the engine won&apos;t start, call for help. Do not try to restart your engine while you are still moving.</li></ul>
+      </section>
+      <section className="oe-mechanical-section">
+        <h4>If your hood suddenly flies up while you are driving, you should:</h4>
+        <ul><li>Slow down.</li><li>Try to look under the hood to see where you are going. If you cannot then put your head out the window to look around the hood and use the lane line markings as a guide.</li><li>Pull off the road as soon as is safely possible and put on your emergency flashers.</li></ul>
+      </section>
+      <div className="oe-more-emergency"><img src="/more.png" alt="Tell me more" /><strong>Other Emergency Situations that Cause Collisions</strong></div>
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
 export function AccidentOverviewLesson({ onPrevious, onNext }) {
   return (
     <article className="oe-full-lesson oe-accident-overview-lesson">
