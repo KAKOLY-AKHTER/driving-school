@@ -224,3 +224,164 @@ export function TrafficSignsShapesColorsLesson({ onPrevious, onNext }) {
     </article>
   )
 }
+
+const trafficSignalCards = [
+  {
+    image: '/light2.png',
+    alt: 'Solid red traffic signal',
+    title: 'Solid Red Light',
+    tone: 'red',
+    summary: 'Stop completely at the limit line, before the crosswalk, or before entering the intersection.',
+    points: [
+      'Remain stopped until the signal permits you to proceed.',
+      'After a full stop, you may turn right when safe unless a NO TURN ON RED sign prohibits it. Yield to pedestrians, bicyclists, and traffic with the right-of-way.',
+      'A red arrow means STOP. Do not turn in the arrow’s direction until a green signal or green arrow appears.',
+    ],
+  },
+  {
+    image: '/light3.png',
+    alt: 'Solid yellow traffic signal',
+    title: 'Solid Yellow Light',
+    tone: 'yellow',
+    summary: 'The signal is about to turn red. Stop if you can do so safely.',
+    points: [
+      'Do not speed up to beat the red light.',
+      'If you cannot stop safely, continue cautiously through the intersection.',
+      'Watch for pedestrians, bicyclists, and vehicles that may begin moving as the signal changes.',
+    ],
+  },
+  {
+    image: '/light4.png',
+    alt: 'Yellow left-turn arrow signal',
+    title: 'Yellow Arrow',
+    tone: 'yellow',
+    summary: 'The protected turning period is ending and the signal will change soon.',
+    points: [
+      'Stop if you can do so safely.',
+      'If you are already in the intersection or cannot stop safely, complete the turn cautiously.',
+      'Be prepared to obey the next green light, red light, or red arrow.',
+    ],
+  },
+  {
+    image: '/light5.png',
+    alt: 'Solid green traffic signal over an intersection',
+    title: 'Solid Green Light',
+    tone: 'green',
+    summary: 'Proceed only when the intersection is clear and it is safe to do so.',
+    points: [
+      'Yield to any vehicle, bicyclist, or pedestrian already in the intersection.',
+      'When turning, yield to pedestrians and oncoming traffic as required.',
+      'Do not enter if traffic prevents you from clearing the intersection before the signal changes.',
+    ],
+  },
+  {
+    image: '/light6.png',
+    alt: 'Green directional arrow traffic signal',
+    title: 'Green Arrow',
+    tone: 'green',
+    summary: 'Go in the direction of the arrow; opposing traffic is stopped for the protected movement.',
+    points: [
+      'Check that the intersection and crosswalk are clear before moving.',
+      'Yield to any vehicle, bicyclist, or pedestrian still in the intersection.',
+      'Stay in the lane controlled by the arrow and follow pavement markings.',
+    ],
+  },
+]
+
+export function TrafficControlSignsLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-traffic-control-lesson">
+      <LessonHeader title="4.2 Traffic Control Signs" onPrevious={onPrevious} onNext={onNext} />
+
+      <section className="oe-traffic-control-intro">
+        <img src="/traffic-light1.png" alt="Standard red, yellow, and green traffic signal" />
+        <div>
+          <h4>Traffic Signals Regulate Movement</h4>
+          <p>Traffic signals are installed at intersections, crossings, freeway entrances, and other locations to regulate the movement of motorists, bicyclists, and pedestrians.</p>
+          <p>Most standard signals display red at the top, yellow in the middle, and green at the bottom. Always obey the illuminated color or arrow and check that the path is clear before entering.</p>
+        </div>
+      </section>
+
+      <section className="oe-copy-section oe-morgan-section">
+        <h4>An Important Traffic-Signal Innovator</h4>
+        <div className="oe-morgan-media">
+          <img src="/morgan.png" alt="Portrait of inventor Garrett Augustus Morgan" />
+          <div>
+            <h5>Garrett Augustus Morgan</h5>
+            <p>Garrett Morgan was an American inventor, entrepreneur, and public-safety advocate. In 1923, he received a U.S. patent for an improved traffic signal with STOP and GO positions plus an intermediate all-stop position that could clear an intersection before traffic changed direction.</p>
+            <p>His design was one important step in the development of modern traffic-control systems. Morgan also patented a safety hood and used it during the 1916 Cleveland tunnel disaster rescue.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="oe-signal-learning-section" aria-labelledby="traffic-light-signals">
+        <div className="oe-signal-title-row">
+          <span aria-hidden="true">01</span>
+          <div><p>Understand every indication</p><h4 id="traffic-light-signals">Traffic Light Signals</h4></div>
+        </div>
+        <div className="oe-signal-card-list">
+          {trafficSignalCards.map(signal => (
+            <article className={`oe-signal-card ${signal.tone}`} key={signal.title}>
+              <div className="oe-signal-image-wrap"><img src={signal.image} alt={signal.alt} /></div>
+              <div>
+                <h5>{signal.title}</h5>
+                <p className="oe-signal-summary">{signal.summary}</p>
+                <ul>{signal.points.map(point => <li key={point}>{point}</li>)}</ul>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="oe-copy-section oe-uturn-control-section">
+        <h4>U-Turn Controls</h4>
+        <div className="oe-uturn-media">
+          <img src="/u-turn.png" alt="U TURN OK lane-control sign" />
+          <div>
+            <p>A U TURN OK sign identifies a location or lane where a U-turn may be made when it is otherwise legal and safe. Signal, use the designated lane, and yield as required.</p>
+            <p>When an arrow-shaped signal controls a U-turn lane, obey the red, yellow, and green indications in the same way as other directional arrows.</p>
+          </div>
+          <img src="/u-turn1.png" alt="U-turn warning sign" />
+        </div>
+      </section>
+
+      <section className="oe-copy-section oe-special-signal-section">
+        <h4>Flashing and Inoperative Signals</h4>
+        <div className="oe-special-signal-grid">
+          <article><strong>Flashing red</strong><p>Stop completely. Proceed only when it is safe and right-of-way rules allow.</p></article>
+          <article><strong>Flashing yellow</strong><p>Slow down, stay alert, and proceed with caution. A full stop is not required unless traffic conditions demand it.</p></article>
+          <article><strong>Flashing yellow arrow</strong><p>The turn is permitted but not protected. Yield to oncoming traffic, bicyclists, and pedestrians before turning.</p></article>
+          <article><strong>Signal not working</strong><p>Stop as if the intersection has STOP signs in all directions, then proceed cautiously when safe.</p></article>
+        </div>
+      </section>
+
+      <section className="oe-copy-section oe-enforcement-section">
+        <h4>Automated Enforcement and Ramp Signals</h4>
+        <div className="oe-enforcement-media">
+          <img src="/collect-img.png" alt="Examples of photo-enforced traffic-control signs" />
+          <div>
+            <p>Some intersections or other controlled locations use automated enforcement. Signs may identify camera enforcement, but every driver must obey the signal whether or not a camera is present.</p>
+            <p>Ramp-meter signals regulate how vehicles enter a freeway. Stop on red and proceed on green according to the posted sign, including any instruction about the number of vehicles allowed per green.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="oe-copy-section oe-designated-lanes-section">
+        <h4>Designated Lanes</h4>
+        <div className="oe-designated-lanes-media">
+          <img src="/lanes.png" alt="Lane arrows for left, straight, and right movements" />
+          <div>
+            <p>Lane-control signs and pavement arrows assign traffic movements through an intersection. Position your vehicle early and follow the arrow for your lane.</p>
+            <ul>
+              <li>Do not make a turn from a lane marked for straight-through traffic only.</li>
+              <li>Do not change lanes abruptly inside the intersection.</li>
+              <li>Yield to pedestrians and bicyclists before completing a permitted turn.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
