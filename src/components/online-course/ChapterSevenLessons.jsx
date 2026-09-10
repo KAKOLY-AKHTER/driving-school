@@ -265,6 +265,68 @@ export function MechanicalFailureLesson({ onPrevious, onNext }) {
   )
 }
 
+function RoadwayHillsParking() {
+  return <>
+    <section className="oe-roadway-section"><h4>Hill and Curves</h4><img className="oe-roadway-image oe-roadway-image-sign" src="/road2.png" alt="Hills and curves warning sign" /><p>Hills and curves create hazardous situations by blocking your view ahead and the view of other drivers, and by causing vehicles to move slower or faster than is safe.</p><p>When approaching a curve or hill that blocks your view, slow down so you can stop if necessary.</p><img className="oe-roadway-image oe-roadway-image-medium" src="/road3.png" alt="Curving roadway" /><p>You must be able to see at least one-third of a mile ahead to pass safely. Whenever a hill or curve blocks your view, assume an oncoming car is just out of sight.</p><ul><li>Approach curves cautiously, especially when the road is slippery from rain, mud, snow, wet leaves or gravel.</li><li>Obey warning speed limits on curves and freeway ramps.</li><li>If no warning speed is posted, judge the curve and adjust speed before entering.</li><li>Braking on a curve may cause you to skid.</li></ul></section>
+    <section className="oe-roadway-section"><h4>Uphill Roadway</h4><div className="oe-roadway-media"><img src="/road4.png" alt="Steep uphill roadway" /><p>When driving uphill, gravity works against you and you may need to accelerate or change to a lower gear to maintain speed. Be aware of vehicles behind you. Change into the rightmost lane if you are driving slower than other traffic.</p></div><p>When you drive downhill the reverse is true.</p><ul><li>Gravity will cause you to go faster and increase your stopping distance.</li><li>You may need to shift to a lower gear or smoothly apply your brakes to slow to a safe speed and control your vehicle.</li></ul><p>Riding the brake pedal down long, steep hills can cause brake failure. Use the engine and a lower gear to help slow your vehicle and reduce brake use.</p></section>
+    <section className="oe-roadway-section"><h4>Parking Lots</h4><p>One of the most likely places to be involved in a property-damage-only collision is in a parking lot.</p><img className="oe-roadway-image oe-roadway-image-large" src="/road5.png" alt="Busy parking lot" /><p>Accidents are common in parking lots because:</p><ul><li>Drivers are not paying attention to safe driving.</li><li>Drivers back out of parking spots.</li><li>Drivers do not think they need to follow the rules of the road in parking lots.</li><li>Post office parking lots often have a high incidence of crashes because of their quick turnover.</li><li>Some drivers treat signs, speed limits and traffic lanes as optional, but unsafe driving in public parking lots can still be cited.</li></ul><img className="oe-roadway-image oe-roadway-image-sign" src="/road6.png" alt="Pedestrian crossing sign" /><ul><li>Pedestrians are at high risk because they must walk in traffic lanes. Pay extra attention, particularly to small children.</li><li>Scan for vehicles cutting diagonally and pedestrians darting between cars. Drive slower and obey signs and pavement markings.</li></ul></section>
+  </>
+}
+
+function RoadwayWeatherDetails() {
+  return <div className="oe-roadway-weather">
+    <h5>Fog</h5><p>The best advice for fog is to avoid driving in it. If you must drive, slow down and use low-beam headlights and fog lights.</p><ul><li>Use windshield wipers and the defroster.</li><li>If visibility is poor, lower your window and turn off the radio so you can hear unseen vehicles.</li><li>Watch for slow vehicles ahead and check mirrors for traffic approaching from behind.</li><li>If fog becomes too thick, pull completely off the road, get off at an exit if possible, and wait. Turn off your lights so drivers do not follow your taillights off the roadway.</li><li>If your vehicle stalls, move it off the road, move away from it, and use flashers or flares to warn others.</li></ul>
+    <h5>Dust Storms</h5><p>Dust storms can limit visibility like fog. Avoid driving in them when possible; otherwise use the same precautions prescribed for fog.</p>
+    <h5>Large Fire</h5><p>Smoke from a wildfire can obstruct your view and prevent others from seeing you. Use fog-driving precautions and avoid smoke areas whenever possible.</p>
+    <h5>Wet Weather</h5><p>A hard rain can limit visibility of the road, traffic signs and other vehicles. Avoid driving on wet, snow-covered or icy roads when possible.</p>
+    <h5>Rain</h5><ul><li>Use low-beam headlights and windshield wipers for maximum visibility.</li><li>Reduce speed below that used in dry conditions and before curves.</li><li>Stay on the paved roadway, follow tracks made by the car ahead, increase following distance and avoid sudden stops or turns.</li><li>Use low-beam headlights whenever it is raining, even during daytime.</li><li>Slow down at the first sign of rain, drizzle or snow because oil and dust make pavement especially slippery.</li><li>Choose a speed consistent with the amount of water to avoid hydroplaning. If hydroplaning occurs, ease off the accelerator without braking.</li></ul>
+    <h5>Water on the Roadway</h5><p>Drive slowly to keep water out of the engine. Do not cross currents deep enough to reach the bottom of your vehicle. Test your brakes after deep water and follow your vehicle&apos;s procedure for drying them.</p>
+    <h5>Snow or Ice</h5><ul><li>Do not use high beams in snow because reflected light can blind you.</li><li>Use appropriate tires and properly fitting chains.</li><li>Use low beams, wipers and defrosters; slow before turns, curves and shaded areas.</li><li>Increase stopping distance, avoid sudden maneuvers and watch for ice on bridges and overpasses.</li><li>Obey temporary chain-control speed limits.</li><li>Black ice can look like a wet patch and often forms in shaded areas, turns and hills.</li><li>To avoid skids, drive slowly, follow farther back, slow before curves, avoid quick stops and use a low gear on steep hills.</li><li>If you skid, ease off the gas without braking and steer in the direction you want to travel.</li><li>Cold weather reduces tire pressure, so check inflation frequently.</li></ul>
+    <h5>Strong Winds</h5><p>Strong winds can move vehicles, especially on bridges, mountain roads and open areas. Large vehicles and trailers are particularly vulnerable.</p><ul><li>Slow down.</li><li>Be ready for gusts that may push you into another lane.</li><li>Hold the steering wheel with both hands and remain alert.</li></ul>
+    <h5>Earthquake</h5><p>If an earthquake occurs while you are driving:</p><ul><li>Gradually reduce speed and pull to the side.</li><li>Do not stop on or under bridges and overpasses, or park near trees, power lines or buildings.</li><li>Stop and stay low until shaking ends; aftershocks may follow.</li><li>Listen to emergency broadcasts and do not continue until it is safe.</li><li>If on a freeway, exit at the first safe opportunity.</li><li>Cooperate with public-safety officials directing traffic.</li></ul>
+  </div>
+}
+
+function RoadwayUrbanNatural() {
+  return <>
+    <section className="oe-roadway-section"><h4>Urban Roadways</h4><p>Urban roadways are more dangerous than open roadways for a number of reasons:</p><img className="oe-roadway-image oe-roadway-image-large" src="/road7.png" alt="Urban arterial road with several intersections" /><ul><li>Urban roadways have the highest number of intersections, where accidents are most likely to happen.</li><li>Children and other pedestrians are more likely to cross or enter the roadway.</li><li>Vehicles merge, turn, stop and make other hazardous maneuvers.</li></ul><img className="oe-roadway-image oe-roadway-image-large" src="/road8.png" alt="Heavy urban freeway traffic" /><ul><li>Parked vehicles and other objects obstruct your view. They may suddenly pull out, obscure vehicles leaving alleys and driveways, or have occupants open doors into traffic.</li><li>Freeway traffic creates merging hazards. Leave an adequate space cushion and stay focused in heavy traffic.</li></ul></section>
+    <section className="oe-roadway-section"><h4>Natural Conditions</h4><p>Certain natural conditions make roadways more dangerous. These include:</p><img className="oe-roadway-image oe-roadway-image-tall" src="/road9.png" alt="Foggy and wet roadway conditions" /><ul><li>Fog</li><li>Dust</li><li>Smoke</li><li>Rain or other wet roadways</li><li>Snow, ice, or mud</li><li>Strong winds</li></ul><p>You need to know what to do when you encounter these conditions to avoid collisions.</p><img className="oe-roadway-image oe-roadway-image-medium" src="/road10.png" alt="Driving on a dark road at night" /><h5>Driving at night</h5><p>Driving at night is more dangerous because vision is limited. Turn on headlights 30 minutes after sunset and leave them on until 30 minutes before sunrise, and whenever you cannot see at least 1,000 feet ahead. Never drive using only parking lights. Use high beams when legal and safe, dimming them for nearby traffic.</p><h5>Bad weather</h5><p>In bad weather, the faster you drive, the less control you have. Choose a speed suitable for road and weather conditions, not merely the posted limit.</p><ul><li>Slow down, especially near turns, sharp curves and intersections.</li><li>Increase the space cushion around your vehicle.</li><li>Avoid sudden turns, braking or acceleration.</li><li>Make sure windows, lights, wipers, defroster and tire tread are in good condition.</li><li>Carry emergency supplies such as blankets, food, water, flares, extra clothing, a phone and tire chains when appropriate.</li></ul><RoadwayWeatherDetails /></section>
+  </>
+}
+
+function RoadwayIntersections() {
+  return <section className="oe-roadway-section">
+    <h4>Intersections</h4><img className="oe-roadway-image oe-roadway-image-large" src="/road1.png" alt="Controlled urban intersection" />
+    <p>Most collisions in urban areas occur at intersections. Because of the danger presented by intersections, it is very important that drivers approach them with caution and make an extra effort to be aware of what is happening in and around the intersection. Watch for pedestrians, bicycles, drivers running red lights and drivers starting left-hand turns. Be aware of traffic signals, signs and potential hazards as you approach.</p>
+    <ul>
+      <li>Crashes at intersections are frequently caused by:<ul><li>Drivers disobeying stop signs and red lights.</li><li>Violating the right-of-way of other drivers.</li></ul></li>
+      <li>It is dangerous to pass another vehicle where someone is likely to enter or cross the road. The vehicle you pass may block your view of people, cars, motorcycles, bicycles or trains.</li>
+      <li>It is dangerous to change lanes in an intersection. An unsafe change can be hazardous for conditions and may result in a citation.</li>
+      <li>Scan for traffic controls and prohibitive signs as you approach. Common controls include signal lights and arrows, stop and yield signs, signs controlling turns, designated-lane signs and directional signs.</li>
+      <li>Right-of-way rules help people drive safely and orderly. Bicycles, scooters and pedestrians must obey them too. Never insist on taking the right-of-way.</li>
+    </ul>
+    <p><strong>Note:</strong> Do not excessively yield your right-of-way or always let others go first, because this can delay traffic and make other drivers angry.</p>
+    <ul>
+      <li>At signal-controlled intersections, do not enter on green until vehicles and pedestrians have cleared.</li>
+      <li>Do not enter on red except when making a permitted turn. Do not enter on yellow unless it is unsafe to stop.</li>
+      <li>At intersections without signals, STOP or YIELD signs, slow down and be ready to stop.</li>
+      <li>Yield to vehicles already in the intersection or just entering it. When arriving together, yield to the vehicle on your right.<ul><li>At a T intersection, vehicles on the through road have the right-of-way.</li><li>At a blind intersection where you cannot see clearly for 100 feet, do not drive faster than 15 MPH.</li></ul></li>
+      <li>If parked cars, trees, bushes or buildings obstruct your view, stop before entering and inch forward until you can see cross-traffic.</li>
+    </ul>
+  </section>
+}
+
+export function RoadwayCausesLesson({ onPrevious, onNext }) {
+  return <article className="oe-full-lesson oe-roadway-causes-lesson">
+    <LessonHeader title="7.5 Roadways: Causes and Prevention" onPrevious={onPrevious} onNext={onNext} />
+    <div className="oe-roadway-intro"><img src="/tipe.png" alt="Tip" /><p>Certain roadways and portions of the road are more dangerous than others. When driving in these areas, you are at increased risk for being involved in a collision. You should be aware of these conditions and adjust your driving to appropriately mitigate these increased risks.</p></div>
+    <RoadwayIntersections />
+    <RoadwayHillsParking />
+    <RoadwayUrbanNatural />
+    <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+  </article>
+}
+
 export function AccidentOverviewLesson({ onPrevious, onNext }) {
   return (
     <article className="oe-full-lesson oe-accident-overview-lesson">
