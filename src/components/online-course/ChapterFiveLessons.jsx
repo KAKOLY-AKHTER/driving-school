@@ -197,3 +197,162 @@ export function ConstructionAutomobileLesson({ onPrevious, onNext }) {
     </article>
   )
 }
+
+export function SteeringDashboardLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-dashboard-lesson">
+      <LessonHeader title="5.2 The Steering Wheel and Dashboard" onPrevious={onPrevious} onNext={onNext} />
+
+      <section className="oe-dashboard-section">
+        <h4>The steering wheel</h4>
+        <div className="oe-dashboard-media compact">
+          <img src="/steer1.png" alt="Steering wheel" />
+          <p>The steering wheel is a central device for the driver. The steering wheel is connected to and controls the wheels by the axle. By turning the steering wheel in a direction, what you are actually turning are the vehicle&apos;s wheels.</p>
+        </div>
+        <ul className="oe-dashboard-list">
+          <li>The steering wheels in newer cars are usually powered. This means that the steering is much more sensitive and easier to handle. In older cars, this was not available and you are using a lot more muscle to turn the wheels.</li>
+          <li>Always keep your hands on the steering wheel to keep the car positioned within your lane or roadway. To make a right turn or to maneuver a right curve, you must turn the steering wheel to the right and guide the vehicle to the degree of that right turn or angle. To make a left turn or to maneuver a left curve, you must turn the steering wheel to the left and guide the vehicle to the degree of that left angle.</li>
+          <li>The left hand should be positioned at 9 o&apos;clock and the right hand should be positioned at 3 o&apos;clock of the steering wheel.</li>
+        </ul>
+      </section>
+
+      <section className="oe-dashboard-section oe-gauges-intro">
+        <h4>The Dashboard Gauges</h4>
+        <aside className="oe-dashboard-note"><strong>Note:</strong><br />To find out more about the gauges on your car, the best source of information is your owner&apos;s manual.</aside>
+        <ul className="oe-dashboard-list">
+          <li>The most common configuration in today&apos;s car is: Speedometer, Tachometer, Fuel and Temperature.</li>
+        </ul>
+        <img className="oe-dashboard-wide-image" src="/watch1.png" alt="Vehicle dashboard gauges" />
+      </section>
+
+      <section className="oe-dashboard-section">
+        <h4>Speedometer</h4>
+        <p>The most used gauge. The speedometer consists of a cable that spins inside a flexible tube. The cable is connected on one side to the speedometer, and on the other side to the speedometer gear inside the transmission.</p>
+        <img className="oe-dashboard-gauge-image" src="/watch2.png" alt="Speedometer" />
+        <ul className="oe-dashboard-list">
+          <li>The accuracy of the speedometer can be affected by the size of the tires. If the tires are larger in diameter than original equipment, the speedometer will read that you are going slower than you actually are.</li>
+          <li>Another cause for inaccurate readings is the improper speedometer gear inside the transmission. This can sometimes happen after a replacement transmission has been installed. Legitimate transmission shops are aware of this and will make sure that the correct speedometer gear is the new transmission.</li>
+        </ul>
+      </section>
+
+      <section className="oe-dashboard-section">
+        <h4>Fuel Gauge</h4>
+        <div className="oe-dashboard-media">
+          <img src="/watch3.png" alt="Fuel gauge" />
+          <p>A fuel gauge (or gas gauge) is an instrument used to indicate the level of fuel contained in a tank. When the needle drops below E, there is usually 1 or 2 gallons left in reserve. To find out for sure, pull out your owner&apos;s manual and find out how many gallons of gas your tank holds.</p>
+        </div>
+        <aside className="oe-dashboard-note"><strong>Note:</strong><br />It is not a good idea to let your tank drop below 1/4. This is because your fuel pump is submerged in fuel at the bottom of the tank. The liquid fuel helps to keep the fuel pump cool. If the fuel level goes too low and uncovers the pump, the pump will run hotter than normal. If you do this often enough, it can shorten the life of the fuel pump and eventually cause it to fail.</aside>
+      </section>
+
+      <section className="oe-dashboard-section">
+        <h4>Temperature Gauge</h4>
+        <div className="oe-dashboard-media">
+          <img src="/watch4.png" alt="Temperature gauge" />
+          <p>This gauge measures the temperature of the engine coolant in degrees. Paying attention to the car temperature gauge is vitally important when driving. You should check your temperature gauge frequently, just as you do with your other gauges.</p>
+        </div>
+        <ul className="oe-dashboard-list oe-dashboard-nested-list">
+          <li><strong>Normal Range</strong>
+            <ul>
+              <li>When you look at your car temperature gauge, the needle should be in the center or just slightly below center (toward &quot;C&quot;). The temperature should be in that range any time you look at it.</li>
+            </ul>
+          </li>
+          <li><strong>High Temperature</strong>
+            <ul>
+              <li>If the temperature gauge is suddenly high, there are several possible reasons. One is that you have lost coolant. This could mean a slow leak, or it could mean a gradual evaporation. It could also mean the thermostat is broken and is not opening as it should to let coolant into the engine. Another possible cause of a sudden temperature rise is the failure of the water pump or water pump gasket.</li>
+            </ul>
+          </li>
+          <li><strong>Low Temperature</strong>
+            <ul>
+              <li>If the temperature is low and stays low, the thermostat is likely stuck open and is allowing a constant flow of coolant into the engine.</li>
+            </ul>
+          </li>
+          <li><strong>Steps to Take</strong>
+            <ul>
+              <li>If the temperature gauge is running high, then you can immediately turn the heater on in the car. If it is hot outside, then roll the windows down as well and direct the air vents away from the passengers. This will cool the engine down quickly as you look for a place to pull over and check the water level.</li>
+              <li>Never open a hot radiator. Instead, add water through the overflow tank if it is needed.</li>
+            </ul>
+          </li>
+        </ul>
+      </section>
+
+      <section className="oe-dashboard-section">
+        <h4>Tachometer</h4>
+        <div className="oe-dashboard-media">
+          <img src="/watch5.png" alt="Tachometer" />
+          <p>The tachometer measures how fast the engine is turning in RPM (Revolutions Per Minute). This information is useful if the car has a standard shift transmission and you want to shift at the optimum RPM for best fuel economy or best acceleration. This is one of the least used gauges on a car with an automatic transmission.</p>
+        </div>
+        <aside className="oe-dashboard-tip">
+          <img src="/tipe.png" alt="Tip" />
+          <p>You should never race your engine so fast that the tachometer moves into the red zone as this can cause engine damage. Some engines are protected by the engine computer from going into the red zone. Usually, the tachometer shows single digit markings like 1, 2, 3. Somewhere, you will also see an indicator that says RPM x 1000. This means that you multiply the reading by 1000 to get the actual RPM, so if the needle is pointing to 2, the engine is running at 2000 RPM.</p>
+        </aside>
+      </section>
+
+      <section className="oe-dashboard-section">
+        <h4>Oil Pressure Gauge</h4>
+        <div className="oe-dashboard-media oil">
+          <img src="/watch6.png" alt="Oil pressure gauge" />
+          <p>This gauge measures engine oil pressure in pounds per square inch. Oil pressure is just as important to an engine as blood pressure is to a person. If you run an engine with no oil pressure even for less than a minute, you can easily destroy the engine. Most cars have an oil lamp that lights when oil pressure is dangerously low. If it comes on while you&apos;re driving, stop the vehicle as soon as is safely possible and shut off the engine. Then, check the oil level and add oil as necessary.</p>
+        </div>
+      </section>
+
+      <section className="oe-dashboard-section">
+        <h4>Charging System Gauge</h4>
+        <p>The charging system is what provides the electrical current for your vehicle. Without a charging system, your battery will be depleted and your vehicle will shut down. The charging system gauge or warning lamp monitors the health of this system so that you have a warning of a problem before you get stuck.</p>
+        <p>There are two types of gauges used to monitor charging systems:</p>
+        <ul className="oe-dashboard-list oe-dashboard-nested-list">
+          <li><strong>Voltmeter</strong>
+            <ul>
+              <li>It measures system voltage. A modern automobile has a 12-volt electrical system. A fully charged battery will read about 12.5 volts when the engine is not running. When the engine is running, the charging system takes over so that the voltmeter will read 14 to 14.5 volts and should stay there unless there is a heavy load on the electrical system such as wipers, lights, heater and rear defogger all operating together while the engine is idling at which time the voltage may drop. If the voltage drops below 12.5, it means that the battery is providing some of the current. You may notice that your dash lights dim at this point. If this happens for an extended period, the battery will run down and may not have enough of a charge to start the car after shutting it off. This should never happen with a healthy charging system because as soon as you step on the gas, the charging system will recharge the battery. If the voltage is constantly below 14 volts, you should have the system checked. If the voltage ever goes above 15 volts, there is a problem with the voltage regulator. Have the system checked as soon as possible as this &quot;overcharging&quot; condition can cause damage to your electrical system.</li>
+            </ul>
+          </li>
+          <li><strong>Ammeter</strong>
+            <ul>
+              <li>It measures amperage. If the battery is fully charged and there is minimal electrical demand, then the ammeter should read close to zero, but should always be on the positive side of zero. It is normal for the ammeter to read high positive amperage in order to recharge the battery after starting, but it should taper off in a few minutes. If it continues to read more than 10 or 20 amps even though the lights, wipers and other electrical devices are turned off, you may have a weak battery and should have it checked.</li>
+            </ul>
+          </li>
+        </ul>
+      </section>
+
+      <section className="oe-dashboard-section">
+        <h4>Emergency Flasher</h4>
+        <p>The emergency flashers are usually located on the dashboard of the vehicle, labeled by a red and white emergency symbol.</p>
+        <img className="oe-dashboard-gauge-image" src="/watch7.png" alt="Emergency flasher button" />
+        <ul className="oe-dashboard-list">
+          <li>The driver of a vehicle should only use these as a signal to an emergency situation. For instance - If the driver of a vehicle is having mechanical problems, physical health problems or there is an emergency situation on the roadway ahead.</li>
+          <li>The driver should use the emergency flashers to warn the other drivers so that they can be prepared for any road conditions and slow down.</li>
+        </ul>
+      </section>
+
+      <section className="oe-dashboard-section">
+        <h4>Headlights</h4>
+        <p>Every vehicle must be equipped with two headlamps one on each side of the front of the vehicle. All drivers must use their headlights 30 minutes AFTER sunset until 30 minutes BEFORE sunrise. If a driver is on the road during this time, the driver must turn on their headlights. The headlights are set up with low and high beam lights.</p>
+        <img className="oe-dashboard-gauge-image" src="/watch8.png" alt="Vehicle headlights" />
+        <ul className="oe-dashboard-list">
+          <li>The <strong>low beam light</strong> is the standard light used to illuminate the driving surface and conditions. The low beam lights are used when driving under most normal conditions. They must be visible 500 feet in front of your vehicle.</li>
+          <li>The <strong>high beam lights</strong> are only used when the driver&apos;s visibility is limited. This gives the driver a bigger picture of the driving conditions. In an effort not to blind or blur another driver, do not use your high beams when you are less than 300 feet behind another vehicle or 500 feet from an oncoming vehicle.</li>
+        </ul>
+      </section>
+
+      <section className="oe-dashboard-section oe-brake-lights-section">
+        <h4>Brake Lights</h4>
+        <div className="oe-dashboard-media brake-lights">
+          <img src="/watch9.png" alt="Vehicle brake lights" />
+          <p>The brake lights are red lights that are on the back of each vehicle. Brake lights allow the driver to indicate a stop, slowing, or an emergency situation. As the driver of a vehicle presses down on the brake pedal, the rear brake lights will illuminate on the back of the car to indicate slowing or stopping. The brake pedal is the pedal in the center of the driver&apos;s floorboard.</p>
+        </div>
+        <div className="oe-dashboard-steps">
+          <img src="/step.png" alt="Step by Step" />
+          <div>
+            <h5>How to use the car&apos;s braking system</h5>
+            <ol>
+              <li>For the driver to brake, the driver should release the right foot from the accelerator.</li>
+              <li>Next, the driver moves their right foot onto the brake pedal and gently presses down.</li>
+              <li>The rear brake lights will illuminate. This will warn drivers behind the braking vehicle that they are slowing, stopping or having an emergency.</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
