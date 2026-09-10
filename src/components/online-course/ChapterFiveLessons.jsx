@@ -356,3 +356,178 @@ export function SteeringDashboardLesson({ onPrevious, onNext }) {
     </article>
   )
 }
+
+export function WindshieldMirrorsLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-mirrors-lesson">
+      <LessonHeader title="5.3 The Windshield and Mirrors" onPrevious={onPrevious} onNext={onNext} />
+
+      <section className="oe-mirror-section">
+        <h4>Windshield</h4>
+        <div className="oe-mirror-media windshield">
+          <img src="/mirror1.png" alt="Windshield and windshield wiper" />
+          <p>The windshield provides the driver&apos;s direct view of traffic and road conditions in front of the vehicle. The driver is positioned in the driver&apos;s seat to look out through the windshield. You must keep your windows clear , and without cracks. You are required by law to have a windshield in place, free of obstructions and without need of repair. If you have a crack or lines in the windshield glass you need to repair it immediately.</p>
+        </div>
+        <ul className="oe-mirror-list">
+          <li>Windshields protect the vehicle&apos;s occupants from wind, temperature extremes, and flying debris such as dust, insects, and rocks. Properly installed automobile windshields are also essential to safety. UV Coating may be applied to screen out harmful ultraviolet light.</li>
+          <li>Modern windshields are generally made of laminated safety glass that consists of two curved sheets of glass with a plastic layer laminated between them for safety and are glued into the window frame. This glued-in screen contributes to the vehicle&apos;s rigidity.</li>
+          <li>In many places, laws restrict the use of heavily tinted glass in vehicle windshields. Generally, laws specify the maximum level of tint permitted. Note that there is noticeably more tint in the uppermost part of the windshield to help block glare from the sun.</li>
+          <li>Today&apos;s windshields are a safety device just like seat belts and air bags. The installation of the auto glass is done with an automotive grade urethane designed specifically for automobiles. The adhesive creates a molecular bond between the glass and the vehicle. If the adhesive bond fails at any point on the glass it can reduce the effectiveness of the air bag and substantially compromise the structural integrity of the roof.</li>
+        </ul>
+        <aside className="oe-mirror-fact">
+          <img src="/more.png" alt="Tell Me More" />
+          <p>Mary Anderson is said to have invented the windshield wiper in the United States, where she patented the idea in 1905. The idea was initially met with resistance, but was a standard feature on all American cars by 1916.</p>
+        </aside>
+      </section>
+
+      <section className="oe-mirror-section">
+        <h4>Mirrors</h4>
+        <p>Mirrors aid the driver in seeing on the sides and to the rear of the car.</p>
+
+        <h5>Rear-view Mirror</h5>
+        <div className="oe-mirror-media">
+          <img src="/mirror2.png" alt="Rear-view mirror" />
+          <p>A rear-view mirror is a mirror in automobiles and other vehicles designed to allow the driver to see rearward through the vehicle&apos;s backlight (rear windshield or windscreen). In cars, the rear-view mirror is usually affixed to the top of the windshield on a double-swivel mount allowing it to be adjusted to suit the height and viewing angle of any driver and to swing harmlessly out of the way if impacted by a vehicle occupant in a collision. The rear-view mirror is augmented by one or more side-view mirrors, which serve as the only rear-vision mirrors on motorcycles and bicycles.</p>
+        </div>
+
+        <h5>Side Mirrors</h5>
+        <div className="oe-mirror-media">
+          <img src="/mirror3.png" alt="Side-view mirror" />
+          <p>The side view mirrors are located on the outside of the vehicle in a position so the driver is able to see to their sides and side rear of the vehicle. The driver will need to check the side mirrors while driving to see where the traffic and other vehicles are positioned. The driver shall check the appropriate mirror for the direction in which the driver intends to make their maneuver. Look right for a right maneuver; and look left for a left maneuver.</p>
+        </div>
+
+        <div className="oe-video-wrap oe-mirror-video">
+          <iframe src="https://www.youtube.com/embed/da6BVQ1iERQ" title="The Safety Factor: Properly Adjusting Your Car Mirrors" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
+        </div>
+
+        <aside className="oe-mirror-tip">
+          <img src="/tipe.png" alt="Tip" />
+          <p>Do not solely rely on the side view mirrors to give you the complete picture, since all cars have blind spots. The driver should also look over the appropriate shoulder before starting the maneuver.</p>
+        </aside>
+      </section>
+
+      <section className="oe-mirror-section oe-mirror-space-section">
+        <h4>Mirror Space Setting</h4>
+        <div className="oe-mirror-diagrams">
+          <img src="/mirror4.png" alt="Peripheral vision and mirror blind areas" />
+          <img src="/mirror5.png" alt="Central space area and inside rear mirror view" />
+        </div>
+      </section>
+
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
+export function CarSafetyEquipmentLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-safety-equipment-lesson">
+      <LessonHeader title="5.4 Car Safety Equipment" onPrevious={onPrevious} onNext={onNext} />
+
+      <section className="oe-safety-section">
+        <h4>Seatbelts</h4>
+        <div className="oe-safety-media seatbelt">
+          <img src="/care1.png" alt="Driver fastening a seatbelt" />
+          <p>The purpose of seatbelts and shoulder straps is to keep your body from hitting the steering wheel, windshield or other portions of the interior of your car in a crash. Safety belts are also effective in preventing total ejection from a car in a crash. If you are struck from the side in a collision, the impact could push you back and forth across the seat. Seatbelts help to keep you in a better position to control the vehicle.</p>
+        </div>
+
+        <div className="oe-video-wrap oe-safety-video">
+          <iframe src="https://www.youtube.com/embed/A7YpHXPAk9g" title="Saved By the Belt: A Teen's Survival Story" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
+        </div>
+
+        <p>Safety belts can reduce injuries and deaths.</p>
+        <p>Unrestrained occupants of a car keep moving during the time the car takes to stop due to inertia. They will still be moving forward at their original speed when they slam into the steering wheel, windshield or other part of the car. This force is equivalent to that of hitting the ground when falling from a three-story building. When hit from behind, inertia causes a person’s neck to bend backwards, which can result in whiplash.</p>
+        <p>To be effective, seatbelts must be worn properly.</p>
+        <ul className="oe-safety-list">
+          <li>The shoulder belt should fit snugly against your body</li>
+          <li>You should never wear the shoulder belt under your arm</li>
+          <li>You should never wear a seatbelt that is twisted</li>
+          <li>You should never be reclined in your seat when moving.</li>
+        </ul>
+        <p>Seat belts, both the lap belt and shoulder harness, must be in good working order. You may not operate your vehicle on public roads or on private property, such as parking lots, unless you and all of your passengers eight years of age or older or who are 4 feet 9 inches tall or taller, are wearing seatbelts.</p>
+
+        <h5>Child Safety Seat Requirements</h5>
+        <p>In addition to the existing child passenger restraint system laws, any child who is under 2 years old must be secured in a rear-facing child passenger restraint system unless the child is 40 pounds or more, or 3&apos;4&quot; or taller.</p>
+        <p>Children younger than eight years old or who are less than 4 feet 9 inches tall are seated in a federally approved child passenger restraint system.</p>
+        <p>You and your passengers must wear seat belts while your vehicle is moving on public roads and on private property, such as parking lots.</p>
+        <p>If seat belts are not worn by any of your passengers, you and the passenger(s) can be cited. If the passenger is younger than 16 years of age, you will be cited if he or she is not wearing his or her seat belt.</p>
+        <p>Always use your seat belts (including the shoulder harness) even if the vehicle is equipped with air bags. You can have shoulder harnesses or seat belts installed in older vehicles. Even if you wear only a lap belt when driving, your chances of living through a collision are twice as high as someone who does not wear a lap belt. If you wear a lap and shoulder belt, your chances are three to four times higher to live through a collision.</p>
+        <p>Pregnant women should wear the lap belt as low as possible under the abdomen, and the shoulder strap should be placed between the breasts and to the side of the abdomen’s bulge.</p>
+        <aside className="oe-safety-note"><strong>Note:</strong><br />Using seatbelts reduces the risk of being thrown from your vehicle in a collision. If you do not install and use a shoulder harness with the seat (lap) belt, serious or fatal injuries may happen in some crashes. Lap-only belts increase the chance of spinal column and abdominal injuries—especially in children. Shoulder harnesses may be available for your vehicle, if it is not already equipped with them.</aside>
+      </section>
+
+      <section className="oe-safety-section">
+        <h4>Airbags</h4>
+        <p>Air bags, combined with lap/shoulder safety belts offer the most effective safety protection available today for passenger vehicles. Air bags are designed to provide protection over and above what the seat belt provides. They are gas-inflated cushions built into the steering wheel, dashboard, door, roof or seat of your car that use a crash sensor to trigger a rapid expansion to protect you from the impact of an accident.</p>
+        <img className="oe-safety-centered-image" src="/care2.png" alt="Deployed vehicle airbags" />
+        <ul className="oe-safety-list oe-safety-nested-list">
+          <li>For the maximum air bag protection
+            <ul>
+              <li>Sit back at least 10 inches from the steering wheel and dashboard.</li>
+              <li>Always wear your seat belt properly.</li>
+              <li>If your steering wheel tilts, direct it toward your chest, not your head.</li>
+              <li>If you are pregnant, place the lap belt low on your abdomen with the shoulder portion over the collarbone.</li>
+            </ul>
+          </li>
+          <li>Always seat children in the back seat when possible, even if there is no airbag in front of them.
+            <ul>
+              <li>Avoid putting children in the front seat of a car equipped with airbags.</li>
+              <li>Children sitting in the front seat with an air bag could be severely injured by the airbag. Even when kids get older, riding in the back seat is safer.</li>
+            </ul>
+          </li>
+        </ul>
+      </section>
+
+      <section className="oe-safety-section">
+        <h4>Headlights</h4>
+        <p>Headlights should be used:</p>
+        <ul className="oe-safety-list">
+          <li>When it is cloudy, raining, snowing or foggy</li>
+          <li>On frosty mornings when windshields may be icy or foggy</li>
+          <li>On country or mountain roads to make it easier for other drivers to see you</li>
+          <li>Anytime you do not have enough light to see for at least 1000 feet</li>
+          <li>Anytime it would help you see and be seen better</li>
+          <li>No later than 30 minutes after sunset and until at least 30 minutes before sunrise.</li>
+        </ul>
+        <p>You should use your high-beam headlights whenever you are having trouble seeing with your normal headlights, except when it is raining, foggy, snowing, or when it may blind other drivers.</p>
+        <p>You must:</p>
+        <ul className="oe-safety-list">
+          <li>Dim your high beams for oncoming vehicles by the time they are within 500 feet of your vehicle</li>
+          <li>Dim your high beams when the vehicle you are following is within 300 feet.</li>
+          <li>You may flash your headlights to get the attention of another driver so as to avoid an accident.</li>
+        </ul>
+      </section>
+
+      <section className="oe-safety-section">
+        <h4>Signaling Indicators</h4>
+        <div className="oe-safety-media signaling">
+          <img src="/care3.png" alt="Driver operating a signaling indicator" />
+          <p>The signals are the lighting devices that allow you to inform other drivers on the roadway what your intentions are.</p>
+        </div>
+        <h5>Considerations to take:</h5>
+        <ul className="oe-safety-list">
+          <li>Do not assume that just because you have signaled a turn or lane change that others can or will leave you the space to complete it.</li>
+          <li>You must signal even when you don&apos;t see any cars around.</li>
+          <li>You should use both arm signals and signal lights if it is difficult for others to see your signal lights.</li>
+          <li>You must signal before turning, changing lanes, or otherwise entering traffic from a side road or driveway.</li>
+          <li>You should signal during the last 100 feet before turning unless traffic conditions indicate you should start signaling earlier, such as on a freeway where you should signal for at least 5 seconds before changing lanes.</li>
+          <li>In addition to signaling the intention to make a turn, you must check your mirrors and blind spots to make sure it is safe to complete the maneuver.</li>
+          <li>If you plan to turn as soon as you leave an intersection, do not start signaling while you are approaching or in the intersection. Wait until you have crossed the intersection so as not to confuse traffic.</li>
+          <li>Make sure that your signal is turned off after you have completed your turn or lane change.</li>
+        </ul>
+
+        <h5>Hand Gestures</h5>
+        <div className="oe-hand-gestures">
+          <img src="/care5.png" alt="Driver using a hand gesture" />
+          <div className="oe-hand-gesture-copy">
+            <p>To indicate a right turn the driver should lower the driver&apos;s window and put their left arm out in an &quot;L&quot; shape. The arm should be straight out from the shoulder and bent up towards the sky from the elbow to the hand. This will inform the other drivers of the right turn.</p>
+            <p>To indicate a left turn, the driver should completely extend the arm straight out. This will inform the other drivers on the road of your intentions.</p>
+            <p>To indicate a stop or slowing down, the driver should extend the arm out straight from the shoulder, and at the elbow the arm should bend straight down towards the ground. This will allow other drivers to be prepared for your vehicle to slow or stop.</p>
+          </div>
+        </div>
+      </section>
+
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
