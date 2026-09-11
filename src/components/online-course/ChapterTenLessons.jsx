@@ -212,3 +212,140 @@ export function CaliforniaLicenseClassesLesson({ onPrevious, onNext }) {
     </article>
   )
 }
+
+export function OtherLicensingInformationLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-other-licensing-lesson">
+      <LessonHeader title="10.3 Other Licensing Information" onPrevious={onPrevious} onNext={onNext} />
+
+      <Section title="License May Be Refused">
+        <p>The DMV may take strong action against anyone who alters or attempts to falsify a driver&apos;s license. A license may also be refused when an applicant does not meet legal, identity, medical, testing, or eligibility requirements.</p>
+      </Section>
+
+      <Section title="Conditional License">
+        <p>The DMV may place special conditions or restrictions on a driver license when they are needed for safe operation.</p>
+        <ul>
+          <li>A driver who needs glasses or corrective lenses to pass the vision test must wear them while driving, and the restriction will appear on the license.</li>
+          <li>A driver with limited night vision may be restricted to daylight driving.</li>
+          <li>Other conditions may require an additional right-side mirror, driving only from sunrise to sunset, or use of a vehicle equipped with hand-controlled brakes.</li>
+        </ul>
+      </Section>
+
+      <Section title="Lost or Damaged License">
+        <ul>
+          <li>If a license is lost or damaged, apply for a duplicate through the DMV and pay the applicable fee. Be prepared to verify your address, identity, and legal presence as required.</li>
+          <li>A minor&apos;s application may require a parent or guardian signature. A new photograph, thumbprint, or other verification may also be required.</li>
+          <li>Once a duplicate license is issued, the previous license is no longer valid. Destroy it if it is found later.</li>
+        </ul>
+      </Section>
+
+      <Section title="Name Change">
+        <ul>
+          <li>After a legal name change, update the name with the Social Security Administration before applying for an updated DMV card.</li>
+          <li>Visit the DMV with the current license and acceptable proof of the true full name, such as a marriage certificate or court document.</li>
+          <li>Complete the required application and pay the applicable fee.</li>
+          <li>The DMV verifies identifying information and may take a new photograph, thumbprint, and signature. The old card is invalidated.</li>
+        </ul>
+      </Section>
+
+      <Section title="Address Changes">
+        <ul>
+          <li>Notify the DMV promptly after changing your address and update the address for your driver license, identification card, and registered vehicles.</li>
+          <li>A new driver license is not automatically issued for an address change. Keep the approved address-change record with your card as directed by the DMV.</li>
+          <li>If you complete the change at a field office, follow the representative&apos;s instructions for carrying the address certificate with your license.</li>
+        </ul>
+        <aside className="oe-chapter-ten-note"><strong>Note:</strong> Postal forwarding does not replace your responsibility to keep a correct mailing address on file with the DMV.</aside>
+      </Section>
+
+      <Section title="Driver License Renewals">
+        <p>The DMV sends renewal instructions to the address of record before a license expires. Follow the notice, renew through an eligible service, or make a DMV appointment.</p>
+        <ul>
+          <li>Qualified drivers may be eligible for online, mail, or other remote renewal options.</li>
+          <li>A driver license has an expiration date shown on the card. Driving with an expired license is unlawful.</li>
+          <li>A knowledge, vision, or driving test may be required as part of a license transaction when the DMV determines it is necessary.</li>
+          <li>If the DMV cannot confirm an applicant&apos;s identity, a temporary license may not be issued.</li>
+        </ul>
+      </Section>
+
+      <Section title="Renewal by Mail, Internet or Telephone">
+        <p>Eligibility for remote renewal depends on the DMV&apos;s current requirements and the driver&apos;s record. Restrictions may apply when:</p>
+        <ul>
+          <li>The driver is not eligible because of age, license status, probation, or prior renewal history.</li>
+          <li>The driver failed to appear in court or pay a fine as promised.</li>
+          <li>The license is suspended because of an alcohol-related matter or refusal to complete required testing.</li>
+          <li>The driving record exceeds the allowable violation-point threshold.</li>
+        </ul>
+        <aside className="oe-chapter-ten-note"><strong>Remember:</strong> Keep any Renewal Identification Number or other information printed on the DMV renewal notice available when using a remote renewal service.</aside>
+      </Section>
+
+      <Section title="Carry Your Driver License">
+        <p><strong>You must always have your driver license with you when you drive.</strong> Show it to a police officer when legally requested and to the other involved driver or parties after a collision when required.</p>
+      </Section>
+
+      <Section title="Driver License Extension">
+        <p>If you will be away from California when your license expires, contact the DMV before expiration to learn whether you qualify for an extension. Include all information and documents requested by the DMV. Limited-term licenses may not qualify.</p>
+      </Section>
+
+      <Section title="Driving with a Suspended or Revoked License">
+        <p>Driving with a suspended or revoked license can lead to fines, jail, and additional licensing consequences. Once the DMV provides notice of suspension or revocation, you must stop driving and complete every requirement before driving privileges can be restored.</p>
+      </Section>
+
+      <Section title="Unlicensed Drivers" className="oe-unlicensed-drivers">
+        <ul>
+          <li>Do not loan a vehicle to an unlicensed person or someone whose driving privilege is suspended. The vehicle may be impounded.</li>
+          <li>No person may drive on a highway or in a public parking facility without a valid license or permit.</li>
+          <li>Do not employ, permit, or authorize someone to drive on a public road unless that person is licensed for the class of vehicle.</li>
+          <li>Commercial and hazardous-material operations have additional age, class, certificate, and endorsement requirements.</li>
+        </ul>
+      </Section>
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
+export function CaliforniaIdentificationCardLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-identification-card-lesson">
+      <LessonHeader title="10.4 Identification (ID) Card" onPrevious={onPrevious} onNext={onNext} />
+      <img className="oe-california-id-image" src="/man-id.png" alt="Sample California identification card" />
+
+      <Section title="California Identification Card">
+        <p>The DMV issues identification cards to persons of any age. To obtain an original ID card, an applicant must present acceptable proof of birth date and legal presence, satisfy identity and California residency requirements, and provide other identifying information requested by the DMV.</p>
+        <p>Regular ID cards expire and must be renewed. A reduced-fee ID card may be available to people who meet the qualifications for certain public-assistance programs.</p>
+        <aside className="oe-chapter-ten-note"><strong>Note:</strong> Approved governmental or nonprofit organizations determine eligibility for reduced-fee ID cards. Senior citizens may qualify for a no-fee senior ID card with a longer validity period under DMV rules.</aside>
+      </Section>
+
+      <Section title="Driver's License and ID for Physical and Mental (P&M) Conditions">
+        <ul>
+          <li>Drivers with a physical or mental condition may be reexamined by the DMV, asked for medical information, or issued a limited-term license when appropriate.</li>
+          <li>A person who can no longer drive safely may exchange a valid driver license for an identification card when DMV requirements are met.</li>
+          <li>Contact the DMV for the current application, medical-review, fee, and eligibility requirements.</li>
+        </ul>
+      </Section>
+
+      <Section title="Identification (ID) Card Renewal by Mail or Internet">
+        <ul>
+          <li>Eligible cardholders may receive a renewal notice before the current ID card expires and may be permitted to renew by mail or online.</li>
+          <li>Reduced-fee ID cards may have different renewal requirements and may not qualify for remote renewal.</li>
+          <li>Regular cards may require a fee; qualifying senior-citizen identification cards may be issued without a fee.</li>
+        </ul>
+      </Section>
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
+export function ChapterTenTestLesson({ onStart }) {
+  return (
+    <article className="oe-full-lesson oe-test-lesson oe-chapter-four-test oe-chapter-ten-test">
+      <h3>10.5 Chapter 10</h3>
+      <section className="oe-chapter-four-test-card">
+        <p><strong>Congratulations!</strong> You have completed the reading for chapter 10. You&apos;ll need to get 9 answers correct (out of 12) in order to proceed. <strong>Good luck!</strong></p>
+        <button className="oe-chapter-four-test-start" type="button" onClick={onStart} aria-label="Start here and return to Chapter 10">
+          <img src="/start.png" alt="Start Here" />
+        </button>
+        <img className="oe-chapter-four-quiz-image" src="/quize.png" alt="Chapter 10 quiz illustration" />
+      </section>
+    </article>
+  )
+}
