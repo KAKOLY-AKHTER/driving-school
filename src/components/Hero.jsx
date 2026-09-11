@@ -219,7 +219,7 @@ export default function Hero() {
             <Link to="/schedule" className="hero-action-button btn-gold">Register For Driving Lessons</Link>
             <Link to="/online-drivers-ed/register?course=1" className="hero-action-button btn-ghost">Register For Online Drivers Ed</Link>
             <Link to="/online-drivers-ed/login" className="hero-action-button btn-gold">Online Education Student Login</Link>
-            <button type="button" className="hero-action-button btn-ghost">Behind The Wheel Student Login</button>
+            <Link to="/schedule" className="hero-action-button btn-ghost">Behind The Wheel Student Login</Link>
           </div>
 
         </div>
