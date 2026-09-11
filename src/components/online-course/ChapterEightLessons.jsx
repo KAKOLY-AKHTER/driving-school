@@ -302,3 +302,111 @@ export function DrinkingDrivingAlternativesLesson({ onPrevious, onNext }) {
     </article>
   )
 }
+
+export function DrugsLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-drugs-lesson">
+      <LessonHeader title="8.6 Drugs" onPrevious={onPrevious} onNext={onNext} />
+      <section className="oe-drugs-intro">
+        <img src="/caution1.png" alt="Medication side-effects caution sign" />
+        <p>Both prescription and non-prescription drugs can alter your ability to drive safely. <strong>DO NOT</strong> operate a vehicle if using non-prescription (illegal) and even some prescription drugs!</p>
+      </section>
+
+      <section className="oe-drugs-section">
+        <h4>Effects of Drugs on Driving</h4>
+        <div className="oe-drugs-effects-media">
+          <img src="/caution2.png" alt="Drugs are deadly warning" />
+          <p>You must never drive while under the influence of any illicit non-prescription drugs. The effects of illicit drugs can make a person incapable of safely operating a motor vehicle. It is a criminal offense to carry an illicit drug on your body or in your vehicle. Drugs kill. Drugs and driving do not mix.</p>
+        </div>
+        <h4>First time use</h4>
+        <p>A person should not drive a motor vehicle when using or trying a prescribed or over-the-counter drug for the first time. Because the effects are unknown, the drug may produce symptoms that make driving unsafe. Even when a physician says it should be safe to drive, a drug may affect each person differently.</p>
+        <h4>Do Not Mix Drugs and Alcohol</h4>
+        <p>Do not mix two drugs without consulting your physician and pharmacist. Two drugs may be safe separately but deadly when combined. Their interaction can cause adverse effects that make driving unsafe. It is also not advisable to drink alcohol while taking prescription or over-the-counter drugs.</p>
+      </section>
+
+      <section className="oe-drugs-section">
+        <h4>Different Types of Drugs</h4>
+        <h5>Prescription Drugs</h5>
+        <p>Even a mild prescription drug can cause you to lose balance, concentration and responsiveness. Anyone taking medication must be aware of its side effects and consult a doctor or pharmacist about the medication being taken.</p>
+        <h5>Analgesics (Painkillers)</h5>
+        <p>Pain-relieving drugs can be administered as tablets, injections or inhaled gas. Aspirin is a common analgesic, while powerful and highly addictive opioid painkillers include codeine and morphine.</p>
+        <h5>Antihistamines</h5>
+        <p>Antihistamines may be used to treat allergies, insect bites, nausea and vomiting. They can have significant side effects and should be taken only as directed. Effects on driving can include:</p>
+        <ul><li>Inattention</li><li>Drowsiness</li><li>Confusion</li><li>Blurred vision</li><li>Dizziness</li></ul>
+        <h5>Over-the-counter drugs (OTC)</h5>
+        <p>OTC drugs can be purchased without a prescription. Cough syrups, drops, sprays, headache tablets, hay-fever, cold, allergy and diet medicines can be dangerous when misused. Effects on driving can include:</p>
+        <ul><li>Drowsiness</li><li>Dizziness</li><li>Slowed reaction</li><li>Irritability</li><li>Faulty judgment</li><li>Blurred vision</li><li>Impaired depth perception</li></ul>
+      </section>
+
+      <section className="oe-drugs-section oe-illegal-drugs-section">
+        <h4>Illegal Drugs</h4>
+        <p>It is a violation of the law to purchase, use or possess illegal drugs. Combining these substances with driving is also a violation of the law.</p>
+        <h5>Depressants</h5>
+        <p>Depressants or sedative-hypnotic drugs include tranquilizers, sleeping pills, anesthetics and some antihistamines. They depress the central nervous system and are often called “downers.”</p>
+        <ul>
+          <li><strong>Barbiturates</strong> slow body and mind reactions, cause sleep or unconsciousness, and reduce response time needed for safe driving.</li>
+          <li><strong>Benzodiazepines</strong> can cause sedation, slurred speech and dizziness. Although commonly prescribed under medical care, they may also be misused.</li>
+        </ul>
+        <h5>Stimulants</h5>
+        <p>Stimulants temporarily increase mental or physical function and are often called “uppers.” They may increase alertness, wakefulness and locomotion, but can dangerously cloud judgment.</p>
+        <ul>
+          <li>Amphetamines and methylphenidates can cause dizziness, confusion, euphoria, increased motor and speech activity, psychosis and hallucinations.</li>
+          <li>Cocaine rapidly affects the central nervous system. Its effects resemble those of amphetamines and can also include local anesthetic effects.</li>
+        </ul>
+        <h5>Narcotics</h5>
+        <p>Narcotic analgesics are commonly called opioids. Common adverse effects include nausea, vomiting, dizziness, mental clouding and dysphoria.</p>
+        <h5>Hallucinogens</h5>
+        <p>Hallucinogens produce mental illusions that users may interpret as real. A driver with distorted perception may swerve to avoid a hallucination and endanger everyone on the roadway.</p>
+        <ul className="oe-hallucinogen-list">
+          <li><strong>LSD or ecstasy:</strong> LSD is rapidly absorbed and its psychic effects can begin soon after use.</li>
+          <li><strong>Psilocybin/Psilocin:</strong> “Magic mushrooms” can increase heart rate and body temperature, dilate pupils and produce vivid visual imagery.</li>
+          <li><strong>Morning glory seeds:</strong> may cause euphoria, sedation and hallucinations.</li>
+          <li><strong>DOM/STP:</strong> can produce LSD-like physical and psychic effects lasting several hours.</li>
+          <li><strong>Belladonna alkaloids:</strong> can cause delirium, disorientation, restlessness, irritability, confusion and loss of coordination.</li>
+          <li><strong>PCP:</strong> can cause extreme disorientation, agitation and hallucinations; abuse may be fatal.</li>
+          <li><strong>Marijuana:</strong> can alter time perception, attention, short-term memory, thought patterns and sensory awareness. Higher doses can cause depersonalization and marked sensory distortion.</li>
+        </ul>
+        <h4>Think Smart</h4>
+        <img className="oe-think-smart-image" src="/caution3.png" alt="Crash scene with a do not drink and drive warning" />
+      </section>
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
+export function DuiLawsLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-dui-laws-lesson">
+      <LessonHeader title="8.7 DUI laws" onPrevious={onPrevious} onNext={onNext} />
+      <section className="oe-dui-section">
+        <p><strong>Driving Under the Influence.</strong> Beginning January 1, 2012, courts can order a 10-year driver-license revocation for a California motorist convicted of a third or subsequent DUI violation, with possible reinstatement after five years if specified conditions are met. (AB 1601, Hill)</p>
+        <p><strong>Sobriety checkpoints.</strong> Drivers are required to stop and submit to a sobriety checkpoint. A vehicle generally may not be impounded for 30 days solely because its driver fails to hold a valid license; officers must make a reasonable attempt to identify the registered owner so the vehicle can be released. (AB 353, Cedillo)</p>
+        <p><strong>Implied consent for chemical testing.</strong> Persons lawfully arrested for DUI are subject to chemical testing. Urine testing is permitted only under specific circumstances.</p>
+        <p><em>California Vehicle Code</em> (CVC) §23612, “implied consent for chemical testing,” requires a blood or breath chemical test when a person is lawfully arrested for DUI involving drugs, or a combination of drugs and alcohol. A urine chemical test is permitted only when:</p>
+        <ul><li>Both blood and breath tests are unavailable.</li><li>The individual is a hemophiliac.</li><li>The individual is taking anticoagulant medication.</li></ul>
+      </section>
+      <section className="oe-iid-faq" aria-label="Ignition interlock device questions">
+        <article><h4>1. Question: What is an IID?</h4><p><strong>Answer:</strong> An ignition interlock device is wired to a vehicle&apos;s ignition and requires a breath sample before the engine starts. If alcohol is detected, the engine will not start. The device may request periodic breath samples while the vehicle is being driven.</p></article>
+        <article><h4>2. Question: What is the purpose of the IID pilot program?</h4><p><strong>Answer:</strong> Its purpose is to reduce DUI offenses and provide DMV with data that can be used to evaluate the effectiveness of ignition interlock devices.</p></article>
+        <article><h4>3. Question: What are the requirements of the IID pilot program?</h4><p><strong>Answer:</strong> Individuals covered by the program must install an IID on every vehicle they own or drive, provide DMV with the required installation verification, pay applicable administrative fees and meet all other reinstatement requirements before a license can be reinstated, reissued or restricted.</p></article>
+        <article><h4>4. Question: Which four counties are involved in the IID pilot program?</h4><p><strong>Answer:</strong> The pilot program includes Alameda, Los Angeles, Sacramento and Tulare Counties.</p></article>
+      </section>
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
+export function ChapterEightTestLesson({ onStart }) {
+  return (
+    <article className="oe-full-lesson oe-test-lesson oe-chapter-four-test oe-chapter-eight-test">
+      <h3>8.8 Chapter 8</h3>
+      <section className="oe-chapter-four-test-card">
+        <p><strong>Congratulations!!</strong> You have completed the reading for chapter 8. You&apos;ll need to get 9 answers correct (out of 12) in order to proceed. <strong>Good luck!</strong></p>
+        <button className="oe-chapter-four-test-start" type="button" onClick={onStart} aria-label="Start here and return to Chapter 8">
+          <img src="/start.png" alt="Start Here" />
+        </button>
+        <img className="oe-chapter-four-quiz-image" src="/quize.png" alt="Chapter 8 quiz illustration" />
+      </section>
+    </article>
+  )
+}
