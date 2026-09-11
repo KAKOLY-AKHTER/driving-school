@@ -964,6 +964,11 @@ export default function DashboardPage() {
         .dash-btn-primary { background:linear-gradient(135deg,${SKY_BLUE},#0a2a5e); color:#fff; padding:0.9rem 2rem; border-radius:14px; border:none; font-family:var(--font-body); fontSize:0.9rem; font-weight:600; cursor:pointer; transition:all 0.4s cubic-bezier(0.22,1,0.36,1); box-shadow:0 4px 16px rgba(1,69,168,0.2),inset 0 1px 0 rgba(255,255,255,0.1); position:relative; overflow:hidden; }
         .dash-btn-primary::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.15),transparent 50%); pointer-events:none; }
         .dash-btn-primary:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(1,69,168,0.3),inset 0 1px 0 rgba(255,255,255,0.15); }
+        .dash-course-toolbar-actions { display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; margin-bottom:2rem; }
+        .dash-course-toolbar-actions .dash-btn-primary { display:inline-flex; align-items:center; justify-content:center; gap:.55rem; min-height:48px; }
+        .dash-read-chapters-btn { display:inline-flex; align-items:center; justify-content:center; gap:.65rem; min-height:48px; padding:.9rem 1.35rem; border:1px solid rgba(7,45,97,.18); border-radius:14px; background:linear-gradient(135deg,${GOLD_BRIGHT},${GOLD}); color:${DARK}; font-family:var(--font-body); font-size:.95rem; font-weight:800; cursor:pointer; box-shadow:0 5px 18px rgba(253,188,1,.28),inset 0 1px 0 rgba(255,255,255,.65); transition:transform .3s cubic-bezier(.22,1,.36,1),box-shadow .3s cubic-bezier(.22,1,.36,1); }
+        .dash-read-chapters-btn:hover { transform:translateY(-2px); box-shadow:0 9px 28px rgba(253,188,1,.38),inset 0 1px 0 rgba(255,255,255,.75); }
+        .dash-read-chapters-btn svg { flex:0 0 auto; }
         .dash-btn-gold { background:linear-gradient(135deg,${GOLD},${GOLD_BRIGHT}); color:${DARK}; padding:0.9rem 2rem; border-radius:14px; border:none; font-family:var(--font-mono); font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; cursor:pointer; transition:all 0.4s cubic-bezier(0.22,1,0.36,1); box-shadow:0 4px 20px rgba(253,188,1,0.25),inset 0 1px 0 rgba(255,255,255,0.65); position:relative; overflow:hidden; }
         .dash-btn-gold::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.3),transparent 50%); pointer-events:none; }
         .dash-btn-gold:hover { transform:translateY(-2px); box-shadow:0 8px 32px rgba(253,188,1,0.35),inset 0 1px 0 rgba(255,255,255,0.75); }
@@ -1051,6 +1056,8 @@ export default function DashboardPage() {
           .dash-profile-trigger { padding:.3rem !important; gap:.3rem !important; }
           .dash-profile-trigger svg { display:none; }
           .dash-cart-link { width:38px !important; height:38px !important; }
+          .dash-course-toolbar-actions { align-items:stretch; flex-direction:column; }
+          .dash-course-toolbar-actions button { width:100%; }
         }
         .dash-course-card { display:flex; align-items:center; background:#ffffff; padding:1.25rem 1.5rem; border-radius:16px; border:1px solid #E8EDF4; gap:1.5rem; transition:all 0.4s cubic-bezier(0.22,1,0.36,1); position:relative; overflow:hidden; }
         .dash-course-card::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(1,69,168,0.02),rgba(253,188,1,0.02)); opacity:0; transition:opacity 0.4s; border-radius:16px; pointer-events:none; }
@@ -1368,7 +1375,14 @@ export default function DashboardPage() {
                     </div>
                     <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:'0 0 1.5rem' }}>Here are your currently enrolled courses... you can add more packages.</p>
                     <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search enrolled courses" placeholder="Search course, city or price…" value={courseSearch} onChange={event => { setCourseSearch(event.target.value); setCoursePage(1) }} className="dash-input" style={{ flex:'1 1 240px' }} /><select aria-label="Filter courses by status" value={courseStatusFilter} onChange={event => { setCourseStatusFilter(event.target.value); setCoursePage(1) }} className="dash-input" style={{ width:'190px' }}><option value="all">All course statuses</option>{COURSE_STATUS_FILTERS.map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}</select></div>
-                    <button onClick={() => navigate('/pricing')} className="dash-btn-primary" style={{ marginBottom:'2rem' }}>Add more packages</button>
+                    <div className="dash-course-toolbar-actions">
+                      <button type="button" onClick={() => navigate('/pricing')} className="dash-btn-primary">Add more packages</button>
+                      <button type="button" onClick={() => navigate('/online-drivers-ed/course')} className="dash-read-chapters-btn" aria-label="Open the online driver education chapters">
+                        <svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" /></svg>
+                        Read Chapters
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                      </button>
+                    </div>
                     {matchedCourses.length > 0 && <div aria-label="Course pagination" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'.75rem', flexWrap:'wrap', margin:'0 0 1rem' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:'.7rem', flexWrap:'wrap' }}>
                         <select aria-label="Courses per page" value={courseLimit} onChange={event => { setCourseLimit(event.target.value); setCoursePage(1) }} className="dash-input" style={{ width:'125px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
