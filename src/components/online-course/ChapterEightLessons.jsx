@@ -199,3 +199,106 @@ export function AlcoholHumanBodyLesson({ onPrevious, onNext }) {
     </article>
   )
 }
+
+export function AlcoholBodyOrgansLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-alcohol-organs-lesson">
+      <LessonHeader title="8.3 Effects of Alcohol on the Body Organs" onPrevious={onPrevious} onNext={onNext} />
+      <section className="oe-organ-feature">
+        <div>
+          <h4>Cirrhosis of the Liver</h4>
+          <p>Alcohol acts on the nervous system and the brain, first as a stimulant, then if more alcohol is consumed, as a depressant. Inside the body, alcohol is detoxified or broken down into harmless compounds by the liver. In the process, liver cells are destroyed. Normally, the liver replaces these cells quickly, but if an excessive amount of alcohol is drunk every day, the liver is unable to repair the damage. The result is a progressive and finally fatal condition called cirrhosis of the liver.</p>
+        </div>
+        <img src="/effect.png" alt="Cirrhosis damage to the liver" />
+      </section>
+      <section className="oe-organ-effects">
+        <h4>Pancreatitis</h4>
+        <p>Alcohol can also cause a fatal disease of the pancreas called pancreatitis, which may occur suddenly or develop gradually.</p>
+        <h4>Neuropathy</h4>
+        <p>This condition is a progressive and debilitating disease of the nerves. Alcohol through its action on the nervous system may cause this condition.</p>
+        <h4>Cardiomyopathy</h4>
+        <p>This condition results in damage to the muscle of the heart, leading to heart failure. Excessive alcohol consumption may contribute to this condition.</p>
+        <h4>Ulcers and Anemia</h4>
+        <p>Alcohol also increases the risk of peptic ulcers and cancer of the digestive tract. Heavy drinking may also lead to vitamin deficiencies, especially of folic acid and vitamin B, which can cause anemia.</p>
+        <h4>Vision</h4>
+        <p>Alcohol usually has a relaxing effect, resulting in less voluntary control over all general body musculature. The delicate control of the fine discrete muscles that move and focus our eyes is particularly affected by alcohol. Light enters the eye through the pupil and passes through the lens. Anything that interferes with this operation affects the impulses transmitted to the brain and the clarity of the picture interpreted by the brain. When the brain receives a fuzzy picture, it is unable to make an appropriate response to the traffic scene.</p>
+        <h4>The effects of alcohol on a driver</h4>
+        <ul>
+          <li>Reduces control over light entering the eye</li>
+          <li>Distorts the eye&apos;s focusing ability</li>
+          <li>Reduces visual acuity</li>
+          <li>Causes double vision</li>
+          <li>Affects the ability to judge distances</li>
+          <li>Reduces the driver&apos;s peripheral vision</li>
+          <li>Reduces the eye&apos;s ability to distinguish colors</li>
+          <li>Reduces visibility at night</li>
+        </ul>
+      </section>
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
+export function IdentifyingDrunkDriversLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-identifying-drivers-lesson">
+      <LessonHeader title="8.4 Identifying Drunk Drivers" onPrevious={onPrevious} onNext={onNext} />
+      <section className="oe-drunk-driver-content">
+        <p>Even if you do not drink, you may still become the unfortunate victim of a drunk driver. By learning to spot the warning signs, the chances of you becoming involved in an alcohol-related motor vehicle collision are diminished. The following are usually the signs of a drunk driver on the roadway:</p>
+        <ul className="oe-drunk-driver-signs">
+          <li>Makes unusually wide or illegal turns.</li>
+          <li>Straddles the centerline or lane marker.</li>
+          <li>Drives with one&apos;s head out of the window or with the window down in cold weather.</li>
+          <li>Nearly strikes objects or other vehicles.</li>
+          <li>Often weaves or swerves.</li>
+          <li>Drives on other than the designated roadway.</li>
+          <li>Uses excessive speed.</li>
+          <li>Drives at a very slow rate of speed.</li>
+          <li>Stops for no apparent cause.</li>
+          <li>Follows too closely.</li>
+          <li>Drifts from one lane to another.</li>
+          <li>Rides with tires on the center lane or road marker.</li>
+          <li>Uses erratic braking patterns.</li>
+          <li>Drives into opposing or crossing traffic.</li>
+          <li>Responds slowly to traffic signals.</li>
+          <li>Uses rapid acceleration or deceleration.</li>
+          <li>Drives with headlights off at night.</li>
+        </ul>
+        <div className="oe-call-911">
+          <img src="/call.png" alt="Call 911" />
+          <p>If you see an apparent drunk driver on the road, give them a lot of space, as their driving is very unpredictable. Call 911 and report drunk drivers before they have a chance to kill or injure someone!</p>
+        </div>
+      </section>
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
+
+export function DrinkingDrivingAlternativesLesson({ onPrevious, onNext }) {
+  return (
+    <article className="oe-full-lesson oe-drinking-alternatives-lesson">
+      <LessonHeader title="8.5 Alternatives to Drinking and Driving" onPrevious={onPrevious} onNext={onNext} />
+      <section className="oe-alternatives-intro">
+        <img src="/drink.png" alt="Do not drink and drive" />
+        <p>You should <strong>NEVER</strong> get behind the wheel if you have been drinking! There are many alternatives! Is it really worth the risk of losing your license, or risking injuring yourself or others?</p>
+      </section>
+      <section className="oe-alternatives-section">
+        <h4>Possible solutions</h4>
+        <ul>
+          <li>Public education<ul><li>Being aware of the effects of alcohol and drugs on the body and driving.</li></ul></li>
+          <li>Abstinence<ul><li>Sustain from drinking before driving is an obvious solution, but drinking is so widespread and socially acceptable in our society that many drivers will not follow this course.</li></ul></li>
+        </ul>
+      </section>
+      <section className="oe-alternatives-section">
+        <h4>Alternatives to Drinking and Driving</h4>
+        <ul>
+          <li>The best alternative to drinking and driving is to not drive after having consumed the slightest amount of alcohol.</li>
+          <li>Take a taxi, walk, or set aside a designated driver.</li>
+          <li>Designated Driver<ul><li>A designated driver is a non-drinker selected to drive the drinkers home safely.</li><li>This person can participate in the evening events, just not drink alcoholic beverages.</li><li>Many bars and restaurants provide free soft drinks to designated drivers.</li></ul></li>
+          <li>Use Alternate Means of Transportation<ul><li>Use taxis, buses or other driving services, including calling a friend or family member to drive you home.</li><li>They would rather have you safe and alive and be inconvenienced by picking you up than have to identify your body at the morgue, or pay a bail bondsman to get you out of jail.</li></ul></li>
+        </ul>
+      </section>
+      <LessonFooter onPrevious={onPrevious} onNext={onNext} />
+    </article>
+  )
+}
