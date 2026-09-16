@@ -63,8 +63,16 @@ function getRandomQuestions(lessonId) {
 function ChapterTest({ testNumber, questions, isFinal = false, onNewTest, onPassed, onContinue }) {
   const [answers, setAnswers] = useState({})
   const [result, setResult] = useState(null)
+  const [saved, setSaved] = useState(false)
   const answeredCount = Object.keys(answers).length
   const passingScore = isFinal ? Math.ceil(questions.length * 0.75) : PASSING_SCORE
+
+  const startNewTest = () => {
+    setAnswers({})
+    setResult(null)
+    setSaved(false)
+    onNewTest?.()
+  }
 
   const gradeTest = () => {
     if (answeredCount !== questions.length) {
@@ -79,6 +87,16 @@ function ChapterTest({ testNumber, questions, isFinal = false, onNewTest, onPass
     if (passed) onPassed?.()
   }
 
+  if (saved) {
+    return (
+      <article className="oe-test-complete-card" role="status">
+        <img src="/mark.png" alt="Passed test check mark" />
+        <p>{isFinal ? 'You have completed the final test' : 'You have already passed the test'}</p>
+        {!isFinal && <button type="button" onClick={onContinue}>Next</button>}
+      </article>
+    )
+  }
+
   return (
     <article className="oe-live-test">
       <div className="oe-live-test-heading"><span>Test</span><h3>{isFinal ? 'Final Test' : `Chapter ${testNumber}`}</h3><div className="oe-pen-animation"><img src="/pen.png" alt="Pen writing a test" /></div></div>
@@ -89,18 +107,19 @@ function ChapterTest({ testNumber, questions, isFinal = false, onNewTest, onPass
             <legend><span aria-hidden="true">Q</span>{questionIndex + 1}. {question.question}</legend>
             {question.options.map((option, optionIndex) => {
               const optionId = `test-${testNumber}-question-${question.id}-option-${optionIndex}`
-              return <label htmlFor={optionId} key={optionId}><input id={optionId} name={`test-${testNumber}-question-${question.id}`} type="radio" checked={answers[question.id] === optionIndex} onChange={() => { setAnswers(current => ({ ...current, [question.id]: optionIndex })); setResult(null) }} /><b>{String.fromCharCode(65 + optionIndex)}.</b> {option}</label>
+              return <label htmlFor={optionId} key={optionId}><input id={optionId} name={`test-${testNumber}-question-${question.id}`} type="radio" checked={answers[question.id] === optionIndex} onChange={() => { setAnswers(current => ({ ...current, [question.id]: optionIndex })); setResult(null); setSaved(false) }} /><b>{String.fromCharCode(65 + optionIndex)}.</b> {option}</label>
             })}
           </fieldset>
         ))}
       </div>
-      <div className="oe-test-actions"><button className="oe-grade-test" type="button" onClick={onNewTest}>New Test</button><button className="oe-grade-test primary" type="button" onClick={gradeTest}>Grade the Test</button></div>
+      <div className="oe-test-actions"><button className="oe-grade-test" type="button" onClick={startNewTest}>New Test</button>{result?.passed ? <button className="oe-grade-test primary" type="button" onClick={() => setSaved(true)}>Save And Continue</button> : <button className="oe-grade-test primary" type="button" onClick={gradeTest}>Grade the Test</button>}</div>
       {result?.incomplete && <p className="oe-test-feedback error" role="alert">Please answer all {questions.length} questions before grading the test.</p>}
       {result && !result.incomplete && (
         <section className={`oe-test-results ${result.passed ? 'passed' : 'failed'}`} role="status">
           <h4>Your Score Will Appear Here:</h4>
           <p className="oe-score-line">Your score is <strong>{((result.correct / questions.length) * 100).toFixed(2)}% ({result.correct}/{questions.length})</strong></p>
-          {result.passed ? <><p className="oe-pass-copy">Congratulations! You passed this test.</p>{onContinue && <button className="oe-continue-test" type="button" onClick={onContinue}>{isFinal ? 'Complete Course' : 'Continue to Next Lesson'}</button>}</> : <><h5>Unfortunately you missed the following questions:</h5><p className="oe-missed-list">{result.missed.map(({ index }) => index + 1).join(', ')}</p><h5>Feedback:</h5><ol className="oe-feedback-list">{result.missed.map(({ question, index }) => <li key={question.id}>Please re-read section <strong>{sourceSection(question)}</strong>. <span>Ans: {String.fromCharCode(65 + question.answer)}</span></li>)}</ol></>}
+          {result.passed && <p className="oe-pass-copy">Congratulations, you have mastered the subject!</p>}
+          {result.missed.length > 0 && <><h5>Unfortunately you missed the following questions:</h5><p className="oe-missed-list">{result.missed.map(({ index }) => index + 1).join(', ')}</p><h5>Feedback:</h5><ol className="oe-feedback-list">{result.missed.map(({ question }) => <li key={question.id}>Please re-read section <strong>{sourceSection(question)}</strong>. <span>Ans: {String.fromCharCode(65 + question.answer)}</span></li>)}</ol></>}
         </section>
       )}
     </article>
@@ -555,6 +574,7 @@ export default function OnlineEducationCoursePage() {
         .oe-live-test{max-width:850px;margin:auto;color:#111827}.oe-live-test-heading{text-align:center;margin:0 0 1.1rem}.oe-live-test-heading span{display:block;font-size:.82rem;font-weight:900}.oe-live-test-heading h3{margin:.1rem 0 0;font-family:var(--font-display);font-size:1.12rem}.oe-live-test-instructions{margin:0 0 1.4rem;padding:1rem;border-top:1px solid #cbd5e1;border-bottom:1px solid #cbd5e1;font-size:.9rem;line-height:1.5}.oe-live-test-list{display:grid;gap:1.1rem}.oe-live-question{min-width:0;margin:0;padding:0;border:0}.oe-live-question legend{display:block;max-width:100%;margin:0 0 .45rem;font-size:.94rem;font-weight:500;line-height:1.4}.oe-live-question legend span{display:inline-grid;place-items:center;width:1.15rem;height:1.15rem;margin-right:.5rem;border-radius:50%;background:#ff8c00;color:#fff;font-size:.68rem;font-weight:900;vertical-align:middle}.oe-live-question label{display:block;margin:.28rem 0 .28rem 1.7rem;cursor:pointer;line-height:1.35}.oe-live-question input{margin:0 .45rem 0 0;accent-color:#0733a0}.oe-live-question label b{margin-right:.22rem}.oe-grade-test{margin:1.5rem 0 0;padding:.42rem .7rem;border:1px solid #718096;border-radius:3px;background:#fff;color:#111827;font-weight:700;cursor:pointer}.oe-grade-test:hover{border-color:#0733a0;background:#eaf2ff}.oe-test-feedback{margin:1rem 0 0;padding:.8rem 1rem;border-radius:6px;font-weight:700}.oe-test-feedback.error,.oe-test-feedback.failed{border:1px solid #fecaca;background:#fff1f2;color:#b91c1c}.oe-test-feedback.passed{border:1px solid #bbf7d0;background:#f0fdf4;color:#166534}
         .oe-chapter-btn:disabled,.oe-sublesson:disabled{cursor:not-allowed;opacity:.5}.oe-chapter-btn:disabled{background:#eef2f7;color:#64748b}.oe-sublesson:disabled{text-decoration:none}
         .oe-live-test{max-width:850px;margin:auto;color:#111827}.oe-live-test-heading{text-align:center;margin:0 0 1.1rem}.oe-live-test-heading span{display:block;font-size:.82rem;font-weight:900}.oe-live-test-heading h3{margin:.1rem 0 0;font-family:var(--font-display);font-size:1.12rem}.oe-pen-animation{width:135px;height:112px;margin:.4rem auto .25rem;overflow:hidden}.oe-pen-animation img{display:block;width:125px;height:auto;transform-origin:72% 65%;animation:oe-pen-write 1.8s ease-in-out infinite alternate}@keyframes oe-pen-write{0%{transform:translate(-11px,7px) rotate(-7deg)}100%{transform:translate(11px,-5px) rotate(8deg)}}.oe-live-test-instructions{margin:0 0 1.4rem;padding:1rem;border-top:1px solid #cbd5e1;border-bottom:1px solid #cbd5e1;font-size:.9rem;line-height:1.5}.oe-live-test-list{display:grid;gap:1.1rem}.oe-live-question{min-width:0;margin:0;padding:0;border:0}.oe-live-question legend{display:block;max-width:100%;margin:0 0 .45rem;font-size:.94rem;font-weight:500;line-height:1.4}.oe-live-question legend span{display:inline-grid;place-items:center;width:1.15rem;height:1.15rem;margin-right:.5rem;border-radius:50%;background:#ff8c00;color:#fff;font-size:.68rem;font-weight:900;vertical-align:middle}.oe-live-question label{display:block;margin:.28rem 0 .28rem 1.7rem;cursor:pointer;line-height:1.35}.oe-live-question input{margin:0 .45rem 0 0;accent-color:#0733a0}.oe-live-question label b{margin-right:.22rem}.oe-test-actions{display:flex;gap:.55rem;margin-top:1.5rem}.oe-grade-test{padding:.48rem .75rem;border:1px solid #718096;border-radius:3px;background:#fff;color:#111827;font-weight:700;cursor:pointer}.oe-grade-test:hover{border-color:#0733a0;background:#eaf2ff}.oe-grade-test.primary,.oe-continue-test{border-color:#0733a0;background:#0733a0;color:#fff}.oe-test-results{margin:1.2rem auto 0;padding:1.1rem;width:min(620px,100%);border-radius:7px;background:#fff}.oe-test-results.failed{border:1px solid #fecaca}.oe-test-results.passed{border:1px solid #bbf7d0}.oe-test-results h4,.oe-test-results h5{margin:.2rem 0 .55rem;color:#f11;font-size:1rem}.oe-test-results h5{margin-top:1.2rem;text-decoration:underline}.oe-score-line{margin:0;font-size:1rem}.oe-missed-list{margin:.15rem 0;font-size:1rem;font-weight:900}.oe-feedback-list{margin:.2rem 0 0;padding-left:1.45rem;font-weight:700}.oe-feedback-list li{margin:.35rem 0}.oe-feedback-list strong{color:#0733a0}.oe-feedback-list span{color:#0b8f31}.oe-pass-copy{margin:.4rem 0 1rem;color:#16723a;font-weight:900}.oe-continue-test{padding:.58rem .85rem;border-radius:4px;font-weight:800;cursor:pointer}
+        .oe-test-complete-card{display:grid;grid-template-columns:130px minmax(0,1fr) auto;align-items:center;gap:1rem;min-height:205px;padding:1.5rem;border:1px solid #9ca3af;background:#f3f4f6}.oe-test-complete-card img{display:block;width:120px;height:auto}.oe-test-complete-card p{margin:0;font-size:1.05rem;font-weight:700}.oe-test-complete-card button{min-width:116px;padding:.7rem 1rem;border:1px solid #9ca3af;border-radius:5px;background:#303030;color:#fff;font-size:1rem;font-weight:800;cursor:pointer}.oe-test-complete-card button:hover{background:#0733a0}@media(max-width:560px){.oe-test-complete-card{grid-template-columns:1fr;text-align:center}.oe-test-complete-card img{margin:auto}.oe-test-complete-card button{margin:auto}}
       `}</style>
       <header className="oe-course-header"><div className="oe-course-head-inner"><img className="oe-course-logo" src="/driving-logo.png" alt="A Precision Driving School" /><button className="oe-logout" type="button" onClick={handleLogout}>Log Out</button></div></header>
       <nav className="oe-course-nav" aria-label="Course navigation"><div className="oe-course-nav-inner"><Link to="/">Home</Link><button type="button" onClick={showCourseMap}>Course Map</button><Link to="/contact">Contact us</Link></div></nav>
