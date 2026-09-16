@@ -1376,12 +1376,12 @@ export default function DashboardPage() {
                     <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:'#475569', margin:'0 0 1.5rem' }}>Here are your currently enrolled courses... you can add more packages.</p>
                     <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search enrolled courses" placeholder="Search course, city or price…" value={courseSearch} onChange={event => { setCourseSearch(event.target.value); setCoursePage(1) }} className="dash-input" style={{ flex:'1 1 240px' }} /><select aria-label="Filter courses by status" value={courseStatusFilter} onChange={event => { setCourseStatusFilter(event.target.value); setCoursePage(1) }} className="dash-input" style={{ width:'190px' }}><option value="all">All course statuses</option>{COURSE_STATUS_FILTERS.map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}</select></div>
                     <div className="dash-course-toolbar-actions">
-                      <button type="button" onClick={() => navigate('/pricing')} className="dash-btn-primary">Add more packages</button>
                       <button type="button" onClick={() => navigate('/online-drivers-ed/course')} className="dash-read-chapters-btn" aria-label="Open the online driver education chapters">
                         <svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" /></svg>
                         Read Chapters
                         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
                       </button>
+                      <button type="button" onClick={() => navigate('/pricing')} className="dash-btn-primary">Add more packages</button>
                     </div>
                     {matchedCourses.length > 0 && <div aria-label="Course pagination" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'.75rem', flexWrap:'wrap', margin:'0 0 1rem' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:'.7rem', flexWrap:'wrap' }}>
@@ -1402,8 +1402,6 @@ export default function DashboardPage() {
                         const status = String(course.status || 'Enrolled')
                         const normalizedStatus = normalizeStatus(status)
                         const canRequestAction = !['refund pending', 'refunded', 'cancelled'].includes(normalizedStatus)
-                        const usage = courseSlotUsage(course)
-                        const courseProgress = String(course.id) === '1' ? Math.max(Number(course.progress) || 0, interactiveProgress) : Number(course.progress) || 0
                         const enrollmentKey = course.enrollmentId || course._id || `${course.id}-${course.enrolledAt || course.date || i}`
                         return (
                         <div key={enrollmentKey} className="dash-course-card" style={{ animationDelay:`${i * 0.06}s` }}>
@@ -1414,13 +1412,8 @@ export default function DashboardPage() {
                               <span style={{ padding:'0.15rem 0.5rem', borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.7rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700, ...(normalizedStatus === 'enrolled' || normalizedStatus === 'paid' ? { background:'rgba(34,197,94,0.08)', color:'#16A34A' } : normalizedStatus === 'completed' ? { background:'rgba(1,69,168,0.08)', color:SKY_BLUE } : normalizedStatus === 'refunded' || normalizedStatus === 'cancelled' ? { background:'rgba(220,38,38,0.06)', color:'#DC2626' } : { background:'rgba(234,179,8,0.08)', color:'#CA8A04' }) }}>{status}</span>
                             </div>
                             <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', margin:'0 0 0.5rem' }}>{course.price}</p>
-                            <div style={{ height:'6px', background:'#E8EDF4', borderRadius:'3px', overflow:'hidden', marginBottom:'0.4rem', maxWidth:'300px' }}>
-                              <div style={{ width:`${courseProgress}%`, height:'100%', background:`linear-gradient(90deg,${SKY_BLUE},#3B82F6)`, borderRadius:'3px', transition:'width 0.8s cubic-bezier(0.22,1,0.36,1)' }} />
-                            </div>
-                            <p style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', margin:0 }}>{normalizedStatus === 'refund pending' ? 'Lesson access paused while the refund is reviewed' : normalizedStatus === 'refunded' ? 'Refund completed · enrollment closed' : `${courseProgress}% study progress · ${usage.used}/${usage.maximum} lesson slots used`}</p>
                           </div>
                           <div style={{ display:'flex', gap:'0.5rem', flexShrink:0, flexWrap:'wrap', justifyContent:'flex-end', alignItems:'center' }}>
-                            {canRequestAction && course.canBookMore !== false && usage.remaining > 0 && <button type="button" onClick={() => navigate(`/pricing?plan=${encodeURIComponent(course.id)}&continue=1${course.enrollmentId ? `&enrollmentId=${encodeURIComponent(course.enrollmentId)}` : ''}`)} style={{ padding:'0.5rem 1rem', background:'linear-gradient(135deg,rgba(253,188,1,.16),rgba(253,188,1,.06))', color:'#7A5600', border:'1px solid rgba(253,188,1,.35)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:800, cursor:'pointer' }}>Book {usage.remaining} Remaining</button>}
                             <button type="button" onClick={() => setCourseDetail(course)} style={{ padding:'0.5rem 1rem', background:'linear-gradient(135deg,rgba(1,69,168,0.06),rgba(1,69,168,0.02))', color:SKY_BLUE, border:'1px solid rgba(1,69,168,0.1)', borderRadius:'8px', fontFamily:'var(--font-body)', fontSize:'1rem', fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:'0.4rem', transition:'all 0.2s' }}>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></svg> Details
                             </button>
