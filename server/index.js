@@ -4378,6 +4378,25 @@ app.get('/api/admin/users', async (req, res) => {
   }
 })
 
+app.put('/api/admin/users/:uid', async (req, res) => {
+  try {
+    const uid = cleanText(req.params.uid, 160)
+    if (!uid) throw new HttpError(400, 'User id is required.')
+    const submitted = sanitizeUserProfile(req.body)
+    const editableFields = new Set(['displayName', 'name', 'firstName', 'lastName', 'phone', 'address', 'city', 'state', 'zipCode'])
+    const update = Object.fromEntries(Object.entries(submitted).filter(([field]) => editableFields.has(field)))
+    if (!Object.keys(update).length) throw new HttpError(400, 'Provide at least one editable user field.')
+
+    const result = await usersCol.updateOne({ uid }, { $set: { ...update, updatedAt: new Date().toISOString() } })
+    if (!result.matchedCount) throw new HttpError(404, 'Student account was not found.')
+    const user = await usersCol.findOne({ uid }, { projection: { uid: 1, displayName: 1, name: 1, firstName: 1, lastName: 1, phone: 1, address: 1, city: 1, state: 1, zipCode: 1 } })
+    res.json({ ok: true, user })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'User update failed')
+  }
+})
+
 app.get('/api/admin/users/:uid/details', async (req, res) => {
   try {
     const uid = cleanText(req.params.uid, 160)

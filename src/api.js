@@ -112,6 +112,7 @@ export const api = {
   deleteBooking: (id) => request(`/api/bookings/${pathPart(id)}`, { method: 'DELETE' }),
   adminStats: () => request('/api/admin/stats'),
   adminUsers: () => request('/api/admin/users'),
+  adminUpdateUser: (uid, data) => request(`/api/admin/users/${pathPart(uid)}`, { method: 'PUT', body: JSON.stringify(data) }),
   adminUserDetails: (uid) => request(`/api/admin/users/${pathPart(uid)}/details`),
   adminDeleteUser: (uid) => request(`/api/admin/users/${pathPart(uid)}`, { method: 'DELETE' }),
   adminUpdateUserCourse: (uid, data) => request(`/api/admin/users/${pathPart(uid)}/courses`, { method: 'PUT', body: JSON.stringify(data) }),
