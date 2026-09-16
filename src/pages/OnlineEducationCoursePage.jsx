@@ -14,7 +14,7 @@ import { AccidentFactorsLesson, AccidentOverviewLesson, ChapterSevenOverview, Ch
 import { AlcoholAsDrugLesson, AlcoholBodyOrgansLesson, AlcoholHumanBodyLesson, ChapterEightOverview, ChapterEightTestLesson, DrinkingDrivingAlternativesLesson, DrugsLesson, DuiLawsLesson, IdentifyingDrunkDriversLesson } from '../components/online-course/ChapterEightLessons'
 import { CaliforniaVehicleCodesLesson, ChapterNineOverview, ChapterNineTestLesson, LicensingLesson, RegistrationLesson } from '../components/online-course/ChapterNineLessons'
 import { CaliforniaIdentificationCardLesson, CaliforniaLicenseClassesLesson, ChapterTenOverview, ChapterTenTestLesson, ObtainingLicenseLesson, OtherLicensingInformationLesson } from '../components/online-course/ChapterTenLessons'
-import { ChapterElevenOverview, FinalTestLesson } from '../components/online-course/ChapterElevenLessons'
+import { ChapterElevenOverview } from '../components/online-course/ChapterElevenLessons'
 
 const CHAPTERS = [
   { title: 'Driving Is Your Responsibility', lesson: "Driver's License: A Privilege", intro: 'Driving a motor vehicle requires a lot of responsibility.', points: ['When behind the wheel, safe driving is your responsibility and it should always be your first priority.', 'Always obey traffic rules and signals, drive responsibly, be courteous to other drivers and avoid taking unnecessary risks.', 'Driving can be dangerous and even fatal if driving rules are not followed.', 'Understanding how your vehicle works and how to safely drive on all highways and streets is part of being a responsible driver.', 'There are millions of drivers that will be sharing the road with you. Use caution and be an attentive driver at all times.'], topics: ["Driver's License: A Privilege", 'Obeying the Laws', "Importance of Driver's Education", 'The New Laws in Driving', 'Smoke-Free Cars', 'History of the Automobile', 'Test 1'] },
@@ -32,9 +32,9 @@ const CHAPTERS = [
 
 const TEST_SIZE = 12
 const PASSING_SCORE = 9
+const FINAL_TEST_SIZE = 25
 
-function getRandomQuestions(lessonId) {
-  const pool = onlineCourseTestQuestions.filter(question => Number(question.lessonId) === lessonId)
+function getRandomQuestionSet(pool, size) {
   const shuffled = [...pool]
 
   for (let index = shuffled.length - 1; index > 0; index -= 1) {
@@ -42,13 +42,19 @@ function getRandomQuestions(lessonId) {
     ;[shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]]
   }
 
-  return shuffled.slice(0, TEST_SIZE)
+  return shuffled.slice(0, size)
 }
 
-function ChapterTest({ testNumber, questions }) {
+function getRandomQuestions(lessonId) {
+  const pool = onlineCourseTestQuestions.filter(question => Number(question.lessonId) === lessonId)
+  return getRandomQuestionSet(pool, TEST_SIZE)
+}
+
+function ChapterTest({ testNumber, questions, isFinal = false }) {
   const [answers, setAnswers] = useState({})
   const [result, setResult] = useState(null)
   const answeredCount = Object.keys(answers).length
+  const passingScore = isFinal ? Math.ceil(questions.length * 0.75) : PASSING_SCORE
 
   const gradeTest = () => {
     if (answeredCount !== questions.length) {
@@ -62,8 +68,8 @@ function ChapterTest({ testNumber, questions }) {
 
   return (
     <article className="oe-live-test">
-      <div className="oe-live-test-heading"><span>Test</span><h3>Chapter {testNumber}</h3></div>
-      <p className="oe-live-test-instructions">Select the appropriate answer for each question. When you are done, click <strong>Grade the Test</strong> to submit your answers. You need at least {PASSING_SCORE} correct answers to pass.</p>
+      <div className="oe-live-test-heading"><span>Test</span><h3>{isFinal ? 'Final Test' : `Chapter ${testNumber}`}</h3></div>
+      <p className="oe-live-test-instructions">Select the appropriate answer for each question. When you are done, click <strong>Grade the Test</strong> to submit your answers. You need at least {passingScore} correct answers to pass.</p>
       <div className="oe-live-test-list">
         {questions.map((question, questionIndex) => (
           <fieldset className="oe-live-question" key={question.id}>
@@ -77,7 +83,7 @@ function ChapterTest({ testNumber, questions }) {
       </div>
       <button className="oe-grade-test" type="button" onClick={gradeTest}>Grade the Test</button>
       {result?.incomplete && <p className="oe-test-feedback error" role="alert">Please answer all {questions.length} questions before grading the test.</p>}
-      {result && !result.incomplete && <p className={`oe-test-feedback ${result.correct >= PASSING_SCORE ? 'passed' : 'failed'}`} role="status">Your score: <strong>{result.correct} / {questions.length}</strong>. {result.correct >= PASSING_SCORE ? 'You passed the test.' : `You need ${PASSING_SCORE} correct answers to pass.`}</p>}
+      {result && !result.incomplete && <p className={`oe-test-feedback ${result.correct >= passingScore ? 'passed' : 'failed'}`} role="status">Your score: <strong>{result.correct} / {questions.length}</strong>. {result.correct >= passingScore ? 'You passed the test.' : `You need ${passingScore} correct answers to pass.`}</p>}
     </article>
   )
 }
@@ -286,6 +292,8 @@ export default function OnlineEducationCoursePage() {
   const chapter = useMemo(() => CHAPTERS[activeChapter], [activeChapter])
   const isChapterTest = activeChapter < 10 && activeLesson === CHAPTERS[activeChapter].topics.length - 1
   const testQuestions = useMemo(() => isChapterTest ? getRandomQuestions(activeChapter + 1) : [], [activeChapter, activeLesson, isChapterTest])
+  const isFinalCourseTest = activeChapter === 10 && activeLesson === 0
+  const finalTestQuestions = useMemo(() => isFinalCourseTest ? getRandomQuestionSet(onlineCourseTestQuestions, FINAL_TEST_SIZE) : [], [isFinalCourseTest])
   const isDriverLicenseLesson = activeChapter === 0 && activeLesson === 0
   const isObeyingLawsLesson = activeChapter === 0 && activeLesson === 1
   const isImportanceLesson = activeChapter === 0 && activeLesson === 2
@@ -533,7 +541,7 @@ export default function OnlineEducationCoursePage() {
           </ul>
         </aside>
         <section className="oe-lesson-card" aria-live="polite">
-          <h2 className="oe-lesson-title">{isChapterTest ? '30 Hour Drivers Ed Curriculum' : activeChapter === 1 || activeChapter === 2 || activeChapter === 3 || activeChapter === 4 || activeChapter === 5 || activeChapter === 6 || activeChapter === 7 || activeChapter === 8 || activeChapter === 9 || activeChapter === 10 ? "Driver's License: A Privilege" : chapter.lesson}</h2>
+          <h2 className="oe-lesson-title">{isChapterTest || isFinalCourseTest ? '30 Hour Drivers Ed Curriculum' : activeChapter === 1 || activeChapter === 2 || activeChapter === 3 || activeChapter === 4 || activeChapter === 5 || activeChapter === 6 || activeChapter === 7 || activeChapter === 8 || activeChapter === 9 || activeChapter === 10 ? "Driver's License: A Privilege" : chapter.lesson}</h2>
           <div className={`oe-lesson-body${isDetailedLesson ? ' detailed' : ''}`}>
             {isChapterTest ? (
               <ChapterTest key={`${activeChapter}-${testQuestions.map(question => question.id).join('-')}`} testNumber={activeChapter + 1} questions={testQuestions} />
@@ -672,7 +680,7 @@ export default function OnlineEducationCoursePage() {
             ) : isChapterElevenOverview ? (
               <ChapterElevenOverview onBegin={() => goToLesson(10, 0)} />
             ) : isFinalTestLesson ? (
-              <FinalTestLesson onStart={() => goToLesson(10, -1)} />
+              <ChapterTest key={`final-${finalTestQuestions.map(question => question.id).join('-')}`} testNumber={11} questions={finalTestQuestions} isFinal />
             ) : (
               <>
                 {!((activeChapter === 4 || activeChapter === 5) && activeLesson < 0) && <p className="oe-lesson-position">{activeLesson < 0 ? `Chapter ${activeChapter + 1} overview` : `Lesson ${activeChapter + 1}.${activeLesson + 1}`}</p>}
