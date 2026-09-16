@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
@@ -33,6 +33,16 @@ const CHAPTERS = [
 const TEST_SIZE = 12
 const PASSING_SCORE = 9
 const FINAL_TEST_SIZE = 25
+const COURSE_STEPS = CHAPTERS.flatMap((chapter, chapterIndex) => chapter.topics.map((_, lessonIndex) => ({ chapterIndex, lessonIndex })))
+
+function getCourseStepIndex(chapterIndex, lessonIndex) {
+  return COURSE_STEPS.findIndex(step => step.chapterIndex === chapterIndex && step.lessonIndex === lessonIndex)
+}
+
+function sourceSection(question) {
+  const match = question.source?.match(/lesson(\d+)-(\d+)\.html/i)
+  return match ? `${match[1]}.${match[2]}` : `Chapter ${question.lessonId}`
+}
 
 function getRandomQuestionSet(pool, size) {
   const shuffled = [...pool]
@@ -50,7 +60,7 @@ function getRandomQuestions(lessonId) {
   return getRandomQuestionSet(pool, TEST_SIZE)
 }
 
-function ChapterTest({ testNumber, questions, isFinal = false }) {
+function ChapterTest({ testNumber, questions, isFinal = false, onNewTest, onPassed, onContinue }) {
   const [answers, setAnswers] = useState({})
   const [result, setResult] = useState(null)
   const answeredCount = Object.keys(answers).length
@@ -62,13 +72,16 @@ function ChapterTest({ testNumber, questions, isFinal = false }) {
       return
     }
 
-    const correct = questions.reduce((total, question) => total + (answers[question.id] === question.answer ? 1 : 0), 0)
-    setResult({ correct, incomplete: false })
+    const missed = questions.map((question, index) => ({ question, index })).filter(({ question }) => answers[question.id] !== question.answer)
+    const correct = questions.length - missed.length
+    const passed = correct >= passingScore
+    setResult({ correct, missed, incomplete: false, passed })
+    if (passed) onPassed?.()
   }
 
   return (
     <article className="oe-live-test">
-      <div className="oe-live-test-heading"><span>Test</span><h3>{isFinal ? 'Final Test' : `Chapter ${testNumber}`}</h3></div>
+      <div className="oe-live-test-heading"><span>Test</span><h3>{isFinal ? 'Final Test' : `Chapter ${testNumber}`}</h3><div className="oe-pen-animation"><img src="/pen.png" alt="Pen writing a test" /></div></div>
       <p className="oe-live-test-instructions">Select the appropriate answer for each question. When you are done, click <strong>Grade the Test</strong> to submit your answers. You need at least {passingScore} correct answers to pass.</p>
       <div className="oe-live-test-list">
         {questions.map((question, questionIndex) => (
@@ -81,9 +94,15 @@ function ChapterTest({ testNumber, questions, isFinal = false }) {
           </fieldset>
         ))}
       </div>
-      <button className="oe-grade-test" type="button" onClick={gradeTest}>Grade the Test</button>
+      <div className="oe-test-actions"><button className="oe-grade-test" type="button" onClick={onNewTest}>New Test</button><button className="oe-grade-test primary" type="button" onClick={gradeTest}>Grade the Test</button></div>
       {result?.incomplete && <p className="oe-test-feedback error" role="alert">Please answer all {questions.length} questions before grading the test.</p>}
-      {result && !result.incomplete && <p className={`oe-test-feedback ${result.correct >= passingScore ? 'passed' : 'failed'}`} role="status">Your score: <strong>{result.correct} / {questions.length}</strong>. {result.correct >= passingScore ? 'You passed the test.' : `You need ${passingScore} correct answers to pass.`}</p>}
+      {result && !result.incomplete && (
+        <section className={`oe-test-results ${result.passed ? 'passed' : 'failed'}`} role="status">
+          <h4>Your Score Will Appear Here:</h4>
+          <p className="oe-score-line">Your score is <strong>{((result.correct / questions.length) * 100).toFixed(2)}% ({result.correct}/{questions.length})</strong></p>
+          {result.passed ? <><p className="oe-pass-copy">Congratulations! You passed this test.</p>{onContinue && <button className="oe-continue-test" type="button" onClick={onContinue}>{isFinal ? 'Complete Course' : 'Continue to Next Lesson'}</button>}</> : <><h5>Unfortunately you missed the following questions:</h5><p className="oe-missed-list">{result.missed.map(({ index }) => index + 1).join(', ')}</p><h5>Feedback:</h5><ol className="oe-feedback-list">{result.missed.map(({ question, index }) => <li key={question.id}>Please re-read section <strong>{sourceSection(question)}</strong>. <span>Ans: {String.fromCharCode(65 + question.answer)}</span></li>)}</ol></>}
+        </section>
+      )}
     </article>
   )
 }
@@ -289,11 +308,22 @@ export default function OnlineEducationCoursePage() {
   const [activeLesson, setActiveLesson] = useState(-1)
   const [openChapters, setOpenChapters] = useState(() => new Set([0]))
   const [started, setStarted] = useState(false)
+  const [quizVersion, setQuizVersion] = useState(0)
+  const progressStorageKey = `precision-drivers-ed-progress:${auth.currentUser?.uid || 'new-user'}`
+  const [unlockedStep, setUnlockedStep] = useState(() => {
+    const saved = Number.parseInt(window.localStorage.getItem(progressStorageKey), 10)
+    return Number.isInteger(saved) && saved >= 0 ? saved : 0
+  })
   const chapter = useMemo(() => CHAPTERS[activeChapter], [activeChapter])
   const isChapterTest = activeChapter < 10 && activeLesson === CHAPTERS[activeChapter].topics.length - 1
-  const testQuestions = useMemo(() => isChapterTest ? getRandomQuestions(activeChapter + 1) : [], [activeChapter, activeLesson, isChapterTest])
+  const testQuestions = useMemo(() => isChapterTest ? getRandomQuestions(activeChapter + 1) : [], [activeChapter, activeLesson, isChapterTest, quizVersion])
   const isFinalCourseTest = activeChapter === 10 && activeLesson === 0
-  const finalTestQuestions = useMemo(() => isFinalCourseTest ? getRandomQuestionSet(onlineCourseTestQuestions, FINAL_TEST_SIZE) : [], [isFinalCourseTest])
+  const finalTestQuestions = useMemo(() => isFinalCourseTest ? getRandomQuestionSet(onlineCourseTestQuestions, FINAL_TEST_SIZE) : [], [isFinalCourseTest, quizVersion])
+  const currentStepIndex = activeLesson >= 0 ? getCourseStepIndex(activeChapter, activeLesson) : -1
+
+  useEffect(() => {
+    window.localStorage.setItem(progressStorageKey, String(unlockedStep))
+  }, [progressStorageKey, unlockedStep])
   const isDriverLicenseLesson = activeChapter === 0 && activeLesson === 0
   const isObeyingLawsLesson = activeChapter === 0 && activeLesson === 1
   const isImportanceLesson = activeChapter === 0 && activeLesson === 2
@@ -364,7 +394,12 @@ export default function OnlineEducationCoursePage() {
   const isFinalTestLesson = activeChapter === 10 && activeLesson === 0
   const isDetailedLesson = isDriverLicenseLesson || isObeyingLawsLesson || isImportanceLesson || isNewLawsLesson || isSmokeFreeLesson || isAutomobileHistoryLesson || isChapterOneTest || isEyesVisionLesson || isEarsHearingLesson || isLimitingConditionsLesson || isEssentialAttitudesLesson || isUndesirableBehaviorsLesson || isChapterTwoTest || isGravityLesson || isInertiaEnergyLesson || isMomentumFrictionLesson || isCentrifugalForceLesson || isChapterThreeTest || isTrafficSignsShapesColorsLesson || isTrafficControlSignsLesson || isTrafficRegulatorySignsLesson || isHighwayRoadMarkingsLesson || isCurbMarkingsLesson || isChapterFourTest || isConstructionAutomobileLesson || isSteeringDashboardLesson || isWindshieldMirrorsLesson || isCarSafetyEquipmentLesson || isVehicleMaintenanceLesson || isOwningOperatingCostLesson || isChapterFiveTest || isDefensiveDrivingLesson || isBasicSpeedLawsLesson || isProperLaneUseLesson || isSafeDrivingIntersectionsLesson || isSafeDrivingPassingLesson || isBackingParkingLesson || isChapterSixTest || isChapterSevenOverview || isSharingRoadTipsLesson || isAccidentOverviewLesson || isAccidentFactorsLesson || isMechanicalFailureLesson || isRoadwayCausesLesson || isVehicleSafetyFeaturesLesson || isChapterSevenTest || isChapterEightOverview || isAlcoholAsDrugLesson || isAlcoholHumanBodyLesson || isAlcoholBodyOrgansLesson || isIdentifyingDrunkDriversLesson || isDrinkingDrivingAlternativesLesson || isDrugsLesson || isDuiLawsLesson || isChapterEightTest || isChapterNineOverview || isLicensingLesson || isRegistrationLesson || isCaliforniaVehicleCodesLesson || isChapterNineTest || isChapterTenOverview || isObtainingLicenseLesson || isCaliforniaLicenseClassesLesson || isOtherLicensingInformationLesson || isCaliforniaIdentificationCardLesson || isChapterTenTest || isChapterElevenOverview || isFinalTestLesson
 
+  const unlockThrough = stepIndex => setUnlockedStep(current => Math.max(current, stepIndex))
+  const canOpenLesson = (chapterIndex, lessonIndex) => getCourseStepIndex(chapterIndex, lessonIndex) <= unlockedStep
+
   const selectChapter = index => {
+    const firstStep = getCourseStepIndex(index, 0)
+    if (firstStep > unlockedStep) return
     setActiveChapter(index)
     setActiveLesson(-1)
     setStarted(false)
@@ -377,6 +412,7 @@ export default function OnlineEducationCoursePage() {
   }
 
   const selectLesson = (chapterIndex, lessonIndex) => {
+    if (!canOpenLesson(chapterIndex, lessonIndex)) return
     setActiveChapter(chapterIndex)
     setActiveLesson(lessonIndex)
     setStarted(false)
@@ -404,19 +440,26 @@ export default function OnlineEducationCoursePage() {
   }
 
   const goToNextLesson = () => {
-    setActiveChapter(0)
-    setActiveLesson(1)
-    setStarted(false)
-    setOpenChapters(current => new Set(current).add(0))
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    goToLesson(0, 1)
   }
 
   const goToLesson = (chapterIndex, lessonIndex) => {
+    const targetStepIndex = getCourseStepIndex(chapterIndex, lessonIndex)
+    const isSequentialNextStep = currentStepIndex >= 0 && targetStepIndex === currentStepIndex + 1
+    if (targetStepIndex > unlockedStep && !isSequentialNextStep) return
+    if (isSequentialNextStep && !isChapterTest && !isFinalCourseTest) unlockThrough(targetStepIndex)
     setActiveChapter(chapterIndex)
     setActiveLesson(lessonIndex)
     setStarted(false)
     setOpenChapters(current => new Set(current).add(chapterIndex))
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const beginNewTest = () => setQuizVersion(version => version + 1)
+  const passCurrentTest = () => unlockThrough(currentStepIndex + 1)
+  const continueAfterTest = () => {
+    const nextStep = COURSE_STEPS[currentStepIndex + 1]
+    if (nextStep) goToLesson(nextStep.chapterIndex, nextStep.lessonIndex)
   }
 
   return (
@@ -510,6 +553,8 @@ export default function OnlineEducationCoursePage() {
         @media(max-width:700px){.oe-ten-columns{columns:1}.oe-ten-photo-row,.oe-ten-written-row{grid-template-columns:1fr}.oe-ten-photo-row img,.oe-ten-written-row>img{width:min(175px,58%)}.oe-ten-license-images{grid-template-columns:1fr;width:min(500px,100%)}.oe-ten-license-images img{max-height:330px}}@media(max-width:520px){.oe-chapter-ten-hero img{width:100%}.oe-chapter-ten-lessons{padding:.7rem}.oe-chapter-ten-lessons button{grid-template-columns:44px minmax(0,1fr) 16px;padding:.52rem .4rem}.oe-chapter-ten-section{padding:.85rem .8rem}.oe-chapter-ten-section ul{padding-left:1.15rem}}
         .oe-speed-code-section>.oe-speed-additional-laws{order:3}
         .oe-live-test{max-width:850px;margin:auto;color:#111827}.oe-live-test-heading{text-align:center;margin:0 0 1.1rem}.oe-live-test-heading span{display:block;font-size:.82rem;font-weight:900}.oe-live-test-heading h3{margin:.1rem 0 0;font-family:var(--font-display);font-size:1.12rem}.oe-live-test-instructions{margin:0 0 1.4rem;padding:1rem;border-top:1px solid #cbd5e1;border-bottom:1px solid #cbd5e1;font-size:.9rem;line-height:1.5}.oe-live-test-list{display:grid;gap:1.1rem}.oe-live-question{min-width:0;margin:0;padding:0;border:0}.oe-live-question legend{display:block;max-width:100%;margin:0 0 .45rem;font-size:.94rem;font-weight:500;line-height:1.4}.oe-live-question legend span{display:inline-grid;place-items:center;width:1.15rem;height:1.15rem;margin-right:.5rem;border-radius:50%;background:#ff8c00;color:#fff;font-size:.68rem;font-weight:900;vertical-align:middle}.oe-live-question label{display:block;margin:.28rem 0 .28rem 1.7rem;cursor:pointer;line-height:1.35}.oe-live-question input{margin:0 .45rem 0 0;accent-color:#0733a0}.oe-live-question label b{margin-right:.22rem}.oe-grade-test{margin:1.5rem 0 0;padding:.42rem .7rem;border:1px solid #718096;border-radius:3px;background:#fff;color:#111827;font-weight:700;cursor:pointer}.oe-grade-test:hover{border-color:#0733a0;background:#eaf2ff}.oe-test-feedback{margin:1rem 0 0;padding:.8rem 1rem;border-radius:6px;font-weight:700}.oe-test-feedback.error,.oe-test-feedback.failed{border:1px solid #fecaca;background:#fff1f2;color:#b91c1c}.oe-test-feedback.passed{border:1px solid #bbf7d0;background:#f0fdf4;color:#166534}
+        .oe-chapter-btn:disabled,.oe-sublesson:disabled{cursor:not-allowed;opacity:.5}.oe-chapter-btn:disabled{background:#eef2f7;color:#64748b}.oe-sublesson:disabled{text-decoration:none}
+        .oe-live-test{max-width:850px;margin:auto;color:#111827}.oe-live-test-heading{text-align:center;margin:0 0 1.1rem}.oe-live-test-heading span{display:block;font-size:.82rem;font-weight:900}.oe-live-test-heading h3{margin:.1rem 0 0;font-family:var(--font-display);font-size:1.12rem}.oe-pen-animation{width:135px;height:112px;margin:.4rem auto .25rem;overflow:hidden}.oe-pen-animation img{display:block;width:125px;height:auto;transform-origin:72% 65%;animation:oe-pen-write 1.8s ease-in-out infinite alternate}@keyframes oe-pen-write{0%{transform:translate(-11px,7px) rotate(-7deg)}100%{transform:translate(11px,-5px) rotate(8deg)}}.oe-live-test-instructions{margin:0 0 1.4rem;padding:1rem;border-top:1px solid #cbd5e1;border-bottom:1px solid #cbd5e1;font-size:.9rem;line-height:1.5}.oe-live-test-list{display:grid;gap:1.1rem}.oe-live-question{min-width:0;margin:0;padding:0;border:0}.oe-live-question legend{display:block;max-width:100%;margin:0 0 .45rem;font-size:.94rem;font-weight:500;line-height:1.4}.oe-live-question legend span{display:inline-grid;place-items:center;width:1.15rem;height:1.15rem;margin-right:.5rem;border-radius:50%;background:#ff8c00;color:#fff;font-size:.68rem;font-weight:900;vertical-align:middle}.oe-live-question label{display:block;margin:.28rem 0 .28rem 1.7rem;cursor:pointer;line-height:1.35}.oe-live-question input{margin:0 .45rem 0 0;accent-color:#0733a0}.oe-live-question label b{margin-right:.22rem}.oe-test-actions{display:flex;gap:.55rem;margin-top:1.5rem}.oe-grade-test{padding:.48rem .75rem;border:1px solid #718096;border-radius:3px;background:#fff;color:#111827;font-weight:700;cursor:pointer}.oe-grade-test:hover{border-color:#0733a0;background:#eaf2ff}.oe-grade-test.primary,.oe-continue-test{border-color:#0733a0;background:#0733a0;color:#fff}.oe-test-results{margin:1.2rem auto 0;padding:1.1rem;width:min(620px,100%);border-radius:7px;background:#fff}.oe-test-results.failed{border:1px solid #fecaca}.oe-test-results.passed{border:1px solid #bbf7d0}.oe-test-results h4,.oe-test-results h5{margin:.2rem 0 .55rem;color:#f11;font-size:1rem}.oe-test-results h5{margin-top:1.2rem;text-decoration:underline}.oe-score-line{margin:0;font-size:1rem}.oe-missed-list{margin:.15rem 0;font-size:1rem;font-weight:900}.oe-feedback-list{margin:.2rem 0 0;padding-left:1.45rem;font-weight:700}.oe-feedback-list li{margin:.35rem 0}.oe-feedback-list strong{color:#0733a0}.oe-feedback-list span{color:#0b8f31}.oe-pass-copy{margin:.4rem 0 1rem;color:#16723a;font-weight:900}.oe-continue-test{padding:.58rem .85rem;border-radius:4px;font-weight:800;cursor:pointer}
       `}</style>
       <header className="oe-course-header"><div className="oe-course-head-inner"><img className="oe-course-logo" src="/driving-logo.png" alt="A Precision Driving School" /><button className="oe-logout" type="button" onClick={handleLogout}>Log Out</button></div></header>
       <nav className="oe-course-nav" aria-label="Course navigation"><div className="oe-course-nav-inner"><Link to="/">Home</Link><button type="button" onClick={showCourseMap}>Course Map</button><Link to="/contact">Contact us</Link></div></nav>
@@ -519,20 +564,20 @@ export default function OnlineEducationCoursePage() {
           <ul className="oe-chapter-list">
             {CHAPTERS.map((item, chapterIndex) => {
               const isOpen = openChapters.has(chapterIndex)
+              const chapterLocked = getCourseStepIndex(chapterIndex, 0) > unlockedStep
               return (
                 <li className="oe-chapter-item" key={item.title}>
-                  <button type="button" className={`oe-chapter-btn${activeChapter === chapterIndex ? ' active' : ''}`} onClick={() => selectChapter(chapterIndex)} aria-expanded={isOpen}>
+                  <button type="button" className={`oe-chapter-btn${activeChapter === chapterIndex ? ' active' : ''}`} onClick={() => selectChapter(chapterIndex)} aria-expanded={isOpen} disabled={chapterLocked}>
                     <span className="oe-check">&#10003;</span>
                     <span>{chapterIndex + 1}. {item.title}</span>
                     <span className="oe-chevron" aria-hidden="true">&#9662;</span>
                   </button>
                   {isOpen && (
                     <div className="oe-sublesson-list">
-                      {item.topics.map((topic, lessonIndex) => (
-                        <button type="button" className={`oe-sublesson${activeChapter === chapterIndex && activeLesson === lessonIndex ? ' active' : ''}`} onClick={() => selectLesson(chapterIndex, lessonIndex)} key={topic}>
-                          {chapterIndex + 1}.{lessonIndex + 1} {topic}
-                        </button>
-                      ))}
+                      {item.topics.map((topic, lessonIndex) => {
+                        const lessonLocked = !canOpenLesson(chapterIndex, lessonIndex)
+                        return <button type="button" disabled={lessonLocked} className={`oe-sublesson${activeChapter === chapterIndex && activeLesson === lessonIndex ? ' active' : ''}`} onClick={() => selectLesson(chapterIndex, lessonIndex)} key={topic}>{chapterIndex + 1}.{lessonIndex + 1} {topic}{lessonLocked ? ' 🔒' : ''}</button>
+                      })}
                     </div>
                   )}
                 </li>
@@ -544,7 +589,7 @@ export default function OnlineEducationCoursePage() {
           <h2 className="oe-lesson-title">{isChapterTest || isFinalCourseTest ? '30 Hour Drivers Ed Curriculum' : activeChapter === 1 || activeChapter === 2 || activeChapter === 3 || activeChapter === 4 || activeChapter === 5 || activeChapter === 6 || activeChapter === 7 || activeChapter === 8 || activeChapter === 9 || activeChapter === 10 ? "Driver's License: A Privilege" : chapter.lesson}</h2>
           <div className={`oe-lesson-body${isDetailedLesson ? ' detailed' : ''}`}>
             {isChapterTest ? (
-              <ChapterTest key={`${activeChapter}-${testQuestions.map(question => question.id).join('-')}`} testNumber={activeChapter + 1} questions={testQuestions} />
+              <ChapterTest key={`${activeChapter}-${testQuestions.map(question => question.id).join('-')}`} testNumber={activeChapter + 1} questions={testQuestions} onNewTest={beginNewTest} onPassed={passCurrentTest} onContinue={continueAfterTest} />
             ) : isDriverLicenseLesson ? (
               <DriverLicensePrivilegeLesson onPrevious={goToPreviousLesson} onNext={goToNextLesson} />
             ) : isObeyingLawsLesson ? (
@@ -680,7 +725,7 @@ export default function OnlineEducationCoursePage() {
             ) : isChapterElevenOverview ? (
               <ChapterElevenOverview onBegin={() => goToLesson(10, 0)} />
             ) : isFinalTestLesson ? (
-              <ChapterTest key={`final-${finalTestQuestions.map(question => question.id).join('-')}`} testNumber={11} questions={finalTestQuestions} isFinal />
+              <ChapterTest key={`final-${finalTestQuestions.map(question => question.id).join('-')}`} testNumber={11} questions={finalTestQuestions} isFinal onNewTest={beginNewTest} onPassed={passCurrentTest} onContinue={continueAfterTest} />
             ) : (
               <>
                 {!((activeChapter === 4 || activeChapter === 5) && activeLesson < 0) && <p className="oe-lesson-position">{activeLesson < 0 ? `Chapter ${activeChapter + 1} overview` : `Lesson ${activeChapter + 1}.${activeLesson + 1}`}</p>}
