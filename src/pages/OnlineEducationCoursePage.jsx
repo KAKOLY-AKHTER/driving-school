@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
 import { usePageMeta } from '../usePageMeta'
+import { onlineCourseTestQuestions } from '../data/onlineCourseTestQuestions'
 import { AutomobileHistoryLesson, ChapterOneTestLesson, ImportanceEducationLesson, NewDrivingLawsLesson, SmokeFreeCarsLesson } from '../components/online-course/ChapterOneLessons'
 import { ChapterTwoTestLesson, EarsHearingLesson, EssentialAttitudesLesson, EyesVisionLesson, LimitingPhysicalConditionsLesson, UndesirableDrivingBehaviorsLesson } from '../components/online-course/ChapterTwoLessons'
 import { CentrifugalForceLesson, ChapterThreeTestLesson, GravityLesson, InertiaEnergyLesson, MomentumFrictionLesson } from '../components/online-course/ChapterThreeLessons'
@@ -28,6 +29,58 @@ const CHAPTERS = [
   { title: "Acquiring a California Driver's License", lesson: "Process in Obtaining a California Driver's License", intro: 'Follow each permit, practice and testing requirement before applying for a driver license.', points: ['Complete the required driver education.', 'Practice with a qualified supervising driver.', 'Prepare your vehicle and documents for the road test.'], topics: ["Process in Obtaining a California Driver's License", 'California License Class', 'Other Licensing Information', 'California Identification Card', 'Test 10'] },
   { title: 'Final Test', lesson: 'Final Test', intro: 'Review the complete curriculum before beginning the final knowledge assessment.', points: ['Revisit any chapter that needs more study.', 'Read every question carefully.', 'Apply safe-driving principles to each situation.'], topics: ['Final Test'] },
 ]
+
+const TEST_SIZE = 12
+const PASSING_SCORE = 9
+
+function getRandomQuestions(lessonId) {
+  const pool = onlineCourseTestQuestions.filter(question => Number(question.lessonId) === lessonId)
+  const shuffled = [...pool]
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1))
+    ;[shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]]
+  }
+
+  return shuffled.slice(0, TEST_SIZE)
+}
+
+function ChapterTest({ testNumber, questions }) {
+  const [answers, setAnswers] = useState({})
+  const [result, setResult] = useState(null)
+  const answeredCount = Object.keys(answers).length
+
+  const gradeTest = () => {
+    if (answeredCount !== questions.length) {
+      setResult({ incomplete: true })
+      return
+    }
+
+    const correct = questions.reduce((total, question) => total + (answers[question.id] === question.answer ? 1 : 0), 0)
+    setResult({ correct, incomplete: false })
+  }
+
+  return (
+    <article className="oe-live-test">
+      <div className="oe-live-test-heading"><span>Test</span><h3>Chapter {testNumber}</h3></div>
+      <p className="oe-live-test-instructions">Select the appropriate answer for each question. When you are done, click <strong>Grade the Test</strong> to submit your answers. You need at least {PASSING_SCORE} correct answers to pass.</p>
+      <div className="oe-live-test-list">
+        {questions.map((question, questionIndex) => (
+          <fieldset className="oe-live-question" key={question.id}>
+            <legend><span aria-hidden="true">Q</span>{questionIndex + 1}. {question.question}</legend>
+            {question.options.map((option, optionIndex) => {
+              const optionId = `test-${testNumber}-question-${question.id}-option-${optionIndex}`
+              return <label htmlFor={optionId} key={optionId}><input id={optionId} name={`test-${testNumber}-question-${question.id}`} type="radio" checked={answers[question.id] === optionIndex} onChange={() => { setAnswers(current => ({ ...current, [question.id]: optionIndex })); setResult(null) }} /><b>{String.fromCharCode(65 + optionIndex)}.</b> {option}</label>
+            })}
+          </fieldset>
+        ))}
+      </div>
+      <button className="oe-grade-test" type="button" onClick={gradeTest}>Grade the Test</button>
+      {result?.incomplete && <p className="oe-test-feedback error" role="alert">Please answer all {questions.length} questions before grading the test.</p>}
+      {result && !result.incomplete && <p className={`oe-test-feedback ${result.correct >= PASSING_SCORE ? 'passed' : 'failed'}`} role="status">Your score: <strong>{result.correct} / {questions.length}</strong>. {result.correct >= PASSING_SCORE ? 'You passed the test.' : `You need ${PASSING_SCORE} correct answers to pass.`}</p>}
+    </article>
+  )
+}
 
 const CHAPTER_TWO_OVERVIEW = 'A driver must be in good physical condition to drive safely. They need to be able to see and hear well enough to detect potential hazards and handle emergency situations. A driver must also be able to scan for and recognize traffic signs and signals, pedestrians, vehicles, and other potential hazards. Good perception of the surrounding environment—and the ability to decide on and execute the actions needed to avoid hazards—are essential. Lastly, a driver must maintain a good mental attitude when operating a vehicle.'
 
@@ -231,6 +284,8 @@ export default function OnlineEducationCoursePage() {
   const [openChapters, setOpenChapters] = useState(() => new Set([0]))
   const [started, setStarted] = useState(false)
   const chapter = useMemo(() => CHAPTERS[activeChapter], [activeChapter])
+  const isChapterTest = activeChapter < 10 && activeLesson === CHAPTERS[activeChapter].topics.length - 1
+  const testQuestions = useMemo(() => isChapterTest ? getRandomQuestions(activeChapter + 1) : [], [activeChapter, activeLesson, isChapterTest])
   const isDriverLicenseLesson = activeChapter === 0 && activeLesson === 0
   const isObeyingLawsLesson = activeChapter === 0 && activeLesson === 1
   const isImportanceLesson = activeChapter === 0 && activeLesson === 2
@@ -446,6 +501,7 @@ export default function OnlineEducationCoursePage() {
         .oe-unlicensed-drivers{border-left-color:#b91c1c}.oe-california-id-image{display:block;width:min(430px,62%);max-height:300px;margin:1.2rem auto;padding:.5rem;border:1px solid #dbe5f1;border-radius:9px;background:#fff;object-fit:contain;box-shadow:0 9px 22px rgba(15,45,82,.08)}.oe-chapter-ten-test .oe-chapter-four-test-card{border-top-color:#0145a8}.oe-chapter-eleven-overview{display:grid;place-items:center;min-height:250px;padding:2rem;border:1px solid #dbe5f1;border-top:5px solid #0145a8;border-radius:12px;background:linear-gradient(135deg,#fff,#f4f8ff);box-shadow:0 10px 28px rgba(15,45,82,.08)}.oe-chapter-eleven-overview h3,.oe-final-test-lesson>h3{margin:0;color:#111827;font-family:var(--font-display);font-size:clamp(1.7rem,4vw,2.4rem);font-weight:900;text-align:center;text-transform:uppercase}.oe-final-test-entry{display:grid;justify-items:center;gap:.55rem;margin-top:1.2rem}.oe-final-test-entry strong{font-size:1rem}.oe-final-test-entry button{padding:.7rem 1rem;border:0;border-radius:5px;background:#263242;color:#fff;font-weight:900;cursor:pointer}.oe-final-test-entry button:hover{background:#0145a8}.oe-final-test-card{min-height:330px;margin-top:1rem;padding:clamp(1.2rem,3vw,2rem);border:1px solid #dbe5f1;border-top:5px solid #0145a8;border-radius:12px;background:linear-gradient(135deg,#fff,#f4f8ff);box-shadow:0 10px 28px rgba(15,45,82,.08)}.oe-final-test-card button{display:block;margin:.5rem 0;padding:.6rem .75rem;border:2px solid transparent;border-radius:7px;background:#fff;cursor:pointer;box-shadow:0 5px 14px rgba(15,45,82,.1)}.oe-final-test-card button:hover{border-color:#fdbc01}.oe-final-test-card button img{display:block;width:164px;height:auto}.oe-final-test-card>img{display:block;width:min(230px,58%);height:auto;margin:.35rem 0 0 1.2rem;filter:drop-shadow(0 10px 16px rgba(15,23,42,.12))}
         @media(max-width:700px){.oe-ten-columns{columns:1}.oe-ten-photo-row,.oe-ten-written-row{grid-template-columns:1fr}.oe-ten-photo-row img,.oe-ten-written-row>img{width:min(175px,58%)}.oe-ten-license-images{grid-template-columns:1fr;width:min(500px,100%)}.oe-ten-license-images img{max-height:330px}}@media(max-width:520px){.oe-chapter-ten-hero img{width:100%}.oe-chapter-ten-lessons{padding:.7rem}.oe-chapter-ten-lessons button{grid-template-columns:44px minmax(0,1fr) 16px;padding:.52rem .4rem}.oe-chapter-ten-section{padding:.85rem .8rem}.oe-chapter-ten-section ul{padding-left:1.15rem}}
         .oe-speed-code-section>.oe-speed-additional-laws{order:3}
+        .oe-live-test{max-width:850px;margin:auto;color:#111827}.oe-live-test-heading{text-align:center;margin:0 0 1.1rem}.oe-live-test-heading span{display:block;font-size:.82rem;font-weight:900}.oe-live-test-heading h3{margin:.1rem 0 0;font-family:var(--font-display);font-size:1.12rem}.oe-live-test-instructions{margin:0 0 1.4rem;padding:1rem;border-top:1px solid #cbd5e1;border-bottom:1px solid #cbd5e1;font-size:.9rem;line-height:1.5}.oe-live-test-list{display:grid;gap:1.1rem}.oe-live-question{min-width:0;margin:0;padding:0;border:0}.oe-live-question legend{display:block;max-width:100%;margin:0 0 .45rem;font-size:.94rem;font-weight:500;line-height:1.4}.oe-live-question legend span{display:inline-grid;place-items:center;width:1.15rem;height:1.15rem;margin-right:.5rem;border-radius:50%;background:#ff8c00;color:#fff;font-size:.68rem;font-weight:900;vertical-align:middle}.oe-live-question label{display:block;margin:.28rem 0 .28rem 1.7rem;cursor:pointer;line-height:1.35}.oe-live-question input{margin:0 .45rem 0 0;accent-color:#0733a0}.oe-live-question label b{margin-right:.22rem}.oe-grade-test{margin:1.5rem 0 0;padding:.42rem .7rem;border:1px solid #718096;border-radius:3px;background:#fff;color:#111827;font-weight:700;cursor:pointer}.oe-grade-test:hover{border-color:#0733a0;background:#eaf2ff}.oe-test-feedback{margin:1rem 0 0;padding:.8rem 1rem;border-radius:6px;font-weight:700}.oe-test-feedback.error,.oe-test-feedback.failed{border:1px solid #fecaca;background:#fff1f2;color:#b91c1c}.oe-test-feedback.passed{border:1px solid #bbf7d0;background:#f0fdf4;color:#166534}
       `}</style>
       <header className="oe-course-header"><div className="oe-course-head-inner"><img className="oe-course-logo" src="/driving-logo.png" alt="A Precision Driving School" /><button className="oe-logout" type="button" onClick={handleLogout}>Log Out</button></div></header>
       <nav className="oe-course-nav" aria-label="Course navigation"><div className="oe-course-nav-inner"><Link to="/">Home</Link><button type="button" onClick={showCourseMap}>Course Map</button><Link to="/contact">Contact us</Link></div></nav>
@@ -477,9 +533,11 @@ export default function OnlineEducationCoursePage() {
           </ul>
         </aside>
         <section className="oe-lesson-card" aria-live="polite">
-          <h2 className="oe-lesson-title">{isChapterOneTest ? '30 Hour Drivers Ed Curriculum' : activeChapter === 1 || activeChapter === 2 || activeChapter === 3 || activeChapter === 4 || activeChapter === 5 || activeChapter === 6 || activeChapter === 7 || activeChapter === 8 || activeChapter === 9 || activeChapter === 10 ? "Driver's License: A Privilege" : chapter.lesson}</h2>
+          <h2 className="oe-lesson-title">{isChapterTest ? '30 Hour Drivers Ed Curriculum' : activeChapter === 1 || activeChapter === 2 || activeChapter === 3 || activeChapter === 4 || activeChapter === 5 || activeChapter === 6 || activeChapter === 7 || activeChapter === 8 || activeChapter === 9 || activeChapter === 10 ? "Driver's License: A Privilege" : chapter.lesson}</h2>
           <div className={`oe-lesson-body${isDetailedLesson ? ' detailed' : ''}`}>
-            {isDriverLicenseLesson ? (
+            {isChapterTest ? (
+              <ChapterTest key={`${activeChapter}-${testQuestions.map(question => question.id).join('-')}`} testNumber={activeChapter + 1} questions={testQuestions} />
+            ) : isDriverLicenseLesson ? (
               <DriverLicensePrivilegeLesson onPrevious={goToPreviousLesson} onNext={goToNextLesson} />
             ) : isObeyingLawsLesson ? (
               <ObeyingLawsLesson onPrevious={() => goToLesson(0, 0)} onNext={() => goToLesson(0, 2)} />
