@@ -64,6 +64,7 @@ function ChapterTest({ testNumber, questions, isFinal = false, onNewTest, onPass
   const [answers, setAnswers] = useState({})
   const [result, setResult] = useState(null)
   const [saved, setSaved] = useState(false)
+  const [hasStarted, setHasStarted] = useState(false)
   const answeredCount = Object.keys(answers).length
   const passingScore = isFinal ? Math.ceil(questions.length * 0.75) : PASSING_SCORE
 
@@ -71,6 +72,7 @@ function ChapterTest({ testNumber, questions, isFinal = false, onNewTest, onPass
     setAnswers({})
     setResult(null)
     setSaved(false)
+    setHasStarted(false)
     onNewTest?.()
   }
 
@@ -93,6 +95,21 @@ function ChapterTest({ testNumber, questions, isFinal = false, onNewTest, onPass
         <img src="/mark.png" alt="Passed test check mark" />
         <p>{isFinal ? 'You have completed the final test' : 'You have already passed the test'}</p>
         {!isFinal && <button type="button" onClick={onContinue}>Next</button>}
+      </article>
+    )
+  }
+
+  if (!hasStarted) {
+    return (
+      <article className="oe-test-intro-card">
+        <h3>{isFinal ? 'Final Test' : `${testNumber}.${CHAPTERS[testNumber - 1].topics.length} Chapter ${testNumber}`}</h3>
+        <p><strong>Congratulations!</strong> You have completed the reading for {isFinal ? 'the full course' : `chapter ${testNumber}`}. You&apos;ll need to get {passingScore} answers correct (out of {questions.length}) in order to proceed. Good luck!</p>
+        <button className="oe-test-start" type="button" onClick={() => setHasStarted(true)}>
+          <img src="/start.png" alt="Start here" />
+        </button>
+        <button className="oe-test-intro-image-button" type="button" onClick={() => setHasStarted(true)} aria-label="Start the test">
+          <img className="oe-test-intro-image" src="/quize.png" alt="Click to start the quiz" />
+        </button>
       </article>
     )
   }
@@ -331,7 +348,8 @@ export default function OnlineEducationCoursePage() {
   const progressStorageKey = `precision-drivers-ed-progress:${auth.currentUser?.uid || 'new-user'}`
   const [unlockedStep, setUnlockedStep] = useState(() => {
     const saved = Number.parseInt(window.localStorage.getItem(progressStorageKey), 10)
-    return Number.isInteger(saved) && saved >= 0 ? saved : 0
+    // New learners can begin with both 1.1 and 1.2 available.
+    return Number.isInteger(saved) && saved >= 0 ? Math.max(saved, 1) : 1
   })
   const chapter = useMemo(() => CHAPTERS[activeChapter], [activeChapter])
   const isChapterTest = activeChapter < 10 && activeLesson === CHAPTERS[activeChapter].topics.length - 1
@@ -571,6 +589,7 @@ export default function OnlineEducationCoursePage() {
         .oe-unlicensed-drivers{border-left-color:#b91c1c}.oe-california-id-image{display:block;width:min(430px,62%);max-height:300px;margin:1.2rem auto;padding:.5rem;border:1px solid #dbe5f1;border-radius:9px;background:#fff;object-fit:contain;box-shadow:0 9px 22px rgba(15,45,82,.08)}.oe-chapter-ten-test .oe-chapter-four-test-card{border-top-color:#0145a8}.oe-chapter-eleven-overview{display:grid;place-items:center;min-height:250px;padding:2rem;border:1px solid #dbe5f1;border-top:5px solid #0145a8;border-radius:12px;background:linear-gradient(135deg,#fff,#f4f8ff);box-shadow:0 10px 28px rgba(15,45,82,.08)}.oe-chapter-eleven-overview h3,.oe-final-test-lesson>h3{margin:0;color:#111827;font-family:var(--font-display);font-size:clamp(1.7rem,4vw,2.4rem);font-weight:900;text-align:center;text-transform:uppercase}.oe-final-test-entry{display:grid;justify-items:center;gap:.55rem;margin-top:1.2rem}.oe-final-test-entry strong{font-size:1rem}.oe-final-test-entry button{padding:.7rem 1rem;border:0;border-radius:5px;background:#263242;color:#fff;font-weight:900;cursor:pointer}.oe-final-test-entry button:hover{background:#0145a8}.oe-final-test-card{min-height:330px;margin-top:1rem;padding:clamp(1.2rem,3vw,2rem);border:1px solid #dbe5f1;border-top:5px solid #0145a8;border-radius:12px;background:linear-gradient(135deg,#fff,#f4f8ff);box-shadow:0 10px 28px rgba(15,45,82,.08)}.oe-final-test-card button{display:block;margin:.5rem 0;padding:.6rem .75rem;border:2px solid transparent;border-radius:7px;background:#fff;cursor:pointer;box-shadow:0 5px 14px rgba(15,45,82,.1)}.oe-final-test-card button:hover{border-color:#fdbc01}.oe-final-test-card button img{display:block;width:164px;height:auto}.oe-final-test-card>img{display:block;width:min(230px,58%);height:auto;margin:.35rem 0 0 1.2rem;filter:drop-shadow(0 10px 16px rgba(15,23,42,.12))}
         @media(max-width:700px){.oe-ten-columns{columns:1}.oe-ten-photo-row,.oe-ten-written-row{grid-template-columns:1fr}.oe-ten-photo-row img,.oe-ten-written-row>img{width:min(175px,58%)}.oe-ten-license-images{grid-template-columns:1fr;width:min(500px,100%)}.oe-ten-license-images img{max-height:330px}}@media(max-width:520px){.oe-chapter-ten-hero img{width:100%}.oe-chapter-ten-lessons{padding:.7rem}.oe-chapter-ten-lessons button{grid-template-columns:44px minmax(0,1fr) 16px;padding:.52rem .4rem}.oe-chapter-ten-section{padding:.85rem .8rem}.oe-chapter-ten-section ul{padding-left:1.15rem}}
         .oe-speed-code-section>.oe-speed-additional-laws{order:3}
+        .oe-test-intro-card{min-height:390px;padding:clamp(1.4rem,4vw,3rem);border:1px solid #9ca3af;background:#f3f4f6;color:#111827}.oe-test-intro-card h3{margin:0 0 1.5rem;font-family:var(--font-display);font-size:clamp(1.75rem,4vw,2.45rem);color:#050505}.oe-test-intro-card p{max-width:680px;margin:0;font-size:1rem;line-height:1.5}.oe-test-intro-card p strong{font-weight:900}.oe-test-intro-card .oe-test-start{margin:1.15rem 0 .2rem;padding:0;border-radius:0;box-shadow:none}.oe-test-intro-card .oe-test-start img{width:164px}.oe-test-intro-image-button{display:block;padding:0;border:0;background:transparent;cursor:pointer}.oe-test-intro-image-button:focus-visible{outline:3px solid #0733a0;outline-offset:4px}.oe-test-intro-image{display:block;width:min(205px,52%);height:auto;margin:.15rem 0 0 1.1rem;object-fit:contain}.oe-test-intro-card .oe-test-start:hover{border-color:#0733a0}@media(max-width:520px){.oe-test-intro-card{padding:1.2rem}.oe-test-intro-image{margin:.4rem auto}}
         .oe-live-test{max-width:850px;margin:auto;color:#111827}.oe-live-test-heading{text-align:center;margin:0 0 1.1rem}.oe-live-test-heading span{display:block;font-size:.82rem;font-weight:900}.oe-live-test-heading h3{margin:.1rem 0 0;font-family:var(--font-display);font-size:1.12rem}.oe-live-test-instructions{margin:0 0 1.4rem;padding:1rem;border-top:1px solid #cbd5e1;border-bottom:1px solid #cbd5e1;font-size:.9rem;line-height:1.5}.oe-live-test-list{display:grid;gap:1.1rem}.oe-live-question{min-width:0;margin:0;padding:0;border:0}.oe-live-question legend{display:block;max-width:100%;margin:0 0 .45rem;font-size:.94rem;font-weight:500;line-height:1.4}.oe-live-question legend span{display:inline-grid;place-items:center;width:1.15rem;height:1.15rem;margin-right:.5rem;border-radius:50%;background:#ff8c00;color:#fff;font-size:.68rem;font-weight:900;vertical-align:middle}.oe-live-question label{display:block;margin:.28rem 0 .28rem 1.7rem;cursor:pointer;line-height:1.35}.oe-live-question input{margin:0 .45rem 0 0;accent-color:#0733a0}.oe-live-question label b{margin-right:.22rem}.oe-grade-test{margin:1.5rem 0 0;padding:.42rem .7rem;border:1px solid #718096;border-radius:3px;background:#fff;color:#111827;font-weight:700;cursor:pointer}.oe-grade-test:hover{border-color:#0733a0;background:#eaf2ff}.oe-test-feedback{margin:1rem 0 0;padding:.8rem 1rem;border-radius:6px;font-weight:700}.oe-test-feedback.error,.oe-test-feedback.failed{border:1px solid #fecaca;background:#fff1f2;color:#b91c1c}.oe-test-feedback.passed{border:1px solid #bbf7d0;background:#f0fdf4;color:#166534}
         .oe-chapter-btn:disabled,.oe-sublesson:disabled{cursor:not-allowed;opacity:.5}.oe-chapter-btn:disabled{background:#eef2f7;color:#64748b}.oe-sublesson:disabled{text-decoration:none}
         .oe-live-test{max-width:850px;margin:auto;color:#111827}.oe-live-test-heading{text-align:center;margin:0 0 1.1rem}.oe-live-test-heading span{display:block;font-size:.82rem;font-weight:900}.oe-live-test-heading h3{margin:.1rem 0 0;font-family:var(--font-display);font-size:1.12rem}.oe-pen-animation{width:135px;height:112px;margin:.4rem auto .25rem;overflow:hidden}.oe-pen-animation img{display:block;width:125px;height:auto;transform-origin:72% 65%;animation:oe-pen-write 1.8s ease-in-out infinite alternate}@keyframes oe-pen-write{0%{transform:translate(-11px,7px) rotate(-7deg)}100%{transform:translate(11px,-5px) rotate(8deg)}}.oe-live-test-instructions{margin:0 0 1.4rem;padding:1rem;border-top:1px solid #cbd5e1;border-bottom:1px solid #cbd5e1;font-size:.9rem;line-height:1.5}.oe-live-test-list{display:grid;gap:1.1rem}.oe-live-question{min-width:0;margin:0;padding:0;border:0}.oe-live-question legend{display:block;max-width:100%;margin:0 0 .45rem;font-size:.94rem;font-weight:500;line-height:1.4}.oe-live-question legend span{display:inline-grid;place-items:center;width:1.15rem;height:1.15rem;margin-right:.5rem;border-radius:50%;background:#ff8c00;color:#fff;font-size:.68rem;font-weight:900;vertical-align:middle}.oe-live-question label{display:block;margin:.28rem 0 .28rem 1.7rem;cursor:pointer;line-height:1.35}.oe-live-question input{margin:0 .45rem 0 0;accent-color:#0733a0}.oe-live-question label b{margin-right:.22rem}.oe-test-actions{display:flex;gap:.55rem;margin-top:1.5rem}.oe-grade-test{padding:.48rem .75rem;border:1px solid #718096;border-radius:3px;background:#fff;color:#111827;font-weight:700;cursor:pointer}.oe-grade-test:hover{border-color:#0733a0;background:#eaf2ff}.oe-grade-test.primary,.oe-continue-test{border-color:#0733a0;background:#0733a0;color:#fff}.oe-test-results{margin:1.2rem auto 0;padding:1.1rem;width:min(620px,100%);border-radius:7px;background:#fff}.oe-test-results.failed{border:1px solid #fecaca}.oe-test-results.passed{border:1px solid #bbf7d0}.oe-test-results h4,.oe-test-results h5{margin:.2rem 0 .55rem;color:#f11;font-size:1rem}.oe-test-results h5{margin-top:1.2rem;text-decoration:underline}.oe-score-line{margin:0;font-size:1rem}.oe-missed-list{margin:.15rem 0;font-size:1rem;font-weight:900}.oe-feedback-list{margin:.2rem 0 0;padding-left:1.45rem;font-weight:700}.oe-feedback-list li{margin:.35rem 0}.oe-feedback-list strong{color:#0733a0}.oe-feedback-list span{color:#0b8f31}.oe-pass-copy{margin:.4rem 0 1rem;color:#16723a;font-weight:900}.oe-continue-test{padding:.58rem .85rem;border-radius:4px;font-weight:800;cursor:pointer}
