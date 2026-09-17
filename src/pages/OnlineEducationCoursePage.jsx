@@ -133,7 +133,7 @@ function ChapterTest({ testNumber, questions, isFinal = false, isPassed = false,
       <div className="oe-live-test-list">
         {questions.map((question, questionIndex) => (
           <fieldset className="oe-live-question" key={question.id}>
-            <legend><span aria-hidden="true">Q</span>{QUESTION_IMAGES[question.id] && <img className="oe-live-question-image" src={QUESTION_IMAGES[question.id].src} alt={QUESTION_IMAGES[question.id].alt} />}{questionIndex + 1}. {question.question}</legend>
+            <legend><span aria-hidden="true">Q</span>{questionIndex + 1}. {QUESTION_IMAGES[question.id] && <img className="oe-live-question-image" src={QUESTION_IMAGES[question.id].src} alt={QUESTION_IMAGES[question.id].alt} />}{question.question}</legend>
             {question.options.map((option, optionIndex) => {
               const optionId = `test-${testNumber}-question-${question.id}-option-${optionIndex}`
               return <label htmlFor={optionId} key={optionId}><input id={optionId} name={`test-${testNumber}-question-${question.id}`} type="radio" checked={answers[question.id] === optionIndex} onChange={() => { setAnswers(current => ({ ...current, [question.id]: optionIndex })); setResult(null); setSaved(false) }} /><b>{String.fromCharCode(65 + optionIndex)}.</b> {option}</label>
