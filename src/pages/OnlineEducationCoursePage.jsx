@@ -125,7 +125,7 @@ function ChapterTest({ testNumber, questions, isFinal = false, isPassed = false,
   return (
     <article className="oe-live-test">
       <div className="oe-live-test-heading"><span>Test</span><h3>{isFinal ? 'Final Test' : `Chapter ${testNumber}`}</h3><div className="oe-pen-animation"><img src="/pen.png" alt="Pen writing a test" /></div></div>
-      <p className="oe-live-test-instructions">Select the appropriate answer for each question. When you are done, click <strong>Grade the Test</strong> to submit your answers. You need at least {passingScore} correct answers to pass.</p>
+      <p className="oe-live-test-instructions">Select the appropriate answer for each question. When you are done click the grade the test button to submit your answers and find out your test score which will be shown at the bottom of the page, if you receive a score below 75% you will be able to reread the information you missed. You will then be required to take a new test until you pass.</p>
       <div className="oe-live-test-list">
         {questions.map((question, questionIndex) => (
           <fieldset className="oe-live-question" key={question.id}>
