@@ -2112,7 +2112,8 @@ export default function AdminPage() {
         @keyframes dashGridSlide { from { background-position: 0 0; } to { background-position: 40px 40px; } }
         .admin-stat { transition: all 0.3s ease; }
         .admin-stat:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.08); }
-        .admin-nav-item { display:flex; align-items:center; gap:0.75rem; padding:0.75rem 1rem; border-radius:14px; cursor:pointer; transition:all 0.35s cubic-bezier(0.22,1,0.36,1); font-family:var(--font-body); font-size:0.88rem; font-weight:500; color:rgba(255,255,255,0.85); border:none; background:none; width:100%; text-align:left; position:relative; overflow:hidden; }
+        .admin-nav-item { display:flex; align-items:center; gap:0.6rem; padding:0.75rem; border-radius:14px; cursor:pointer; transition:all 0.35s cubic-bezier(0.22,1,0.36,1); font-family:var(--font-body); font-size:0.86rem; font-weight:500; color:rgba(255,255,255,0.85); border:none; background:none; width:100%; text-align:left; position:relative; overflow:hidden; }
+        .admin-nav-label { display:flex; min-width:0; align-items:center; gap:.35rem; white-space:nowrap; }
         .admin-nav-item::after { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(253,188,1,0.10),rgba(255,255,255,0.03)); opacity:0; transition:opacity 0.3s; border-radius:14px; }
         .admin-nav-item:hover { color:#FFFFFF; transform:translateX(6px); }
         .admin-nav-item:not(.admin-logout-item):hover svg { stroke:#FDBC01; }
@@ -2252,7 +2253,7 @@ export default function AdminPage() {
               {navItems.map(item => (
                 <button type="button" key={item.id} aria-current={activeTab === item.id ? 'page' : undefined} onClick={() => switchTab(item.id)} className={`admin-nav-item ${activeTab === item.id ? 'admin-nav-active' : ''}`} style={{ marginBottom: '4px' }}>
                   <div style={{ flexShrink: 0, width: '34px', height: '34px', borderRadius: '10px', background: activeTab === item.id ? 'linear-gradient(135deg,rgba(253,188,1,0.25),rgba(253,188,1,0.10))' : 'linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s' }}>{item.icon}</div>
-                  <span style={{ display:'flex', alignItems:'center', gap:'.45rem' }}>{item.label}{item.badge > 0 && <span aria-label={`${item.badge} ${item.badgeLabel || 'notification'}${item.badge === 1 ? '' : 's'}`} title={`${item.badge} ${item.badgeLabel || 'notification'}${item.badge === 1 ? '' : 's'}`} style={{ minWidth:'20px', height:'20px', padding:'0 5px', display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:'999px', background:'#DC2626', color:'#fff', fontSize:'.68rem', fontWeight:900 }}>{item.badge > 99 ? '99+' : item.badge}</span>}</span>
+                  <span className="admin-nav-label" style={item.id === 'certificates' ? { fontSize: '.81rem', fontWeight: 700 } : undefined}>{item.label}{item.badge > 0 && <span aria-label={`${item.badge} ${item.badgeLabel || 'notification'}${item.badge === 1 ? '' : 's'}`} title={`${item.badge} ${item.badgeLabel || 'notification'}${item.badge === 1 ? '' : 's'}`} style={{ minWidth:'20px', height:'20px', padding:'0 5px', display:'inline-flex', alignItems:'center', justifyContent:'center', borderRadius:'999px', background:'#DC2626', color:'#fff', fontSize:'.68rem', fontWeight:900 }}>{item.badge > 99 ? '99+' : item.badge}</span>}</span>
                 </button>
               ))}
             </nav>
