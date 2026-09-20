@@ -244,8 +244,6 @@ export default function RegisterPage() {
       </header>
 
       <form className="online-register-card" onSubmit={submit} noValidate>
-        {error && <div className="online-register-alert" role="alert">{error}</div>}
-
         <FormSection title="Student Information">
           <div className="online-register-grid">
             <Field name="firstName" label="First Name" required error={errors.firstName}><input className={inputClass} name="firstName" value={form.firstName} onChange={update} /></Field>
@@ -295,6 +293,7 @@ export default function RegisterPage() {
           {errors.disclaimer && <p className="online-register-field-error" style={{ marginTop:'.55rem' }}>{errors.disclaimer}</p>}
         </FormSection>
 
+        {error && <div className="online-register-alert online-register-submit-alert" role="alert" aria-live="assertive">{error}</div>}
         <div className="online-register-actions">
           <Link className="online-register-cancel" to="/online-drivers-ed">Cancel</Link>
           <button className="online-register-submit" type="submit" disabled={submitting}>{submitting ? 'Preparing Payment…' : `Pay Now — ${selectedCourse.price}`}</button>
