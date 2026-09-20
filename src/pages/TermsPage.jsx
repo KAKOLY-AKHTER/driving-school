@@ -28,6 +28,10 @@ const SECTIONS = [
     body: 'All prices are displayed in U.S. Dollars. Tuition and lesson fees are due at the time of booking or as otherwise agreed. We accept payment through our secure checkout. Refunds are governed by our refund policy, and no refund is issued once a course or lesson package has been substantially completed. Any applicable taxes or fees will be shown at checkout.',
   },
   {
+    title: 'Certificates & Duplicate Certificates',
+    body: 'A course-completion certificate is released only after the required course work is completed, a passing Test 11 / Final Test result is recorded in the student account, and the request is approved by the school. Every released certificate receives a unique certificate number and is available in the student portal as a PDF. An account holder may request a duplicate certificate by using the original account email and password; the duplicate-certificate fee is shown at checkout. Duplicate requests are reviewed before release and receive their own certificate number. A duplicate certificate does not cancel or invalidate the original certificate unless we notify you otherwise. Certificate fees are non-refundable once a request has been approved, issued, or made available for download, except where required by law. We may hold, correct, or cancel a certificate record if payment is reversed, required information is inaccurate, fraud or account misuse is suspected, or issuance would violate applicable law or regulatory requirements. Please contact us promptly if you need a correction.',
+  },
+  {
     title: 'Cancellations & Rescheduling',
     body: 'Lessons may be rescheduled or cancelled subject to reasonable advance notice. Failure to attend a scheduled lesson without notice may result in a forfeited lesson. We understand that unexpected events happen and will work with you to accommodate reasonable requests.',
   },
@@ -61,7 +65,7 @@ const SECTIONS = [
   },
 ]
 
-const LAST_UPDATED = 'January 1, 2026'
+const LAST_UPDATED = 'September 20, 2026'
 
 export default function TermsPage() {
   usePageMeta(
