@@ -24,6 +24,45 @@ const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
 const DEFAULT_ADMIN_PHOTO_URL = 'https://driving-school-dun-kappa.vercel.app/admin-img.png'
 
+const USER_EDIT_SECTIONS = [
+  {
+    title: 'Student details',
+    fields: [
+      ['displayName', 'Student name', 'text'], ['firstName', 'First name', 'text'], ['middleName', 'Middle name', 'text'], ['lastName', 'Last name', 'text'], ['username', 'Username', 'text'],
+      ['email', 'Login email', 'email'], ['phone', 'Phone number', 'tel'], ['dob', 'Date of birth', 'text'], ['gender', 'Gender', 'text'],
+    ],
+  },
+  {
+    title: 'Address & driving details',
+    fields: [
+      ['address', 'Street address', 'text'], ['city', 'City', 'text'], ['state', 'State', 'text'], ['zipCode', 'ZIP code', 'text'], ['pickupAddress', 'Pickup address', 'text'], ['parentPhone', 'Parent / guardian phone', 'tel'],
+      ['permit', 'Permit / license number', 'text'], ['issueDate', 'Permit issue date', 'text'], ['expiryDate', 'Permit expiry date', 'text'], ['courseType', 'Preferred course type', 'text'],
+    ],
+  },
+  {
+    title: 'Payer details',
+    fields: [
+      ['payerName', 'Primary payer name', 'text'], ['payerRelationship', 'Payer relationship', 'text'], ['payerPhone', 'Primary payer phone', 'tel'], ['payerEmail', 'Primary payer email', 'email'], ['payerSecondaryPhone', 'Payer secondary phone', 'tel'], ['payerAddress', 'Payer address', 'textarea'], ['payerConsentAt', 'Payer permission given', 'text'],
+    ],
+  },
+  {
+    title: 'Notes',
+    fields: [
+      ['medications', 'Medical information', 'textarea'], ['notes', 'Student notes', 'textarea'],
+    ],
+  },
+]
+
+const userEditFormFrom = (account = {}) => ({
+  displayName: account.displayName || account.name || [account.firstName, account.middleName, account.lastName].filter(Boolean).join(' '),
+  firstName: account.firstName || '', middleName: account.middleName || '', lastName: account.lastName || '', username: account.username || '',
+  email: account.email || '', phone: account.phone || '', dob: account.dob || account.dateOfBirth || '', gender: account.gender || '',
+  address: account.address || '', city: account.city || '', state: account.state || '', zipCode: account.zipCode || '', pickupAddress: account.pickupAddress || '', parentPhone: account.parentPhone || '',
+  permit: account.permit || '', issueDate: account.issueDate || '', expiryDate: account.expiryDate || '', courseType: account.courseType || '',
+  payerName: account.payerName || '', payerRelationship: account.payerRelationship || '', payerPhone: account.payerPhone || '', payerEmail: account.payerEmail || '', payerSecondaryPhone: account.payerSecondaryPhone || '', payerAddress: account.payerAddress || '', payerConsentAt: account.payerConsentAt || '',
+  medications: account.medications || '', notes: account.notes || '',
+})
+
 const localDateKey = (date = new Date()) => new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Los_Angeles',
   year: 'numeric',
@@ -990,25 +1029,36 @@ export default function AdminPage() {
     }
   }, [])
 
-  const openUserEdit = (account) => {
+  const openUserEdit = async (account) => {
     if (!account?.uid) return
     setUserEdit({
       account,
+      loading: true,
       saving: false,
       error: '',
-      form: {
-        displayName: account.displayName || account.name || [account.firstName, account.lastName].filter(Boolean).join(' '),
-        email: account.email || '',
-        phone: account.phone || '',
-        address: account.address || '',
-        city: account.city || '',
-      },
+      form: userEditFormFrom(account),
     })
+    try {
+      const data = await api.adminUserDetails(account.uid)
+      const profile = data?.profile || account
+      setUserEdit(current => current?.account?.uid === account.uid ? {
+        ...current,
+        account: { ...account, ...profile },
+        loading: false,
+        form: userEditFormFrom(profile),
+      } : current)
+    } catch (error) {
+      setUserEdit(current => current?.account?.uid === account.uid ? {
+        ...current,
+        loading: false,
+        error: error?.message || 'The complete student profile could not be loaded. You can still edit the available details.',
+      } : current)
+    }
   }
 
   const saveUserEdit = async (event) => {
     event.preventDefault()
-    if (!userEdit || userEdit.saving) return
+    if (!userEdit || userEdit.saving || userEdit.loading) return
     const displayName = userEdit.form.displayName.trim()
     if (!displayName) {
       setUserEdit(current => ({ ...current, error: 'Student name is required.' }))
@@ -3629,15 +3679,12 @@ Near and Long pricing is applied automatically from the selected city and verifi
 
       {userEdit && (
         <div role="presentation" onClick={event => { if (event.target === event.currentTarget && !userEdit.saving) setUserEdit(null) }} style={{ position: 'fixed', inset: 0, zIndex: 15000, display: 'grid', placeItems: 'center', padding: '1rem', background: 'rgba(10,22,40,.68)', backdropFilter: 'blur(8px)' }}>
-          <form onSubmit={saveUserEdit} role="dialog" aria-modal="true" aria-labelledby="edit-user-title" style={{ width: 'min(100%, 520px)', padding: '1.5rem', borderRadius: '16px', background: '#fff', boxShadow: '0 30px 90px rgba(10,22,40,.32)' }}>
+          <form onSubmit={saveUserEdit} role="dialog" aria-modal="true" aria-labelledby="edit-user-title" style={{ width: 'min(100%, 760px)', maxHeight: '92vh', overflowY: 'auto', padding: '1.5rem', borderRadius: '16px', background: '#fff', boxShadow: '0 30px 90px rgba(10,22,40,.32)' }}>
             <h2 id="edit-user-title" style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>Edit User</h2>
-            <label style={{ display: 'grid', gap: '.35rem', marginBottom: '.8rem', color: '#334155', fontWeight: 800 }}>Student name<input autoFocus value={userEdit.form.displayName} onChange={event => setUserEdit(current => ({ ...current, form: { ...current.form, displayName: event.target.value } }))} style={inputStyle} /></label>
-            <label style={{ display: 'grid', gap: '.35rem', marginBottom: '.8rem', color: '#334155', fontWeight: 800 }}>Login email<input type="email" value={userEdit.form.email} onChange={event => setUserEdit(current => ({ ...current, form: { ...current.form, email: event.target.value } }))} style={inputStyle} /></label>
-            <label style={{ display: 'grid', gap: '.35rem', marginBottom: '.8rem', color: '#334155', fontWeight: 800 }}>Phone number<input value={userEdit.form.phone} onChange={event => setUserEdit(current => ({ ...current, form: { ...current.form, phone: event.target.value } }))} style={inputStyle} /></label>
-            <label style={{ display: 'grid', gap: '.35rem', marginBottom: '.8rem', color: '#334155', fontWeight: 800 }}>Address<input value={userEdit.form.address} onChange={event => setUserEdit(current => ({ ...current, form: { ...current.form, address: event.target.value } }))} style={inputStyle} /></label>
-            <label style={{ display: 'grid', gap: '.35rem', marginBottom: '1rem', color: '#334155', fontWeight: 800 }}>City<input value={userEdit.form.city} onChange={event => setUserEdit(current => ({ ...current, form: { ...current.form, city: event.target.value } }))} style={inputStyle} /></label>
+            <p style={{ margin: '.35rem 0 1rem', color: '#526C88', fontSize: '.9rem', lineHeight: 1.45 }}>All editable student-profile fields from View Details are available below.</p>
+            {userEdit.loading ? <p style={{ margin: '1.5rem 0', color: SKY_BLUE, fontWeight: 800 }}>Loading complete student profile…</p> : <div style={{ display: 'grid', gap: '1rem', maxHeight: '62vh', overflowY: 'auto', paddingRight: '.35rem' }}>{USER_EDIT_SECTIONS.map(section => <fieldset key={section.title} style={{ minWidth: 0, margin: 0, padding: '1rem', border: '1px solid #DCE7F3', borderRadius: '12px' }}><legend style={{ padding: '0 .35rem', color: DARK, fontWeight: 900 }}>{section.title}</legend><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: '.8rem' }}>{section.fields.map(([field, label, type], index) => <label key={field} style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800, gridColumn: type === 'textarea' ? '1 / -1' : undefined }}>{label}{type === 'textarea' ? <textarea autoFocus={field === 'displayName'} rows="3" value={userEdit.form[field]} onChange={event => setUserEdit(current => ({ ...current, form: { ...current.form, [field]: event.target.value } }))} style={{ ...inputStyle, resize: 'vertical' }} /> : <input autoFocus={field === 'displayName'} type={type} value={userEdit.form[field]} onChange={event => setUserEdit(current => ({ ...current, form: { ...current.form, [field]: event.target.value } }))} style={inputStyle} />}</label>)}</div></fieldset>)}</div>}
             {userEdit.error && <p role="alert" style={{ margin: '0 0 1rem', color: '#B91C1C', fontWeight: 700 }}>{userEdit.error}</p>}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.65rem' }}><button type="button" disabled={userEdit.saving} onClick={() => setUserEdit(null)} style={{ padding: '.65rem .9rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', color: '#334155', fontWeight: 800, cursor: 'pointer' }}>Cancel</button><button type="submit" disabled={userEdit.saving} style={{ padding: '.65rem .9rem', border: 0, borderRadius: '8px', background: SKY_BLUE, color: '#fff', fontWeight: 800, cursor: userEdit.saving ? 'wait' : 'pointer', opacity: userEdit.saving ? .7 : 1 }}>{userEdit.saving ? 'Saving…' : 'Save changes'}</button></div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.65rem', marginTop: '1rem' }}><button type="button" disabled={userEdit.saving} onClick={() => setUserEdit(null)} style={{ padding: '.65rem .9rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', color: '#334155', fontWeight: 800, cursor: 'pointer' }}>Cancel</button><button type="submit" disabled={userEdit.saving || userEdit.loading} style={{ padding: '.65rem .9rem', border: 0, borderRadius: '8px', background: SKY_BLUE, color: '#fff', fontWeight: 800, cursor: userEdit.saving || userEdit.loading ? 'wait' : 'pointer', opacity: userEdit.saving || userEdit.loading ? .7 : 1 }}>{userEdit.saving ? 'Saving…' : 'Save changes'}</button></div>
           </form>
         </div>
       )}
