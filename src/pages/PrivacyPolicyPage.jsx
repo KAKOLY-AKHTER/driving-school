@@ -13,11 +13,19 @@ const DARK_MID = '#0d1f3c'
 const SECTIONS = [
   {
     title: 'Information We Collect',
-    body: 'We collect information you provide directly, such as your name, email address, phone number, mailing address, date of birth, and payment details when you register for lessons, book appointments, or contact us. We also automatically collect limited usage information, including device type, browser type, and pages visited, to help us understand how our website is used and to improve your experience.',
+    body: 'We collect information you provide directly, such as your name, email address, phone number, mailing address, date of birth, account credentials, and payment-related details when you register for lessons, book appointments, request a certificate, or contact us. We also automatically collect limited usage information, including device type, browser type, and pages visited, to help us understand how our website is used and to improve your experience.',
   },
   {
     title: 'How We Use Your Information',
-    body: 'The information we collect is used to schedule and manage driving lessons, process payments, communicate with you about bookings and updates, respond to your inquiries, and comply with legal and regulatory obligations. We may also use aggregated, non-identifying information for internal analytics.',
+    body: 'The information we collect is used to schedule and manage driving lessons, deliver and administer online course content, process payments, communicate with you about bookings and updates, respond to your inquiries, issue and verify certificates, and comply with legal and regulatory obligations. We may also use aggregated, non-identifying information for internal analytics.',
+  },
+  {
+    title: 'Course, Test & Certificate Records',
+    body: 'To administer your online course, we keep records of course progress, lesson completion, Test 11 / Final Test attempts and scores, certificate requests, approval status, certificate numbers, and PDF release activity. We use these records to provide your student dashboard, prevent unauthorized certificate release, respond to replacement requests, support our staff, and maintain required business records. Authorized school administrators can view these records only as needed to provide and manage school services.',
+  },
+  {
+    title: 'Payment Information',
+    body: 'Payments are processed through our payment service providers. We do not store full payment-card numbers or CVV codes on our website. We may retain limited transaction information, such as payment status, amount, date, transaction reference, and the service or certificate request purchased, to confirm payment, provide support, process refunds where applicable, and maintain accounting records.',
   },
   {
     title: 'Information Sharing',
@@ -33,7 +41,7 @@ const SECTIONS = [
   },
   {
     title: 'Your Rights & Choices',
-    body: 'You may access, update, correct, or request deletion of your personal information at any time by logging into your student dashboard or by contacting us directly. You may also opt out of receiving promotional communications at any time. We will respond to your request within a reasonable timeframe and in accordance with applicable law.',
+    body: 'You may access, update, correct, or request deletion of your personal information by logging into your student dashboard or by contacting us directly. You may also opt out of promotional communications at any time. Some information, including payment, course-completion, Final Test, and certificate records, may need to be retained to meet legal, regulatory, fraud-prevention, accounting, or school-record obligations. We will respond to requests within a reasonable timeframe and in accordance with applicable law.',
   },
   {
     title: 'Children\u2019s Privacy',
@@ -53,7 +61,7 @@ const SECTIONS = [
   },
 ]
 
-const LAST_UPDATED = 'January 1, 2026'
+const LAST_UPDATED = 'September 20, 2026'
 
 export default function PrivacyPolicyPage() {
   usePageMeta(

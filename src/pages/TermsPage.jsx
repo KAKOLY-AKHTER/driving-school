@@ -24,12 +24,24 @@ const SECTIONS = [
     body: 'To enroll in our programs, you must provide accurate, current, and complete information during registration. You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. You must be at least 16 years of age or have parental consent to use our services.',
   },
   {
+    title: 'Account Security & Authorized Use',
+    body: 'Keep your account email and password confidential and do not share them with another person. You are responsible for activity performed through your account unless you promptly report suspected unauthorized access. Do not use another student’s account, submit course work or tests for another person, or attempt to alter a course, test, payment, or certificate record. Contact us immediately if you believe your account has been compromised. We may suspend, secure, or investigate an account where we reasonably believe there is unauthorized access, fraud, or misuse. School staff will not ask you to send your password by email, text message, or phone call.',
+  },
+  {
+    title: 'Minor Students & Parental Consent',
+    body: 'A student under the age of 18 may use our services only with the involvement and consent of a parent or legal guardian. The parent or guardian is responsible for providing accurate registration and contact information, reviewing applicable program requirements, and supervising the minor’s account where appropriate. By registering or paying for a minor, the parent or guardian confirms that they are authorized to provide the information and consent required for the student’s enrollment. We may contact the parent or guardian about scheduling, payments, progress, safety, or certificate-related matters when appropriate or required.',
+  },
+  {
     title: 'Pricing & Payments',
     body: 'All prices are displayed in U.S. Dollars. Tuition and lesson fees are due at the time of booking or as otherwise agreed. We accept payment through our secure checkout. Refunds are governed by our refund policy, and no refund is issued once a course or lesson package has been substantially completed. Any applicable taxes or fees will be shown at checkout.',
   },
   {
     title: 'Certificates & Duplicate Certificates',
     body: 'A course-completion certificate is released only after the required course work is completed, a passing Test 11 / Final Test result is recorded in the student account, and the request is approved by the school. Every released certificate receives a unique certificate number and is available in the student portal as a PDF. An account holder may request a duplicate certificate by using the original account email and password; the duplicate-certificate fee is shown at checkout. Duplicate requests are reviewed before release and receive their own certificate number. A duplicate certificate does not cancel or invalidate the original certificate unless we notify you otherwise. Certificate fees are non-refundable once a request has been approved, issued, or made available for download, except where required by law. We may hold, correct, or cancel a certificate record if payment is reversed, required information is inaccurate, fraud or account misuse is suspected, or issuance would violate applicable law or regulatory requirements. Please contact us promptly if you need a correction.',
+  },
+  {
+    title: 'Final Test Policy',
+    body: 'Test 11, the Final Test, is a 25-question knowledge assessment drawn from the online driver education curriculum. Students must answer every question and receive at least 19 correct answers (75%) to pass. Questions are randomized for each attempt, so a retake may show a different set of questions. A passing result is recorded in the student account and is required before the school can approve a course-completion certificate. Students who do not pass may review the course material and retake the assessment. We may review, correct, or invalidate a result where there is a technical error, inaccurate account information, suspected fraud, misuse, or another reason that compromises the integrity of the assessment. A Final Test result does not itself guarantee certificate issuance; the certificate process and school approval requirements still apply.',
   },
   {
     title: 'Cancellations & Rescheduling',
