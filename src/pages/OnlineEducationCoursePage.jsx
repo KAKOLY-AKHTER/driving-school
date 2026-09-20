@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
+import { api } from '../api'
 import { usePageMeta } from '../usePageMeta'
 import { onlineCourseTestQuestions } from '../data/onlineCourseTestQuestions'
 import { AutomobileHistoryLesson, ChapterOneTestLesson, ImportanceEducationLesson, NewDrivingLawsLesson, SmokeFreeCarsLesson } from '../components/online-course/ChapterOneLessons'
@@ -64,7 +65,7 @@ function getRandomQuestions(lessonId) {
   return getRandomQuestionSet(pool, TEST_SIZE)
 }
 
-function ChapterTest({ testNumber, questions, isFinal = false, isPassed = false, onNewTest, onPassed, onContinue }) {
+function ChapterTest({ testNumber, questions, isFinal = false, isPassed = false, onNewTest, onPassed, onContinue, onFinalResult }) {
   const [answers, setAnswers] = useState({})
   const [result, setResult] = useState(null)
   const [saved, setSaved] = useState(false)
@@ -98,6 +99,12 @@ function ChapterTest({ testNumber, questions, isFinal = false, isPassed = false,
     const correct = questions.length - missed.length
     const passed = correct >= passingScore
     setResult({ correct, missed, incomplete: false, passed })
+    if (isFinal) {
+      void onFinalResult?.({
+        questionIds: questions.map(question => String(question.id)),
+        answers,
+      })
+    }
     if (passed) onPassed?.()
   }
 
@@ -370,6 +377,7 @@ export default function OnlineEducationCoursePage() {
   const [openChapters, setOpenChapters] = useState(() => new Set([0]))
   const [started, setStarted] = useState(false)
   const [quizVersion, setQuizVersion] = useState(0)
+  const [finalTestSaveError, setFinalTestSaveError] = useState('')
   const progressStorageKey = `precision-drivers-ed-progress:${auth.currentUser?.uid || 'new-user'}`
   const [unlockedStep, setUnlockedStep] = useState(() => {
     const saved = Number.parseInt(window.localStorage.getItem(progressStorageKey), 10)
@@ -519,6 +527,19 @@ export default function OnlineEducationCoursePage() {
 
   const beginNewTest = () => setQuizVersion(version => version + 1)
   const passCurrentTest = () => unlockThrough(currentStepIndex + 1)
+  const saveFinalTestResult = async ({ questionIds, answers }) => {
+    const uid = auth.currentUser?.uid
+    if (!uid) {
+      setFinalTestSaveError('Please sign in again before saving your Final Test result.')
+      return
+    }
+    try {
+      await api.saveFinalTestResult(uid, questionIds, answers)
+      setFinalTestSaveError('')
+    } catch (error) {
+      setFinalTestSaveError(error?.message || 'Your Final Test result could not be saved. Please grade the test again.')
+    }
+  }
   const continueAfterTest = () => {
     const nextStep = COURSE_STEPS[currentStepIndex + 1]
     if (nextStep) goToLesson(nextStep.chapterIndex, nextStep.lessonIndex)
@@ -790,7 +811,7 @@ export default function OnlineEducationCoursePage() {
             ) : isChapterElevenOverview ? (
               <ChapterElevenOverview onBegin={() => goToLesson(10, 0)} />
             ) : isFinalTestLesson ? (
-              <ChapterTest key={`final-${finalTestQuestions.map(question => question.id).join('-')}`} testNumber={11} questions={finalTestQuestions} isFinal isPassed={currentStepIndex < unlockedStep} onNewTest={beginNewTest} onPassed={passCurrentTest} onContinue={continueAfterTest} />
+              <><ChapterTest key={`final-${finalTestQuestions.map(question => question.id).join('-')}`} testNumber={11} questions={finalTestQuestions} isFinal isPassed={currentStepIndex < unlockedStep} onNewTest={beginNewTest} onPassed={passCurrentTest} onContinue={continueAfterTest} onFinalResult={saveFinalTestResult} />{finalTestSaveError && <p className="oe-test-feedback error" role="alert">{finalTestSaveError}</p>}</>
             ) : (
               <>
                 {!((activeChapter === 4 || activeChapter === 5) && activeLesson < 0) && <p className="oe-lesson-position">{activeLesson < 0 ? `Chapter ${activeChapter + 1} overview` : `Lesson ${activeChapter + 1}.${activeLesson + 1}`}</p>}

@@ -272,3 +272,138 @@ export async function downloadPaymentReceipt({ payment = {}, student = {} }) {
     },
   })
 }
+
+const certificateFileName = input => String(input || 'certificate')
+  .replace(/[^a-z0-9_-]+/gi, '-')
+  .replace(/^-+|-+$/g, '')
+  .toLowerCase() || 'certificate'
+
+// Generates a real PDF file for an approved certificate. Unlike browser print,
+// this downloads the PDF directly to the student's device.
+export async function downloadCertificatePdf({ certificate = {}, student = {} }) {
+  const [{ jsPDF }, logo] = await Promise.all([
+    import('jspdf'),
+    fetchImageData('/driving-logo.png').catch(() => null),
+  ])
+  const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' })
+  const pageWidth = pdf.internal.pageSize.getWidth()
+  const pageHeight = pdf.internal.pageSize.getHeight()
+  const navy = [10, 42, 94]
+  const blue = [1, 69, 168]
+  const gold = [253, 188, 1]
+  const type = String(certificate.type || 'Course').trim()
+  const studentName = String(student.name || student.displayName || student.email || 'Student').trim()
+  const certificateNumber = String(certificate.certificateNumber || 'Not recorded').trim()
+  const finalCorrect = Number(certificate.finalTestCorrect || 0)
+  const finalTotal = Number(certificate.finalTestTotal || 25)
+  const finalScore = Number(certificate.finalTestScore || 0)
+  const releasedOn = certificate.deliveredAt
+    ? new Date(certificate.deliveredAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    : 'Approved'
+
+  // A formal double frame gives the downloaded PDF a premium certificate finish.
+  pdf.setFillColor(...navy)
+  pdf.rect(0, 0, pageWidth, pageHeight, 'F')
+  pdf.setFillColor(255, 253, 247)
+  pdf.rect(16, 16, pageWidth - 32, pageHeight - 32, 'F')
+  pdf.setDrawColor(...gold)
+  pdf.setLineWidth(4)
+  pdf.rect(28, 28, pageWidth - 56, pageHeight - 56)
+  pdf.setDrawColor(...blue)
+  pdf.setLineWidth(1.1)
+  pdf.rect(40, 40, pageWidth - 80, pageHeight - 80)
+
+  pdf.setFillColor(...navy)
+  pdf.roundedRect(55, 55, pageWidth - 110, 69, 9, 9, 'F')
+  pdf.setFillColor(...gold)
+  pdf.rect(55, 118, pageWidth - 110, 6, 'F')
+  if (logo) {
+    pdf.setFillColor(255, 255, 255)
+    pdf.roundedRect(69, 62, 56, 56, 6, 6, 'F')
+    pdf.addImage(logo, 'PNG', 74, 67, 46, 46)
+  }
+
+  pdf.setTextColor(...navy)
+  pdf.setFont('helvetica', 'bold')
+  pdf.setFontSize(18)
+  pdf.setTextColor(255, 255, 255)
+  pdf.text('A PRECISION DRIVING SCHOOL', logo ? 142 : 75, 84)
+  pdf.setFont('helvetica', 'normal')
+  pdf.setFontSize(9.5)
+  pdf.setTextColor(222, 235, 255)
+  pdf.text('CALIFORNIA DRIVER EDUCATION', logo ? 142 : 75, 102)
+  pdf.setFont('helvetica', 'bold')
+  pdf.setFontSize(8.5)
+  pdf.setTextColor(255, 244, 184)
+  pdf.text('OFFICIAL STUDENT RECORD', pageWidth - 72, 81, { align: 'right' })
+  pdf.setFont('helvetica', 'normal')
+  pdf.setFontSize(8)
+  pdf.setTextColor(222, 235, 255)
+  pdf.text(`VERIFY: ${certificateNumber}`, pageWidth - 72, 100, { align: 'right' })
+  pdf.setDrawColor(...gold)
+  pdf.setLineWidth(1.8)
+  pdf.line(pageWidth / 2 - 145, 192, pageWidth / 2 + 145, 192)
+  pdf.setFont('times', 'bold')
+  pdf.setFontSize(31)
+  pdf.setTextColor(...navy)
+  pdf.text(type === 'Duplicate' ? 'AUTHORIZED DUPLICATE CERTIFICATE' : 'CERTIFICATE OF COMPLETION', pageWidth / 2, 178, { align: 'center' })
+  pdf.setFont('helvetica', 'normal')
+  pdf.setFontSize(12)
+  pdf.setTextColor(71, 85, 105)
+  pdf.text(type === 'Duplicate' ? 'This certifies the authorized duplicate record for' : 'This certificate is proudly presented to', pageWidth / 2, 218, { align: 'center' })
+  pdf.setTextColor(...blue)
+  pdf.setFont('times', 'bolditalic')
+  pdf.setFontSize(31)
+  const nameLines = pdf.splitTextToSize(studentName, pageWidth - 170)
+  pdf.text(nameLines, pageWidth / 2, 260, { align: 'center' })
+  const detailY = 260 + (nameLines.length * 34) + 11
+  pdf.setFont('helvetica', 'normal')
+  pdf.setFontSize(12.5)
+  pdf.setTextColor(71, 85, 105)
+  pdf.text(type === 'Duplicate' ? 'The duplicate certificate was issued at the student\'s request and is an authorized school record.' : 'For successfully completing the required online driver education program.', pageWidth / 2, detailY, { align: 'center', maxWidth: pageWidth - 170 })
+  pdf.setFillColor(239, 246, 255)
+  pdf.setDrawColor(191, 219, 254)
+  pdf.setLineWidth(1)
+  pdf.roundedRect(pageWidth / 2 - 185, detailY + 13, 370, 46, 8, 8, 'FD')
+  pdf.setFont('helvetica', 'bold')
+  pdf.setFontSize(9)
+  pdf.setTextColor(...navy)
+  pdf.text('FINAL ASSESSMENT - TEST 11', pageWidth / 2, detailY + 47, { align: 'center' })
+  pdf.setFontSize(12.5)
+  pdf.text(`Test 11 — Final Test: PASSED · ${finalCorrect}/${finalTotal} correct · ${finalScore.toFixed(2)}%`, pageWidth / 2, detailY + 28, { align: 'center' })
+  // Gold verification seal
+  const sealX = 112
+  const sealY = pageHeight - 125
+  pdf.setFillColor(...gold)
+  pdf.circle(sealX, sealY, 35, 'F')
+  pdf.setDrawColor(...navy)
+  pdf.setLineWidth(2)
+  pdf.circle(sealX, sealY, 29, 'S')
+  pdf.setFont('helvetica', 'bold')
+  pdf.setFontSize(8)
+  pdf.setTextColor(...navy)
+  pdf.text('PDS', sealX, sealY - 3, { align: 'center' })
+  pdf.setFontSize(6)
+  pdf.text('VERIFIED', sealX, sealY + 10, { align: 'center' })
+
+  pdf.setDrawColor(203, 213, 225)
+  pdf.setLineWidth(1)
+  pdf.line(110, pageHeight - 114, 320, pageHeight - 114)
+  pdf.line(pageWidth - 320, pageHeight - 114, pageWidth - 110, pageHeight - 114)
+  pdf.setFont('times', 'italic')
+  pdf.setFontSize(17)
+  pdf.setTextColor(...blue)
+  pdf.text('A Precision Driving School', pageWidth - 215, pageHeight - 122, { align: 'center' })
+  pdf.setFont('helvetica', 'bold')
+  pdf.setFontSize(10)
+  pdf.setTextColor(...navy)
+  pdf.text(`Issued: ${releasedOn}`, 215, pageHeight - 95, { align: 'center' })
+  pdf.text('Authorized School Representative', pageWidth - 215, pageHeight - 95, { align: 'center' })
+  pdf.setFont('helvetica', 'normal')
+  pdf.setFontSize(9)
+  pdf.setTextColor(100, 116, 139)
+  pdf.text(`Certificate No. ${certificateNumber}`, pageWidth / 2, pageHeight - 69, { align: 'center' })
+  pdf.text('A Precision Driving School · San Ramon, California', pageWidth / 2, pageHeight - 52, { align: 'center' })
+  pdf.save(`${certificateFileName(certificateNumber)}-${type.toLowerCase()}-certificate.pdf`)
+  return true
+}

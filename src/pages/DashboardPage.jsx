@@ -7,8 +7,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useCart } from '../contexts/CartContext'
 import { api } from '../api'
 import { usePageMeta } from '../usePageMeta'
-import { openPrintableDocument } from '../utils/printDocument'
-import { downloadPaymentReceipt } from '../utils/printDocument'
+import { downloadCertificatePdf, downloadPaymentReceipt } from '../utils/printDocument'
 import { ONLINE_COURSE_CURRICULUM } from '../data/onlineCourseCurriculum'
 import { UserLiveSupportPanel } from '../components/LiveSupportPanels'
 import PasswordInput from '../components/PasswordInput'
@@ -226,22 +225,16 @@ export default function DashboardPage() {
     noticeTimerRef.current = setTimeout(() => setNotice({ text: '', type: 'success' }), duration)
   }
 
-  const downloadCertificate = (request) => {
+  const downloadCertificate = async (request) => {
     if (String(request?.status || '').toLowerCase() !== 'approved') return
-    const opened = openPrintableDocument({
-      title: `${request.type || 'Course'} Certificate`,
-      heading: 'A Precision Driving School',
-      subtitle: `${request.type || 'Course'} Certificate of Completion · Certificate No. ${request.certificateNumber || 'Pending'}`,
-      rows: [
-        ['Student', user?.displayName || user?.email || 'Student'],
-        ['Certificate type', request.type || 'Certificate'],
-        ['Certificate number', request.certificateNumber || 'Not recorded'],
-        ['Approved / released', request.deliveredAt ? new Date(request.deliveredAt).toLocaleString() : 'Approved'],
-        ['School', 'A Precision Driving School'],
-      ],
-      autoPrint: true,
-    })
-    if (!opened) showNotice('Please allow pop-ups to download your certificate.', 'error')
+    try {
+      await downloadCertificatePdf({
+        certificate: request,
+        student: { name: user?.displayName, email: user?.email },
+      })
+    } catch {
+      showNotice('Certificate PDF could not be downloaded. Please try again.', 'error')
+    }
   }
 
   useEffect(() => () => {
@@ -1627,7 +1620,7 @@ export default function DashboardPage() {
                         const color = approved ? '#15803D' : denied ? '#B91C1C' : '#9A6700'
                         const background = approved ? '#F0FDF4' : denied ? '#FEF2F2' : '#FFFBEB'
                         return <div key={request.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'1rem', flexWrap:'wrap', padding:'1rem', border:`1px solid ${color}33`, borderRadius:'14px', background }}>
-                          <div><strong style={{ display:'block', color:'#0F172A', fontSize:'1.05rem' }}>{request.type || 'Certificate'} Certificate</strong><span style={{ display:'block', color:'#475569', marginTop:'.28rem' }}>Requested {request.requestedAt ? new Date(request.requestedAt).toLocaleDateString() : 'recently'} · {request.status || 'Pending approval'}</span>{request.certificateNumber && <span style={{ display:'block', color:'#475569', marginTop:'.2rem', fontFamily:'var(--font-mono)', fontSize:'.8rem' }}>{request.certificateNumber}</span>}</div>
+                          <div><strong style={{ display:'block', color:'#0F172A', fontSize:'1.05rem' }}>{request.type || 'Certificate'} Certificate</strong><span style={{ display:'block', color:'#475569', marginTop:'.28rem' }}>Requested {request.requestedAt ? new Date(request.requestedAt).toLocaleDateString() : 'recently'} · {request.status || 'Pending approval'}</span>{request.certificateNumber && <span style={{ display:'block', color:'#475569', marginTop:'.2rem', fontFamily:'var(--font-mono)', fontSize:'.8rem' }}>{request.certificateNumber}</span>}{request.finalTestScore !== undefined && <span style={{ display:'block', color:'#15803D', marginTop:'.2rem', fontWeight:800 }}>Test 11 passed · {Number(request.finalTestCorrect || 0)}/{Number(request.finalTestTotal || 25)} · {Number(request.finalTestScore || 0).toFixed(2)}%</span>}</div>
                           {approved ? <button type="button" onClick={() => downloadCertificate(request)} style={{ padding:'.7rem 1rem', border:0, borderRadius:'9px', background:'#0145A8', color:'#fff', fontWeight:800, cursor:'pointer' }}>Download certificate</button> : <span style={{ color, fontWeight:800 }}>{denied ? 'Please contact the school' : 'Waiting for admin approval'}</span>}
                         </div>
                       })}

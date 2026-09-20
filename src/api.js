@@ -147,6 +147,7 @@ export const api = {
   removeCourse: (uid, courseId, enrollmentId = '') => request(`/api/users/${pathPart(uid)}/courses/${pathPart(courseId)}${enrollmentId ? `?enrollmentId=${pathPart(enrollmentId)}` : ''}`, { method: 'DELETE' }),
   requestCourseRefund: (uid, courseId, reason = '', enrollmentId = '') => request(`/api/users/${pathPart(uid)}/courses/${pathPart(courseId)}/refund`, { method: 'POST', body: JSON.stringify({ reason, enrollmentId }) }),
   saveCourseProgress: (uid, enrollmentId, completedModules) => request(`/api/users/${pathPart(uid)}/courses/${pathPart(enrollmentId)}/progress`, { method: 'PUT', body: JSON.stringify({ completedModules }) }),
+  saveFinalTestResult: (uid, questionIds, answers) => request(`/api/users/${pathPart(uid)}/final-test-result`, { method: 'PUT', body: JSON.stringify({ questionIds, answers }) }),
   addPayment: (uid, payment) => request(`/api/users/${pathPart(uid)}/payments`, { method: 'POST', body: JSON.stringify(payment) }),
   dedupCourses: (uid) => request(`/api/users/${pathPart(uid)}/dedup-courses`, { method: 'POST' }),
   getCart: (uid) => request(`/api/users/${pathPart(uid)}/cart`),

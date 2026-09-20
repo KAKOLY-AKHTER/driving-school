@@ -10,6 +10,7 @@ import sanitizeHtml from 'sanitize-html'
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
+import { onlineCourseTestQuestions } from '../src/data/onlineCourseTestQuestions.js'
 
 const serverDirectory = path.dirname(fileURLToPath(import.meta.url))
 // Resolve configuration relative to this file so local authentication works
@@ -455,7 +456,13 @@ const ADMIN_CERTIFICATE_FIELDS = [
   'id', 'type', 'title', 'status', 'requestedAt', 'approvedAt', 'approvedBy',
   'deniedAt', 'deniedBy', 'certificateNumber', 'paidAmount', 'paymentReference',
   'providerOrderId', 'providerCaptureId', 'enrollmentId', 'deliveredAt',
+  'finalTestScore', 'finalTestCorrect', 'finalTestTotal', 'finalTestPassedAt',
 ]
+const ADMIN_FINAL_TEST_FIELDS = [
+  'id', 'testNumber', 'title', 'correct', 'total', 'score', 'passed', 'attemptedAt', 'passedAt',
+]
+const FINAL_TEST_SIZE = 25
+const FINAL_TEST_PASSING_SCORE = Math.ceil(FINAL_TEST_SIZE * 0.75)
 const isDuplicateCertificatePlan = (value) => String(value || '') === '13'
 const certificateRequestTypeForPlan = (value) => {
   if (isDuplicateCertificatePlan(value)) return 'Duplicate'
@@ -2873,6 +2880,61 @@ app.put('/api/users/:uid/courses/:enrollmentId/progress', async (req, res) => {
   }
 })
 
+// Test 11 is graded against the server's question bank before it is stored.
+// This result is used when the school releases a completion certificate.
+app.put('/api/users/:uid/final-test-result', async (req, res) => {
+  try {
+    const uid = req.auth.uid
+    const requestedQuestionIds = Array.isArray(req.body?.questionIds)
+      ? [...new Set(req.body.questionIds.map(id => cleanText(id, 40)).filter(Boolean))]
+      : []
+    const submittedAnswers = isPlainObject(req.body?.answers) ? req.body.answers : null
+    if (requestedQuestionIds.length !== FINAL_TEST_SIZE || !submittedAnswers) {
+      throw new HttpError(400, `Submit all ${FINAL_TEST_SIZE} Final Test answers.`)
+    }
+
+    const questionById = new Map(onlineCourseTestQuestions.map(question => [String(question.id), question]))
+    const questions = requestedQuestionIds.map(id => questionById.get(id)).filter(Boolean)
+    if (questions.length !== FINAL_TEST_SIZE) throw new HttpError(400, 'One or more Final Test questions are invalid.')
+    if (questions.some(question => !Number.isInteger(Number(submittedAnswers[String(question.id)])))) {
+      throw new HttpError(400, 'Submit an answer for every Final Test question.')
+    }
+
+    const student = await usersCol.findOne({ uid }, { projection: { courses: 1 } })
+    const hasOnlineCourse = (student?.courses || []).some(course => {
+      const title = String(course?.title || course?.planName || '').toUpperCase()
+      return String(course?.id) === '1' || title.includes('ONLINE DRIVER')
+    })
+    if (!hasOnlineCourse) throw new HttpError(403, 'An active online driver education enrollment is required for Test 11.')
+
+    const correct = questions.reduce((count, question) => count + (Number(submittedAnswers[String(question.id)]) === Number(question.answer) ? 1 : 0), 0)
+    const score = Number(((correct / FINAL_TEST_SIZE) * 100).toFixed(2))
+    const attemptedAt = new Date().toISOString()
+    const result = {
+      id: randomUUID(),
+      testNumber: 11,
+      title: 'Final Test',
+      correct,
+      total: FINAL_TEST_SIZE,
+      score,
+      passed: correct >= FINAL_TEST_PASSING_SCORE,
+      attemptedAt,
+      ...(correct >= FINAL_TEST_PASSING_SCORE ? { passedAt: attemptedAt } : {}),
+    }
+    await usersCol.updateOne(
+      { uid },
+      {
+        $set: { finalTestResult: result },
+        $push: { finalTestResults: { $each: [result], $position: 0, $slice: 25 } },
+      },
+    )
+    res.json({ ok: true, result })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    return sendServerError(res, error, 'Final Test result could not be saved')
+  }
+})
+
 app.delete('/api/users/:uid/courses/:courseId', async (req, res) => {
   try {
     // requireSelf permits either the account owner or a verified database admin;
@@ -4489,6 +4551,8 @@ app.get('/api/admin/users/:uid/details', async (req, res) => {
       .map(item => pickAdminDetailFields(item, ADMIN_COURSE_FIELDS))
     const certificates = (Array.isArray(student.certificateRequests) ? student.certificateRequests : [])
       .map(request => pickAdminDetailFields(request, ADMIN_CERTIFICATE_FIELDS))
+    const finalTestResults = (Array.isArray(student.finalTestResults) ? student.finalTestResults : [])
+      .map(result => pickAdminDetailFields(result, ADMIN_FINAL_TEST_FIELDS))
     const supportThreads = (Array.isArray(student.messages) ? student.messages : []).map(thread => ({
       id: cleanText(thread?.id, 160),
       subject: cleanText(thread?.subject, 240),
@@ -4513,6 +4577,7 @@ app.get('/api/admin/users/:uid/details', async (req, res) => {
         supportThreads: supportThreads.length,
         aiConversations: Array.isArray(student.conversations) ? student.conversations.length : 0,
         certificates: certificates.length,
+        finalTestAttempts: finalTestResults.length,
       },
       courses,
       bookings,
@@ -4520,6 +4585,7 @@ app.get('/api/admin/users/:uid/details', async (req, res) => {
       refunds,
       cartItems,
       certificates,
+      finalTestResults,
       checkoutOrders,
       supportThreads,
     })
@@ -4536,7 +4602,7 @@ app.get('/api/admin/certificates', async (_req, res) => {
       { $unwind: '$certificateRequests' },
       { $project: {
         uid: 1, firstName: 1, middleName: 1, lastName: 1, displayName: 1, name: 1, email: 1, phone: 1,
-        request: '$certificateRequests',
+        request: '$certificateRequests', finalTestResult: 1,
       } },
       { $sort: { 'request.requestedAt': -1 } },
       { $limit: 500 },
@@ -4546,6 +4612,7 @@ app.get('/api/admin/certificates', async (_req, res) => {
       studentName: cleanText(row.displayName || row.name || [row.firstName, row.middleName, row.lastName].filter(Boolean).join(' '), 160),
       email: cleanText(row.email, 320),
       phone: cleanText(row.phone, 30),
+      finalTestResult: pickAdminDetailFields(row.finalTestResult, ADMIN_FINAL_TEST_FIELDS),
       ...pickAdminDetailFields(row.request, ADMIN_CERTIFICATE_FIELDS),
     })))
   } catch (error) {
@@ -4559,6 +4626,15 @@ app.put('/api/admin/certificates/:requestId', async (req, res) => {
     const status = cleanText(req.body?.status, 40).toLowerCase()
     if (!requestId) throw new HttpError(400, 'Certificate request id is required.')
     if (!['approved', 'denied'].includes(status)) throw new HttpError(400, 'Choose Approved or Denied.')
+    const certificateOwner = await usersCol.findOne(
+      { 'certificateRequests.id': requestId },
+      { projection: { uid: 1, certificateRequests: 1, finalTestResult: 1 } },
+    )
+    if (!certificateOwner) throw new HttpError(404, 'Certificate request was not found.')
+    const finalTestResult = certificateOwner.finalTestResult || {}
+    if (status === 'approved' && finalTestResult.passed !== true) {
+      throw new HttpError(409, 'Test 11 (Final Test) must be passed before this certificate can be approved.')
+    }
     const now = new Date().toISOString()
     const changes = status === 'approved'
       ? {
@@ -4567,6 +4643,10 @@ app.put('/api/admin/certificates/:requestId', async (req, res) => {
           'certificateRequests.$[request].approvedBy': cleanText(req.auth?.email, 320),
           'certificateRequests.$[request].deliveredAt': now,
           'certificateRequests.$[request].certificateNumber': `PDS-${new Date().getFullYear()}-${requestId.slice(0, 8).toUpperCase()}`,
+          'certificateRequests.$[request].finalTestScore': Number(finalTestResult.score || 0),
+          'certificateRequests.$[request].finalTestCorrect': Number(finalTestResult.correct || 0),
+          'certificateRequests.$[request].finalTestTotal': Number(finalTestResult.total || FINAL_TEST_SIZE),
+          'certificateRequests.$[request].finalTestPassedAt': cleanText(finalTestResult.passedAt || finalTestResult.attemptedAt, 80),
         }
       : {
           'certificateRequests.$[request].status': 'Denied',

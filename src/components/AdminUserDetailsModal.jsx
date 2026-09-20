@@ -45,7 +45,7 @@ const statusStyle = (status) => {
   const value = String(status || '').toLowerCase()
   if (value.includes('refund') || value.includes('cancel') || value.includes('denied')) return { color: '#B91C1C', background: '#FEF2F2' }
   if (value.includes('pending') || value.includes('scheduled')) return { color: '#9A6700', background: '#FFFBEB' }
-  if (value.includes('complete') || value.includes('confirm') || value.includes('active') || value.includes('capture')) return { color: '#15803D', background: '#F0FDF4' }
+  if (value.includes('complete') || value.includes('confirm') || value.includes('active') || value.includes('capture') || value.includes('passed')) return { color: '#15803D', background: '#F0FDF4' }
   return { color: '#0755AE', background: '#EFF6FF' }
 }
 
@@ -175,7 +175,7 @@ export default function AdminUserDetailsModal({ dialog, onClose, onRetry }) {
             <>
               <div style={{ display: 'flex', alignItems: 'stretch', flexWrap: 'wrap', border: '1px solid #DCE7F3', borderRadius: '14px', background: '#fff', overflow: 'hidden', boxShadow: '0 8px 24px rgba(10,42,94,.045)' }}>
                 {[
-                  ['Courses', summary.courses], ['Bookings', summary.bookings], ['Payments', summary.payments], ['Certificates', summary.certificates || 0],
+                  ['Courses', summary.courses], ['Bookings', summary.bookings], ['Payments', summary.payments], ['Certificates', summary.certificates || 0], ['Test 11 Attempts', summary.finalTestAttempts || 0],
                 ].map(([label, value], index, items) => <div key={label} style={{ minWidth: '125px', flex: '1 1 125px', padding: '.9rem 1rem', borderRight: index < items.length - 1 ? '1px solid #E6EDF5' : 0, textAlign: 'center' }}><strong style={{ display: 'block', color: BLUE, fontFamily: 'var(--font-display)', fontSize: '1.45rem', lineHeight: 1.2 }}>{Number(value || 0)}</strong><span style={{ display: 'block', marginTop: '.2rem', color: '#496581', fontSize: '.84rem', lineHeight: 1.35, fontWeight: 800 }}>{label}</span></div>)}
               </div>
 
@@ -184,6 +184,7 @@ export default function AdminUserDetailsModal({ dialog, onClose, onRetry }) {
                   ['overview', 'Overview'],
                   ['courses', `Courses (${summary.courses || 0})`],
                   ['bookings', `Bookings (${summary.bookings || 0})`],
+                  ['test-11', `Test 11 (${summary.finalTestAttempts || 0})`],
                   ['certificates', `Certificates (${summary.certificates || 0})`],
                   ['finance', 'Payments & Refunds'],
                 ].map(([key, label]) => {
@@ -256,6 +257,21 @@ export default function AdminUserDetailsModal({ dialog, onClose, onRetry }) {
                     { label: 'Requested On', render: row => formatDateTime(row.requestedAt) },
                     { label: 'Certificate Number', render: row => displayValue(row.certificateNumber) },
                     { label: 'Released On', render: row => formatDateTime(row.deliveredAt) },
+                  ]}
+                />
+              </Section>}
+
+              {activeTab === 'test-11' && <Section title="Test 11 — Final Test Results" subtitle="Certificate approval requires a passed Final Test result.">
+                <HistoryTable
+                  rows={data.finalTestResults}
+                  empty="This student has not submitted Test 11 yet."
+                  columns={[
+                    { label: 'Result', render: row => <StatusChip>{row.passed ? 'Passed' : 'Not passed'}</StatusChip> },
+                    { label: 'Score', render: row => `${Number(row.score || 0).toFixed(2)}%` },
+                    { label: 'Correct Answers', render: row => `${row.correct ?? 0} / ${row.total ?? 25}` },
+                    { label: 'Test', render: row => displayValue(row.title || 'Final Test') },
+                    { label: 'Taken On', render: row => formatDateTime(row.attemptedAt) },
+                    { label: 'Passed On', render: row => formatDateTime(row.passedAt) },
                   ]}
                 />
               </Section>}

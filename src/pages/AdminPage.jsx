@@ -1149,9 +1149,14 @@ export default function AdminPage() {
     let cancelled = false
     const refreshNotificationCounts = () => {
       if (document.visibilityState === 'hidden') return
-      api.adminStats()
-        .then(nextStats => { if (!cancelled && nextStats) setStats(nextStats) })
-        .catch(() => {})
+      Promise.all([
+        api.adminStats().catch(() => null),
+        api.adminCertificates().catch(() => null),
+      ]).then(([nextStats, nextCertificates]) => {
+        if (cancelled) return
+        if (nextStats) setStats(nextStats)
+        if (Array.isArray(nextCertificates)) setCertificateRequests(nextCertificates)
+      })
     }
     const intervalId = window.setInterval(refreshNotificationCounts, 30_000)
     window.addEventListener('focus', refreshNotificationCounts)
@@ -2083,7 +2088,7 @@ export default function AdminPage() {
     { id: 'contacts', label: 'Contacts', icon: SVG.mail, badge: stats.pendingContacts, badgeLabel: 'new contact message' },
     { id: 'live-support', label: 'Live Support', icon: SVG.mail, badge: stats.unreadSupport, badgeLabel: 'unread support message' },
     { id: 'enrolled', label: 'Enrolled Courses', icon: SVG.book },
-    { id: 'certificates', label: 'Certificates', icon: SVG.book, badge: certificateRequests.filter(item => String(item.status || '').toLowerCase().includes('pending')).length, badgeLabel: 'pending certificate request' },
+    { id: 'certificates', label: 'Certificate Requests', icon: SVG.book, badge: certificateRequests.filter(item => String(item.status || '').toLowerCase().includes('pending')).length, badgeLabel: 'new certificate request' },
     { id: 'refunds', label: 'Refunds', icon: SVG.refund, badge: stats.pendingRefunds, badgeLabel: 'pending refund request' },
     { id: 'reviews', label: 'Reviews', icon: SVG.star },
     { id: 'blogs', label: 'Blog', icon: SVG.book },
@@ -2700,13 +2705,13 @@ export default function AdminPage() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
                     <div>
                       <h3 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.2rem' }}>Certificate Requests</h3>
-                      <p style={{ margin: '.35rem 0 0', color: '#475569' }}>Paid original and duplicate certificate requests require your approval before students can download them.</p>
+                      <p style={{ margin: '.35rem 0 0', color: '#475569' }}>Paid requests require a passed Test 11 result and your approval before students can download their certificate.</p>
                     </div>
                     <span style={{ padding: '.4rem .7rem', borderRadius: '999px', background: '#FFF7ED', color: '#9A6700', fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 800 }}>{certificateRequests.filter(item => String(item.status || '').toLowerCase().includes('pending')).length} pending</span>
                   </div>
                   <div className="admin-table-wrap" style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', minWidth: '950px', borderCollapse: 'collapse' }}>
-                      <thead><tr>{['Student', 'Request', 'Paid', 'Requested', 'Status', 'Actions'].map(label => <th key={label} style={thStyle}>{label}</th>)}</tr></thead>
+                    <table style={{ width: '100%', minWidth: '1080px', borderCollapse: 'collapse' }}>
+                      <thead><tr>{['Student', 'Request', 'Test 11', 'Paid', 'Requested', 'Status', 'Actions'].map(label => <th key={label} style={thStyle}>{label}</th>)}</tr></thead>
                       <tbody>
                         {certificateRequests.map(request => {
                           const pending = String(request.status || '').toLowerCase().includes('pending')
@@ -2714,13 +2719,14 @@ export default function AdminPage() {
                           return <tr key={request.id}>
                             <td style={tdStyle}><strong>{request.studentName || 'Student'}</strong><span style={{ display: 'block', fontSize: '.85rem', color: '#64748B' }}>{request.email || 'No email'}</span></td>
                             <td style={tdStyle}><strong>{request.type || 'Certificate'}</strong><span style={{ display: 'block', fontSize: '.85rem', color: '#64748B' }}>{request.title || ''}</span></td>
+                            <td style={tdStyle}>{request.finalTestResult?.passed ? <span style={{ color: '#15803D', fontWeight: 800 }}>Passed · {Number(request.finalTestResult.score || 0).toFixed(2)}%</span> : <span style={{ color: '#B45309', fontWeight: 800 }}>Not passed yet</span>}</td>
                             <td style={tdStyle}>${Number(request.paidAmount || 0).toFixed(2)}</td>
                             <td style={tdStyle}>{request.requestedAt ? new Date(request.requestedAt).toLocaleDateString() : '—'}</td>
                             <td style={tdStyle}><span style={{ padding: '.28rem .58rem', borderRadius: '999px', background: approved ? '#F0FDF4' : pending ? '#FFFBEB' : '#FEF2F2', color: approved ? '#15803D' : pending ? '#9A6700' : '#B91C1C', fontWeight: 800 }}>{request.status || 'Pending approval'}</span></td>
                             <td style={tdStyle}>{pending ? <div style={{ display: 'flex', gap: '.45rem' }}><button type="button" disabled={certificateUpdating === request.id} onClick={() => updateCertificateRequest(request.id, 'approved')} style={{ padding: '.45rem .7rem', border: 0, borderRadius: '8px', background: '#15803D', color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Approve</button><button type="button" disabled={certificateUpdating === request.id} onClick={() => updateCertificateRequest(request.id, 'denied')} style={{ padding: '.45rem .7rem', border: '1px solid #FCA5A5', borderRadius: '8px', background: '#fff', color: '#B91C1C', fontWeight: 800, cursor: 'pointer' }}>Deny</button></div> : <span style={{ color: '#64748B', fontWeight: 700 }}>{approved ? `Released ${request.certificateNumber || ''}` : 'No action'}</span>}</td>
                           </tr>
                         })}
-                        {!certificateRequests.length && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748B' }}>No certificate requests yet.</td></tr>}
+                        {!certificateRequests.length && <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748B' }}>No certificate requests yet.</td></tr>}
                       </tbody>
                     </table>
                   </div>
