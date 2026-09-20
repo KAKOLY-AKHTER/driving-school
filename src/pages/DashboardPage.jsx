@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useCart } from '../contexts/CartContext'
 import { api } from '../api'
 import { usePageMeta } from '../usePageMeta'
+import { openPrintableDocument } from '../utils/printDocument'
 import { downloadPaymentReceipt } from '../utils/printDocument'
 import { ONLINE_COURSE_CURRICULUM } from '../data/onlineCourseCurriculum'
 import { UserLiveSupportPanel } from '../components/LiveSupportPanels'
@@ -108,8 +109,8 @@ const bookingSortValue = (booking) => {
   return `${date}T${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
 }
 
-const profileTabs = new Set(['dashboard', 'courses', 'payments', 'settings', 'course'])
-const dashboardTabs = new Set(['dashboard', 'courses', 'bookings', 'payments', 'course', 'settings', 'live-support', 'support'])
+const profileTabs = new Set(['dashboard', 'courses', 'payments', 'certificates', 'settings', 'course'])
+const dashboardTabs = new Set(['dashboard', 'courses', 'bookings', 'payments', 'certificates', 'course', 'settings', 'live-support', 'support'])
 
 const dashboardLoadMessage = (result, label) => {
   if (result.status !== 'rejected') return ''
@@ -179,6 +180,7 @@ export default function DashboardPage() {
   const [expiryDate, setExpiryDate] = useState('')
   const [courses, setCourses] = useState([])
   const [payments, setPayments] = useState([])
+  const [certificateRequests, setCertificateRequests] = useState([])
   const [courseSearch, setCourseSearch] = useState('')
   const [courseStatusFilter, setCourseStatusFilter] = useState('all')
   const [coursePage, setCoursePage] = useState(1)
@@ -222,6 +224,24 @@ export default function DashboardPage() {
     if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current)
     setNotice({ text, type })
     noticeTimerRef.current = setTimeout(() => setNotice({ text: '', type: 'success' }), duration)
+  }
+
+  const downloadCertificate = (request) => {
+    if (String(request?.status || '').toLowerCase() !== 'approved') return
+    const opened = openPrintableDocument({
+      title: `${request.type || 'Course'} Certificate`,
+      heading: 'A Precision Driving School',
+      subtitle: `${request.type || 'Course'} Certificate of Completion · Certificate No. ${request.certificateNumber || 'Pending'}`,
+      rows: [
+        ['Student', user?.displayName || user?.email || 'Student'],
+        ['Certificate type', request.type || 'Certificate'],
+        ['Certificate number', request.certificateNumber || 'Not recorded'],
+        ['Approved / released', request.deliveredAt ? new Date(request.deliveredAt).toLocaleString() : 'Approved'],
+        ['School', 'A Precision Driving School'],
+      ],
+      autoPrint: true,
+    })
+    if (!opened) showNotice('Please allow pop-ups to download your certificate.', 'error')
   }
 
   useEffect(() => () => {
@@ -282,6 +302,7 @@ export default function DashboardPage() {
           setExpiryDate(profile.expiryDate || '')
           setCourses(Array.isArray(profile.courses) ? profile.courses : [])
           setPayments(Array.isArray(profile.payments) ? profile.payments : [])
+          setCertificateRequests(Array.isArray(profile.certificateRequests) ? profile.certificateRequests : [])
           setSupportUnread((Array.isArray(profile.messages) ? profile.messages : []).filter(thread => thread?.unreadByUser).length)
           setSUsername(profile.username || profile.displayName || '')
           setSPhotoURL(profile.photoURL || user.photoURL || '')
@@ -851,6 +872,7 @@ export default function DashboardPage() {
     { id: 'courses', label: 'Courses', sublabel: 'Your courses', icon: I.book },
     { id: 'bookings', label: 'Lessons', sublabel: 'Your bookings', icon: I.calendar },
     { id: 'payments', label: 'Payments', sublabel: 'Invoices', icon: I.profile },
+    { id: 'certificates', label: 'Certificates', sublabel: 'Requests & downloads', icon: I.book, badge: certificateRequests.filter(item => String(item.status || '').toLowerCase().includes('approved')).length },
     { id: 'settings', label: 'Settings', sublabel: 'Account', icon: I.shield },
     { id: 'live-support', label: 'Live Support', sublabel: 'School team', icon: I.profile, badge: supportUnread },
     { id: 'support', label: 'Support', sublabel: 'AI assistant', icon: I.profile },
@@ -1588,6 +1610,29 @@ export default function DashboardPage() {
                     </table>
                     </div>
                     {payments.length > 0 && matchedPayments.length === 0 && <p style={{ textAlign:'center', color:'#475569', padding:'1.25rem' }}>No payments match the selected filters.</p>}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'certificates' && (
+                <div className="dash-content-width">
+                  <div className="dash-anim dash-card-premium" style={{ padding:'clamp(1.25rem,2.5vw,2.5rem)' }}>
+                    <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 .5rem', fontWeight:600 }}>Certificate center</p>
+                    <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'#0F172A', margin:'0 0 .55rem', fontWeight:800 }}>MY CERTIFICATES</h2>
+                    <p style={{ color:'#475569', margin:'0 0 1.5rem', lineHeight:1.6 }}>Your paid certificate requests appear here. Once the school approves a request, you can download it immediately.</p>
+                    <div style={{ display:'grid', gap:'.8rem' }}>
+                      {certificateRequests.map(request => {
+                        const approved = String(request.status || '').toLowerCase() === 'approved'
+                        const denied = String(request.status || '').toLowerCase() === 'denied'
+                        const color = approved ? '#15803D' : denied ? '#B91C1C' : '#9A6700'
+                        const background = approved ? '#F0FDF4' : denied ? '#FEF2F2' : '#FFFBEB'
+                        return <div key={request.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'1rem', flexWrap:'wrap', padding:'1rem', border:`1px solid ${color}33`, borderRadius:'14px', background }}>
+                          <div><strong style={{ display:'block', color:'#0F172A', fontSize:'1.05rem' }}>{request.type || 'Certificate'} Certificate</strong><span style={{ display:'block', color:'#475569', marginTop:'.28rem' }}>Requested {request.requestedAt ? new Date(request.requestedAt).toLocaleDateString() : 'recently'} · {request.status || 'Pending approval'}</span>{request.certificateNumber && <span style={{ display:'block', color:'#475569', marginTop:'.2rem', fontFamily:'var(--font-mono)', fontSize:'.8rem' }}>{request.certificateNumber}</span>}</div>
+                          {approved ? <button type="button" onClick={() => downloadCertificate(request)} style={{ padding:'.7rem 1rem', border:0, borderRadius:'9px', background:'#0145A8', color:'#fff', fontWeight:800, cursor:'pointer' }}>Download certificate</button> : <span style={{ color, fontWeight:800 }}>{denied ? 'Please contact the school' : 'Waiting for admin approval'}</span>}
+                        </div>
+                      })}
+                      {!certificateRequests.length && <div style={{ padding:'2rem', textAlign:'center', borderRadius:'14px', background:'#F8FAFC', color:'#64748B', fontWeight:700 }}>No certificate requests yet.</div>}
+                    </div>
                   </div>
                 </div>
               )}

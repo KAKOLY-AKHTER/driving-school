@@ -451,6 +451,16 @@ const ADMIN_CHECKOUT_FIELDS = [
   'payerEmail', 'couponCode', 'subtotal', 'discount', 'createdAt', 'updatedAt',
   'capturedAt',
 ]
+const ADMIN_CERTIFICATE_FIELDS = [
+  'id', 'type', 'title', 'status', 'requestedAt', 'approvedAt', 'approvedBy',
+  'deniedAt', 'deniedBy', 'certificateNumber', 'paidAmount', 'paymentReference',
+  'providerOrderId', 'providerCaptureId', 'enrollmentId', 'deliveredAt',
+]
+const isDuplicateCertificatePlan = (value) => String(value || '') === '13'
+const certificateRequestTypeForPlan = (value) => {
+  if (isDuplicateCertificatePlan(value)) return 'Duplicate'
+  return String(value || '') === '1' ? 'Original' : ''
+}
 const adminDetailValue = (value) => {
   if (value instanceof Date) return value.toISOString()
   return safeRecord(value)
@@ -3117,9 +3127,11 @@ app.post('/api/users/:uid/cart', async (req, res) => {
       if (matchingCourses.some(course => normalizedCourseStatus(course.status) === 'refund pending')) {
         throw new HttpError(409, `A refund request for ${tier.planName} is still pending. Additional slots cannot be booked yet.`)
       }
-      const activeCourseIndex = findCourseEnrollmentIndex(courses, courseId, '', { activeOnly: true })
+      const activeCourseIndex = isDuplicateCertificatePlan(courseId)
+        ? -1
+        : findCourseEnrollmentIndex(courses, courseId, '', { activeOnly: true })
       let activeCourse = activeCourseIndex >= 0 ? courses[activeCourseIndex] : null
-      if (purchaseOnly && activeCourse) {
+      if (purchaseOnly && activeCourse && !isDuplicateCertificatePlan(courseId)) {
         throw new HttpError(409, `${tier.planName} is already active on this account. Book its remaining lessons from the student dashboard.`)
       }
       const enrollmentId = cleanText(activeCourse?.enrollmentId, 160) || randomUUID()
@@ -3279,17 +3291,18 @@ async function processCartCheckout(req, { quoteOnly = false, couponCode = '', co
         const bookingLocation = purchaseOnly ? null : await bookingLocationByName(item.city, session)
         const locationPrice = pricingForBookingLocation(tier, bookingLocation)
         const requestedEnrollmentId = cleanText(item.enrollmentId, 160)
-        let activeCourseIndex = requestedEnrollmentId
+        const repeatableCertificate = isDuplicateCertificatePlan(courseId)
+        let activeCourseIndex = repeatableCertificate ? -1 : (requestedEnrollmentId
           ? existingCourses.findLastIndex(course =>
               String(course?.id) === courseId
               && String(course?.enrollmentId) === requestedEnrollmentId
               && courseCanAcceptMoreBookings(course)
             )
-          : -1
+          : -1)
         if (activeCourseIndex < 0) {
           activeCourseIndex = findCourseEnrollmentIndex(existingCourses, courseId, '', { activeOnly: true })
         }
-        if (purchaseOnly && activeCourseIndex >= 0) {
+        if (purchaseOnly && activeCourseIndex >= 0 && !repeatableCertificate) {
           throw new HttpError(409, `${tier.planName} is already active on this account. Book its remaining lessons from the student dashboard.`)
         }
         const continuation = !purchaseOnly && activeCourseIndex >= 0
@@ -3541,11 +3554,30 @@ async function processCartCheckout(req, { quoteOnly = false, couponCode = '', co
           paidAt: verifiedPayment.paidAt || enrolledAt,
         } : {}),
       } : null
+      const certificateRequests = toAdd
+        .map(course => ({ course, type: certificateRequestTypeForPlan(course.id) }))
+        .filter(({ type }) => Boolean(type))
+        .map(({ course, type }) => ({
+          id: randomUUID(),
+          type,
+          title: type === 'Duplicate' ? 'Duplicate Certificate 400C' : 'Original Course Completion Certificate',
+          status: 'Pending approval',
+          requestedAt: enrolledAt,
+          paidAmount: Number(course.paidAmount || 0),
+          paymentReference: payment?.ref || '',
+          providerOrderId: verifiedPayment?.orderId || '',
+          providerCaptureId: verifiedPayment?.captureId || '',
+          enrollmentId: cleanText(course.enrollmentId, 160),
+        }))
       const userUpdate = {
         $set: { courses: nextCourses },
         $setOnInsert: { uid },
       }
-      if (payment) userUpdate.$push = { payments: { $each: [payment], $position: 0 } }
+      if (payment || certificateRequests.length) {
+        userUpdate.$push = {}
+        if (payment) userUpdate.$push.payments = { $each: [payment], $position: 0 }
+        if (certificateRequests.length) userUpdate.$push.certificateRequests = { $each: certificateRequests, $position: 0, $slice: 100 }
+      }
       await usersCol.updateOne(
         { uid },
         userUpdate,
@@ -3584,6 +3616,7 @@ async function processCartCheckout(req, { quoteOnly = false, couponCode = '', co
         bookingIds: holds.map(({ booking }) => String(booking._id)),
         payment,
         courses: nextCourses,
+        certificateRequests,
       }
     })
 }
@@ -4454,6 +4487,8 @@ app.get('/api/admin/users/:uid/details', async (req, res) => {
     const checkoutOrders = checkoutRows.map(order => pickAdminDetailFields(order, ADMIN_CHECKOUT_FIELDS, { includeId: true }))
     const cartItems = (Array.isArray(cart?.items) ? cart.items : [])
       .map(item => pickAdminDetailFields(item, ADMIN_COURSE_FIELDS))
+    const certificates = (Array.isArray(student.certificateRequests) ? student.certificateRequests : [])
+      .map(request => pickAdminDetailFields(request, ADMIN_CERTIFICATE_FIELDS))
     const supportThreads = (Array.isArray(student.messages) ? student.messages : []).map(thread => ({
       id: cleanText(thread?.id, 160),
       subject: cleanText(thread?.subject, 240),
@@ -4477,18 +4512,79 @@ app.get('/api/admin/users/:uid/details', async (req, res) => {
         cartItems: cartItems.length,
         supportThreads: supportThreads.length,
         aiConversations: Array.isArray(student.conversations) ? student.conversations.length : 0,
+        certificates: certificates.length,
       },
       courses,
       bookings,
       payments,
       refunds,
       cartItems,
+      certificates,
       checkoutOrders,
       supportThreads,
     })
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message })
     return sendServerError(res, error, 'Admin user details lookup failed')
+  }
+})
+
+app.get('/api/admin/certificates', async (_req, res) => {
+  try {
+    const rows = await usersCol.aggregate([
+      { $match: { isAdmin: { $ne: true }, certificateRequests: { $type: 'array' } } },
+      { $unwind: '$certificateRequests' },
+      { $project: {
+        uid: 1, firstName: 1, middleName: 1, lastName: 1, displayName: 1, name: 1, email: 1, phone: 1,
+        request: '$certificateRequests',
+      } },
+      { $sort: { 'request.requestedAt': -1 } },
+      { $limit: 500 },
+    ]).toArray()
+    res.json(rows.map(row => ({
+      uid: row.uid,
+      studentName: cleanText(row.displayName || row.name || [row.firstName, row.middleName, row.lastName].filter(Boolean).join(' '), 160),
+      email: cleanText(row.email, 320),
+      phone: cleanText(row.phone, 30),
+      ...pickAdminDetailFields(row.request, ADMIN_CERTIFICATE_FIELDS),
+    })))
+  } catch (error) {
+    sendServerError(res, error, 'Certificate request lookup failed')
+  }
+})
+
+app.put('/api/admin/certificates/:requestId', async (req, res) => {
+  try {
+    const requestId = cleanText(req.params.requestId, 160)
+    const status = cleanText(req.body?.status, 40).toLowerCase()
+    if (!requestId) throw new HttpError(400, 'Certificate request id is required.')
+    if (!['approved', 'denied'].includes(status)) throw new HttpError(400, 'Choose Approved or Denied.')
+    const now = new Date().toISOString()
+    const changes = status === 'approved'
+      ? {
+          'certificateRequests.$[request].status': 'Approved',
+          'certificateRequests.$[request].approvedAt': now,
+          'certificateRequests.$[request].approvedBy': cleanText(req.auth?.email, 320),
+          'certificateRequests.$[request].deliveredAt': now,
+          'certificateRequests.$[request].certificateNumber': `PDS-${new Date().getFullYear()}-${requestId.slice(0, 8).toUpperCase()}`,
+        }
+      : {
+          'certificateRequests.$[request].status': 'Denied',
+          'certificateRequests.$[request].deniedAt': now,
+          'certificateRequests.$[request].deniedBy': cleanText(req.auth?.email, 320),
+        }
+    const result = await usersCol.updateOne(
+      { 'certificateRequests.id': requestId },
+      { $set: changes },
+      { arrayFilters: [{ 'request.id': requestId }] },
+    )
+    if (!result.matchedCount) throw new HttpError(404, 'Certificate request was not found.')
+    const student = await usersCol.findOne({ 'certificateRequests.id': requestId }, { projection: { uid: 1, certificateRequests: 1 } })
+    const request = (student?.certificateRequests || []).find(item => item.id === requestId)
+    res.json({ ok: true, uid: student?.uid || '', request: pickAdminDetailFields(request, ADMIN_CERTIFICATE_FIELDS) })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    return sendServerError(res, error, 'Certificate request update failed')
   }
 })
 

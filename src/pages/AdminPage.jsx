@@ -911,6 +911,8 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [stats, setStats] = useState({ totalUsers: 0, totalBookings: 0, activeEnrollments: 0, upcomingBookings: 0, pendingContacts: 0, pendingRefunds: 0, unreadSupport: 0 })
   const [users, setUsers] = useState([])
+  const [certificateRequests, setCertificateRequests] = useState([])
+  const [certificateUpdating, setCertificateUpdating] = useState('')
   const [bookings, setBookings] = useState([])
   const [contacts, setContacts] = useState([])
   const [userSearch, setUserSearch] = useState('')
@@ -1101,7 +1103,7 @@ export default function AdminPage() {
       setLoading(true)
       setLoadError('')
       try {
-        const [s, u, b, c, st, p, l, a, so] = await Promise.all([
+        const [s, u, b, c, st, p, l, a, so, certificates] = await Promise.all([
           api.adminStats(),
           api.adminUsers(),
           api.adminBookings(),
@@ -1111,6 +1113,7 @@ export default function AdminPage() {
           api.getLocations().catch(() => []),
           api.getAreas().catch(() => []),
           api.getSocials().catch(() => DEFAULT_SOCIALS),
+          api.adminCertificates().catch(() => []),
         ])
         if (cancelled) return
         setStats(s || { totalUsers: 0, totalBookings: 0, activeEnrollments: 0, upcomingBookings: 0, pendingContacts: 0, pendingRefunds: 0, unreadSupport: 0 })
@@ -1122,6 +1125,7 @@ export default function AdminPage() {
         setLocations(Array.isArray(l) ? l : [])
         setAreas(Array.isArray(a) ? a : [])
         setSocials(Array.isArray(so) ? so : [])
+        setCertificateRequests(Array.isArray(certificates) ? certificates : [])
       } catch (error) {
         if (!cancelled) setLoadError(error?.message || 'The admin dashboard could not be loaded. Please try again.')
       } finally {
@@ -1159,6 +1163,23 @@ export default function AdminPage() {
   }, [])
 
   const handleLogout = async () => { await signOut(adminAuth); navigate('/') }
+
+  const updateCertificateRequest = async (requestId, status) => {
+    if (!requestId || certificateUpdating) return
+    setCertificateUpdating(requestId)
+    try {
+      const result = await api.adminUpdateCertificate(requestId, status)
+      const updated = result?.request || {}
+      setCertificateRequests(current => current.map(item => item.id === requestId ? { ...item, ...updated } : item))
+      setMsg(status === 'approved' ? 'Certificate approved and released to the student portal.' : 'Certificate request denied.')
+      setTimeout(() => setMsg(''), 3000)
+    } catch (error) {
+      setMsg(error?.message || 'Certificate request could not be updated.')
+      setTimeout(() => setMsg(''), 3000)
+    } finally {
+      setCertificateUpdating('')
+    }
+  }
 
   useEffect(() => {
     if (user) {
@@ -2062,6 +2083,7 @@ export default function AdminPage() {
     { id: 'contacts', label: 'Contacts', icon: SVG.mail, badge: stats.pendingContacts, badgeLabel: 'new contact message' },
     { id: 'live-support', label: 'Live Support', icon: SVG.mail, badge: stats.unreadSupport, badgeLabel: 'unread support message' },
     { id: 'enrolled', label: 'Enrolled Courses', icon: SVG.book },
+    { id: 'certificates', label: 'Certificates', icon: SVG.book, badge: certificateRequests.filter(item => String(item.status || '').toLowerCase().includes('pending')).length, badgeLabel: 'pending certificate request' },
     { id: 'refunds', label: 'Refunds', icon: SVG.refund, badge: stats.pendingRefunds, badgeLabel: 'pending refund request' },
     { id: 'reviews', label: 'Reviews', icon: SVG.star },
     { id: 'blogs', label: 'Blog', icon: SVG.book },
@@ -2671,6 +2693,38 @@ export default function AdminPage() {
 
               {!loading && !loadError && activeTab === 'coupons' && (
                 <AdminCouponsPanel cardStyle={cardStyle} inputStyle={inputStyle} labelStyle={labelStyle} thStyle={thStyle} tdStyle={tdStyle} requestConfirmation={requestConfirmation} />
+              )}
+
+              {!loading && !loadError && activeTab === 'certificates' && (
+                <div style={cardStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+                    <div>
+                      <h3 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.2rem' }}>Certificate Requests</h3>
+                      <p style={{ margin: '.35rem 0 0', color: '#475569' }}>Paid original and duplicate certificate requests require your approval before students can download them.</p>
+                    </div>
+                    <span style={{ padding: '.4rem .7rem', borderRadius: '999px', background: '#FFF7ED', color: '#9A6700', fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 800 }}>{certificateRequests.filter(item => String(item.status || '').toLowerCase().includes('pending')).length} pending</span>
+                  </div>
+                  <div className="admin-table-wrap" style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', minWidth: '950px', borderCollapse: 'collapse' }}>
+                      <thead><tr>{['Student', 'Request', 'Paid', 'Requested', 'Status', 'Actions'].map(label => <th key={label} style={thStyle}>{label}</th>)}</tr></thead>
+                      <tbody>
+                        {certificateRequests.map(request => {
+                          const pending = String(request.status || '').toLowerCase().includes('pending')
+                          const approved = String(request.status || '').toLowerCase() === 'approved'
+                          return <tr key={request.id}>
+                            <td style={tdStyle}><strong>{request.studentName || 'Student'}</strong><span style={{ display: 'block', fontSize: '.85rem', color: '#64748B' }}>{request.email || 'No email'}</span></td>
+                            <td style={tdStyle}><strong>{request.type || 'Certificate'}</strong><span style={{ display: 'block', fontSize: '.85rem', color: '#64748B' }}>{request.title || ''}</span></td>
+                            <td style={tdStyle}>${Number(request.paidAmount || 0).toFixed(2)}</td>
+                            <td style={tdStyle}>{request.requestedAt ? new Date(request.requestedAt).toLocaleDateString() : '—'}</td>
+                            <td style={tdStyle}><span style={{ padding: '.28rem .58rem', borderRadius: '999px', background: approved ? '#F0FDF4' : pending ? '#FFFBEB' : '#FEF2F2', color: approved ? '#15803D' : pending ? '#9A6700' : '#B91C1C', fontWeight: 800 }}>{request.status || 'Pending approval'}</span></td>
+                            <td style={tdStyle}>{pending ? <div style={{ display: 'flex', gap: '.45rem' }}><button type="button" disabled={certificateUpdating === request.id} onClick={() => updateCertificateRequest(request.id, 'approved')} style={{ padding: '.45rem .7rem', border: 0, borderRadius: '8px', background: '#15803D', color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Approve</button><button type="button" disabled={certificateUpdating === request.id} onClick={() => updateCertificateRequest(request.id, 'denied')} style={{ padding: '.45rem .7rem', border: '1px solid #FCA5A5', borderRadius: '8px', background: '#fff', color: '#B91C1C', fontWeight: 800, cursor: 'pointer' }}>Deny</button></div> : <span style={{ color: '#64748B', fontWeight: 700 }}>{approved ? `Released ${request.certificateNumber || ''}` : 'No action'}</span>}</td>
+                          </tr>
+                        })}
+                        {!certificateRequests.length && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748B' }}>No certificate requests yet.</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               )}
 
               {!loading && !loadError && activeTab === 'enrolled' && (

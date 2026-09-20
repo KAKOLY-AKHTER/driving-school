@@ -175,7 +175,7 @@ export default function AdminUserDetailsModal({ dialog, onClose, onRetry }) {
             <>
               <div style={{ display: 'flex', alignItems: 'stretch', flexWrap: 'wrap', border: '1px solid #DCE7F3', borderRadius: '14px', background: '#fff', overflow: 'hidden', boxShadow: '0 8px 24px rgba(10,42,94,.045)' }}>
                 {[
-                  ['Courses', summary.courses], ['Bookings', summary.bookings], ['Payments', summary.payments], ['Refunds', summary.refunds],
+                  ['Courses', summary.courses], ['Bookings', summary.bookings], ['Payments', summary.payments], ['Certificates', summary.certificates || 0],
                 ].map(([label, value], index, items) => <div key={label} style={{ minWidth: '125px', flex: '1 1 125px', padding: '.9rem 1rem', borderRight: index < items.length - 1 ? '1px solid #E6EDF5' : 0, textAlign: 'center' }}><strong style={{ display: 'block', color: BLUE, fontFamily: 'var(--font-display)', fontSize: '1.45rem', lineHeight: 1.2 }}>{Number(value || 0)}</strong><span style={{ display: 'block', marginTop: '.2rem', color: '#496581', fontSize: '.84rem', lineHeight: 1.35, fontWeight: 800 }}>{label}</span></div>)}
               </div>
 
@@ -184,6 +184,7 @@ export default function AdminUserDetailsModal({ dialog, onClose, onRetry }) {
                   ['overview', 'Overview'],
                   ['courses', `Courses (${summary.courses || 0})`],
                   ['bookings', `Bookings (${summary.bookings || 0})`],
+                  ['certificates', `Certificates (${summary.certificates || 0})`],
                   ['finance', 'Payments & Refunds'],
                 ].map(([key, label]) => {
                   const selected = activeTab === key
@@ -240,6 +241,21 @@ export default function AdminUserDetailsModal({ dialog, onClose, onRetry }) {
                     { label: 'Course', render: row => displayValue(row.courseName || row.planName || row.courseId) },
                     { label: 'Pickup / City', render: row => displayValue(row.pickupAddress || row.city || row.location) },
                     { label: 'Booking Reference', render: row => displayValue(row.id) },
+                  ]}
+                />
+              </Section>}
+
+              {activeTab === 'certificates' && <Section title="Certificate Requests" subtitle="Original and duplicate certificate records for this student.">
+                <HistoryTable
+                  rows={data.certificates}
+                  empty="No certificate requests are recorded for this student."
+                  columns={[
+                    { label: 'Type', render: row => displayValue(row.type) },
+                    { label: 'Status', render: row => <StatusChip>{row.status || 'Pending approval'}</StatusChip> },
+                    { label: 'Paid Amount', render: row => formatMoney(row.paidAmount) },
+                    { label: 'Requested On', render: row => formatDateTime(row.requestedAt) },
+                    { label: 'Certificate Number', render: row => displayValue(row.certificateNumber) },
+                    { label: 'Released On', render: row => formatDateTime(row.deliveredAt) },
                   ]}
                 />
               </Section>}

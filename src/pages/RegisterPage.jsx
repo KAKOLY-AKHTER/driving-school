@@ -1,6 +1,6 @@
 import { cloneElement, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { createUserWithEmailAndPassword, deleteUser, updateProfile } from 'firebase/auth'
+import { createUserWithEmailAndPassword, deleteUser, signInWithEmailAndPassword, updateProfile } from 'firebase/auth'
 import { auth } from '../firebase'
 import { api } from '../api'
 import { useAuth } from '../contexts/AuthContext'
@@ -165,24 +165,38 @@ export default function RegisterPage() {
     setSubmitting(true)
     setError('')
     let createdUser = null
+    let existingAccountPurchase = false
     let prepared = false
     try {
-      const credential = await createUserWithEmailAndPassword(auth, form.email.trim(), form.password)
-      createdUser = credential.user
+      let credential
+      try {
+        credential = await createUserWithEmailAndPassword(auth, form.email.trim(), form.password)
+        createdUser = credential.user
+      } catch (creationError) {
+        // A duplicate certificate belongs to the student's existing account.
+        // Sign in to that account instead of attempting a second Firebase user
+        // with the same email address.
+        if (creationError?.code !== 'auth/email-already-in-use' || selectedCourse.id !== '13') throw creationError
+        credential = await signInWithEmailAndPassword(auth, form.email.trim(), form.password)
+        existingAccountPurchase = true
+      }
+      const accountUser = credential.user
       const displayName = [form.firstName, form.middleName, form.lastName].map(value => value.trim()).filter(Boolean).join(' ')
       const billingName = [form.billingFirstName, form.billingLastName].map(value => value.trim()).filter(Boolean).join(' ')
       const billingAddress = [form.billingAddress1, form.billingAddress2, form.billingCity, form.billingState, form.billingZipCode].map(value => value.trim()).filter(Boolean).join(', ')
-      await updateProfile(createdUser, { displayName })
-      await api.saveUser(createdUser.uid, {
-        firstName: form.firstName.trim(), middleName: form.middleName.trim(), lastName: form.lastName.trim(),
-        displayName, name: displayName, dob: form.dob, phone: form.phone.trim(), email: form.email.trim(),
-        username: form.username.trim(), address: [form.address1, form.address2].map(value => value.trim()).filter(Boolean).join(', '),
-        city: form.city.trim(), state: form.state, zipCode: form.zipCode.trim(), courseType: form.courseType,
-        payerName: billingName, payerRelationship: 'Billing contact', payerPhone: form.billingPhone.trim(),
-        payerEmail: form.billingEmail.trim(), payerAddress: billingAddress, payerConsentAt: new Date().toISOString(),
-        completedModules: [], termsAcceptedAt: new Date().toISOString(),
-      })
-      const cart = await api.addToCart(createdUser.uid, {
+      if (!existingAccountPurchase) await updateProfile(accountUser, { displayName })
+      if (!existingAccountPurchase) {
+        await api.saveUser(accountUser.uid, {
+          firstName: form.firstName.trim(), middleName: form.middleName.trim(), lastName: form.lastName.trim(),
+          displayName, name: displayName, dob: form.dob, phone: form.phone.trim(), email: form.email.trim(),
+          username: form.username.trim(), address: [form.address1, form.address2].map(value => value.trim()).filter(Boolean).join(', '),
+          city: form.city.trim(), state: form.state, zipCode: form.zipCode.trim(), courseType: form.courseType,
+          payerName: billingName, payerRelationship: 'Billing contact', payerPhone: form.billingPhone.trim(),
+          payerEmail: form.billingEmail.trim(), payerAddress: billingAddress, payerConsentAt: new Date().toISOString(),
+          completedModules: [], termsAcceptedAt: new Date().toISOString(),
+        })
+      }
+      const cart = await api.addToCart(accountUser.uid, {
         id: selectedCourse.id, title: selectedCourse.name, price: selectedCourse.price,
         city: form.city.trim(), purchaseOnly: true, pickupSlots: [],
       })
@@ -190,12 +204,13 @@ export default function RegisterPage() {
       writeGuestCart(cart.items || [])
       saveBookingReturn('/payment')
       prepared = true
-      setCompletedUid(createdUser.uid)
+      setCompletedUid(accountUser.uid)
     } catch (registrationError) {
       if (createdUser) {
         try { await deleteUser(createdUser) } catch { /* The account can be recovered through sign-in. */ }
       }
-      if (registrationError.code === 'auth/email-already-in-use') setError('An account with this email already exists. Please sign in instead.')
+      if (registrationError.code === 'auth/email-already-in-use') setError('An account with this email already exists. Select Duplicate Certificate and enter that account password to continue.')
+      else if (registrationError.code === 'auth/invalid-credential' || registrationError.code === 'auth/wrong-password') setError('The existing account password is incorrect. Please enter the correct password to order a duplicate certificate.')
       else if (registrationError.code === 'auth/weak-password') setError('Please choose a stronger password with at least 8 characters.')
       else setError(registrationError.message || 'Registration could not be completed. Please try again.')
     } finally {
