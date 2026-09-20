@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, useLocation, Navigate, Link } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { AdminAuthProvider, useAdminAuth } from './contexts/AdminAuthContext'
 import { CartProvider } from './contexts/CartContext'
 import Nav from './components/Nav'
 import Footer from './components/Footer'
@@ -65,14 +66,14 @@ function ProtectedRoute({ children, loginPath = '/login' }) {
 }
 
 function AdminRoute({ children }) {
-  const { user, loading, isAdmin } = useAuth()
+  const { user, loading, isAdmin } = useAdminAuth()
   if (loading) return (
     <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a1628' }}>
       <div style={{ width: '40px', height: '40px', border: '3px solid rgba(253,188,1,0.2)', borderTopColor: '#FDBC01', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
     </div>
   )
   if (!user) return <Navigate to="/admin/login" replace />
-  if (!isAdmin) return <Navigate to="/dashboard" replace />
+  if (!isAdmin) return <Navigate to="/admin/login" replace />
   return children
 }
 
@@ -202,11 +203,13 @@ export default function App() {
     <BrowserRouter>
       <ErrorBoundary>
         <AuthProvider>
-          <CartProvider>
-            <LayoutSetup>
-              <AppRoutes />
-            </LayoutSetup>
-          </CartProvider>
+          <AdminAuthProvider>
+            <CartProvider>
+              <LayoutSetup>
+                <AppRoutes />
+              </LayoutSetup>
+            </CartProvider>
+          </AdminAuthProvider>
         </AuthProvider>
       </ErrorBoundary>
     </BrowserRouter>

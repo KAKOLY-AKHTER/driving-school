@@ -2,9 +2,9 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useRef, useCallback } from 'react'
 import { signOut, updateProfile, updateEmail, reauthenticateWithCredential, EmailAuthProvider, updatePassword } from 'firebase/auth'
-import { auth } from '../firebase'
-import { useAuth } from '../contexts/AuthContext'
-import { api, makeEmbedCode } from '../api'
+import { adminAuth } from '../firebase'
+import { useAdminAuth } from '../contexts/AdminAuthContext'
+import { adminApi as api, makeEmbedCode } from '../api'
 import { DEFAULT_SOCIALS, SOCIAL_PLATFORMS, socialIcon, socialPlatformLabel } from '../socials'
 import { usePageMeta } from '../usePageMeta'
 import { DEFAULT_BOOKING_LOCATIONS, locationDistanceLabel } from '../locations'
@@ -904,7 +904,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
 
 export default function AdminPage() {
   usePageMeta('Admin Panel — A Precision Driving School', 'A Precision Driving School admin panel.')
-  const { user, refreshProfile, refreshAuthUser, authRevision } = useAuth()
+  const { user, refreshProfile, refreshAuthUser, authRevision } = useAdminAuth()
   const navigate = useNavigate()
   const hasPasswordProvider = Boolean(user?.providerData?.some(provider => provider.providerId === 'password'))
 
@@ -1158,7 +1158,7 @@ export default function AdminPage() {
     }
   }, [])
 
-  const handleLogout = async () => { await signOut(auth); navigate('/') }
+  const handleLogout = async () => { await signOut(adminAuth); navigate('/') }
 
   useEffect(() => {
     if (user) {
@@ -1201,7 +1201,7 @@ export default function AdminPage() {
   const handleSaveProfile = async () => {
     setAccErr(''); setAccMsg(''); setAccLoading(true)
     try {
-      const cur = auth.currentUser
+      const cur = adminAuth.currentUser
       const displayName = accName.trim()
       if (!cur || !user?.uid) throw new Error('Your session has expired. Please sign in again.')
       if (!displayName) throw new Error('Display name is required.')
@@ -1272,7 +1272,7 @@ export default function AdminPage() {
   const handleChangePassword = async () => {
     setAccErr(''); setAccMsg(''); setAccLoading(true)
     try {
-      const cur = auth.currentUser
+      const cur = adminAuth.currentUser
       if (!cur || !user?.email) throw new Error('Your session has expired. Please sign in again.')
       if (!accPass) throw new Error('Current password is required.')
       if (accNewPass.length < 8) throw new Error('New password must be at least 8 characters.')
@@ -1297,7 +1297,7 @@ export default function AdminPage() {
   const handleChangeEmail = async () => {
     setAccErr(''); setAccMsg(''); setAccLoading(true)
     try {
-      const cur = auth.currentUser
+      const cur = adminAuth.currentUser
       const nextEmail = accEmail.trim().toLowerCase()
       if (!cur || !user?.email) throw new Error('Your session has expired. Please sign in again.')
       if (!/^\S+@\S+\.\S+$/.test(nextEmail)) throw new Error('Please enter a valid email address.')

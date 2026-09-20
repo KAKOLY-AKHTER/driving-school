@@ -1,4 +1,4 @@
-import { auth } from './firebase'
+import { adminAuth, auth } from './firebase'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 const REQUEST_TIMEOUT_MS = 20_000
@@ -26,13 +26,16 @@ export function readableErrorMessage(value, fallback = 'Something went wrong. Pl
 }
 
 async function request(path, options = {}) {
-  const { timeoutMs = REQUEST_TIMEOUT_MS, ...fetchOptions } = options
+  const { timeoutMs = REQUEST_TIMEOUT_MS, authInstance, ...fetchOptions } = options
+  // Dashboard child components call the shared API client directly. Route all
+  // /admin endpoints through the isolated admin Auth instance by default.
+  const requestAuth = authInstance || (path.startsWith('/api/admin') ? adminAuth : auth)
   const headers = new Headers(options.headers || {})
   headers.set('Accept', 'application/json')
   if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
 
   const applyAuthHeader = async (forceRefresh = false) => {
-    const currentUser = auth.currentUser
+    const currentUser = requestAuth.currentUser
     if (!currentUser) {
       headers.delete('Authorization')
       return false
@@ -63,7 +66,7 @@ async function request(path, options = {}) {
     // Firebase can retain a previously issued ID token across a browser or API
     // restart. If the API rejects that token, ask Firebase for a fresh one and
     // retry exactly once. Authentication is still fully verified by the API.
-    if (res.status === 401 && auth.currentUser) {
+    if (res.status === 401 && requestAuth.currentUser) {
       try {
         await applyAuthHeader(true)
         res = await send()
@@ -223,6 +226,18 @@ export const api = {
   adminAddSocial: (data) => request('/api/admin/socials', { method: 'POST', body: JSON.stringify(data) }),
   adminUpdateSocial: (id, data) => request(`/api/admin/socials/${pathPart(id)}`, { method: 'PUT', body: JSON.stringify(data) }),
   adminDeleteSocial: (id) => request(`/api/admin/socials/${pathPart(id)}`, { method: 'DELETE' }),
+}
+
+// Non-/admin profile endpoints used by the administrator's own account page
+// also need the isolated administrator token.
+export const adminApi = {
+  ...api,
+  getUser: (uid) => request(`/api/users/${pathPart(uid)}`, { authInstance: adminAuth }),
+  saveUser: (uid, data) => request(`/api/users/${pathPart(uid)}`, { method: 'PUT', body: JSON.stringify(data), authInstance: adminAuth }),
+  uploadProfileImage: (uid, file) => request(`/api/users/${pathPart(uid)}/profile-image`, {
+    method: 'POST', headers: { 'Content-Type': file.type }, body: file, timeoutMs: 60_000, authInstance: adminAuth,
+  }),
+  removeProfileImage: (uid) => request(`/api/users/${pathPart(uid)}/profile-image`, { method: 'DELETE', authInstance: adminAuth }),
 }
 
 export function makeEmbedCode(mapUrl) {

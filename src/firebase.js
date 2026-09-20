@@ -10,5 +10,10 @@ const firebaseConfig = {
 }
 
 const app = initializeApp(firebaseConfig)
+// A named Firebase app has its own persisted Auth storage key. Keeping the
+// administrator session here prevents a student sign-in in another tab from
+// replacing the admin session (and vice versa).
+const adminApp = initializeApp(firebaseConfig, 'admin-session')
 export const auth = getAuth(app)
+export const adminAuth = getAuth(adminApp)
 export const googleProvider = new GoogleAuthProvider()

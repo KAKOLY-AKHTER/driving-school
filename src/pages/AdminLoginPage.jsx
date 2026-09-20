@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth'
-import { auth } from '../firebase'
-import { useAuth } from '../contexts/AuthContext'
-import { api, readableErrorMessage } from '../api'
+import { adminAuth } from '../firebase'
+import { useAdminAuth } from '../contexts/AdminAuthContext'
+import { adminApi, readableErrorMessage } from '../api'
 import { usePageMeta } from '../usePageMeta'
 import PasswordInput from '../components/PasswordInput'
 
@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
   const [recoveryPasswordConfirm, setRecoveryPasswordConfirm] = useState('')
   const [recoveryLoading, setRecoveryLoading] = useState(false)
   const navigate = useNavigate()
-  const { user, isAdmin, refreshProfile } = useAuth()
+  const { user, isAdmin, refreshProfile } = useAdminAuth()
 
   useEffect(() => {
     if (user && isAdmin) navigate('/admin', { replace: true })
@@ -51,10 +51,10 @@ export default function AdminLoginPage() {
     setError('')
     setLoading(true)
     try {
-      const cred = await signInWithEmailAndPassword(auth, email, password)
-      let profile = await api.getUser(cred.user.uid)
+      const cred = await signInWithEmailAndPassword(adminAuth, email, password)
+      let profile = await adminApi.getUser(cred.user.uid)
       if (!profile?.isAdmin) {
-        await api.saveUser(cred.user.uid, {
+        await adminApi.saveUser(cred.user.uid, {
           name: cred.user.displayName || 'Site Administrator',
           email: cred.user.email || email,
           photoURL: cred.user.photoURL || '',
@@ -65,13 +65,13 @@ export default function AdminLoginPage() {
         await refreshProfile(cred.user)
       }
       if (!profile?.isAdmin) {
-        await signOut(auth)
+        await signOut(adminAuth)
         setError('This account does not have administrator access.')
         return
       }
       navigate('/admin', { replace: true })
     } catch (err) {
-      if (auth.currentUser) await signOut(auth).catch(() => {})
+      if (adminAuth.currentUser) await signOut(adminAuth).catch(() => {})
       setError(adminLoginErrorMessage(err))
     } finally {
       setLoading(false)
@@ -89,7 +89,7 @@ export default function AdminLoginPage() {
 
     setResetLoading(true)
     try {
-      await sendPasswordResetEmail(auth, resetEmail)
+      await sendPasswordResetEmail(adminAuth, resetEmail)
       setResetMessage(`A password-reset link was sent to ${resetEmail}. Check the inbox and spam folder, then return here to sign in with the new password.`)
     } catch (err) {
       if (err?.code === 'auth/invalid-email') {
@@ -122,7 +122,7 @@ export default function AdminLoginPage() {
 
     setRecoveryLoading(true)
     try {
-      const result = await api.recoverAdminAccess(recoverySecret, recoveryPassword)
+      const result = await adminApi.recoverAdminAccess(recoverySecret, recoveryPassword)
       setEmail(result.email || email)
       setPassword('')
       setRecoverySecret('')

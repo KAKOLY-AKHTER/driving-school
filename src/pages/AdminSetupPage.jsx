@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { createUserWithEmailAndPassword, sendEmailVerification, signOut, updateProfile } from 'firebase/auth'
-import { auth } from '../firebase'
-import { api } from '../api'
+import { adminAuth } from '../firebase'
+import { adminApi } from '../api'
 import { usePageMeta } from '../usePageMeta'
 import PasswordInput from '../components/PasswordInput'
 
@@ -29,14 +29,14 @@ export default function AdminSetupPage() {
     setError('')
     setLoading(true)
     try {
-      const cred = await createUserWithEmailAndPassword(auth, email, password)
+      const cred = await createUserWithEmailAndPassword(adminAuth, email, password)
       await updateProfile(cred.user, { displayName: name, photoURL: photo })
-      await api.saveUser(cred.user.uid, { name, email, photoURL: photo })
+      await adminApi.saveUser(cred.user.uid, { name, email, photoURL: photo })
       await sendEmailVerification(cred.user)
-      await signOut(auth)
+      await signOut(adminAuth)
       setCreated(true)
     } catch (err) {
-      if (auth.currentUser) await signOut(auth).catch(() => {})
+      if (adminAuth.currentUser) await signOut(adminAuth).catch(() => {})
       if (err.code === 'auth/email-already-in-use') setError('An account with this email already exists. Go to Admin Login to sign in.')
       else if (err.code === 'auth/weak-password') setError('Password must be at least 6 characters.')
       else if (err.code === 'auth/invalid-email') setError('Invalid email address.')
