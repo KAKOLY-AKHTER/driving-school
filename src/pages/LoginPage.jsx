@@ -42,7 +42,7 @@ export default function LoginPage() {
       await sendPasswordResetEmail(auth, email)
       setSuccessMsg('Password reset link sent to your email!')
     } catch (err) {
-      if (err.code === 'auth/user-not-found') setError('No account found with this email.')
+      if (err.code === 'auth/user-not-found') setError('No new account exists with this email yet. If you used our previous website, select “Register now” below and create a new password with this same email.')
       else if (err.code === 'auth/invalid-email') setError('Invalid email address.')
       else setError('Failed to send reset email. Please try again.')
     }
@@ -65,7 +65,7 @@ export default function LoginPage() {
       await signInWithEmailAndPassword(auth, email, password)
       finishLogin()
     } catch (err) {
-      if (err.code === 'auth/user-not-found') setError('No account found with this email.')
+      if (err.code === 'auth/user-not-found') setError('No new account exists with this email yet. If you used our previous website, select “Register now” below and create a new password with this same email.')
       else if (err.code === 'auth/wrong-password') setError('Incorrect password.')
       else if (err.code === 'auth/invalid-email') setError('Invalid email address.')
       else setError('Login failed. Please try again.')
@@ -205,6 +205,9 @@ export default function LoginPage() {
             <p style={{ textAlign: 'center', marginTop: '2rem', fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: '#8899aa' }}>
               Don't have an account?{' '}
               <Link to={requestedReturn ? '/booking/register' : '/register'} state={requestedReturn ? { from: requestedReturn } : undefined} style={{ color: SKY_BLUE, fontWeight: 600, textDecoration: 'none' }}>Register now</Link>
+            </p>
+            <p style={{ margin: '.65rem 0 0', padding: '.72rem .85rem', borderRadius: '10px', border: '1px solid #BFDBFE', background: '#F8FBFF', color: '#334E6F', fontFamily: 'var(--font-body)', fontSize: '.78rem', lineHeight: 1.5, textAlign: 'center' }}>
+              <strong>Previous website student?</strong> Create a new password using the same email. Your old account information will be linked automatically; your old password is never transferred.
             </p>
           </div>
         </div>

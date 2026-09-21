@@ -1022,7 +1022,7 @@ const GOOGLE_CALENDAR_TIME_ZONE = String(process.env.GOOGLE_CALENDAR_TIME_ZONE |
 const GOOGLE_CALENDAR_SETTING_ID = 'google-calendar'
 const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events'
 
-let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, couponsCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol
+let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, couponsCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol, legacyStudentsCol
 let connectPromise = null
 
 class HttpError extends Error {
@@ -2119,6 +2119,7 @@ async function connectDB() {
     refundsCol = db.collection('refunds')
     cartsCol = db.collection('carts')
     paypalOrdersCol = db.collection('paypal_orders')
+    legacyStudentsCol = db.collection('legacy_students')
     await usersCol.createIndex({ uid: 1 }, { unique: true })
     await bookingsCol.createIndex({ userId: 1, date: 1 })
     await bookingsCol.createIndex({ holdExpiresAt: 1 }, { expireAfterSeconds: 0, name: 'expire_booking_holds' })
@@ -2136,6 +2137,7 @@ async function connectDB() {
     await reviewsCol.createIndex({ published: 1, order: 1 })
     await blogsCol.createIndex({ slug: 1 }, { unique: true, name: 'unique_blog_slug' })
     await blogsCol.createIndex({ published: 1, featured: -1, publishedAt: -1 })
+    await legacyStudentsCol.createIndex({ email: 1 }, { unique: true, name: 'unique_legacy_student_email' })
     await cleanupExpiredHolds(true)
     await backfillBookingSlotLocks()
     await seedPricing()
@@ -2493,6 +2495,47 @@ async function claimInitialAdmin(decodedToken) {
   return bootstrap?.uid === decodedToken.uid
 }
 
+// A legacy import never creates a Firebase account and never contains a
+// password. When an old student creates a new account with the same verified
+// email, link that account to the imported legacy profile without overwriting
+// any details they entered on the new website.
+async function linkLegacyStudentAccount(uid, email) {
+  const normalizedEmail = normalizeEmail(email)
+  if (!uid || !normalizedEmail || !legacyStudentsCol) return null
+  const now = new Date().toISOString()
+  const result = await legacyStudentsCol.findOneAndUpdate(
+    {
+      email: normalizedEmail,
+      $or: [
+        { linkedUid: { $exists: false } },
+        { linkedUid: null },
+        { linkedUid: '' },
+        { linkedUid: uid },
+      ],
+    },
+    {
+      $set: {
+        linkedUid: uid,
+        activationStatus: 'activated',
+        activatedAt: now,
+      },
+    },
+    { returnDocument: 'after' }
+  )
+  const legacyStudent = result?.value || result
+  if (!legacyStudent?.legacyCandidateId) return null
+  await usersCol.updateOne(
+    { uid },
+    {
+      $set: {
+        legacyCandidateId: legacyStudent.legacyCandidateId,
+        legacyMatchedAt: now,
+      },
+    }
+  )
+  return legacyStudent
+}
+
 app.put('/api/users/:uid', async (req, res) => {
   try {
     const { uid } = req.params
@@ -2532,7 +2575,8 @@ app.put('/api/users/:uid', async (req, res) => {
       },
       { upsert: true }
     )
-    res.json({ ok: true })
+    const legacyStudent = await linkLegacyStudentAccount(uid, authenticatedEmail || data.email)
+    res.json({ ok: true, legacyAccountLinked: Boolean(legacyStudent) })
   } catch (e) {
     if (e.status) return res.status(e.status).json({ error: e.message })
     sendServerError(res, e, 'Profile update failed')
@@ -4506,6 +4550,43 @@ app.get('/api/admin/users', async (req, res) => {
     res.json(users)
   } catch (e) {
     sendServerError(res, e, 'Admin user lookup failed')
+  }
+})
+
+app.get('/api/admin/legacy-students', async (req, res) => {
+  try {
+    const search = cleanText(req.query.search, 120)
+    const page = cleanInteger(req.query.page, 1, 1, 10_000)
+    const limit = cleanInteger(req.query.limit, 25, 10, 100)
+    const status = cleanText(req.query.status, 30).toLowerCase()
+    const query = {}
+    if (status === 'pending' || status === 'activated') query.activationStatus = status
+    if (search) {
+      const expression = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+      query.$or = [
+        { displayName: expression },
+        { firstName: expression },
+        { lastName: expression },
+        { email: expression },
+        { phone: expression },
+        { legacyCandidateId: expression },
+      ]
+    }
+    const projection = {
+      legacyCandidateId: 1, legacyCandidateIds: 1, duplicateRecordCount: 1, requiresAdminReview: 1,
+      firstName: 1, middleName: 1, lastName: 1, displayName: 1, email: 1, phone: 1,
+      city: 1, state: 1, legacyJoinedAt: 1, legacyActive: 1, activationStatus: 1,
+      linkedUid: 1, activatedAt: 1, importedAt: 1,
+    }
+    const [items, total, pending, activated] = await Promise.all([
+      legacyStudentsCol.find(query, { projection }).sort({ legacyJoinedAt: -1, legacyCandidateId: -1 }).skip((page - 1) * limit).limit(limit).toArray(),
+      legacyStudentsCol.countDocuments(query),
+      legacyStudentsCol.countDocuments({ activationStatus: { $ne: 'activated' } }),
+      legacyStudentsCol.countDocuments({ activationStatus: 'activated' }),
+    ])
+    res.json({ items, total, page, limit, pending, activated })
+  } catch (error) {
+    sendServerError(res, error, 'Legacy student lookup failed')
   }
 })
 

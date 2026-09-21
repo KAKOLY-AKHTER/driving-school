@@ -911,6 +911,13 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [stats, setStats] = useState({ totalUsers: 0, totalBookings: 0, activeEnrollments: 0, upcomingBookings: 0, pendingContacts: 0, pendingRefunds: 0, unreadSupport: 0 })
   const [users, setUsers] = useState([])
+  const [legacyStudents, setLegacyStudents] = useState([])
+  const [legacyMeta, setLegacyMeta] = useState({ total: 0, pending: 0, activated: 0, page: 1, limit: 25 })
+  const [legacySearch, setLegacySearch] = useState('')
+  const [legacyStatus, setLegacyStatus] = useState('all')
+  const [legacyPage, setLegacyPage] = useState(1)
+  const [legacyLoading, setLegacyLoading] = useState(false)
+  const [legacyError, setLegacyError] = useState('')
   const [certificateRequests, setCertificateRequests] = useState([])
   const [certificateUpdating, setCertificateUpdating] = useState('')
   const [bookings, setBookings] = useState([])
@@ -1938,6 +1945,35 @@ export default function AdminPage() {
     return () => { cancelled = true }
   }, [activeTab, refundPage, refundLimit, refundSearch, refundStatusFilter, refundAttempt])
 
+  useEffect(() => {
+    if (activeTab !== 'legacy-students') return undefined
+    let cancelled = false
+    const loadLegacyStudents = async () => {
+      setLegacyLoading(true)
+      setLegacyError('')
+      try {
+        const response = await api.adminLegacyStudents({
+          page: legacyPage,
+          limit: 25,
+          search: legacySearch.trim(),
+          status: legacyStatus === 'all' ? '' : legacyStatus,
+        })
+        if (cancelled) return
+        setLegacyStudents(Array.isArray(response?.items) ? response.items : [])
+        setLegacyMeta({
+          total: Number(response?.total || 0), pending: Number(response?.pending || 0), activated: Number(response?.activated || 0),
+          page: Number(response?.page || legacyPage), limit: Number(response?.limit || 25),
+        })
+      } catch (error) {
+        if (!cancelled) setLegacyError(error?.message || 'Legacy student records could not be loaded.')
+      } finally {
+        if (!cancelled) setLegacyLoading(false)
+      }
+    }
+    const timer = window.setTimeout(loadLegacyStudents, legacySearch ? 250 : 0)
+    return () => { cancelled = true; window.clearTimeout(timer) }
+  }, [activeTab, legacyPage, legacySearch, legacyStatus])
+
   const websiteUsers = users.filter(u => u.isAdmin !== true)
   const refundStatusOptions = [...new Set(refunds.map(refund => normalizeStatus(refund.Status || 'pending')).filter(Boolean))]
   const filteredUsers = websiteUsers.filter(u => {
@@ -1950,6 +1986,8 @@ export default function AdminPage() {
     (safeUserPage - 1) * Number(userLimit),
     safeUserPage * Number(userLimit),
   )
+  const legacyPages = Math.max(1, Math.ceil(legacyMeta.total / legacyMeta.limit))
+  const safeLegacyPage = Math.min(legacyPage, legacyPages)
 
   const enrollmentRows = websiteUsers.flatMap(account => (Array.isArray(account.courses) ? account.courses : [])
     .map((course, index) => ({
@@ -2083,6 +2121,7 @@ export default function AdminPage() {
   const navItems = [
     { id: 'dashboard', label: 'Overview', icon: SVG.dashboard },
     { id: 'users', label: 'Users', icon: SVG.users },
+    { id: 'legacy-students', label: 'Legacy Students', icon: SVG.users, badge: legacyMeta.pending, badgeLabel: 'legacy students pending activation' },
     { id: 'bookings', label: 'Bookings', icon: SVG.calendar },
     { id: 'calendar', label: 'Admin Calendar', icon: SVG.calendar },
     { id: 'contacts', label: 'Contacts', icon: SVG.mail, badge: stats.pendingContacts, badgeLabel: 'new contact message' },
@@ -2418,6 +2457,52 @@ export default function AdminPage() {
                         {filteredUsers.length === 0 && (
                           <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{userSearch ? 'No users match your search.' : 'No registered website users yet.'}</td></tr>
                         )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {!loading && !loadError && activeTab === 'legacy-students' && (
+                <div style={cardStyle}>
+                  <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '.6rem', margin: 0 }}>{SVG.users} Legacy Students</h3>
+                      <p style={{ margin: '.35rem 0 0', color: '#475569', fontSize: '.9rem', lineHeight: 1.55 }}>Imported records from the previous website. These records contain no legacy passwords and become linked only after the student creates a new account using the same email.</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '.55rem', flexWrap: 'wrap' }}>
+                      <span style={{ padding: '.4rem .7rem', borderRadius: '999px', background: '#FFF7ED', color: '#9A5B09', fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 900 }}>{legacyMeta.pending} pending activation</span>
+                      <span style={{ padding: '.4rem .7rem', borderRadius: '999px', background: '#ECFDF3', color: '#087443', fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 900 }}>{legacyMeta.activated} linked accounts</span>
+                    </div>
+                  </div>
+                  <div role="note" style={{ margin: '0 0 1rem', padding: '.85rem 1rem', border: '1px solid #BFDBFE', borderRadius: '12px', background: '#F8FBFF', color: '#1E3A5F', fontSize: '.88rem', lineHeight: 1.55 }}><strong>Student instructions:</strong> use the same email address and select <strong>Register now</strong> on the login page to create a new password. The new account will be matched automatically; old PHP passwords are not used.</div>
+                  <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '.65rem' }}>
+                    <input className="admin-toolbar-input" aria-label="Search legacy students" type="search" placeholder="Search name, email, phone, old ID…" value={legacySearch} onChange={event => { setLegacySearch(event.target.value); setLegacyPage(1) }} style={{ ...inputStyle, width: '300px' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
+                      <select aria-label="Filter legacy students by activation status" value={legacyStatus} onChange={event => { setLegacyStatus(event.target.value); setLegacyPage(1) }} style={{ ...inputStyle, width: '185px' }}><option value="all">All statuses</option><option value="pending">Pending activation</option><option value="activated">Linked accounts</option></select>
+                      {(legacySearch || legacyStatus !== 'all') && <button type="button" onClick={() => { setLegacySearch(''); setLegacyStatus('all'); setLegacyPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
+                    </div>
+                  </div>
+                  {legacyError && <div role="alert" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{legacyError}</div>}
+                  <TablePager page={safeLegacyPage} pages={legacyPages} total={legacyMeta.total} label="legacy students" onChange={setLegacyPage} />
+                  <div className="admin-table-wrap">
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr><th scope="col" style={thStyle}>Student</th><th scope="col" style={thStyle}>Legacy Contact</th><th scope="col" style={thStyle}>Old Record</th><th scope="col" style={thStyle}>Activation</th><th scope="col" style={thStyle}>Review</th></tr></thead>
+                      <tbody>
+                        {legacyStudents.map(student => {
+                          const joined = student.legacyJoinedAt ? new Date(student.legacyJoinedAt) : null
+                          const joinedLabel = joined && !Number.isNaN(joined.getTime()) ? joined.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date unavailable'
+                          const active = student.activationStatus === 'activated'
+                          return <tr key={student._id || student.email}>
+                            <td style={tdStyle}><strong>{student.displayName || [student.firstName, student.lastName].filter(Boolean).join(' ') || 'Unnamed student'}</strong><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{student.city || 'City unavailable'}{student.state ? `, ${student.state}` : ''}</p></td>
+                            <td style={tdStyle}><div>{student.email}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{student.phone || 'Phone unavailable'}</p></td>
+                            <td style={tdStyle}><div style={{ fontFamily: 'var(--font-mono)', fontSize: '.82rem', color: '#334155' }}>ID {student.legacyCandidateId || '—'}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>Joined {joinedLabel}</p></td>
+                            <td style={tdStyle}><span style={{ display: 'inline-flex', padding: '.28rem .6rem', borderRadius: '999px', background: active ? '#ECFDF3' : '#FFF7ED', color: active ? '#087443' : '#9A5B09', fontFamily: 'var(--font-mono)', fontSize: '.7rem', letterSpacing: '.05em', textTransform: 'uppercase', fontWeight: 900 }}>{active ? 'Linked' : 'Pending'}</span>{active && <p style={{ margin: '.35rem 0 0', color: '#64748B', fontSize: '.8rem' }}>New account connected</p>}</td>
+                            <td style={tdStyle}>{student.requiresAdminReview ? <span title={`${student.duplicateRecordCount} old rows use this email; the newest active row was selected.`} style={{ display: 'inline-flex', padding: '.28rem .6rem', borderRadius: '999px', background: '#FEF2F2', color: '#B91C1C', fontFamily: 'var(--font-mono)', fontSize: '.68rem', letterSpacing: '.04em', textTransform: 'uppercase', fontWeight: 900 }}>Check {student.duplicateRecordCount} records</span> : <span style={{ color: '#64748B', fontSize: '.86rem' }}>No review needed</span>}</td>
+                          </tr>
+                        })}
+                        {!legacyLoading && legacyStudents.length === 0 && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>{legacyMeta.total ? 'No legacy students match these filters.' : 'No legacy data has been imported yet. Run the approved import preview first.'}</td></tr>}
+                        {legacyLoading && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>Loading legacy students…</td></tr>}
                       </tbody>
                     </table>
                   </div>
