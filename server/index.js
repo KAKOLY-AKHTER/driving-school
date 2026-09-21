@@ -4208,6 +4208,23 @@ app.post('/api/admin/support/:uid/:threadId/reply', rateLimit({ windowMs: 60_000
   }
 })
 
+app.delete('/api/admin/support/:uid/:threadId', async (req, res) => {
+  try {
+    const uid = cleanText(req.params.uid, 160)
+    const threadId = cleanText(req.params.threadId, 160)
+    if (!uid || !threadId) throw new HttpError(400, 'Support conversation id is required.')
+    const result = await usersCol.updateOne(
+      { uid, 'messages.id': threadId },
+      { $pull: { messages: { id: threadId } } },
+    )
+    if (!result.matchedCount) throw new HttpError(404, 'Support conversation was not found.')
+    res.json({ ok: true, id: threadId })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    return sendServerError(res, error, 'Support conversation could not be deleted')
+  }
+})
+
 app.put('/api/admin/support/:uid/:threadId/read', async (req, res) => {
   try {
     const { uid, threadId } = req.params

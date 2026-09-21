@@ -48,6 +48,14 @@ function SupportShell({ children }) {
         .live-support-thread-title{display:flex;align-items:center;gap:.45rem;font-weight:850;color:#10213A;margin:0 0 .2rem;min-width:0}
         .live-support-thread-title span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .live-support-thread-meta{display:block;font-size:.8rem;color:#526780;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.45}
+        .live-support-admin-thread{padding:0;border:0;background:transparent;box-shadow:none}
+        .live-support-admin-thread:hover,.live-support-admin-thread.is-active{padding:0;border:0;background:transparent;box-shadow:none;transform:none}
+        .live-support-thread-open{display:flex;align-items:flex-start;gap:.72rem;min-width:0;flex:1;text-align:left;border:1px solid transparent;background:transparent;border-radius:15px;padding:.82rem;color:#334155;cursor:pointer}
+        .live-support-thread-open:hover{background:#fff;border-color:#D8E4F2}
+        .live-support-admin-thread.is-active .live-support-thread-open{background:#fff;border-color:rgba(1,69,168,.3);box-shadow:0 8px 22px rgba(1,69,168,.10)}
+        .live-support-thread-delete{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;margin:.82rem .5rem .82rem 0;border:1px solid transparent;border-radius:10px;background:transparent;color:#94A3B8;cursor:pointer;transition:background .18s ease,color .18s ease,border-color .18s ease}
+        .live-support-thread-delete:hover:not(:disabled){background:#FEF2F2;border-color:#FECACA;color:#DC2626}
+        .live-support-thread-delete:disabled{opacity:.5;cursor:wait}
         .live-support-unread{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#DC2626;color:#fff;font-size:.7rem;font-weight:900;flex:none}
         .live-support-chat{display:flex;flex-direction:column;min-width:0;background:#FBFDFF}
         .live-support-chat-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.35rem;border-bottom:1px solid #DCE7F3;min-height:78px;background:#fff}
@@ -226,6 +234,7 @@ export function AdminLiveSupportPanel({ onUnreadChange }) {
   const [draft, setDraft] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [deletingKey, setDeletingKey] = useState('')
   const [error, setError] = useState('')
   const endRef = useRef(null)
 
@@ -286,6 +295,22 @@ export function AdminLiveSupportPanel({ onUnreadChange }) {
     finally { setSaving(false) }
   }
 
+  const deleteThread = async thread => {
+    const key = supportKey(thread)
+    const studentName = thread?.student?.name || thread?.student?.email || 'this student'
+    if (!window.confirm(`Delete this support conversation with ${studentName}? This cannot be undone.`)) return
+    setDeletingKey(key)
+    setError('')
+    try {
+      await api.adminDeleteSupport(thread.student?.uid, thread.id)
+      await loadInbox({ quiet: true })
+    } catch (deleteError) {
+      setError(deleteError?.message || 'The support conversation could not be deleted.')
+    } finally {
+      setDeletingKey('')
+    }
+  }
+
   return (
     <SupportShell>
       <div style={{ maxWidth: 1180, margin: '0 auto 1rem', display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -302,11 +327,16 @@ export function AdminLiveSupportPanel({ onUnreadChange }) {
           </div>
           <div className="live-support-list-scroll">
             {loading ? <p role="status" style={{ color: '#334155', padding: '.6rem' }}>Loading inbox…</p> : filtered.length === 0 ? <p style={{ color: '#334155', padding: '.6rem' }}>{threads.length ? 'No requests match these filters.' : 'No student support requests yet.'}</p> : filtered.map(thread => (
-              <button type="button" key={supportKey(thread)} className={`live-support-thread ${selectedKey === supportKey(thread) ? 'is-active' : ''}`} onClick={() => { setSelectedKey(supportKey(thread)); setDraft(''); setError('') }}>
+              <div key={supportKey(thread)} className={`live-support-thread live-support-admin-thread ${selectedKey === supportKey(thread) ? 'is-active' : ''}`}>
+                <button type="button" className="live-support-thread-open" onClick={() => { setSelectedKey(supportKey(thread)); setDraft(''); setError('') }}>
                 <span className="live-support-thread-avatar" aria-hidden="true">{(thread.student?.name || thread.student?.email || 'Student').trim().charAt(0).toUpperCase()}</span>
                 <div className="live-support-thread-copy"><p className="live-support-thread-title"><span>{thread.student?.name || thread.student?.email || 'Student'}</span>{thread.unreadByAdmin && <span className="live-support-unread">New</span>}</p>
                 <p className="live-support-thread-meta" style={{ fontWeight: 750, color: '#334155' }}>{thread.subject || 'Support request'}</p><p className="live-support-thread-meta">{thread.status === 'closed' ? 'Closed' : 'Open'} / {formatTimestamp(threadTime(thread))}</p></div>
-              </button>
+                </button>
+                <button type="button" className="live-support-thread-delete" aria-label={`Delete support conversation from ${thread.student?.name || thread.student?.email || 'student'}`} title="Delete conversation" disabled={deletingKey === supportKey(thread)} onClick={() => deleteThread(thread)}>
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v5" /><path d="M14 11v5" /></svg>
+                </button>
+              </div>
             ))}
           </div>
         </aside>

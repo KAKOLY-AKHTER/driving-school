@@ -166,6 +166,7 @@ export const api = {
   markThreadRead: (uid, threadId) => request(`/api/users/${pathPart(uid)}/messages/${pathPart(threadId)}/read`, { method: 'PUT' }),
   adminSupport: (params = {}) => request(`/api/admin/support?${new URLSearchParams(params)}`),
   adminReplySupport: (uid, threadId, text) => request(`/api/admin/support/${pathPart(uid)}/${pathPart(threadId)}/reply`, { method: 'POST', body: JSON.stringify({ text }) }),
+  adminDeleteSupport: (uid, threadId) => request(`/api/admin/support/${pathPart(uid)}/${pathPart(threadId)}`, { method: 'DELETE' }),
   adminReadSupport: (uid, threadId) => request(`/api/admin/support/${pathPart(uid)}/${pathPart(threadId)}/read`, { method: 'PUT' }),
   adminUpdateSupportStatus: (uid, threadId, status) => request(`/api/admin/support/${pathPart(uid)}/${pathPart(threadId)}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
   chat: (messages) => request('/api/chat', { method: 'POST', body: JSON.stringify({ messages }) }),
