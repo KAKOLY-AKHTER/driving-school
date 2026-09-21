@@ -454,7 +454,7 @@ const ADMIN_CHECKOUT_FIELDS = [
 ]
 const ADMIN_CERTIFICATE_FIELDS = [
   'id', 'type', 'title', 'status', 'requestedAt', 'approvedAt', 'approvedBy',
-  'deniedAt', 'deniedBy', 'certificateNumber', 'paidAmount', 'paymentReference',
+  'deniedAt', 'deniedBy', 'certificateNumber', 'paidAmount', 'paymentReference', 'downloadedAt',
   'providerOrderId', 'providerCaptureId', 'enrollmentId', 'deliveredAt',
   'finalTestScore', 'finalTestCorrect', 'finalTestTotal', 'finalTestPassedAt',
 ]
@@ -2932,6 +2932,25 @@ app.put('/api/users/:uid/final-test-result', async (req, res) => {
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message })
     return sendServerError(res, error, 'Final Test result could not be saved')
+  }
+})
+
+// A certificate alert is cleared only after the student has successfully downloaded it.
+app.put('/api/users/:uid/certificates/:requestId/downloaded', async (req, res) => {
+  try {
+    const uid = req.auth.uid
+    const requestId = cleanText(req.params.requestId, 160)
+    if (!requestId) throw new HttpError(400, 'Certificate request id is required.')
+    const downloadedAt = new Date().toISOString()
+    const result = await usersCol.updateOne(
+      { uid, certificateRequests: { $elemMatch: { id: requestId, status: 'Approved' } } },
+      { $set: { 'certificateRequests.$.downloadedAt': downloadedAt } },
+    )
+    if (!result.matchedCount) throw new HttpError(404, 'An approved certificate request was not found.')
+    res.json({ ok: true, downloadedAt })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    return sendServerError(res, error, 'Certificate download status could not be saved')
   }
 })
 

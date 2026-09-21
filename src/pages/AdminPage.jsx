@@ -2711,20 +2711,41 @@ export default function AdminPage() {
                     <span style={{ padding: '.4rem .7rem', borderRadius: '999px', background: '#FFF7ED', color: '#9A6700', fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 800 }}>{certificateRequests.filter(item => String(item.status || '').toLowerCase().includes('pending')).length} pending</span>
                   </div>
                   <div className="admin-table-wrap" style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', minWidth: '1080px', borderCollapse: 'collapse' }}>
+                    <table style={{ width: '100%', minWidth: '960px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                      <colgroup>
+                        <col style={{ width: '17%' }} />
+                        <col style={{ width: '17%' }} />
+                        <col style={{ width: '12%' }} />
+                        <col style={{ width: '8%' }} />
+                        <col style={{ width: '11%' }} />
+                        <col style={{ width: '12%' }} />
+                        <col style={{ width: '23%' }} />
+                      </colgroup>
                       <thead><tr>{['Student', 'Request', 'Test 11', 'Paid', 'Requested', 'Status', 'Actions'].map(label => <th key={label} style={thStyle}>{label}</th>)}</tr></thead>
                       <tbody>
                         {certificateRequests.map(request => {
                           const pending = String(request.status || '').toLowerCase().includes('pending')
                           const approved = String(request.status || '').toLowerCase() === 'approved'
                           return <tr key={request.id}>
-                            <td style={tdStyle}><strong>{request.studentName || 'Student'}</strong><span style={{ display: 'block', fontSize: '.85rem', color: '#64748B' }}>{request.email || 'No email'}</span></td>
+                            <td style={tdStyle}><strong>{request.studentName || 'Student'}</strong><span style={{ display: 'block', fontSize: '.85rem', color: '#64748B', overflowWrap: 'anywhere' }}>{request.email || 'No email'}</span></td>
                             <td style={tdStyle}><strong>{request.type || 'Certificate'}</strong><span style={{ display: 'block', fontSize: '.85rem', color: '#64748B' }}>{request.title || ''}</span></td>
                             <td style={tdStyle}>{request.finalTestResult?.passed ? <span style={{ color: '#15803D', fontWeight: 800 }}>Passed · {Number(request.finalTestResult.score || 0).toFixed(2)}%</span> : <span style={{ color: '#B45309', fontWeight: 800 }}>Not passed yet</span>}</td>
                             <td style={tdStyle}>${Number(request.paidAmount || 0).toFixed(2)}</td>
                             <td style={tdStyle}>{request.requestedAt ? new Date(request.requestedAt).toLocaleDateString() : '—'}</td>
                             <td style={tdStyle}><span style={{ padding: '.28rem .58rem', borderRadius: '999px', background: approved ? '#F0FDF4' : pending ? '#FFFBEB' : '#FEF2F2', color: approved ? '#15803D' : pending ? '#9A6700' : '#B91C1C', fontWeight: 800 }}>{request.status || 'Pending approval'}</span></td>
-                            <td style={tdStyle}>{pending ? <div style={{ display: 'flex', gap: '.45rem' }}><button type="button" disabled={certificateUpdating === request.id} onClick={() => updateCertificateRequest(request.id, 'approved')} style={{ padding: '.45rem .7rem', border: 0, borderRadius: '8px', background: '#15803D', color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Approve</button><button type="button" disabled={certificateUpdating === request.id} onClick={() => updateCertificateRequest(request.id, 'denied')} style={{ padding: '.45rem .7rem', border: '1px solid #FCA5A5', borderRadius: '8px', background: '#fff', color: '#B91C1C', fontWeight: 800, cursor: 'pointer' }}>Deny</button></div> : <span style={{ color: '#64748B', fontWeight: 700 }}>{approved ? `Released ${request.certificateNumber || ''}` : 'No action'}</span>}</td>
+                            <td style={{ ...tdStyle, padding: '.75rem .7rem' }}>
+                              {pending ? (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.45rem' }}>
+                                  <button type="button" disabled={certificateUpdating === request.id} onClick={() => updateCertificateRequest(request.id, 'approved')} style={{ padding: '.45rem .7rem', border: 0, borderRadius: '8px', background: '#15803D', color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Approve</button>
+                                  <button type="button" disabled={certificateUpdating === request.id} onClick={() => updateCertificateRequest(request.id, 'denied')} style={{ padding: '.45rem .7rem', border: '1px solid #FCA5A5', borderRadius: '8px', background: '#fff', color: '#B91C1C', fontWeight: 800, cursor: 'pointer' }}>Deny</button>
+                                </div>
+                              ) : approved ? (
+                                <div style={{ display: 'grid', gap: '.2rem', lineHeight: 1.25 }}>
+                                  <span style={{ color: '#15803D', fontWeight: 800 }}>Released</span>
+                                  <code title={request.certificateNumber || 'Certificate number not recorded'} style={{ fontFamily: 'var(--font-mono)', fontSize: '.72rem', color: '#526780', fontWeight: 700, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{request.certificateNumber || 'Certificate number not recorded'}</code>
+                                </div>
+                              ) : <span style={{ color: '#64748B', fontWeight: 700 }}>No action</span>}
+                            </td>
                           </tr>
                         })}
                         {!certificateRequests.length && <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748B' }}>No certificate requests yet.</td></tr>}

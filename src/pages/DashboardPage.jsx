@@ -232,6 +232,11 @@ export default function DashboardPage() {
         certificate: request,
         student: { name: user?.displayName, email: user?.email },
       })
+      const downloadedAt = new Date().toISOString()
+      setCertificateRequests(current => current.map(item => item.id === request.id ? { ...item, downloadedAt } : item))
+      if (user?.uid && request?.id) {
+        api.markCertificateDownloaded(user.uid, request.id).catch(() => {})
+      }
     } catch {
       showNotice('Certificate PDF could not be downloaded. Please try again.', 'error')
     }
@@ -865,7 +870,7 @@ export default function DashboardPage() {
     { id: 'courses', label: 'Courses', sublabel: 'Your courses', icon: I.book },
     { id: 'bookings', label: 'Lessons', sublabel: 'Your bookings', icon: I.calendar },
     { id: 'payments', label: 'Payments', sublabel: 'Invoices', icon: I.profile },
-    { id: 'certificates', label: 'Certificates', sublabel: 'Requests & downloads', icon: I.book, badge: certificateRequests.filter(item => String(item.status || '').toLowerCase().includes('approved')).length },
+    { id: 'certificates', label: 'Certificates', sublabel: 'Requests & downloads', icon: I.book, badge: certificateRequests.filter(item => String(item.status || '').toLowerCase() === 'approved' && !item.downloadedAt).length },
     { id: 'settings', label: 'Settings', sublabel: 'Account', icon: I.shield },
     { id: 'live-support', label: 'Live Support', sublabel: 'School team', icon: I.profile, badge: supportUnread },
     { id: 'support', label: 'Support', sublabel: 'AI assistant', icon: I.profile },
@@ -1621,7 +1626,7 @@ export default function DashboardPage() {
                         const background = approved ? '#F0FDF4' : denied ? '#FEF2F2' : '#FFFBEB'
                         return <div key={request.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'1rem', flexWrap:'wrap', padding:'1rem', border:`1px solid ${color}33`, borderRadius:'14px', background }}>
                           <div><strong style={{ display:'block', color:'#0F172A', fontSize:'1.05rem' }}>{request.type || 'Certificate'} Certificate</strong><span style={{ display:'block', color:'#475569', marginTop:'.28rem' }}>Requested {request.requestedAt ? new Date(request.requestedAt).toLocaleDateString() : 'recently'} · {request.status || 'Pending approval'}</span>{request.certificateNumber && <span style={{ display:'block', color:'#475569', marginTop:'.2rem', fontFamily:'var(--font-mono)', fontSize:'.8rem' }}>{request.certificateNumber}</span>}{request.finalTestScore !== undefined && <span style={{ display:'block', color:'#15803D', marginTop:'.2rem', fontWeight:800 }}>Test 11 passed · {Number(request.finalTestCorrect || 0)}/{Number(request.finalTestTotal || 25)} · {Number(request.finalTestScore || 0).toFixed(2)}%</span>}</div>
-                          {approved ? <button type="button" onClick={() => downloadCertificate(request)} style={{ padding:'.7rem 1rem', border:0, borderRadius:'9px', background:'#0145A8', color:'#fff', fontWeight:800, cursor:'pointer' }}>Download certificate</button> : <span style={{ color, fontWeight:800 }}>{denied ? 'Please contact the school' : 'Waiting for admin approval'}</span>}
+                          {approved ? <button type="button" onClick={() => downloadCertificate(request)} style={{ padding:'.7rem 1rem', border:0, borderRadius:'9px', background:'#0145A8', color:'#fff', fontWeight:800, cursor:'pointer' }}>{request.downloadedAt ? 'Download again' : 'Download certificate'}</button> : <span style={{ color, fontWeight:800 }}>{denied ? 'Please contact the school' : 'Waiting for admin approval'}</span>}
                         </div>
                       })}
                       {!certificateRequests.length && <div style={{ padding:'2rem', textAlign:'center', borderRadius:'14px', background:'#F8FAFC', color:'#64748B', fontWeight:700 }}>No certificate requests yet.</div>}

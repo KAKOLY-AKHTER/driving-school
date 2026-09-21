@@ -32,28 +32,37 @@ function SupportShell({ children }) {
   return (
     <>
       <style>{`
-        .live-support-shell{display:grid;grid-template-columns:minmax(245px,320px) minmax(0,1fr);height:clamp(560px,72vh,720px);max-width:1180px;margin:0 auto;background:#fff;border:1px solid #E2EBF5;border-radius:22px;overflow:hidden;box-shadow:0 18px 55px rgba(15,35,70,.09)}
-        .live-support-list{display:flex;flex-direction:column;min-width:0;border-right:1px solid #E2EBF5;background:#F8FBFF}
-        .live-support-list-head{padding:1rem;border-bottom:1px solid #E2EBF5;background:#fff}
-        .live-support-list-scroll{flex:1;overflow:auto;padding:.65rem}
-        .live-support-thread{width:100%;display:block;text-align:left;border:1px solid transparent;background:transparent;border-radius:13px;padding:.8rem;cursor:pointer;color:#334155;margin-bottom:.35rem}
-        .live-support-thread:hover{background:#fff;border-color:#D8E4F2}
-        .live-support-thread.is-active{background:#fff;border-color:rgba(1,69,168,.25);box-shadow:0 7px 20px rgba(1,69,168,.08)}
-        .live-support-thread-title{display:flex;align-items:center;gap:.45rem;font-weight:800;color:#10213A;margin:0 0 .25rem;min-width:0}
+        .live-support-shell{display:grid;grid-template-columns:minmax(290px,340px) minmax(0,1fr);height:clamp(600px,74vh,760px);max-width:1180px;margin:0 auto;background:#fff;border:1px solid #DCE7F3;border-radius:24px;overflow:hidden;box-shadow:0 20px 60px rgba(15,35,70,.10)}
+        .live-support-list{display:flex;flex-direction:column;min-width:0;border-right:1px solid #DCE7F3;background:linear-gradient(180deg,#F8FBFF 0%,#F2F7FD 100%)}
+        .live-support-list-head{padding:1rem 1.1rem;border-bottom:1px solid #DCE7F3;background:rgba(255,255,255,.88)}
+        .live-support-list-heading{display:flex;align-items:center;justify-content:space-between;gap:.75rem}
+        .live-support-list-kicker{margin:0 0 .15rem;color:#9A6700;font-family:var(--font-mono);font-size:.67rem;font-weight:900;letter-spacing:.13em;text-transform:uppercase}
+        .live-support-list-title{display:block;color:#10213A;font-size:1rem;line-height:1.2}
+        .live-support-list-scroll{flex:1;overflow:auto;padding:.7rem}
+        .live-support-thread{width:100%;display:flex;align-items:flex-start;gap:.72rem;text-align:left;border:1px solid transparent;background:transparent;border-radius:15px;padding:.82rem;cursor:pointer;color:#334155;margin-bottom:.4rem;transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+        .live-support-thread:hover{background:#fff;border-color:#D8E4F2;transform:translateY(-1px)}
+        .live-support-thread.is-active{background:#fff;border-color:rgba(1,69,168,.3);box-shadow:0 8px 22px rgba(1,69,168,.10)}
+        .live-support-thread-avatar{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;border-radius:11px;background:linear-gradient(135deg,#E3EFFF,#C7DDF9);color:#0145A8;font-size:.83rem;font-weight:900}
+        .live-support-thread.is-active .live-support-thread-avatar{background:linear-gradient(135deg,#0755AE,#0A2A5E);color:#fff}
+        .live-support-thread-copy{display:block;min-width:0;flex:1}
+        .live-support-thread-title{display:flex;align-items:center;gap:.45rem;font-weight:850;color:#10213A;margin:0 0 .2rem;min-width:0}
         .live-support-thread-title span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-        .live-support-thread-meta{font-size:.82rem;color:#334155;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .live-support-thread-meta{display:block;font-size:.8rem;color:#526780;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.45}
         .live-support-unread{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#DC2626;color:#fff;font-size:.7rem;font-weight:900;flex:none}
-        .live-support-chat{display:flex;flex-direction:column;min-width:0;background:#fff}
-        .live-support-chat-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.25rem;border-bottom:1px solid #E2EBF5;min-height:72px}
-        .live-support-chat-body{flex:1;overflow:auto;padding:1.4rem 1.5rem;background:radial-gradient(circle at 100% 0%,rgba(1,69,168,.05),transparent 22rem),#FBFDFF}
+        .live-support-chat{display:flex;flex-direction:column;min-width:0;background:#FBFDFF}
+        .live-support-chat-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.35rem;border-bottom:1px solid #DCE7F3;min-height:78px;background:#fff}
+        .live-support-conversation-title{display:flex;align-items:center;gap:.7rem;min-width:0}
+        .live-support-conversation-avatar{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:12px;background:#EEF5FF;color:#0145A8;font-weight:900}
+        .live-support-conversation-kicker{margin:0 0 .12rem;color:#9A6700;font-family:var(--font-mono);font-size:.64rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+        .live-support-chat-body{flex:1;overflow:auto;padding:1.5rem;background:radial-gradient(circle at 100% 0%,rgba(1,69,168,.06),transparent 24rem),linear-gradient(135deg,#FBFDFF,#F4F8FD)}
         .live-support-message{display:flex;justify-content:flex-start;margin:1rem 0}
         .live-support-message.is-mine{justify-content:flex-end}
-        .live-support-bubble{width:fit-content;min-width:min(205px,78vw);max-width:min(68%,560px);padding:1rem 1.12rem;border-radius:18px 18px 18px 6px;background:#fff;border:1px solid #D8E4F2;box-shadow:0 7px 18px rgba(15,35,70,.08)}
+        .live-support-bubble{width:fit-content;min-width:0;max-width:min(70%,580px);padding:1rem 1.12rem;border-radius:18px 18px 18px 6px;background:#fff;border:1px solid #D8E4F2;box-shadow:0 7px 18px rgba(15,35,70,.07)}
         .live-support-message.is-mine .live-support-bubble{background:linear-gradient(135deg,#0755AE,#0A2A5E);color:#fff;border:0;border-radius:18px 18px 6px 18px;box-shadow:0 8px 20px rgba(1,69,168,.2)}
         .live-support-bubble p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;font-size:clamp(.96rem,1.1vw,1.04rem);line-height:1.6}
         .live-support-bubble span{display:block;margin-top:.55rem;font-size:.76rem;color:#64748B}
         .live-support-message.is-mine .live-support-bubble span{color:rgba(255,255,255,0.88)}
-        .live-support-compose{padding:1rem 1.25rem;border-top:1px solid #E2EBF5;background:#fff}
+        .live-support-compose{padding:1rem 1.25rem;border-top:1px solid #DCE7F3;background:#fff}
         .live-support-compose-row{display:flex;align-items:flex-end;gap:.65rem}
         .live-support-input{width:100%;box-sizing:border-box;border:1.5px solid #D8E4F2;border-radius:12px;padding:.75rem .85rem;font:inherit;color:#10213A;background:#fff;outline:none}
         .live-support-input:focus{border-color:#0145A8;box-shadow:0 0 0 4px rgba(1,69,168,.08)}
@@ -70,7 +79,7 @@ function SupportShell({ children }) {
         .live-support-error{margin:.75rem 1rem;padding:.75rem;border-radius:10px;background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C;font-weight:700}
         .live-support-stats{display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.55rem}
         .live-support-stat{font-size:.72rem;font-weight:850;border-radius:999px;padding:.28rem .48rem;background:#EFF6FF;color:#0145A8}
-        @media(max-width:760px){.live-support-shell{grid-template-columns:1fr;height:auto;min-height:680px}.live-support-list{border-right:0;border-bottom:1px solid #E2EBF5;max-height:255px}.live-support-chat{min-height:520px}.live-support-chat-head{padding:.85rem 1rem}.live-support-chat-body{padding:1rem}.live-support-compose{padding:.85rem}.live-support-bubble{min-width:min(190px,82vw);max-width:88%}}
+        @media(max-width:760px){.live-support-shell{grid-template-columns:1fr;height:auto;min-height:680px}.live-support-list{border-right:0;border-bottom:1px solid #E2EBF5;max-height:255px}.live-support-chat{min-height:520px}.live-support-chat-head{padding:.85rem 1rem}.live-support-chat-body{padding:1rem}.live-support-compose{padding:.85rem}.live-support-bubble{max-width:88%}}
         @media(max-width:480px){.live-support-compose-row{align-items:stretch;flex-direction:column}.live-support-primary{width:100%}.live-support-chat-head{align-items:flex-start}.live-support-chat-head>div:last-child{display:flex;flex-direction:column;gap:.4rem}.live-support-bubble{min-width:min(170px,88vw);max-width:94%;padding:.9rem 1rem}}
       `}</style>
       {children}
@@ -285,12 +294,18 @@ export function AdminLiveSupportPanel({ onUnreadChange }) {
       </div>
       <section aria-label="Admin live support inbox" className="live-support-shell">
         <aside className="live-support-list">
-          <div className="live-support-list-head"><strong style={{ color: NAVY }}>Student requests</strong><button type="button" className="live-support-secondary" style={{ float: 'right', padding: '.38rem .55rem' }} onClick={() => loadInbox()} disabled={loading}>Refresh</button></div>
+          <div className="live-support-list-head">
+            <div className="live-support-list-heading">
+              <div><p className="live-support-list-kicker">Support desk</p><strong className="live-support-list-title">Student inbox</strong></div>
+              <button type="button" className="live-support-secondary" style={{ padding: '.38rem .55rem' }} onClick={() => loadInbox()} disabled={loading}>Refresh</button>
+            </div>
+          </div>
           <div className="live-support-list-scroll">
             {loading ? <p role="status" style={{ color: '#334155', padding: '.6rem' }}>Loading inbox…</p> : filtered.length === 0 ? <p style={{ color: '#334155', padding: '.6rem' }}>{threads.length ? 'No requests match these filters.' : 'No student support requests yet.'}</p> : filtered.map(thread => (
               <button type="button" key={supportKey(thread)} className={`live-support-thread ${selectedKey === supportKey(thread) ? 'is-active' : ''}`} onClick={() => { setSelectedKey(supportKey(thread)); setDraft(''); setError('') }}>
-                <p className="live-support-thread-title"><span>{thread.student?.name || thread.student?.email || 'Student'}</span>{thread.unreadByAdmin && <span className="live-support-unread">New</span>}</p>
-                <p className="live-support-thread-meta" style={{ fontWeight: 750, color: '#334155' }}>{thread.subject}</p><p className="live-support-thread-meta">{thread.status === 'closed' ? 'Closed' : 'Open'} · {formatTimestamp(threadTime(thread))}</p>
+                <span className="live-support-thread-avatar" aria-hidden="true">{(thread.student?.name || thread.student?.email || 'Student').trim().charAt(0).toUpperCase()}</span>
+                <div className="live-support-thread-copy"><p className="live-support-thread-title"><span>{thread.student?.name || thread.student?.email || 'Student'}</span>{thread.unreadByAdmin && <span className="live-support-unread">New</span>}</p>
+                <p className="live-support-thread-meta" style={{ fontWeight: 750, color: '#334155' }}>{thread.subject || 'Support request'}</p><p className="live-support-thread-meta">{thread.status === 'closed' ? 'Closed' : 'Open'} / {formatTimestamp(threadTime(thread))}</p></div>
               </button>
             ))}
           </div>
@@ -298,7 +313,7 @@ export function AdminLiveSupportPanel({ onUnreadChange }) {
         <div className="live-support-chat">
           {error && <div className="live-support-error" role="alert">{error} <button type="button" className="live-support-secondary" style={{ marginLeft: '.5rem', padding: '.3rem .5rem' }} onClick={() => loadInbox()}>Retry</button></div>}
           {selected ? <>
-            <header className="live-support-chat-head"><div style={{ minWidth: 0 }}><h2 style={{ color: NAVY, fontSize: '1.08rem', margin: 0 }}>{selected.subject}</h2><p style={{ color: '#334155', margin: '.2rem 0 0', fontSize: '.83rem' }}>{selected.student?.name} · {selected.student?.email}{selected.student?.phone ? ` · ${selected.student.phone}` : ''}</p></div><div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}><span className={`live-support-status ${selected.status === 'closed' ? 'is-closed' : ''}`}>{selected.status}</span><button type="button" className="live-support-secondary" disabled={saving} onClick={() => changeStatus(selected.status === 'closed' ? 'open' : 'closed')}>{selected.status === 'closed' ? 'Reopen' : 'Close'}</button></div></header>
+            <header className="live-support-chat-head"><div className="live-support-conversation-title"><span className="live-support-conversation-avatar" aria-hidden="true">{(selected.student?.name || selected.student?.email || 'S').trim().charAt(0).toUpperCase()}</span><div style={{ minWidth: 0 }}><p className="live-support-conversation-kicker">Active conversation</p><h2 style={{ color: NAVY, fontSize: '1.08rem', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.subject || 'Student support request'}</h2><p style={{ color: '#526780', margin: '.18rem 0 0', fontSize: '.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.student?.name || 'Student'}{selected.student?.email ? ` / ${selected.student.email}` : ''}</p></div></div><div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flex: '0 0 auto' }}><span className={`live-support-status ${selected.status === 'closed' ? 'is-closed' : ''}`}>{selected.status || 'open'}</span><button type="button" className="live-support-secondary" disabled={saving} onClick={() => changeStatus(selected.status === 'closed' ? 'open' : 'closed')}>{selected.status === 'closed' ? 'Reopen' : 'Close'}</button></div></header>
             <div className="live-support-chat-body" aria-live="polite">{(selected.messages || []).map((message, index) => <SupportMessage key={`${message.timestamp || 'message'}-${index}`} message={message} adminView studentName={selected.student?.name || 'Student'} />)}<div ref={endRef} /></div>
             <form className="live-support-compose" onSubmit={sendReply}><div className="live-support-compose-row"><textarea aria-label="Reply to student" className="live-support-input" rows={2} maxLength={4000} value={draft} onChange={event => setDraft(event.target.value)} placeholder={selected.status === 'closed' ? 'Reply to reopen this request…' : 'Write a reply to the student…'} required /><button type="submit" className="live-support-primary" disabled={saving || !draft.trim()}>{saving ? 'Sending…' : 'Send reply'}</button></div></form>
           </> : <div className="live-support-empty"><div><div style={{ fontSize: '2rem' }}>💬</div><h2 style={{ color: NAVY }}>Live Support Inbox</h2><p>Select a student request to view and reply.</p></div></div>}
