@@ -15,7 +15,7 @@ import AdminUserDetailsModal from '../components/AdminUserDetailsModal'
 import PasswordInput from '../components/PasswordInput'
 import AdminDeleteIconButton from '../components/AdminDeleteIconButton'
 import ProfilePhotoUploader from '../components/ProfilePhotoUploader'
-import { openEnrollmentInvoice } from '../utils/printDocument'
+import { downloadCertificatePdf, openEnrollmentInvoice } from '../utils/printDocument'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -1195,7 +1195,7 @@ export default function AdminPage() {
       const result = await api.adminUpdateCertificate(requestId, status)
       const updated = result?.request || {}
       setCertificateRequests(current => current.map(item => item.id === requestId ? { ...item, ...updated } : item))
-      setMsg(status === 'approved' ? 'Certificate approved and released to the student portal.' : 'Certificate request denied.')
+      setMsg(status === 'ready' ? 'Certificate is ready for pickup.' : status === 'collected' ? 'Certificate marked as collected.' : 'Certificate request denied.')
       setTimeout(() => setMsg(''), 3000)
     } catch (error) {
       setMsg(error?.message || 'Certificate request could not be updated.')
@@ -1486,6 +1486,20 @@ export default function AdminPage() {
     } catch {
       setMsg('Invoice PDF could not be downloaded. Please try again.')
       setTimeout(() => setMsg(''), 2500)
+    }
+  }
+
+  const printCertificate = async (request) => {
+    try {
+      await downloadCertificatePdf({
+        certificate: request,
+        student: { name: request.studentName || 'Student', email: request.email || '' },
+      })
+      setMsg('Certificate file is ready to print.')
+      setTimeout(() => setMsg(''), 3000)
+    } catch {
+      setMsg('Certificate could not be prepared for printing. Please try again.')
+      setTimeout(() => setMsg(''), 3000)
     }
   }
 
@@ -2143,7 +2157,7 @@ export default function AdminPage() {
   const navItems = [
     { id: 'dashboard', label: 'Overview', icon: SVG.dashboard },
     { id: 'users', label: 'Users', icon: SVG.users },
-    { id: 'legacy-students', label: 'Legacy Students', icon: SVG.users, badge: legacyMeta.pending, badgeLabel: 'legacy students pending activation' },
+    { id: 'legacy-students', label: 'Legacy Students', icon: SVG.users },
     { id: 'bookings', label: 'Bookings', icon: SVG.calendar },
     { id: 'calendar', label: 'Admin Calendar', icon: SVG.calendar },
     { id: 'contacts', label: 'Contacts', icon: SVG.mail, badge: stats.pendingContacts, badgeLabel: 'new contact message' },
@@ -2814,7 +2828,7 @@ export default function AdminPage() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
                     <div>
                       <h3 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.2rem' }}>Certificate Requests</h3>
-                      <p style={{ margin: '.35rem 0 0', color: '#475569' }}>Paid requests require a passed Test 11 result and your approval before students can download their certificate.</p>
+                      <p style={{ margin: '.35rem 0 0', color: '#475569' }}>Paid requests require a passed Test 11 result before you prepare the printed certificate for student pickup.</p>
                     </div>
                     <span style={{ padding: '.4rem .7rem', borderRadius: '999px', background: '#FFF7ED', color: '#9A6700', fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 800 }}>{certificateRequests.filter(item => String(item.status || '').toLowerCase().includes('pending')).length} pending</span>
                   </div>
@@ -2833,26 +2847,28 @@ export default function AdminPage() {
                       <tbody>
                         {certificateRequests.map(request => {
                           const pending = String(request.status || '').toLowerCase().includes('pending')
-                          const approved = String(request.status || '').toLowerCase() === 'approved'
+                          const normalizedRequestStatus = String(request.status || '').trim().toLowerCase()
+                          const readyForPickup = ['approved', 'ready for pickup'].includes(normalizedRequestStatus)
+                          const collected = normalizedRequestStatus === 'collected'
                           return <tr key={request.id}>
                             <td style={tdStyle}><strong>{request.studentName || 'Student'}</strong><span style={{ display: 'block', fontSize: '.85rem', color: '#64748B', overflowWrap: 'anywhere' }}>{request.email || 'No email'}</span></td>
                             <td style={tdStyle}><strong>{request.type || 'Certificate'}</strong><span style={{ display: 'block', fontSize: '.85rem', color: '#64748B' }}>{request.title || ''}</span></td>
                             <td style={tdStyle}>{request.finalTestResult?.passed ? <span style={{ color: '#15803D', fontWeight: 800 }}>Passed · {Number(request.finalTestResult.score || 0).toFixed(2)}%</span> : <span style={{ color: '#B45309', fontWeight: 800 }}>Not passed yet</span>}</td>
                             <td style={tdStyle}>${Number(request.paidAmount || 0).toFixed(2)}</td>
                             <td style={tdStyle}>{request.requestedAt ? new Date(request.requestedAt).toLocaleDateString() : '—'}</td>
-                            <td style={tdStyle}><span style={{ padding: '.28rem .58rem', borderRadius: '999px', background: approved ? '#F0FDF4' : pending ? '#FFFBEB' : '#FEF2F2', color: approved ? '#15803D' : pending ? '#9A6700' : '#B91C1C', fontWeight: 800 }}>{request.status || 'Pending approval'}</span></td>
+                            <td style={tdStyle}><span style={{ padding: '.28rem .58rem', borderRadius: '999px', background: (readyForPickup || collected) ? '#F0FDF4' : pending ? '#FFFBEB' : '#FEF2F2', color: (readyForPickup || collected) ? '#15803D' : pending ? '#9A6700' : '#B91C1C', fontWeight: 800 }}>{readyForPickup ? 'Ready for pickup' : collected ? 'Collected' : request.status || 'Pending approval'}</span></td>
                             <td style={{ ...tdStyle, padding: '.75rem .7rem' }}>
                               {pending ? (
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.45rem' }}>
-                                  <button type="button" disabled={certificateUpdating === request.id} onClick={() => updateCertificateRequest(request.id, 'approved')} style={{ padding: '.45rem .7rem', border: 0, borderRadius: '8px', background: '#15803D', color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Approve</button>
+                                  <button type="button" disabled={certificateUpdating === request.id} onClick={() => updateCertificateRequest(request.id, 'ready')} style={{ padding: '.45rem .7rem', border: 0, borderRadius: '8px', background: '#15803D', color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Ready for pickup</button>
                                   <button type="button" disabled={certificateUpdating === request.id} onClick={() => updateCertificateRequest(request.id, 'denied')} style={{ padding: '.45rem .7rem', border: '1px solid #FCA5A5', borderRadius: '8px', background: '#fff', color: '#B91C1C', fontWeight: 800, cursor: 'pointer' }}>Deny</button>
                                 </div>
-                              ) : approved ? (
+                              ) : readyForPickup ? (
                                 <div style={{ display: 'grid', gap: '.2rem', lineHeight: 1.25 }}>
-                                  <span style={{ color: '#15803D', fontWeight: 800 }}>Released</span>
+                                  <div style={{ display:'flex', flexWrap:'wrap', gap:'.45rem' }}><button type="button" onClick={() => printCertificate(request)} style={{ padding: '.45rem .7rem', border: '1px solid #0145A8', borderRadius: '8px', background: '#fff', color: '#0145A8', fontWeight: 800, cursor: 'pointer' }}>Print certificate</button><button type="button" disabled={certificateUpdating === request.id} onClick={() => updateCertificateRequest(request.id, 'collected')} style={{ padding: '.45rem .7rem', border: 0, borderRadius: '8px', background: '#0145A8', color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Mark collected</button></div>
                                   <code title={request.certificateNumber || 'Certificate number not recorded'} style={{ fontFamily: 'var(--font-mono)', fontSize: '.72rem', color: '#526780', fontWeight: 700, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{request.certificateNumber || 'Certificate number not recorded'}</code>
                                 </div>
-                              ) : <span style={{ color: '#64748B', fontWeight: 700 }}>No action</span>}
+                              ) : collected ? <span style={{ color: '#15803D', fontWeight: 800 }}>Handed over</span> : <span style={{ color: '#64748B', fontWeight: 700 }}>No action</span>}
                             </td>
                           </tr>
                         })}

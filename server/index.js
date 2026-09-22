@@ -455,7 +455,7 @@ const ADMIN_CHECKOUT_FIELDS = [
 const ADMIN_CERTIFICATE_FIELDS = [
   'id', 'type', 'title', 'status', 'requestedAt', 'approvedAt', 'approvedBy',
   'deniedAt', 'deniedBy', 'certificateNumber', 'paidAmount', 'paymentReference', 'downloadedAt',
-  'providerOrderId', 'providerCaptureId', 'enrollmentId', 'deliveredAt',
+  'providerOrderId', 'providerCaptureId', 'enrollmentId', 'readyAt', 'deliveredAt', 'deliveredBy',
   'finalTestScore', 'finalTestCorrect', 'finalTestTotal', 'finalTestPassedAt',
 ]
 const ADMIN_FINAL_TEST_FIELDS = [
@@ -2979,25 +2979,6 @@ app.put('/api/users/:uid/final-test-result', async (req, res) => {
   }
 })
 
-// A certificate alert is cleared only after the student has successfully downloaded it.
-app.put('/api/users/:uid/certificates/:requestId/downloaded', async (req, res) => {
-  try {
-    const uid = req.auth.uid
-    const requestId = cleanText(req.params.requestId, 160)
-    if (!requestId) throw new HttpError(400, 'Certificate request id is required.')
-    const downloadedAt = new Date().toISOString()
-    const result = await usersCol.updateOne(
-      { uid, certificateRequests: { $elemMatch: { id: requestId, status: 'Approved' } } },
-      { $set: { 'certificateRequests.$.downloadedAt': downloadedAt } },
-    )
-    if (!result.matchedCount) throw new HttpError(404, 'An approved certificate request was not found.')
-    res.json({ ok: true, downloadedAt })
-  } catch (error) {
-    if (error.status) return res.status(error.status).json({ error: error.message })
-    return sendServerError(res, error, 'Certificate download status could not be saved')
-  }
-})
-
 app.delete('/api/users/:uid/courses/:courseId', async (req, res) => {
   try {
     // requireSelf permits either the account owner or a verified database admin;
@@ -3249,7 +3230,7 @@ app.post('/api/users/:uid/cart', async (req, res) => {
       const user = await usersCol.findOne({ uid }, { session, projection: { courses: 1 } })
       const courses = user?.courses || []
       const matchingCourses = courses.filter(course => String(course.id) === courseId)
-      if (matchingCourses.some(course => normalizedCourseStatus(course.status) === 'refund pending')) {
+      if (!isDuplicateCertificatePlan(courseId) && matchingCourses.some(course => normalizedCourseStatus(course.status) === 'refund pending')) {
         throw new HttpError(409, `A refund request for ${tier.planName} is still pending. Additional slots cannot be booked yet.`)
       }
       const activeCourseIndex = isDuplicateCertificatePlan(courseId)
@@ -3433,7 +3414,7 @@ async function processCartCheckout(req, { quoteOnly = false, couponCode = '', co
         const continuation = !purchaseOnly && activeCourseIndex >= 0
         const activeCourse = continuation ? existingCourses[activeCourseIndex] : null
         const enrollmentId = cleanText(activeCourse?.enrollmentId, 160) || requestedEnrollmentId || randomUUID()
-        if (existingCourses.some(course =>
+        if (!repeatableCertificate && existingCourses.some(course =>
           String(course?.id) === courseId && normalizedCourseStatus(course.status) === 'refund pending'
         )) {
           throw new HttpError(409, `A refund request for ${tier.planName} is still pending. Additional slots cannot be booked yet.`)
@@ -3701,7 +3682,9 @@ async function processCartCheckout(req, { quoteOnly = false, couponCode = '', co
       if (payment || certificateRequests.length) {
         userUpdate.$push = {}
         if (payment) userUpdate.$push.payments = { $each: [payment], $position: 0 }
-        if (certificateRequests.length) userUpdate.$push.certificateRequests = { $each: certificateRequests, $position: 0, $slice: 100 }
+        // Keep every paid certificate request. Each duplicate purchase is a
+        // separate school record and must remain available for review.
+        if (certificateRequests.length) userUpdate.$push.certificateRequests = { $each: certificateRequests, $position: 0 }
       }
       await usersCol.updateOne(
         { uid },
@@ -4748,30 +4731,41 @@ app.put('/api/admin/certificates/:requestId', async (req, res) => {
     const requestId = cleanText(req.params.requestId, 160)
     const status = cleanText(req.body?.status, 40).toLowerCase()
     if (!requestId) throw new HttpError(400, 'Certificate request id is required.')
-    if (!['approved', 'denied'].includes(status)) throw new HttpError(400, 'Choose Approved or Denied.')
+    if (!['ready', 'collected', 'denied'].includes(status)) throw new HttpError(400, 'Choose Ready for pickup, Collected, or Denied.')
     const certificateOwner = await usersCol.findOne(
       { 'certificateRequests.id': requestId },
       { projection: { uid: 1, certificateRequests: 1, finalTestResult: 1 } },
     )
     if (!certificateOwner) throw new HttpError(404, 'Certificate request was not found.')
     const finalTestResult = certificateOwner.finalTestResult || {}
-    if (status === 'approved' && finalTestResult.passed !== true) {
-      throw new HttpError(409, 'Test 11 (Final Test) must be passed before this certificate can be approved.')
+    const currentRequest = (certificateOwner.certificateRequests || []).find(request => request?.id === requestId) || {}
+    const currentStatus = cleanText(currentRequest.status, 60).toLowerCase()
+    if (status === 'ready' && finalTestResult.passed !== true) {
+      throw new HttpError(409, 'Test 11 (Final Test) must be passed before this certificate can be marked Ready for pickup.')
+    }
+    if (status === 'collected' && !['ready for pickup', 'approved'].includes(currentStatus)) {
+      throw new HttpError(409, 'Only a certificate marked Ready for pickup can be marked Collected.')
     }
     const now = new Date().toISOString()
-    const changes = status === 'approved'
+    const changes = status === 'ready'
       ? {
-          'certificateRequests.$[request].status': 'Approved',
+          'certificateRequests.$[request].status': 'Ready for pickup',
           'certificateRequests.$[request].approvedAt': now,
           'certificateRequests.$[request].approvedBy': cleanText(req.auth?.email, 320),
-          'certificateRequests.$[request].deliveredAt': now,
+          'certificateRequests.$[request].readyAt': now,
           'certificateRequests.$[request].certificateNumber': `PDS-${new Date().getFullYear()}-${requestId.slice(0, 8).toUpperCase()}`,
           'certificateRequests.$[request].finalTestScore': Number(finalTestResult.score || 0),
           'certificateRequests.$[request].finalTestCorrect': Number(finalTestResult.correct || 0),
           'certificateRequests.$[request].finalTestTotal': Number(finalTestResult.total || FINAL_TEST_SIZE),
           'certificateRequests.$[request].finalTestPassedAt': cleanText(finalTestResult.passedAt || finalTestResult.attemptedAt, 80),
         }
-      : {
+      : status === 'collected'
+        ? {
+            'certificateRequests.$[request].status': 'Collected',
+            'certificateRequests.$[request].deliveredAt': now,
+            'certificateRequests.$[request].deliveredBy': cleanText(req.auth?.email, 320),
+          }
+        : {
           'certificateRequests.$[request].status': 'Denied',
           'certificateRequests.$[request].deniedAt': now,
           'certificateRequests.$[request].deniedBy': cleanText(req.auth?.email, 320),
