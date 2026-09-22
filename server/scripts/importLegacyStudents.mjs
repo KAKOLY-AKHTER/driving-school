@@ -154,7 +154,6 @@ if (!sourceFile) {
       legacyCandidateIds: sorted.map(item => item.legacyCandidateId).filter(Boolean),
       duplicateRecordCount: sorted.length,
       requiresAdminReview: sorted.length > 1,
-      activationStatus: 'pending',
       importedAt,
     }
   })
@@ -183,13 +182,39 @@ if (!sourceFile) {
           filter: { email: student.email },
           update: {
             $set: student,
-            $setOnInsert: { createdAt: importedAt },
+            // Never reset a student who was already linked to a real new-site
+            // Firebase account during a later legacy-data refresh.
+            $setOnInsert: { createdAt: importedAt, activationStatus: 'pending' },
           },
           upsert: true,
         },
       }))
       const result = await collection.bulkWrite(operations, { ordered: false })
-      console.log(JSON.stringify({ ...summary, matched: result.matchedCount, modified: result.modifiedCount, upserted: result.upsertedCount }, null, 2))
+      const legacyByEmail = new Map(students.map(student => [student.email, student]))
+      const websiteUsers = await client.db('driving_school').collection('users').find(
+        { email: { $exists: true, $ne: '' } },
+        { projection: { uid: 1, email: 1 } },
+      ).toArray()
+      const activatedAt = new Date().toISOString()
+      const matchedAccounts = websiteUsers.filter(user => legacyByEmail.has(normalizeEmail(user.email)) && cleanText(user.uid, 160))
+      if (matchedAccounts.length) {
+        await collection.bulkWrite(matchedAccounts.map(user => ({
+          updateOne: {
+            filter: {
+              email: normalizeEmail(user.email),
+              $or: [{ linkedUid: { $exists: false } }, { linkedUid: null }, { linkedUid: '' }, { linkedUid: user.uid }],
+            },
+            update: { $set: { linkedUid: user.uid, activationStatus: 'activated', activatedAt } },
+          },
+        })), { ordered: false })
+        await client.db('driving_school').collection('users').bulkWrite(matchedAccounts.map(user => ({
+          updateOne: {
+            filter: { uid: user.uid },
+            update: { $set: { legacyCandidateId: legacyByEmail.get(normalizeEmail(user.email)).legacyCandidateId, legacyMatchedAt: activatedAt } },
+          },
+        })), { ordered: false })
+      }
+      console.log(JSON.stringify({ ...summary, matched: result.matchedCount, modified: result.modifiedCount, upserted: result.upsertedCount, linkedExistingAccounts: matchedAccounts.length }, null, 2))
       console.log('Import complete. Legacy passwords and reset tokens were never imported.')
     } finally {
       await client.close()

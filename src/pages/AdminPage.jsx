@@ -24,6 +24,17 @@ const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
 const DEFAULT_ADMIN_PHOTO_URL = 'https://driving-school-dun-kappa.vercel.app/admin-img.png'
 
+const legacyDisplayText = (value) => {
+  const text = String(value ?? '').trim()
+  return !text || text === '0' || text === '0000-00-00' ? '' : text
+}
+const legacyDisplayDate = (value) => {
+  const text = legacyDisplayText(value)
+  if (!text) return ''
+  const date = new Date(text)
+  return Number.isNaN(date.getTime()) ? text : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 const USER_EDIT_SECTIONS = [
   {
     title: 'Student details',
@@ -1973,8 +1984,8 @@ export default function AdminPage() {
         if (!cancelled) setLegacyLoading(false)
       }
     }
-    const timer = window.setTimeout(loadLegacyStudents, legacySearch ? 250 : 0)
-    return () => { cancelled = true; window.clearTimeout(timer) }
+    loadLegacyStudents()
+    return () => { cancelled = true }
   }, [activeTab, legacyPage, legacySearch, legacyStatus])
 
   const websiteUsers = users.filter(u => u.isAdmin !== true)
@@ -1991,6 +2002,14 @@ export default function AdminPage() {
   )
   const legacyPages = Math.max(1, Math.ceil(legacyMeta.total / legacyMeta.limit))
   const safeLegacyPage = Math.min(legacyPage, legacyPages)
+  const legacyDetailSections = legacyDetails ? [
+    ['Student & contact', [['First name', legacyDisplayText(legacyDetails.firstName)], ['Middle name', legacyDisplayText(legacyDetails.middleName)], ['Last name', legacyDisplayText(legacyDetails.lastName)], ['Username', legacyDisplayText(legacyDetails.username)], ['Date of birth', legacyDisplayDate(legacyDetails.dob)], ['Gender', legacyDisplayText(legacyDetails.gender)], ['Primary phone', legacyDisplayText(legacyDetails.phone)], ['Second phone', legacyDisplayText(legacyDetails.secondaryPhone)], ['Alternate phone', legacyDisplayText(legacyDetails.alternatePhone)]]],
+    ['Address & school', [['Street address', legacyDisplayText(legacyDetails.address)], ['Address 2 / apartment', legacyDisplayText(legacyDetails.address2)], ['Primary home address', legacyDisplayText(legacyDetails.primaryHomeAddress)], ['City', legacyDisplayText(legacyDetails.city)], ['State', legacyDisplayText(legacyDetails.state)], ['ZIP code', legacyDisplayText(legacyDetails.zipCode)], ['Gate code', legacyDisplayText(legacyDetails.gateCode)], ['School affiliate', legacyDisplayText(legacyDetails.schoolAffiliate)], ['High school', legacyDisplayText(legacyDetails.highSchool || legacyDetails.studentHighSchool)]]],
+    ['Driving record', [['License number', legacyDisplayText(legacyDetails.licenseNumber)], ['License issued', legacyDisplayDate(legacyDetails.licenseIssuedAt)], ['License expires', legacyDisplayDate(legacyDetails.licenseExpiresAt)], ['Permit number', legacyDisplayText(legacyDetails.permitNumber)], ['Permit issued', legacyDisplayDate(legacyDetails.permitIssuedAt)], ['Permit expires', legacyDisplayDate(legacyDetails.permitExpiresAt)], ['Uses lenses', legacyDetails.usesLenses === true ? 'Yes' : legacyDetails.usesLenses === false ? 'No' : '']]],
+    ['Payer & account', [['Payer name', legacyDisplayText(legacyDetails.payerName)], ['Payer relationship', legacyDisplayText(legacyDetails.payerRelationship)], ['Old account active', legacyDetails.legacyActive ? 'Yes' : 'No'], ['New account status', legacyDetails.activationStatus === 'activated' ? 'Linked' : 'Pending activation'], ['New account UID', legacyDisplayText(legacyDetails.linkedUid)], ['Old join date', legacyDisplayDate(legacyDetails.legacyJoinedAt)], ['Course chapter progress', legacyDisplayText(legacyDetails.chapterCheck)], ['Version type', legacyDisplayText(legacyDetails.versionType)]]],
+    ['Health information', [['Medical condition', legacyDisplayText(legacyDetails.medicalCondition)], ['Medications', legacyDisplayText(legacyDetails.medications)]]],
+    ['Notes & references', [['Old comments', legacyDisplayText(legacyDetails.comments)], ['Legacy notes', legacyDisplayText(legacyDetails.legacyNotes)], ['Photo reference', legacyDisplayText(legacyDetails.legacyPhotoReference)]]],
+  ] : []
 
   const enrollmentRows = websiteUsers.flatMap(account => (Array.isArray(account.courses) ? account.courses : [])
     .map((course, index) => ({
@@ -3850,21 +3869,17 @@ Near and Long pricing is applied automatically from the selected city and verifi
 
       {legacyDetails && (
         <div role="presentation" onClick={event => { if (event.target === event.currentTarget) setLegacyDetails(null) }} style={{ position: 'fixed', inset: 0, zIndex: 15000, display: 'grid', placeItems: 'center', padding: '1rem', background: 'rgba(10,22,40,.68)', backdropFilter: 'blur(9px)' }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="legacy-student-details-title" style={{ width: 'min(100%, 960px)', maxHeight: '90vh', overflowY: 'auto', padding: '1.5rem', borderRadius: '18px', background: '#fff', boxShadow: '0 30px 90px rgba(10,22,40,.34)' }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="legacy-student-details-title" style={{ width: 'min(100%, 1120px)', maxHeight: '90vh', overflowY: 'auto', padding: '1.8rem', borderRadius: '20px', background: '#fff', boxShadow: '0 30px 90px rgba(10,22,40,.34)' }}>
             <header style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #E2E8F0' }}>
               <div><p style={{ margin: 0, color: GOLD_DEEP, fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase' }}>Previous website record</p><h2 id="legacy-student-details-title" style={{ margin: '.3rem 0 0', color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.55rem' }}>{legacyDetails.displayName || 'Legacy student'}</h2><p style={{ margin: '.32rem 0 0', color: '#526C88' }}>{legacyDetails.email || 'No email'} · Old ID {legacyDetails.legacyCandidateId || '—'}</p></div>
               <button autoFocus type="button" aria-label="Close legacy student details" onClick={() => setLegacyDetails(null)} style={{ width: '40px', height: '40px', border: '1px solid #CBD5E1', borderRadius: '10px', background: '#fff', color: '#334155', fontSize: '1.45rem', cursor: 'pointer' }}>&times;</button>
             </header>
             <p role="note" style={{ margin: '1rem 0', padding: '.75rem .9rem', borderRadius: '10px', border: '1px solid #BFDBFE', background: '#F8FBFF', color: '#334E6F', fontSize: '.85rem', lineHeight: 1.5 }}>Historic data is shown for school administration only. Legacy passwords and reset tokens were not imported and are never displayed.</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(265px,1fr))', gap: '.85rem' }}>
-              {[
-                ['Student & contact', [['First name', legacyDetails.firstName], ['Middle name', legacyDetails.middleName], ['Last name', legacyDetails.lastName], ['Username', legacyDetails.username], ['Date of birth', legacyDetails.dob], ['Gender', legacyDetails.gender], ['Phone', legacyDetails.phone], ['Second phone', legacyDetails.secondaryPhone], ['Alternate phone', legacyDetails.alternatePhone]]],
-                ['Address & school', [['Address', legacyDetails.address], ['Address 2 / apartment', legacyDetails.address2], ['Primary home address', legacyDetails.primaryHomeAddress], ['City', legacyDetails.city], ['State', legacyDetails.state], ['ZIP code', legacyDetails.zipCode], ['Gate code', legacyDetails.gateCode], ['School affiliate', legacyDetails.schoolAffiliate], ['High school', legacyDetails.highSchool || legacyDetails.studentHighSchool]]],
-                ['Driving record', [['License number', legacyDetails.licenseNumber], ['License issued', legacyDetails.licenseIssuedAt], ['License expires', legacyDetails.licenseExpiresAt], ['Permit number', legacyDetails.permitNumber], ['Permit issued', legacyDetails.permitIssuedAt], ['Permit expires', legacyDetails.permitExpiresAt], ['Uses lenses', legacyDetails.usesLenses ? 'Yes' : legacyDetails.usesLenses === false ? 'No' : '—']]],
-                ['Payer & legacy account', [['Payer name', legacyDetails.payerName], ['Payer relationship', legacyDetails.payerRelationship], ['Old account active', legacyDetails.legacyActive ? 'Yes' : 'No'], ['New account status', legacyDetails.activationStatus === 'activated' ? 'Linked' : 'Pending activation'], ['New account UID', legacyDetails.linkedUid], ['Old join date', legacyDetails.legacyJoinedAt], ['Course chapter progress', legacyDetails.chapterCheck], ['Version type', legacyDetails.versionType]]],
-                ['Health information', [['Medical condition', legacyDetails.medicalCondition], ['Medications', legacyDetails.medications]]],
-                ['Notes', [['Old comments', legacyDetails.comments], ['Legacy notes', legacyDetails.legacyNotes], ['Photo reference', legacyDetails.legacyPhotoReference]]],
-              ].map(([title, fields]) => <section key={title} style={{ minWidth: 0, padding: '1rem', borderRadius: '13px', border: '1px solid #DCE7F3', background: '#FBFDFF' }}><h3 style={{ margin: '0 0 .75rem', color: '#0F3F79', fontSize: '.98rem', fontWeight: 900 }}>{title}</h3><dl style={{ display: 'grid', gap: '.58rem', margin: 0 }}>{fields.map(([label, value]) => <div key={label} style={{ display: 'grid', gap: '.12rem' }}><dt style={{ color: '#64748B', fontFamily: 'var(--font-mono)', fontSize: '.67rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 800 }}>{label}</dt><dd style={{ margin: 0, color: '#1E293B', fontSize: '.88rem', lineHeight: 1.45, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{value || '—'}</dd></div>)}</dl></section>)}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(360px,1fr))', gap: '1rem' }}>
+              {legacyDetailSections.map(([title, fields]) => {
+                const availableFields = fields.filter(([, value]) => Boolean(value))
+                return <section key={title} style={{ minWidth: 0, padding: '1.15rem', borderRadius: '14px', border: '1px solid #DCE7F3', background: 'linear-gradient(145deg,#FFFFFF,#F8FBFF)' }}><h3 style={{ margin: '0 0 .85rem', color: '#0F3F79', fontSize: '1rem', fontWeight: 900 }}>{title}</h3>{availableFields.length ? <dl style={{ display: 'grid', gap: '.72rem', margin: 0 }}>{availableFields.map(([label, value]) => <div key={label} style={{ display: 'grid', gap: '.18rem' }}><dt style={{ color: '#64748B', fontFamily: 'var(--font-mono)', fontSize: '.71rem', letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 800 }}>{label}</dt><dd style={{ margin: 0, color: '#1E293B', fontSize: '.96rem', lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontWeight: 600 }}>{value}</dd></div>)}</dl> : <p style={{ margin: 0, color: '#64748B', fontSize: '.9rem', lineHeight: 1.55 }}>No information was stored for this section in the old website record.</p>}</section>
+              })}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}><button type="button" onClick={() => setLegacyDetails(null)} style={{ minHeight: '42px', padding: '.6rem 1rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Close details</button></div>
           </section>
