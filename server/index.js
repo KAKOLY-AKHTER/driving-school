@@ -4577,6 +4577,12 @@ app.get('/api/admin/legacy-students', async (req, res) => {
       firstName: 1, middleName: 1, lastName: 1, displayName: 1, email: 1, phone: 1,
       city: 1, state: 1, legacyJoinedAt: 1, legacyActive: 1, activationStatus: 1,
       linkedUid: 1, activatedAt: 1, importedAt: 1,
+      username: 1, secondaryPhone: 1, alternatePhone: 1, dob: 1, gender: 1,
+      address: 1, address2: 1, apartmentNumber: 1, gateCode: 1, primaryHomeAddress: 1,
+      zipCode: 1, countryStateId: 1, schoolAffiliate: 1, highSchool: 1, studentHighSchool: 1,
+      legacyPhotoReference: 1, chapterCheck: 1, versionType: 1, payerName: 1, payerRelationship: 1,
+      licenseNumber: 1, licenseIssuedAt: 1, licenseExpiresAt: 1, permitNumber: 1, permitIssuedAt: 1,
+      permitExpiresAt: 1, medicalCondition: 1, medications: 1, usesLenses: 1, comments: 1, legacyNotes: 1,
     }
     const [items, total, pending, activated] = await Promise.all([
       legacyStudentsCol.find(query, { projection }).sort({ legacyJoinedAt: -1, legacyCandidateId: -1 }).skip((page - 1) * limit).limit(limit).toArray(),

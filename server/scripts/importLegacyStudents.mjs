@@ -1,10 +1,9 @@
 /**
  * Safe one-time importer for the old A Precision PHP/phpMyAdmin export.
  *
- * This importer deliberately never reads or stores legacy passwords, reset
- * tokens, payment details, license numbers, medical details, or payer data.
- * It only imports the minimum student profile data needed to recognise an old
- * student on the new site.
+ * This importer deliberately never reads or stores legacy passwords or reset
+ * tokens. Other historic profile details are retained in the administrator-only
+ * Legacy Students view so the school can review the original student record.
  *
  * Usage (safe preview):
  *   node server/scripts/importLegacyStudents.mjs --file "C:\\path\\old-export.json"
@@ -83,13 +82,38 @@ function toLegacyStudent(row) {
     email: normalizeEmail(row.str_email),
     username: cleanText(row.str_username, 160),
     phone: cleanText(row.str_phone, 30),
-    secondaryPhone: cleanText(row.str_phone2 || row.str_phone3, 30),
+    secondaryPhone: cleanText(row.str_phone2, 30),
+    alternatePhone: cleanText(row.str_phone3, 30),
     dob: cleanDate(row.dtt_dob),
+    gender: cleanText(row.str_gender, 20),
     address: cleanText(row.str_address1, 500),
     address2: cleanText(row.str_address2 || row.str_aptno, 300),
     city: cleanText(row.str_city, 100),
     state: cleanText(row.str_state, 80),
+    countryStateId: cleanText(row.int_country_state_id, 40),
     zipCode: cleanText(row.str_zipcode, 20),
+    apartmentNumber: cleanText(row.str_aptno, 80),
+    gateCode: cleanText(row.str_gatecode, 100),
+    primaryHomeAddress: cleanText(row.str_primary_home_address, 500),
+    schoolAffiliate: cleanText(row.str_school_affiliate, 180),
+    highSchool: cleanText(row.str_highschool, 180),
+    studentHighSchool: cleanText(row.str_stud_high_school, 180),
+    legacyPhotoReference: cleanText(row.str_photo, 500),
+    chapterCheck: cleanText(row.str_chapter_check, 1000),
+    versionType: cleanText(row.bit_version_type, 40),
+    payerName: cleanText(row.str_payer_name, 160),
+    payerRelationship: cleanText(row.str_relation, 100),
+    licenseNumber: cleanText(row.str_licenseno, 160),
+    licenseIssuedAt: cleanDate(row.dtt_issue),
+    licenseExpiresAt: cleanDate(row.dtt_exp),
+    permitNumber: cleanText(row.str_student_permit_no, 160),
+    permitIssuedAt: cleanDate(row.dtt_permit_issued),
+    permitExpiresAt: cleanDate(row.dtt_permit_expired),
+    medicalCondition: cleanText(row.str_medical_condition, 1000),
+    medications: cleanText(row.str_medications, 1000),
+    usesLenses: String(row.bit_lense || '') === '1',
+    comments: cleanText(row.str_coments, 2000),
+    legacyNotes: cleanText(row.txt_notes, 4000),
     legacyJoinedAt: cleanDate(row.dtt_date_join),
     legacyActive: String(row.bit_active || '') === '1',
     source: 'aprecisi_SchDb.tbl_candidate_new',
@@ -166,7 +190,7 @@ if (!sourceFile) {
       }))
       const result = await collection.bulkWrite(operations, { ordered: false })
       console.log(JSON.stringify({ ...summary, matched: result.matchedCount, modified: result.modifiedCount, upserted: result.upsertedCount }, null, 2))
-      console.log('Import complete. No legacy password, token, financial, license, payer, or medical field was imported.')
+      console.log('Import complete. Legacy passwords and reset tokens were never imported.')
     } finally {
       await client.close()
     }
