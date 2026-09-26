@@ -4623,7 +4623,9 @@ app.get('/api/admin/legacy-students/:candidateId/records', async (req, res) => {
       locationIds.length ? legacyCitiesCol.find({ legacyCityId: { $in: locationIds } }, { projection: { _id: 0, legacyCityId: 1, cityName: 1, zipCode: 1 } }).toArray() : [],
     ])
     const instructorNames = new Map(instructors.map(instructor => [cleanText(instructor.legacyInstructorId, 80), cleanText(instructor.displayName, 160)]))
-    const locationNames = new Map(locations.map(location => [cleanText(location.legacyCityId, 80), [cleanText(location.cityName, 120), cleanText(location.zipCode, 20)].filter(Boolean).join(' Â· ')]))
+    // Use an ASCII separator: legacy exports may be opened with a non-UTF-8
+    // encoding, which made the previous middle-dot render as mojibake in the UI.
+    const locationNames = new Map(locations.map(location => [cleanText(location.legacyCityId, 80), [cleanText(location.cityName, 120), cleanText(location.zipCode, 20)].filter(Boolean).join(', ')]))
     res.json({
       selectedCandidateId: candidateId,
       records,

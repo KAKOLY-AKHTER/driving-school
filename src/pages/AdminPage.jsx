@@ -1064,16 +1064,16 @@ export default function AdminPage() {
     if (!candidateId) return
     const requestId = legacyDetailsRequestRef.current + 1
     legacyDetailsRequestRef.current = requestId
-    setLegacyDetails({ selected: student, records: [], credits: [], loading: true, error: '' })
+    setLegacyDetails({ selected: student, records: [], credits: [], creditSearch: '', creditStatus: 'all', creditPage: 1, loading: true, error: '' })
     try {
       const response = await api.adminLegacyStudentRecords(candidateId)
       if (legacyDetailsRequestRef.current !== requestId) return
       const records = Array.isArray(response?.records) ? response.records : []
       const selected = records.find(record => String(record.legacyCandidateId || '') === String(response?.selectedCandidateId || candidateId)) || records[0] || student
-      setLegacyDetails({ selected, records, credits: Array.isArray(response?.credits) ? response.credits : [], loading: false, error: '' })
+      setLegacyDetails({ selected, records, credits: Array.isArray(response?.credits) ? response.credits : [], creditSearch: '', creditStatus: 'all', creditPage: 1, loading: false, error: '' })
     } catch (error) {
       if (legacyDetailsRequestRef.current !== requestId) return
-      setLegacyDetails({ selected: student, records: [], credits: [], loading: false, error: error?.message || 'Legacy student details could not be loaded.' })
+      setLegacyDetails({ selected: student, records: [], credits: [], creditSearch: '', creditStatus: 'all', creditPage: 1, loading: false, error: error?.message || 'Legacy student details could not be loaded.' })
     }
   }, [])
 
@@ -2133,6 +2133,28 @@ export default function AdminPage() {
     lessons: summary.lessons + (credit.lesson ? 1 : 0),
     cancelled: summary.cancelled + (credit.cancelled ? 1 : 0),
   }), { active: 0, paid: 0, lessons: 0, cancelled: 0 })
+  const legacyCreditSearch = String(legacyDetails?.creditSearch || '').trim().toLowerCase()
+  const legacyCreditStatus = legacyDetails?.creditStatus || 'all'
+  const filteredLegacyCredits = legacyCredits.filter(credit => {
+    const matchesSearch = !legacyCreditSearch || [
+      credit.legacyCandidateCreditId,
+      credit.legacyCandidateId,
+      credit.scheduledDate,
+      credit.fromTime,
+      credit.toTime,
+      credit.instructorName,
+      credit.locationName,
+    ].some(value => String(value || '').toLowerCase().includes(legacyCreditSearch))
+    const matchesStatus = legacyCreditStatus === 'all'
+      || (legacyCreditStatus === 'active' && credit.active && !credit.cancelled)
+      || (legacyCreditStatus === 'cancelled' && credit.cancelled)
+      || (legacyCreditStatus === 'paid' && credit.paid)
+    return matchesSearch && matchesStatus
+  })
+  const legacyCreditPageSize = 15
+  const legacyCreditPages = Math.max(1, Math.ceil(filteredLegacyCredits.length / legacyCreditPageSize))
+  const safeLegacyCreditPage = Math.min(Math.max(1, Number(legacyDetails?.creditPage) || 1), legacyCreditPages)
+  const visibleLegacyCredits = filteredLegacyCredits.slice((safeLegacyCreditPage - 1) * legacyCreditPageSize, safeLegacyCreditPage * legacyCreditPageSize)
 
   const enrollmentRows = websiteUsers.flatMap(account => (Array.isArray(account.courses) ? account.courses : [])
     .map((course, index) => ({
@@ -4063,16 +4085,27 @@ Near and Long pricing is applied automatically from the selected city and verifi
                 <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginBottom: '.9rem' }}>
                   {[['Total', legacyCredits.length, '#EFF6FF', '#0755AE'], ['Active', legacyCreditSummary.active, '#ECFDF3', '#087443'], ['Paid', legacyCreditSummary.paid, '#FEF3C7', '#92400E'], ['Lesson', legacyCreditSummary.lessons, '#F3E8FF', '#6B21A8'], ['Cancelled', legacyCreditSummary.cancelled, '#FEF2F2', '#B91C1C']].map(([label, value, background, color]) => <span key={label} style={{ padding: '.35rem .6rem', borderRadius: '999px', background, color, fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 900 }}>{value} {label}</span>)}
                 </div>
+                {legacyCredits.length > 0 && <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', gap: '.65rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                  <input className="admin-toolbar-input" aria-label="Search historic lesson-credit activity" type="search" placeholder="Search credit ID, date, instructor…" value={legacyDetails.creditSearch || ''} onChange={event => setLegacyDetails(current => ({ ...current, creditSearch: event.target.value, creditPage: 1 }))} style={{ ...inputStyle, width: 'min(100%, 310px)' }} />
+                  <select aria-label="Filter historic lesson-credit activity" value={legacyDetails.creditStatus || 'all'} onChange={event => setLegacyDetails(current => ({ ...current, creditStatus: event.target.value, creditPage: 1 }))} style={{ ...inputStyle, width: '190px' }}>
+                    <option value="all">All activity</option>
+                    <option value="active">Active only</option>
+                    <option value="paid">Paid only</option>
+                    <option value="cancelled">Cancelled only</option>
+                  </select>
+                  {(legacyCreditSearch || legacyCreditStatus !== 'all') && <button type="button" onClick={() => setLegacyDetails(current => ({ ...current, creditSearch: '', creditStatus: 'all', creditPage: 1 }))} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
+                </div>}
+                {legacyCredits.length > 0 && <TablePager page={safeLegacyCreditPage} pages={legacyCreditPages} total={filteredLegacyCredits.length} label="activity records" onChange={page => setLegacyDetails(current => ({ ...current, creditPage: page }))} />}
                 <div className="admin-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead><tr><th scope="col" style={thStyle}>Old Credit ID</th><th scope="col" style={thStyle}>Old Student ID</th><th scope="col" style={thStyle}>Schedule</th><th scope="col" style={thStyle}>Instructor / Location</th><th scope="col" style={thStyle}>Historic Status</th><th scope="col" style={thStyle}>Pickup / Notes</th></tr></thead>
-                  <tbody>{legacyCredits.map(credit => <tr key={`${credit.archiveType || credit.source || 'credit'}-${credit.legacyCandidateCreditId}`}>
+                  <tbody>{visibleLegacyCredits.map(credit => <tr key={`${credit.archiveType || credit.source || 'credit'}-${credit.legacyCandidateCreditId}`}>
                     <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '.82rem' }}>{credit.legacyCandidateCreditId || '—'}</td>
                     <td style={tdStyle}>ID {credit.legacyCandidateId || '—'}</td>
                     <td style={tdStyle}><strong>{formatDateDMY(credit.scheduledDate)}</strong><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{credit.fromTime || 'Time unavailable'} – {credit.toTime || 'Time unavailable'}</p></td>
                     <td style={tdStyle}><div>{credit.instructorName || (credit.legacyInstructorId ? `Instructor #${credit.legacyInstructorId}` : 'Not recorded')}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{credit.locationName || (credit.locationId ? `Location ${credit.locationId}` : 'Location unavailable')}</p></td>
                     <td style={tdStyle}><div style={{ display: 'flex', gap: '.35rem', flexWrap: 'wrap' }}>{[[credit.active, 'Active', '#ECFDF3', '#087443'], [credit.paid, 'Paid', '#FEF3C7', '#92400E'], [credit.lesson, 'Lesson', '#F3E8FF', '#6B21A8'], [credit.cancelled, 'Cancelled', '#FEF2F2', '#B91C1C']].filter(([show]) => show).map(([, label, background, color]) => <span key={label} style={{ padding: '.24rem .45rem', borderRadius: '999px', background, color, fontFamily: 'var(--font-mono)', fontSize: '.65rem', fontWeight: 900 }}>{label}</span>)}</div>{!credit.active && !credit.paid && !credit.lesson && !credit.cancelled && <span style={{ color: '#64748B', fontSize: '.84rem' }}>Not recorded</span>}</td>
-                    <td style={tdStyle}>{credit.pickupAddress || credit.dropoffAddress || credit.studentLocation || credit.removalNote ? <><div>{credit.pickupAddress || credit.studentLocation || 'No pickup address'}</div>{credit.dropoffAddress && <p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>Drop-off: {credit.dropoffAddress}</p>}{credit.removalNote && <p style={{ margin: '.18rem 0 0', color: '#B45309', fontSize: '.84rem' }}>Note: {credit.removalNote}</p>}</> : <span style={{ color: '#64748B', fontSize: '.84rem' }}>Not recorded</span>}</td>
-                  </tr>)}{!legacyCredits.length && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '1.5rem', color: '#64748B' }}>No historic lesson-credit activity was recorded for these old student ID(s).</td></tr>}</tbody>
+                    <td style={tdStyle}>{credit.pickupAddress || credit.dropoffAddress || credit.removalNote ? <>{credit.pickupAddress && <div>Pickup: {credit.pickupAddress}</div>}{credit.dropoffAddress && <p style={{ margin: credit.pickupAddress ? '.18rem 0 0' : 0, color: '#64748B', fontSize: '.84rem' }}>Drop-off: {credit.dropoffAddress}</p>}{credit.removalNote && <p style={{ margin: credit.pickupAddress || credit.dropoffAddress ? '.18rem 0 0' : 0, color: '#B45309', fontSize: '.84rem' }}>Note: {credit.removalNote}</p>}</> : <span style={{ color: '#64748B', fontSize: '.84rem' }}>Not recorded</span>}</td>
+                  </tr>)}{!legacyCredits.length && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '1.5rem', color: '#64748B' }}>No historic lesson-credit activity was recorded for these old student ID(s).</td></tr>}{legacyCredits.length > 0 && !visibleLegacyCredits.length && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '1.5rem', color: '#64748B' }}>No activity records match the current search or filter.</td></tr>}</tbody>
                 </table></div>
               </section>
             </>}
