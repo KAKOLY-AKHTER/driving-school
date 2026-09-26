@@ -4599,7 +4599,13 @@ app.get('/api/admin/legacy-students', async (req, res) => {
     const page = cleanInteger(req.query.page, 1, 1, 10_000)
     const limit = cleanInteger(req.query.limit, 25, 10, 100)
     const status = cleanText(req.query.status, 30).toLowerCase()
+    const certificate = cleanText(req.query.certificate, 20).toLowerCase()
     const query = {}
+    const certificateEmails = await legacyCertificateStudentsCol.distinct('email', { email: { $type: 'string', $ne: '' } })
+    const certificateEmailSet = new Set(certificateEmails.map(normalizeEmail).filter(Boolean))
+    const normalizedCertificateEmails = [...certificateEmailSet]
+    if (certificate === 'has') query.email = { $in: normalizedCertificateEmails }
+    if (certificate === 'none') query.email = { $nin: normalizedCertificateEmails }
     if (status === 'pending' || status === 'activated') query.activationStatus = status
     if (search) {
       const expression = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
@@ -4634,7 +4640,10 @@ app.get('/api/admin/legacy-students', async (req, res) => {
       legacyStudentsCol.countDocuments({ requiresAdminReview: true }),
       legacyStudentRecordsCol.countDocuments({ hasValidEmail: false }),
     ])
-    res.json({ items, total, page, limit, pending, activated, uniqueAccounts, linkedAccounts, duplicateEmailGroups, recordsWithoutValidEmail })
+    res.json({
+      items: items.map(item => ({ ...item, hasCertificateRecord: certificateEmailSet.has(normalizeEmail(item.email)) })),
+      total, page, limit, pending, activated, uniqueAccounts, linkedAccounts, duplicateEmailGroups, recordsWithoutValidEmail,
+    })
   } catch (error) {
     sendServerError(res, error, 'Legacy student lookup failed')
   }

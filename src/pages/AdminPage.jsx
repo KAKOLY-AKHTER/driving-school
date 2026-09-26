@@ -15,7 +15,7 @@ import AdminUserDetailsModal from '../components/AdminUserDetailsModal'
 import PasswordInput from '../components/PasswordInput'
 import AdminDeleteIconButton from '../components/AdminDeleteIconButton'
 import ProfilePhotoUploader from '../components/ProfilePhotoUploader'
-import { downloadCertificatePdf, openEnrollmentInvoice } from '../utils/printDocument'
+import { downloadCertificatePdf, openEnrollmentInvoice, openPrintableDocument } from '../utils/printDocument'
 
 const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
@@ -932,6 +932,7 @@ export default function AdminPage() {
   const [legacyMeta, setLegacyMeta] = useState({ total: 0, pending: 0, activated: 0, uniqueAccounts: 0, linkedAccounts: 0, duplicateEmailGroups: 0, recordsWithoutValidEmail: 0, page: 1, limit: 25 })
   const [legacySearch, setLegacySearch] = useState('')
   const [legacyStatus, setLegacyStatus] = useState('all')
+  const [legacyCertificateFilter, setLegacyCertificateFilter] = useState('all')
   const [legacyPage, setLegacyPage] = useState(1)
   const [legacyLoading, setLegacyLoading] = useState(false)
   const [legacyError, setLegacyError] = useState('')
@@ -972,6 +973,8 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [loadAttempt, setLoadAttempt] = useState(0)
+  const [autoRetryPending, setAutoRetryPending] = useState(false)
+  const [lastDashboardUpdated, setLastDashboardUpdated] = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [contactEdit, setContactEdit] = useState(null)
   const [contactForm, setContactForm] = useState({ firstName: '', lastName: '', phone: '', email: '', comments: '', status: '' })
@@ -1204,9 +1207,12 @@ export default function AdminPage() {
 
   useEffect(() => {
     let cancelled = false
+    let retryTimer
+    let retryScheduled = false
     const load = async () => {
       setLoading(true)
       setLoadError('')
+      setAutoRetryPending(false)
       try {
         const [s, u, b, c, st, p, l, a, so, certificates] = await Promise.all([
           api.adminStats(),
@@ -1231,14 +1237,29 @@ export default function AdminPage() {
         setAreas(Array.isArray(a) ? a : [])
         setSocials(Array.isArray(so) ? so : [])
         setCertificateRequests(Array.isArray(certificates) ? certificates : [])
+        setLastDashboardUpdated(new Date())
       } catch (error) {
-        if (!cancelled) setLoadError(error?.message || 'The admin dashboard could not be loaded. Please try again.')
+        if (cancelled) return
+        // A cold serverless start can briefly exceed the browser request timeout.
+        // Retry the first dashboard load once before showing an error screen.
+        if (loadAttempt === 0) {
+          retryScheduled = true
+          setAutoRetryPending(true)
+          retryTimer = window.setTimeout(() => {
+            if (!cancelled) {
+              setAutoRetryPending(false)
+              setLoadAttempt(1)
+            }
+          }, 1500)
+        } else {
+          setLoadError(error?.message || 'The admin dashboard could not be loaded. Please try again.')
+        }
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled && !retryScheduled) setLoading(false)
       }
     }
     load()
-    return () => { cancelled = true }
+    return () => { cancelled = true; if (retryTimer) window.clearTimeout(retryTimer) }
   }, [loadAttempt])
 
   useEffect(() => {
@@ -1587,6 +1608,36 @@ export default function AdminPage() {
       setMsg('Certificate could not be prepared for printing. Please try again.')
       setTimeout(() => setMsg(''), 3000)
     }
+  }
+
+  const printLegacyArchive = () => {
+    const student = legacyDetails?.selected
+    if (!student) return
+    const certificateProfiles = Array.isArray(legacyDetails.certificateProfiles) ? legacyDetails.certificateProfiles : []
+    const historicTests = certificateProfiles.flatMap(profile => Array.isArray(profile.tests) ? profile.tests : [])
+    const testSummary = historicTests.length
+      ? historicTests.map(test => `${test.testTitle || 'Test'}: ${test.score === '' || test.score === undefined ? 'Not recorded' : `${test.score}%`} (${legacyDisplayDate(test.testDate)})`).join('\n')
+      : 'Not recorded'
+    const opened = openPrintableDocument({
+      title: `Legacy archive - ${student.displayName || student.legacyCandidateId || 'student'}`,
+      heading: 'Legacy Student Archive Summary',
+      subtitle: `Read-only previous-website record • Old student ID ${student.legacyCandidateId || '—'}`,
+      rows: [
+        ['Student', student.displayName || [student.firstName, student.lastName].filter(Boolean).join(' ') || 'Not recorded'],
+        ['Email', student.email || 'Not recorded'],
+        ['Phone', student.phone || 'Not recorded'],
+        ['Legacy record IDs', (student.legacyCandidateIds || [student.legacyCandidateId]).filter(Boolean).join(', ') || 'Not recorded'],
+        ['License number', student.licenseNumber || 'Not recorded'],
+        ['Permit number', student.permitNumber || 'Not recorded'],
+        ['Certificate archive profiles', certificateProfiles.length || 'None recorded'],
+        ['Historic test results', testSummary],
+        ['Lesson-credit activity', `${(legacyDetails.credits || []).length} historical row(s)`],
+        ['Historic fee/fine records', `${(legacyDetails.fees || []).length} row(s)`],
+      ],
+      autoPrint: true,
+    })
+    setMsg(opened ? 'Legacy archive summary opened for printing.' : 'Your browser blocked the print window. Allow pop-ups and try again.')
+    setTimeout(() => setMsg(''), 3000)
   }
 
   const handleDeleteEnrollment = ({ account, course }) => requestConfirmation(
@@ -2075,6 +2126,7 @@ export default function AdminPage() {
           limit: 25,
           search: legacySearch.trim(),
           status: legacyStatus === 'all' ? '' : legacyStatus,
+          certificate: legacyCertificateFilter === 'all' ? '' : legacyCertificateFilter,
         })
         if (cancelled) return
         setLegacyStudents(Array.isArray(response?.items) ? response.items : [])
@@ -2091,7 +2143,7 @@ export default function AdminPage() {
     }
     loadLegacyStudents()
     return () => { cancelled = true }
-  }, [activeTab, legacyPage, legacySearch, legacyStatus])
+  }, [activeTab, legacyPage, legacySearch, legacyStatus, legacyCertificateFilter])
 
   useEffect(() => {
     if (activeTab !== 'instructors') return undefined
@@ -2123,6 +2175,8 @@ export default function AdminPage() {
   const legacyCertificateCount = certificateRequests.filter(item => item.source === 'legacy').length
   const pendingCertificateCount = certificateRequests.filter(item => item.source !== 'legacy' && String(item.status || '').toLowerCase().includes('pending')).length
   const legacyIssuedCertificateCount = certificateRequests.filter(item => item.source === 'legacy' && String(item.status || '').toLowerCase().includes('issued')).length
+  const legacyFinalTestPassedCount = certificateRequests.filter(item => item.source === 'legacy' && item.finalTestResult?.passed).length
+  const legacyFinalTestMissingCount = certificateRequests.filter(item => item.source === 'legacy' && !item.finalTestResult?.passed).length
   const filteredCertificateRequests = certificateRequests.filter(item => {
     const legacy = item.source === 'legacy'
     const status = String(item.status || '').toLowerCase()
@@ -2579,6 +2633,7 @@ export default function AdminPage() {
               {loading && (
                 <div role="status" aria-label="Loading admin dashboard" className="admin-loading-grid" style={{ marginBottom: '1.5rem' }}>
                   <div className="admin-skeleton" /><div className="admin-skeleton" /><div className="admin-skeleton" />
+                  {autoRetryPending && <p style={{ gridColumn: '1 / -1', margin: '.15rem 0 0', color: '#526C88', textAlign: 'center', fontWeight: 750 }}>Reconnecting to the server…</p>}
                 </div>
               )}
 
@@ -2593,6 +2648,10 @@ export default function AdminPage() {
 
               {!loading && !loadError && activeTab === 'dashboard' && (
                 <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '.65rem', flexWrap: 'wrap', margin: '0 0 .8rem' }}>
+                    <span style={{ color: '#64748B', fontSize: '.82rem' }}>Last updated {lastDashboardUpdated ? lastDashboardUpdated.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }) : '—'}</span>
+                    <button type="button" onClick={() => setLoadAttempt(value => value + 1)} style={{ padding: '.4rem .7rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', color: '#0755AE', fontWeight: 800, cursor: 'pointer' }}>Refresh data</button>
+                  </div>
                   <div className="admin-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
                     {[
                       { num: stats.totalUsers, label: 'Total Users', color: SKY_BLUE, tab: 'users' },
@@ -2771,7 +2830,8 @@ export default function AdminPage() {
                     <input className="admin-toolbar-input" aria-label="Search legacy students" type="search" placeholder="Search name, email, phone, old ID…" value={legacySearch} onChange={event => { setLegacySearch(event.target.value); setLegacyPage(1) }} style={{ ...inputStyle, width: '300px' }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
                       <select aria-label="Filter legacy students by activation status" value={legacyStatus} onChange={event => { setLegacyStatus(event.target.value); setLegacyPage(1) }} style={{ ...inputStyle, width: '185px' }}><option value="all">All statuses</option><option value="pending">Pending activation</option><option value="activated">Linked accounts</option></select>
-                      {(legacySearch || legacyStatus !== 'all') && <button type="button" onClick={() => { setLegacySearch(''); setLegacyStatus('all'); setLegacyPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
+                      <select aria-label="Filter legacy students by certificate archive" value={legacyCertificateFilter} onChange={event => { setLegacyCertificateFilter(event.target.value); setLegacyPage(1) }} style={{ ...inputStyle, width: '205px' }}><option value="all">All certificate records</option><option value="has">Has certificate archive</option><option value="none">No certificate archive</option></select>
+                      {(legacySearch || legacyStatus !== 'all' || legacyCertificateFilter !== 'all') && <button type="button" onClick={() => { setLegacySearch(''); setLegacyStatus('all'); setLegacyCertificateFilter('all'); setLegacyPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                     </div>
                   </div>
                   {legacyError && <div role="alert" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{legacyError}</div>}
@@ -2787,7 +2847,7 @@ export default function AdminPage() {
                           return <tr key={student._id || student.legacyCandidateId || student.email}>
                             <td style={tdStyle}><strong>{student.displayName || [student.firstName, student.lastName].filter(Boolean).join(' ') || 'Unnamed student'}</strong><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{student.city || 'City unavailable'}{student.state ? `, ${student.state}` : ''}</p></td>
                             <td style={tdStyle}><div>{student.email}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{student.phone || 'Phone unavailable'}</p></td>
-                            <td style={tdStyle}><div style={{ fontFamily: 'var(--font-mono)', fontSize: '.82rem', color: '#334155' }}>ID {student.legacyCandidateId || '—'}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>Joined {joinedLabel}</p></td>
+                            <td style={tdStyle}><div style={{ fontFamily: 'var(--font-mono)', fontSize: '.82rem', color: '#334155' }}>ID {student.legacyCandidateId || '—'}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>Joined {joinedLabel}</p>{student.hasCertificateRecord && <span style={{ display: 'inline-flex', marginTop: '.35rem', padding: '.22rem .45rem', borderRadius: '999px', background: '#F5F3FF', color: '#6D28D9', fontFamily: 'var(--font-mono)', fontSize: '.62rem', fontWeight: 900 }}>CERTIFICATE ARCHIVE</span>}</td>
                             <td style={tdStyle}><span style={{ display: 'inline-flex', padding: '.28rem .6rem', borderRadius: '999px', background: active ? '#ECFDF3' : '#FFF7ED', color: active ? '#087443' : '#9A5B09', fontFamily: 'var(--font-mono)', fontSize: '.7rem', letterSpacing: '.05em', textTransform: 'uppercase', fontWeight: 900 }}>{active ? 'Linked' : 'Pending'}</span>{active && <p style={{ margin: '.35rem 0 0', color: '#64748B', fontSize: '.8rem' }}>New account connected</p>}</td>
                             <td style={tdStyle}>{student.requiresAdminReview ? <span title={`${student.duplicateRecordCount} old rows use this email; the newest active row was selected.`} style={{ display: 'inline-flex', padding: '.28rem .6rem', borderRadius: '999px', background: '#FEF2F2', color: '#B91C1C', fontFamily: 'var(--font-mono)', fontSize: '.68rem', letterSpacing: '.04em', textTransform: 'uppercase', fontWeight: 900 }}>Check {student.duplicateRecordCount} records</span> : <span style={{ color: '#64748B', fontSize: '.86rem' }}>No review needed</span>}</td>
                             <td style={tdStyle}><button type="button" onClick={() => openLegacyDetails(student)} style={{ minHeight: '36px', padding: '.45rem .72rem', border: `1px solid ${SKY_BLUE}`, borderRadius: '9px', background: '#fff', color: SKY_BLUE, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap' }}>View Details</button></td>
@@ -3092,6 +3152,8 @@ export default function AdminPage() {
                       [legacyCertificateCount, 'legacy records', '#F5F3FF', '#6D28D9'],
                       [pendingCertificateCount, 'need review', '#FFF7ED', '#9A6700'],
                       [legacyIssuedCertificateCount, 'legacy issued', '#ECFDF3', '#087443'],
+                      [legacyFinalTestPassedCount, 'legacy final test passed', '#ECFDF3', '#087443'],
+                      [legacyFinalTestMissingCount, 'legacy final test missing / not passed', '#FEF2F2', '#B91C1C'],
                     ].map(([count, label, background, color]) => <span key={label} style={{ padding: '.42rem .68rem', borderRadius: '999px', background, color, fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 900 }}>{count} {label}</span>)}
                   </div>
                   <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', gap: '.65rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
@@ -4260,7 +4322,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                 </table></div>
               </section>
             </>}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}><button type="button" onClick={() => setLegacyDetails(null)} style={{ minHeight: '42px', padding: '.6rem 1rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Close details</button></div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.65rem', flexWrap: 'wrap', marginTop: '1rem' }}><button type="button" onClick={printLegacyArchive} style={{ minHeight: '42px', padding: '.6rem 1rem', border: '1px solid #6D28D9', borderRadius: '9px', background: '#fff', color: '#6D28D9', fontWeight: 850, cursor: 'pointer' }}>Print archive summary</button><button type="button" onClick={() => setLegacyDetails(null)} style={{ minHeight: '42px', padding: '.6rem 1rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Close details</button></div>
           </section>
         </div>
       )}
