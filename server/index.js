@@ -477,6 +477,9 @@ const LEGACY_CERTIFICATE_TEST_TITLES = {
   '11': 'Final Test',
 }
 const legacyCertificateTestTitle = value => LEGACY_CERTIFICATE_TEST_TITLES[cleanText(value, 40)] || `Test ${cleanText(value, 40) || 'record'}`
+const legacyCertificateCourseLabel = value => cleanText(value, 240)
+  .replace(/\s*\(\s*US\s*\$\s*\)\s*:\s*\$?\s*[\d,.]+\s*$/i, '')
+  .trim()
 const isDuplicateCertificatePlan = (value) => String(value || '') === '13'
 const certificateRequestTypeForPlan = (value) => {
   if (isDuplicateCertificatePlan(value)) return 'Duplicate'
@@ -4956,7 +4959,9 @@ app.get('/api/admin/certificates', async (_req, res) => {
       { $limit: 500 },
       ]).toArray(),
       legacyCertificateStudentsCol.find({}, { projection: { _id: 0 } }).toArray(),
-      legacyCertificateTestsCol.find({}, { projection: { _id: 0, legacyCandidateId: 1, testDate: 1, testLevelId: 1, score: 1 } }).toArray(),
+      // The listing only needs Test 11. Full historic test data is retrieved
+      // only after an administrator opens a legacy student's details.
+      legacyCertificateTestsCol.find({ testLevelId: '11' }, { projection: { _id: 0, legacyCandidateId: 1, testDate: 1, testLevelId: 1, score: 1 } }).toArray(),
     ])
     const current = rows.map(row => ({
       source: 'current',
@@ -4987,7 +4992,7 @@ app.get('/api/admin/certificates', async (_req, res) => {
         email: cleanText(student.email, 320),
         phone: cleanText(student.phone, 30),
         type: 'Legacy certificate archive',
-        title: cleanText(student.courseName, 240) || 'Online Drivers Ed',
+        title: legacyCertificateCourseLabel(student.courseName) || 'Online Drivers Ed',
         status: student.certificateIssued ? 'Issued (legacy)' : student.courseCompleted ? 'Course completed (legacy)' : 'Not issued (legacy)',
         requestedAt: cleanText(student.joinedAt, 80),
         paidAmount: cleanText(student.coursePrice, 40),
@@ -5010,7 +5015,7 @@ app.get('/api/admin/legacy-certificates/:candidateId', async (req, res) => {
     const tests = await legacyCertificateTestsCol.find({ legacyCandidateId: candidateId }, { projection: { _id: 0 } })
       .sort({ testLevelId: 1, testDate: 1, legacyTestId: 1 }).toArray()
     res.json({
-      student,
+      student: { ...student, courseName: legacyCertificateCourseLabel(student.courseName) },
       tests: tests.map(test => ({ ...test, testTitle: legacyCertificateTestTitle(test.testLevelId) })),
     })
   } catch (error) {

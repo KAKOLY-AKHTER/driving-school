@@ -34,6 +34,12 @@ const legacyDisplayDate = (value) => {
   const date = new Date(text)
   return Number.isNaN(date.getTime()) ? text : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
+const legacyCertificateStatusLabel = (value) => {
+  const status = String(value || '').toLowerCase()
+  if (status.includes('issued')) return 'Legacy · issued'
+  if (status.includes('completed')) return 'Legacy · completed'
+  return 'Legacy · not issued'
+}
 
 const USER_EDIT_SECTIONS = [
   {
@@ -940,6 +946,10 @@ export default function AdminPage() {
   const [certificateRequests, setCertificateRequests] = useState([])
   const [certificateUpdating, setCertificateUpdating] = useState('')
   const [legacyCertificateDetails, setLegacyCertificateDetails] = useState(null)
+  const [certificateSearch, setCertificateSearch] = useState('')
+  const [certificateSourceFilter, setCertificateSourceFilter] = useState('all')
+  const [certificatePage, setCertificatePage] = useState(1)
+  const [certificateLimit, setCertificateLimit] = useState('20')
   const [bookings, setBookings] = useState([])
   const [contacts, setContacts] = useState([])
   const [userSearch, setUserSearch] = useState('')
@@ -2108,6 +2118,36 @@ export default function AdminPage() {
   }, [activeTab])
 
   const websiteUsers = users.filter(u => u.isAdmin !== true)
+  const certificateQuery = certificateSearch.trim().toLowerCase()
+  const currentCertificateCount = certificateRequests.filter(item => item.source !== 'legacy').length
+  const legacyCertificateCount = certificateRequests.filter(item => item.source === 'legacy').length
+  const pendingCertificateCount = certificateRequests.filter(item => item.source !== 'legacy' && String(item.status || '').toLowerCase().includes('pending')).length
+  const legacyIssuedCertificateCount = certificateRequests.filter(item => item.source === 'legacy' && String(item.status || '').toLowerCase().includes('issued')).length
+  const filteredCertificateRequests = certificateRequests.filter(item => {
+    const legacy = item.source === 'legacy'
+    const status = String(item.status || '').toLowerCase()
+    const matchesSearch = !certificateQuery || [
+      item.studentName,
+      item.email,
+      item.phone,
+      item.title,
+      item.type,
+      item.legacyCandidateId,
+      item.certificateNumber,
+    ].some(value => String(value || '').toLowerCase().includes(certificateQuery))
+    const matchesSource = certificateSourceFilter === 'all'
+      || (certificateSourceFilter === 'current' && !legacy)
+      || (certificateSourceFilter === 'legacy' && legacy)
+      || (certificateSourceFilter === 'action-needed' && !legacy && status.includes('pending'))
+      || (certificateSourceFilter === 'issued' && (status.includes('issued') || status === 'collected' || status === 'ready for pickup'))
+    return matchesSearch && matchesSource
+  })
+  const certificatePages = Math.max(1, Math.ceil(filteredCertificateRequests.length / Number(certificateLimit)))
+  const safeCertificatePage = Math.min(certificatePage, certificatePages)
+  const visibleCertificateRequests = filteredCertificateRequests.slice(
+    (safeCertificatePage - 1) * Number(certificateLimit),
+    safeCertificatePage * Number(certificateLimit),
+  )
   const refundStatusOptions = [...new Set(refunds.map(refund => normalizeStatus(refund.Status || 'pending')).filter(Boolean))]
   const filteredUsers = websiteUsers.filter(u => {
     const q = userSearch.toLowerCase()
@@ -3033,39 +3073,58 @@ export default function AdminPage() {
                 <div style={cardStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
                     <div>
-                      <h3 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.2rem' }}>Certificate Requests</h3>
-                      <p style={{ margin: '.35rem 0 0', color: '#475569' }}>Paid requests require a passed Test 11 result before you prepare the printed certificate for student pickup.</p>
+                      <h3 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.2rem' }}>Certificate Requests &amp; Archive</h3>
+                      <p style={{ margin: '.35rem 0 0', color: '#475569' }}>Manage new requests here. Previous-website records are read-only and never issue or change a new certificate.</p>
                     </div>
-                    <span style={{ padding: '.4rem .7rem', borderRadius: '999px', background: '#FFF7ED', color: '#9A6700', fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 800 }}>{certificateRequests.filter(item => String(item.status || '').toLowerCase().includes('pending')).length} pending</span>
                   </div>
+                  <div style={{ display: 'flex', gap: '.55rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                    {[
+                      [currentCertificateCount, 'new-site requests', '#EFF6FF', '#0755AE'],
+                      [legacyCertificateCount, 'legacy records', '#F5F3FF', '#6D28D9'],
+                      [pendingCertificateCount, 'need review', '#FFF7ED', '#9A6700'],
+                      [legacyIssuedCertificateCount, 'legacy issued', '#ECFDF3', '#087443'],
+                    ].map(([count, label, background, color]) => <span key={label} style={{ padding: '.42rem .68rem', borderRadius: '999px', background, color, fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 900 }}>{count} {label}</span>)}
+                  </div>
+                  <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', gap: '.65rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                    <input aria-label="Search certificate requests and legacy archive" type="search" placeholder="Search student, email, old ID, course…" value={certificateSearch} onChange={event => { setCertificateSearch(event.target.value); setCertificatePage(1) }} style={{ ...inputStyle, width: 'min(100%, 330px)' }} />
+                    <select aria-label="Filter certificate records" value={certificateSourceFilter} onChange={event => { setCertificateSourceFilter(event.target.value); setCertificatePage(1) }} style={{ ...inputStyle, width: '205px' }}>
+                      <option value="all">All certificate records</option>
+                      <option value="current">New-site requests</option>
+                      <option value="legacy">Legacy archive only</option>
+                      <option value="action-needed">New requests needing review</option>
+                      <option value="issued">Issued / collected</option>
+                    </select>
+                    {(certificateSearch || certificateSourceFilter !== 'all') && <button type="button" onClick={() => { setCertificateSearch(''); setCertificateSourceFilter('all'); setCertificatePage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
+                  </div>
+                  <TablePager page={safeCertificatePage} pages={certificatePages} total={filteredCertificateRequests.length} label="certificate records" onChange={setCertificatePage}><select aria-label="Certificate records per page" value={certificateLimit} onChange={event => { setCertificateLimit(event.target.value); setCertificatePage(1) }} style={{ ...inputStyle, width: '126px' }}><option value="20">20 / page</option><option value="50">50 / page</option><option value="100">100 / page</option></select></TablePager>
                   <div className="admin-table-wrap" style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', minWidth: '960px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                    <table style={{ width: '100%', minWidth: '1120px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                       <colgroup>
                         <col style={{ width: '17%' }} />
-                        <col style={{ width: '17%' }} />
+                        <col style={{ width: '20%' }} />
                         <col style={{ width: '12%' }} />
-                        <col style={{ width: '8%' }} />
+                        <col style={{ width: '9%' }} />
                         <col style={{ width: '11%' }} />
-                        <col style={{ width: '12%' }} />
-                        <col style={{ width: '23%' }} />
+                        <col style={{ width: '14%' }} />
+                        <col style={{ width: '17%' }} />
                       </colgroup>
                       <thead><tr>{['Student', 'Request', 'Test 11', 'Paid', 'Requested', 'Status', 'Actions'].map(label => <th key={label} style={thStyle}>{label}</th>)}</tr></thead>
                       <tbody>
-                        {certificateRequests.map(request => {
+                        {visibleCertificateRequests.map(request => {
                           const legacy = request.source === 'legacy'
                           const pending = String(request.status || '').toLowerCase().includes('pending')
                           const normalizedRequestStatus = String(request.status || '').trim().toLowerCase()
                           const readyForPickup = ['approved', 'ready for pickup'].includes(normalizedRequestStatus)
                           const collected = normalizedRequestStatus === 'collected'
                           return <tr key={request.id}>
-                            <td style={tdStyle}><strong>{request.studentName || 'Student'}</strong><span style={{ display: 'block', fontSize: '.85rem', color: '#64748B', overflowWrap: 'anywhere' }}>{request.email || 'No email'}</span></td>
-                            <td style={tdStyle}><strong>{request.type || 'Certificate'}</strong><span style={{ display: 'block', fontSize: '.85rem', color: '#64748B' }}>{request.title || ''}</span></td>
+                            <td style={tdStyle}><strong>{request.studentName || 'Student'}</strong><span style={{ display: 'block', fontSize: '.85rem', color: '#64748B', overflowWrap: 'anywhere' }}>{request.email || 'No email'}</span>{legacy && <span style={{ display: 'inline-block', marginTop: '.35rem', padding: '.18rem .42rem', borderRadius: '999px', background: '#F5F3FF', color: '#6D28D9', fontFamily: 'var(--font-mono)', fontSize: '.62rem', fontWeight: 900, letterSpacing: '.04em', textTransform: 'uppercase' }}>Old ID {request.legacyCandidateId || '—'}</span>}</td>
+                            <td style={tdStyle}><strong>{legacy ? 'Legacy certificate archive' : request.type || 'Certificate'}</strong><span style={{ display: 'block', marginTop: '.18rem', fontSize: '.85rem', color: '#64748B', overflowWrap: 'anywhere' }}>{request.title || 'Not recorded'}</span></td>
                             <td style={tdStyle}>{request.finalTestResult?.passed ? <span style={{ color: '#15803D', fontWeight: 800 }}>Passed · {Number(request.finalTestResult.score || 0).toFixed(2)}%</span> : legacy ? <span style={{ color: '#64748B', fontWeight: 800 }}>Not recorded / not passed</span> : <span style={{ color: '#B45309', fontWeight: 800 }}>Not passed yet</span>}</td>
-                            <td style={tdStyle}>${Number(request.paidAmount || 0).toFixed(2)}</td>
+                            <td style={tdStyle}><strong>${Number(request.paidAmount || 0).toFixed(2)}</strong>{legacy && <span style={{ display: 'block', marginTop: '.16rem', color: '#64748B', fontSize: '.72rem' }}>Old recorded fee</span>}</td>
                             <td style={tdStyle}>{request.requestedAt ? new Date(request.requestedAt).toLocaleDateString() : '—'}</td>
-                            <td style={tdStyle}><span style={{ padding: '.28rem .58rem', borderRadius: '999px', background: legacy ? '#EFF6FF' : (readyForPickup || collected) ? '#F0FDF4' : pending ? '#FFFBEB' : '#FEF2F2', color: legacy ? '#0755AE' : (readyForPickup || collected) ? '#15803D' : pending ? '#9A6700' : '#B91C1C', fontWeight: 800 }}>{legacy ? request.status : readyForPickup ? 'Ready for pickup' : collected ? 'Collected' : request.status || 'Pending approval'}</span></td>
+                            <td style={tdStyle}><span style={{ display: 'inline-block', padding: '.28rem .58rem', borderRadius: '999px', background: legacy ? '#F5F3FF' : (readyForPickup || collected) ? '#F0FDF4' : pending ? '#FFFBEB' : '#FEF2F2', color: legacy ? '#6D28D9' : (readyForPickup || collected) ? '#15803D' : pending ? '#9A6700' : '#B91C1C', fontWeight: 800, whiteSpace: 'nowrap' }}>{legacy ? legacyCertificateStatusLabel(request.status) : readyForPickup ? 'Ready for pickup' : collected ? 'Collected' : request.status || 'Pending approval'}</span></td>
                             <td style={{ ...tdStyle, padding: '.75rem .7rem' }}>
-                              {legacy ? <div style={{ display: 'grid', gap: '.3rem' }}><button type="button" onClick={() => openLegacyCertificateDetails(request)} style={{ width: 'fit-content', padding: '.45rem .7rem', border: '1px solid #0755AE', borderRadius: '8px', background: '#fff', color: '#0755AE', fontWeight: 800, cursor: 'pointer' }}>View details</button>{request.certificateNumber && <code style={{ fontFamily: 'var(--font-mono)', fontSize: '.7rem', color: '#526780', overflowWrap: 'anywhere' }}>{request.certificateNumber}</code>}</div> : pending ? (
+                              {legacy ? <div style={{ display: 'grid', gap: '.3rem' }}><button type="button" onClick={() => openLegacyCertificateDetails(request)} style={{ width: 'fit-content', padding: '.45rem .7rem', border: '1px solid #6D28D9', borderRadius: '8px', background: '#fff', color: '#6D28D9', fontWeight: 800, cursor: 'pointer' }}>View legacy details</button>{request.certificateNumber && <code title="Historical certificate detail" style={{ fontFamily: 'var(--font-mono)', fontSize: '.7rem', color: '#526780', overflowWrap: 'anywhere' }}>{request.certificateNumber}</code>}</div> : pending ? (
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.45rem' }}>
                                   <button type="button" disabled={certificateUpdating === request.id} onClick={() => updateCertificateRequest(request.id, 'ready')} style={{ padding: '.45rem .7rem', border: 0, borderRadius: '8px', background: '#15803D', color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Ready for pickup</button>
                                   <button type="button" disabled={certificateUpdating === request.id} onClick={() => updateCertificateRequest(request.id, 'denied')} style={{ padding: '.45rem .7rem', border: '1px solid #FCA5A5', borderRadius: '8px', background: '#fff', color: '#B91C1C', fontWeight: 800, cursor: 'pointer' }}>Deny</button>
@@ -3079,7 +3138,8 @@ export default function AdminPage() {
                             </td>
                           </tr>
                         })}
-                        {!certificateRequests.length && <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748B' }}>No certificate requests yet.</td></tr>}
+                        {!certificateRequests.length && <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748B' }}>No certificate requests or legacy records have been imported yet.</td></tr>}
+                        {certificateRequests.length > 0 && !visibleCertificateRequests.length && <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#64748B' }}>No certificate records match the current search or filter.</td></tr>}
                       </tbody>
                     </table>
                   </div>
