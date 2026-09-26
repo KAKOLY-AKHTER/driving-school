@@ -1022,7 +1022,7 @@ const GOOGLE_CALENDAR_TIME_ZONE = String(process.env.GOOGLE_CALENDAR_TIME_ZONE |
 const GOOGLE_CALENDAR_SETTING_ID = 'google-calendar'
 const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events'
 
-let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, couponsCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol, legacyStudentsCol, legacyStudentRecordsCol, legacyStudentCreditsCol, legacyStudentCancelledCreditsCol, legacyInstructorSlotsCol, legacyInstructorsCol, legacyTimeSlotsCol, legacyCitiesCol
+let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, couponsCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol, legacyStudentsCol, legacyStudentRecordsCol, legacyStudentCreditsCol, legacyStudentCancelledCreditsCol, legacyStudentPackagesCol, legacyStudentPendingPackagesCol, legacyInstructorSlotsCol, legacyInstructorsCol, legacyTimeSlotsCol, legacyCitiesCol
 let connectPromise = null
 
 class HttpError extends Error {
@@ -2123,6 +2123,8 @@ async function connectDB() {
     legacyStudentRecordsCol = db.collection('legacy_student_records')
     legacyStudentCreditsCol = db.collection('legacy_student_credits')
     legacyStudentCancelledCreditsCol = db.collection('legacy_student_cancelled_credits')
+    legacyStudentPackagesCol = db.collection('legacy_student_packages')
+    legacyStudentPendingPackagesCol = db.collection('legacy_student_pending_packages')
     legacyInstructorSlotsCol = db.collection('legacy_instructor_slots')
     legacyInstructorsCol = db.collection('legacy_instructors')
     legacyTimeSlotsCol = db.collection('legacy_time_slots')
@@ -2151,6 +2153,10 @@ async function connectDB() {
     await legacyStudentCreditsCol.createIndex({ legacyCandidateId: 1, scheduledDate: -1 })
     await legacyStudentCancelledCreditsCol.createIndex({ legacyCandidateCreditId: 1 }, { unique: true, name: 'unique_legacy_student_cancelled_credit' })
     await legacyStudentCancelledCreditsCol.createIndex({ legacyCandidateId: 1, scheduledDate: -1 })
+    await legacyStudentPackagesCol.createIndex({ legacyCandidatePackageId: 1 }, { unique: true, name: 'unique_legacy_student_package' })
+    await legacyStudentPackagesCol.createIndex({ legacyCandidateId: 1, insertedAt: -1 })
+    await legacyStudentPendingPackagesCol.createIndex({ legacyCandidatePackageId: 1 }, { unique: true, name: 'unique_legacy_student_package' })
+    await legacyStudentPendingPackagesCol.createIndex({ legacyCandidateId: 1, insertedAt: -1 })
     await legacyInstructorSlotsCol.createIndex({ legacySlotId: 1 }, { unique: true, name: 'unique_legacy_instructor_slot' })
     await legacyInstructorSlotsCol.createIndex({ legacyInstructorId: 1, slotDate: -1 })
     await legacyInstructorSlotsCol.createIndex({ legacyInstructorId: 1, active: 1, locationId: 1, slotDate: -1 }, { name: 'legacy_instructor_schedule_filters' })
@@ -4608,10 +4614,12 @@ app.get('/api/admin/legacy-students/:candidateId/records', async (req, res) => {
     const records = await legacyStudentRecordsCol.find(query, { projection: { _id: 0 } })
       .sort({ legacyJoinedAt: -1, legacyCandidateId: -1 }).toArray()
     const candidateIds = records.map(record => cleanText(record.legacyCandidateId, 40)).filter(Boolean)
-    const [scheduledCredits, cancelledCredits] = candidateIds.length ? await Promise.all([
+    const [scheduledCredits, cancelledCredits, packages, pendingPackages] = candidateIds.length ? await Promise.all([
       legacyStudentCreditsCol.find({ legacyCandidateId: { $in: candidateIds } }, { projection: { _id: 0 } }).toArray(),
       legacyStudentCancelledCreditsCol.find({ legacyCandidateId: { $in: candidateIds } }, { projection: { _id: 0 } }).toArray(),
-    ]) : [[], []]
+      legacyStudentPackagesCol.find({ legacyCandidateId: { $in: candidateIds } }, { projection: { _id: 0 } }).toArray(),
+      legacyStudentPendingPackagesCol.find({ legacyCandidateId: { $in: candidateIds } }, { projection: { _id: 0 } }).toArray(),
+    ]) : [[], [], [], []]
     const credits = [
       ...scheduledCredits.map(credit => ({ ...credit, archiveType: 'scheduled' })),
       ...cancelledCredits.map(credit => ({ ...credit, archiveType: 'cancelled', cancelled: true })),
@@ -4634,6 +4642,10 @@ app.get('/api/admin/legacy-students/:candidateId/records', async (req, res) => {
         instructorName: instructorNames.get(cleanText(credit.legacyInstructorId, 80)) || '',
         locationName: locationNames.get(cleanText(credit.locationId, 80)) || '',
       })),
+      packages: [
+        ...packages.map(item => ({ ...item, archiveType: 'completed' })),
+        ...pendingPackages.map(item => ({ ...item, archiveType: 'pending' })),
+      ].sort((left, right) => String(right.insertedAt || '').localeCompare(String(left.insertedAt || '')) || String(right.legacyCandidatePackageId || '').localeCompare(String(left.legacyCandidatePackageId || ''))),
     })
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message })

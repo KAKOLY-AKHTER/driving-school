@@ -1064,16 +1064,16 @@ export default function AdminPage() {
     if (!candidateId) return
     const requestId = legacyDetailsRequestRef.current + 1
     legacyDetailsRequestRef.current = requestId
-    setLegacyDetails({ selected: student, records: [], credits: [], creditSearch: '', creditStatus: 'all', creditPage: 1, loading: true, error: '' })
+    setLegacyDetails({ selected: student, records: [], credits: [], packages: [], creditSearch: '', creditStatus: 'all', creditPage: 1, loading: true, error: '' })
     try {
       const response = await api.adminLegacyStudentRecords(candidateId)
       if (legacyDetailsRequestRef.current !== requestId) return
       const records = Array.isArray(response?.records) ? response.records : []
       const selected = records.find(record => String(record.legacyCandidateId || '') === String(response?.selectedCandidateId || candidateId)) || records[0] || student
-      setLegacyDetails({ selected, records, credits: Array.isArray(response?.credits) ? response.credits : [], creditSearch: '', creditStatus: 'all', creditPage: 1, loading: false, error: '' })
+      setLegacyDetails({ selected, records, credits: Array.isArray(response?.credits) ? response.credits : [], packages: Array.isArray(response?.packages) ? response.packages : [], creditSearch: '', creditStatus: 'all', creditPage: 1, loading: false, error: '' })
     } catch (error) {
       if (legacyDetailsRequestRef.current !== requestId) return
-      setLegacyDetails({ selected: student, records: [], credits: [], creditSearch: '', creditStatus: 'all', creditPage: 1, loading: false, error: error?.message || 'Legacy student details could not be loaded.' })
+      setLegacyDetails({ selected: student, records: [], credits: [], packages: [], creditSearch: '', creditStatus: 'all', creditPage: 1, loading: false, error: error?.message || 'Legacy student details could not be loaded.' })
     }
   }, [])
 
@@ -2127,6 +2127,12 @@ export default function AdminPage() {
     ['Notes & references', [['Old comments', legacyDisplayText(legacySelectedRecord.comments)], ['Legacy notes', legacyDisplayText(legacySelectedRecord.legacyNotes)], ['Photo reference', legacyDisplayText(legacySelectedRecord.legacyPhotoReference)]]],
   ] : []
   const legacyCredits = Array.isArray(legacyDetails?.credits) ? legacyDetails.credits : []
+  const legacyPackages = Array.isArray(legacyDetails?.packages) ? legacyDetails.packages : []
+  const legacyPackageSummary = legacyPackages.reduce((summary, item) => ({
+    completed: summary.completed + (item.archiveType === 'completed' ? 1 : 0),
+    pending: summary.pending + (item.archiveType === 'pending' ? 1 : 0),
+    paid: summary.paid + (['1', 'yes', 'true', 'paid'].includes(String(item.paymentStatus || '').toLowerCase()) ? 1 : 0),
+  }), { completed: 0, pending: 0, paid: 0 })
   const legacyCreditSummary = legacyCredits.reduce((summary, credit) => ({
     active: summary.active + (credit.active ? 1 : 0),
     paid: summary.paid + (credit.paid ? 1 : 0),
@@ -4079,6 +4085,24 @@ Near and Long pricing is applied automatically from the selected city and verifi
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(360px,1fr))', gap: '1rem' }}>
                 {legacyDetailSections.map(([title, fields]) => <section key={title} style={{ minWidth: 0, padding: '1.15rem', borderRadius: '14px', border: '1px solid #DCE7F3', background: 'linear-gradient(145deg,#FFFFFF,#F8FBFF)' }}><h3 style={{ margin: '0 0 .85rem', color: '#0F3F79', fontSize: '1rem', fontWeight: 900 }}>{title}</h3><dl style={{ display: 'grid', gap: '.72rem', margin: 0 }}>{fields.map(([label, value]) => <div key={label} style={{ display: 'grid', gap: '.18rem' }}><dt style={{ color: '#64748B', fontFamily: 'var(--font-mono)', fontSize: '.71rem', letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 800 }}>{label}</dt><dd style={{ margin: 0, color: value ? '#1E293B' : '#7B8CA2', fontSize: '.96rem', lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontWeight: value ? 600 : 500, fontStyle: value ? 'normal' : 'italic' }}>{value || 'Not recorded in old website'}</dd></div>)}</dl></section>)}
               </div>
+              <section style={{ marginTop: '1rem', padding: '1.15rem', borderRadius: '14px', border: '1px solid #DCE7F3', background: 'linear-gradient(145deg,#FFFFFF,#F8FBFF)' }}>
+                <h3 style={{ margin: 0, color: '#0F3F79', fontSize: '1rem', fontWeight: 900 }}>Historic Package History</h3>
+                <p style={{ margin: '.35rem 0 .85rem', color: '#526C88', fontSize: '.86rem', lineHeight: 1.5 }}>Package records are matched only by the original student ID. Card number, expiry date, CVV, and other card details were not imported.</p>
+                <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginBottom: '.9rem' }}>
+                  {[['Total', legacyPackages.length, '#EFF6FF', '#0755AE'], ['Completed', legacyPackageSummary.completed, '#ECFDF3', '#087443'], ['Pending archive', legacyPackageSummary.pending, '#FEF3C7', '#92400E'], ['Paid', legacyPackageSummary.paid, '#F3E8FF', '#6B21A8']].map(([label, value, background, color]) => <span key={label} style={{ padding: '.35rem .6rem', borderRadius: '999px', background, color, fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 900 }}>{value} {label}</span>)}
+                </div>
+                <div className="admin-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead><tr><th scope="col" style={thStyle}>Old Package ID</th><th scope="col" style={thStyle}>Old Student ID</th><th scope="col" style={thStyle}>Package</th><th scope="col" style={thStyle}>Fee</th><th scope="col" style={thStyle}>Payment Status</th><th scope="col" style={thStyle}>Recorded</th></tr></thead>
+                  <tbody>{legacyPackages.map(item => <tr key={`${item.archiveType || 'package'}-${item.legacyCandidatePackageId}`}>
+                    <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '.82rem' }}>{item.legacyCandidatePackageId || '—'}</td>
+                    <td style={tdStyle}>ID {item.legacyCandidateId || '—'}</td>
+                    <td style={tdStyle}>Package {item.legacyPackageId || 'Not recorded'}<p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{item.archiveType === 'pending' ? 'Pending package archive' : 'Completed package archive'}</p></td>
+                    <td style={tdStyle}>{item.packageFee ? `$${item.packageFee}` : 'Not recorded'}</td>
+                    <td style={tdStyle}><span style={{ display: 'inline-flex', padding: '.28rem .6rem', borderRadius: '999px', background: ['1', 'yes', 'true', 'paid'].includes(String(item.paymentStatus || '').toLowerCase()) ? '#ECFDF3' : '#FEF3C7', color: ['1', 'yes', 'true', 'paid'].includes(String(item.paymentStatus || '').toLowerCase()) ? '#087443' : '#92400E', fontFamily: 'var(--font-mono)', fontSize: '.7rem', letterSpacing: '.05em', textTransform: 'uppercase', fontWeight: 900 }}>{item.paymentStatus || 'Not recorded'}</span></td>
+                    <td style={tdStyle}>{formatDateDMY(item.insertedAt)}</td>
+                  </tr>)}{!legacyPackages.length && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '1.5rem', color: '#64748B' }}>No historic package record was found for these old student ID(s).</td></tr>}</tbody>
+                </table></div>
+              </section>
               <section style={{ marginTop: '1rem', padding: '1.15rem', borderRadius: '14px', border: '1px solid #DCE7F3', background: 'linear-gradient(145deg,#FFFFFF,#F8FBFF)' }}>
                 <h3 style={{ margin: 0, color: '#0F3F79', fontSize: '1rem', fontWeight: 900 }}>Historic Lesson-Credit Activity</h3>
                 <p style={{ margin: '.35rem 0 .85rem', color: '#526C88', fontSize: '.86rem', lineHeight: 1.5 }}>All {legacyCredits.length.toLocaleString()} activity row{legacyCredits.length === 1 ? '' : 's'} linked to the original record{legacyDetails.records.length === 1 ? '' : 's'} above. These are historical records only; they do not create bookings in the new website.</p>
