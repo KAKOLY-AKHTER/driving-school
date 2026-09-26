@@ -934,6 +934,8 @@ export default function AdminPage() {
   const [instructorSummary, setInstructorSummary] = useState({ totalSlots: 0, nameDataAvailable: false })
   const [instructorsLoading, setInstructorsLoading] = useState(false)
   const [instructorsError, setInstructorsError] = useState('')
+  const [instructorSearch, setInstructorSearch] = useState('')
+  const [instructorScheduleFilter, setInstructorScheduleFilter] = useState('all')
   const [instructorDetails, setInstructorDetails] = useState(null)
   const [certificateRequests, setCertificateRequests] = useState([])
   const [certificateUpdating, setCertificateUpdating] = useState('')
@@ -1029,6 +1031,7 @@ export default function AdminPage() {
   const [confirmDialog, setConfirmDialog] = useState(null)
   const previousFocusRef = useRef(null)
   const userDetailsRequestRef = useRef(0)
+  const instructorDetailsRequestRef = useRef(0)
 
   const requestConfirmation = (title, message, action) => {
     setConfirmDialog({ title, message, action, busy: false })
@@ -1055,12 +1058,18 @@ export default function AdminPage() {
     }
   }, [])
 
-  const openInstructorDetails = useCallback(async (instructor, page = 1) => {
+  const openInstructorDetails = useCallback(async (instructor, page = 1, filters = {}) => {
     const legacyInstructorId = String(instructor?.legacyInstructorId || '').trim()
     if (!legacyInstructorId) return
-    setInstructorDetails({ instructor, items: [], total: 0, page, limit: 25, loading: true, error: '' })
+    const search = String(filters.search || '').trim()
+    const status = filters.status === 'active' || filters.status === 'inactive' ? filters.status : 'all'
+    const locationId = String(filters.locationId || '').trim()
+    const requestId = instructorDetailsRequestRef.current + 1
+    instructorDetailsRequestRef.current = requestId
+    setInstructorDetails({ instructor, items: [], total: 0, page, limit: 25, search, status, locationId, loading: true, error: '' })
     try {
-      const response = await api.adminInstructorSlots(legacyInstructorId, { page, limit: 25 })
+      const response = await api.adminInstructorSlots(legacyInstructorId, { page, limit: 25, search, status: status === 'all' ? '' : status, locationId })
+      if (instructorDetailsRequestRef.current !== requestId) return
       setInstructorDetails(current => current?.instructor?.legacyInstructorId === legacyInstructorId ? {
         ...current,
         items: Array.isArray(response?.items) ? response.items : [],
@@ -1071,6 +1080,7 @@ export default function AdminPage() {
         error: '',
       } : current)
     } catch (error) {
+      if (instructorDetailsRequestRef.current !== requestId) return
       setInstructorDetails(current => current?.instructor?.legacyInstructorId === legacyInstructorId ? {
         ...current,
         loading: false,
@@ -2063,6 +2073,22 @@ export default function AdminPage() {
     const q = userSearch.toLowerCase()
     return !q || adminUserName(u).toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q) || (u.phone || '').includes(q)
   })
+  const filteredInstructors = instructors.filter(instructor => {
+    const query = instructorSearch.trim().toLowerCase()
+    const matchesSearch = !query || [
+      instructor.displayName,
+      instructor.username,
+      instructor.email,
+      instructor.phone,
+      instructor.legacyInstructorId,
+      ...(instructor.locationLabels || []),
+    ].some(value => String(value || '').toLowerCase().includes(query))
+    const totalSlots = Number(instructor.totalSlots || 0)
+    const matchesScheduleFilter = instructorScheduleFilter === 'all'
+      || (instructorScheduleFilter === 'with-schedules' && totalSlots > 0)
+      || (instructorScheduleFilter === 'without-schedules' && totalSlots === 0)
+    return matchesSearch && matchesScheduleFilter
+  })
   const userPages = Math.max(1, Math.ceil(filteredUsers.length / Number(userLimit)))
   const safeUserPage = Math.min(userPage, userPages)
   const visibleUsers = filteredUsers.slice(
@@ -2568,12 +2594,21 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <div role="note" style={{ margin: '0 0 1rem', padding: '.85rem 1rem', border: '1px solid #BFDBFE', borderRadius: '12px', background: '#F8FBFF', color: '#1E3A5F', fontSize: '.88rem', lineHeight: 1.55 }}><strong>Record matching:</strong> profiles are joined to schedules by their old instructor ID. An ID without a profile is clearly marked as an archived / unknown instructor instead of assigning an incorrect name.</div>
+                  <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', gap: '.65rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                    <input className="admin-toolbar-input" aria-label="Search instructors" type="search" placeholder="Search name, email, location, old ID…" value={instructorSearch} onChange={event => setInstructorSearch(event.target.value)} style={{ ...inputStyle, width: 'min(100%, 330px)' }} />
+                    <select aria-label="Filter instructors by schedule availability" value={instructorScheduleFilter} onChange={event => setInstructorScheduleFilter(event.target.value)} style={{ ...inputStyle, width: '190px' }}>
+                      <option value="all">All instructors</option>
+                      <option value="with-schedules">With schedules</option>
+                      <option value="without-schedules">No schedules</option>
+                    </select>
+                    {(instructorSearch || instructorScheduleFilter !== 'all') && <button type="button" onClick={() => { setInstructorSearch(''); setInstructorScheduleFilter('all') }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
+                  </div>
                   {instructorsError && <div role="alert" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{instructorsError}</div>}
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead><tr><th scope="col" style={thStyle}>Instructor</th><th scope="col" style={thStyle}>Active Schedules</th><th scope="col" style={thStyle}>Schedule History</th><th scope="col" style={thStyle}>Locations</th><th scope="col" style={thStyle}>Details</th></tr></thead>
                       <tbody>
-                        {instructors.map(instructor => <tr key={instructor.legacyInstructorId}>
+                        {filteredInstructors.map(instructor => <tr key={instructor.legacyInstructorId}>
                           <td style={tdStyle}><strong>{instructor.displayName || `Legacy Instructor #${instructor.legacyInstructorId}`}</strong><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{instructor.displayName ? `ID ${instructor.legacyInstructorId}${instructor.username ? ` · @${instructor.username}` : ''}` : 'No matching profile in old instructor table'}</p></td>
                           <td style={tdStyle}><strong style={{ color: '#087443' }}>{Number(instructor.activeSlots || 0).toLocaleString()}</strong><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>of {Number(instructor.totalSlots || 0).toLocaleString()} imported slots</p></td>
                           <td style={tdStyle}><div>{formatDateDMY(instructor.firstSlotDate)}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>to {formatDateDMY(instructor.lastSlotDate)}</p></td>
@@ -2581,6 +2616,7 @@ export default function AdminPage() {
                           <td style={tdStyle}><button type="button" onClick={() => openInstructorDetails(instructor)} style={{ minHeight: '36px', padding: '.45rem .72rem', border: `1px solid ${SKY_BLUE}`, borderRadius: '9px', background: '#fff', color: SKY_BLUE, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap' }}>View schedule data</button></td>
                         </tr>)}
                         {!instructorsLoading && instructors.length === 0 && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>No instructor schedule data has been imported yet.</td></tr>}
+                        {!instructorsLoading && instructors.length > 0 && filteredInstructors.length === 0 && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>No instructors match the current search and filter.</td></tr>}
                         {instructorsLoading && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>Loading instructor schedule archive…</td></tr>}
                       </tbody>
                     </table>
@@ -3995,9 +4031,22 @@ Near and Long pricing is applied automatically from the selected city and verifi
               <div><p style={{ margin: 0, color: GOLD_DEEP, fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase' }}>Previous website schedule archive</p><h2 id="instructor-schedule-details-title" style={{ margin: '.3rem 0 0', color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.55rem' }}>{instructorDetails.instructor.displayName || `Legacy Instructor #${instructorDetails.instructor.legacyInstructorId}`}</h2><p style={{ margin: '.32rem 0 0', color: '#526C88' }}>{instructorDetails.instructor.displayName ? `Old ID ${instructorDetails.instructor.legacyInstructorId}${instructorDetails.instructor.email ? ` · ${instructorDetails.instructor.email}` : ''}${instructorDetails.instructor.phone ? ` · ${instructorDetails.instructor.phone}` : ''}` : `Old ID ${instructorDetails.instructor.legacyInstructorId} · no matching instructor profile was found in the old database.`}</p></div>
               <button autoFocus type="button" aria-label="Close instructor schedule details" onClick={() => setInstructorDetails(null)} style={{ width: '40px', height: '40px', border: '1px solid #CBD5E1', borderRadius: '10px', background: '#fff', color: '#334155', fontSize: '1.45rem', cursor: 'pointer' }}>&times;</button>
             </header>
-            <p role="note" style={{ margin: '1rem 0', padding: '.75rem .9rem', borderRadius: '10px', border: '1px solid #BFDBFE', background: '#F8FBFF', color: '#334E6F', fontSize: '.85rem', lineHeight: 1.5 }}>Every field available in the old <code>tbl_zone_slots</code> record is shown below. Location and zone values are historic system IDs.</p>
+            <p role="note" style={{ margin: '1rem 0', padding: '.75rem .9rem', borderRadius: '10px', border: '1px solid #BFDBFE', background: '#F8FBFF', color: '#334E6F', fontSize: '.85rem', lineHeight: 1.5 }}>Search by old slot ID, date, or time. Location and availability filters apply to this instructor&apos;s historical schedule records.</p>
+            <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', gap: '.65rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+              <input className="admin-toolbar-input" aria-label="Search this instructor's schedule" type="search" placeholder="Search slot ID, date, time…" value={instructorDetails.search || ''} onChange={event => openInstructorDetails(instructorDetails.instructor, 1, { ...instructorDetails, search: event.target.value })} style={{ ...inputStyle, width: 'min(100%, 280px)' }} />
+              <select aria-label="Filter this instructor's schedule by availability" value={instructorDetails.status || 'all'} onChange={event => openInstructorDetails(instructorDetails.instructor, 1, { ...instructorDetails, status: event.target.value })} style={{ ...inputStyle, width: '175px' }}>
+                <option value="all">All availability</option>
+                <option value="active">Active only</option>
+                <option value="inactive">Inactive only</option>
+              </select>
+              <select aria-label="Filter this instructor's schedule by location" value={instructorDetails.locationId || ''} onChange={event => openInstructorDetails(instructorDetails.instructor, 1, { ...instructorDetails, locationId: event.target.value })} style={{ ...inputStyle, width: '220px' }}>
+                <option value="">All locations</option>
+                {(instructorDetails.instructor.locationOptions || []).map(location => <option key={location.value} value={location.value}>{location.label}</option>)}
+              </select>
+              {(instructorDetails.search || instructorDetails.status !== 'all' || instructorDetails.locationId) && <button type="button" onClick={() => openInstructorDetails(instructorDetails.instructor, 1)} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
+            </div>
             {instructorDetails.error && <div role="alert" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{instructorDetails.error}</div>}
-            {!instructorDetails.loading && !instructorDetails.error && <TablePager page={instructorDetails.page} pages={Math.max(1, Math.ceil(instructorDetails.total / instructorDetails.limit))} total={instructorDetails.total} label="schedule slots" onChange={page => openInstructorDetails(instructorDetails.instructor, page)} />}
+            {!instructorDetails.loading && !instructorDetails.error && <TablePager page={instructorDetails.page} pages={Math.max(1, Math.ceil(instructorDetails.total / instructorDetails.limit))} total={instructorDetails.total} label="schedule slots" onChange={page => openInstructorDetails(instructorDetails.instructor, page, instructorDetails)} />}
             <div className="admin-table-wrap">
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead><tr><th scope="col" style={thStyle}>Old Slot ID</th><th scope="col" style={thStyle}>Date</th><th scope="col" style={thStyle}>Location</th><th scope="col" style={thStyle}>Time Window</th><th scope="col" style={thStyle}>Availability</th><th scope="col" style={thStyle}>Imported From</th></tr></thead>
@@ -4011,7 +4060,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                     <td style={tdStyle}>{slot.insertedAt || 'Not recorded'}</td>
                   </tr>)}
                   {instructorDetails.loading && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>Loading schedule slots…</td></tr>}
-                  {!instructorDetails.loading && !instructorDetails.error && instructorDetails.items.length === 0 && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>No schedule slots were found for this legacy instructor ID.</td></tr>}
+                  {!instructorDetails.loading && !instructorDetails.error && instructorDetails.items.length === 0 && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>{instructorDetails.search || instructorDetails.status !== 'all' || instructorDetails.locationId ? 'No schedule slots match the current filters.' : 'No schedule slots were found for this legacy instructor ID.'}</td></tr>}
                 </tbody>
               </table>
             </div>

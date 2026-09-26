@@ -2144,6 +2144,7 @@ async function connectDB() {
     await legacyStudentsCol.createIndex({ email: 1 }, { unique: true, name: 'unique_legacy_student_email' })
     await legacyInstructorSlotsCol.createIndex({ legacySlotId: 1 }, { unique: true, name: 'unique_legacy_instructor_slot' })
     await legacyInstructorSlotsCol.createIndex({ legacyInstructorId: 1, slotDate: -1 })
+    await legacyInstructorSlotsCol.createIndex({ legacyInstructorId: 1, active: 1, locationId: 1, slotDate: -1 }, { name: 'legacy_instructor_schedule_filters' })
     await legacyInstructorsCol.createIndex({ legacyInstructorId: 1 }, { unique: true, name: 'unique_legacy_instructor_profile' })
     await legacyTimeSlotsCol.createIndex({ legacySlotId: 1 }, { unique: true, name: 'unique_legacy_time_slot' })
     await legacyCitiesCol.createIndex({ legacyCityId: 1 }, { unique: true, name: 'unique_legacy_city' })
@@ -4640,6 +4641,10 @@ app.get('/api/admin/instructors', async (_req, res) => {
           activeSlots: Number(item.activeSlots || 0),
           zoneIds: (item.zoneIds || []).filter(Boolean).map(value => cleanText(value, 80)).sort(),
           locationLabels: [...new Set((item.locationIds || []).map(value => locationLabels.get(cleanText(value, 80))).filter(Boolean))],
+          locationOptions: [...new Map((item.locationIds || []).map(value => {
+            const locationId = cleanText(value, 80)
+            return [locationId, { value: locationId, label: locationLabels.get(locationId) || `Location ${locationId}` }]
+          }).filter(([locationId]) => locationId)).values()],
           firstSlotDate: cleanText(item.firstSlotDate, 40),
           lastSlotDate: cleanText(item.lastSlotDate, 40),
         }
@@ -4659,6 +4664,31 @@ app.get('/api/admin/instructors/:instructorId/slots', async (req, res) => {
     const limit = cleanInteger(req.query.limit, 25, 10, 100)
     if (!instructorId) throw new HttpError(400, 'Legacy instructor ID is required.')
     const query = { legacyInstructorId: instructorId }
+    const search = cleanText(req.query.search, 120)
+    const status = cleanText(req.query.status, 20).toLowerCase()
+    const locationId = cleanText(req.query.locationId, 80)
+    if (status === 'active') query.active = true
+    if (status === 'inactive') query.active = false
+    if (locationId) query.locationId = locationId
+    if (search) {
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const searchExpression = new RegExp(escapedSearch, 'i')
+      const [matchingTimes, matchingLocations] = await Promise.all([
+        legacyTimeSlotsCol.find({ timeLabel: searchExpression }, { projection: { _id: 0, legacySlotId: 1 } }).toArray(),
+        legacyCitiesCol.find({ $or: [{ cityName: searchExpression }, { zipCode: searchExpression }] }, { projection: { _id: 0, legacyCityId: 1 } }).toArray(),
+      ])
+      const matchingTimeIds = matchingTimes.map(item => cleanText(item.legacySlotId, 40)).filter(Boolean)
+      const matchingLocationIds = matchingLocations.map(item => cleanText(item.legacyCityId, 80)).filter(Boolean)
+      query.$or = [
+        { legacySlotId: searchExpression },
+        { slotDate: searchExpression },
+        { locationId: searchExpression },
+        { fromHour: searchExpression },
+        { toHour: searchExpression },
+      ]
+      if (matchingTimeIds.length) query.$or.push({ fromHour: { $in: matchingTimeIds } }, { toHour: { $in: matchingTimeIds } })
+      if (matchingLocationIds.length) query.$or.push({ locationId: { $in: matchingLocationIds } })
+    }
     const [items, total] = await Promise.all([
       legacyInstructorSlotsCol.find(query, {
         projection: { _id: 0, legacySlotId: 1, legacyInstructorId: 1, legacyZoneId: 1, slotDate: 1, locationId: 1, insertedAt: 1, active: 1, fromHour: 1, toHour: 1, breakHours: 1, autismSupport: 1 },
