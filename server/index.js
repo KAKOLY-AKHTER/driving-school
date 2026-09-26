@@ -1022,7 +1022,7 @@ const GOOGLE_CALENDAR_TIME_ZONE = String(process.env.GOOGLE_CALENDAR_TIME_ZONE |
 const GOOGLE_CALENDAR_SETTING_ID = 'google-calendar'
 const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events'
 
-let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, couponsCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol, legacyStudentsCol
+let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, couponsCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol, legacyStudentsCol, legacyInstructorSlotsCol
 let connectPromise = null
 
 class HttpError extends Error {
@@ -2120,6 +2120,7 @@ async function connectDB() {
     cartsCol = db.collection('carts')
     paypalOrdersCol = db.collection('paypal_orders')
     legacyStudentsCol = db.collection('legacy_students')
+    legacyInstructorSlotsCol = db.collection('legacy_instructor_slots')
     await usersCol.createIndex({ uid: 1 }, { unique: true })
     await bookingsCol.createIndex({ userId: 1, date: 1 })
     await bookingsCol.createIndex({ holdExpiresAt: 1 }, { expireAfterSeconds: 0, name: 'expire_booking_holds' })
@@ -2138,6 +2139,8 @@ async function connectDB() {
     await blogsCol.createIndex({ slug: 1 }, { unique: true, name: 'unique_blog_slug' })
     await blogsCol.createIndex({ published: 1, featured: -1, publishedAt: -1 })
     await legacyStudentsCol.createIndex({ email: 1 }, { unique: true, name: 'unique_legacy_student_email' })
+    await legacyInstructorSlotsCol.createIndex({ legacySlotId: 1 }, { unique: true, name: 'unique_legacy_instructor_slot' })
+    await legacyInstructorSlotsCol.createIndex({ legacyInstructorId: 1, slotDate: -1 })
     await cleanupExpiredHolds(true)
     await backfillBookingSlotLocks()
     await seedPricing()
@@ -4576,6 +4579,63 @@ app.get('/api/admin/legacy-students', async (req, res) => {
     res.json({ items, total, page, limit, pending, activated })
   } catch (error) {
     sendServerError(res, error, 'Legacy student lookup failed')
+  }
+})
+
+// Historic schedule data did not include instructor names or contact details.
+// It is kept in its own collection so it cannot be mistaken for student data.
+app.get('/api/admin/instructors', async (_req, res) => {
+  try {
+    const [items, totalSlots] = await Promise.all([
+      legacyInstructorSlotsCol.aggregate([
+        {
+          $group: {
+            _id: '$legacyInstructorId',
+            totalSlots: { $sum: 1 },
+            activeSlots: { $sum: { $cond: ['$active', 1, 0] } },
+            zoneIds: { $addToSet: '$legacyZoneId' },
+            firstSlotDate: { $min: '$slotDate' },
+            lastSlotDate: { $max: '$slotDate' },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]).toArray(),
+      legacyInstructorSlotsCol.countDocuments(),
+    ])
+    res.json({
+      items: items.map(item => ({
+        legacyInstructorId: cleanText(item._id, 80),
+        totalSlots: Number(item.totalSlots || 0),
+        activeSlots: Number(item.activeSlots || 0),
+        zoneIds: (item.zoneIds || []).filter(Boolean).map(value => cleanText(value, 80)).sort(),
+        firstSlotDate: cleanText(item.firstSlotDate, 40),
+        lastSlotDate: cleanText(item.lastSlotDate, 40),
+      })),
+      totalSlots,
+      nameDataAvailable: false,
+    })
+  } catch (error) {
+    sendServerError(res, error, 'Instructor lookup failed')
+  }
+})
+
+app.get('/api/admin/instructors/:instructorId/slots', async (req, res) => {
+  try {
+    const instructorId = cleanText(req.params.instructorId, 80)
+    const page = cleanInteger(req.query.page, 1, 1, 10_000)
+    const limit = cleanInteger(req.query.limit, 25, 10, 100)
+    if (!instructorId) throw new HttpError(400, 'Legacy instructor ID is required.')
+    const query = { legacyInstructorId: instructorId }
+    const [items, total] = await Promise.all([
+      legacyInstructorSlotsCol.find(query, {
+        projection: { _id: 0, legacySlotId: 1, legacyInstructorId: 1, legacyZoneId: 1, slotDate: 1, locationId: 1, insertedAt: 1, active: 1, fromHour: 1, toHour: 1, breakHours: 1, autismSupport: 1 },
+      }).sort({ slotDate: -1, legacySlotId: -1 }).skip((page - 1) * limit).limit(limit).toArray(),
+      legacyInstructorSlotsCol.countDocuments(query),
+    ])
+    res.json({ items, total, page, limit })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Instructor schedule lookup failed')
   }
 })
 

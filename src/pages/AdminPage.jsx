@@ -930,6 +930,11 @@ export default function AdminPage() {
   const [legacyLoading, setLegacyLoading] = useState(false)
   const [legacyError, setLegacyError] = useState('')
   const [legacyDetails, setLegacyDetails] = useState(null)
+  const [instructors, setInstructors] = useState([])
+  const [instructorSummary, setInstructorSummary] = useState({ totalSlots: 0, nameDataAvailable: false })
+  const [instructorsLoading, setInstructorsLoading] = useState(false)
+  const [instructorsError, setInstructorsError] = useState('')
+  const [instructorDetails, setInstructorDetails] = useState(null)
   const [certificateRequests, setCertificateRequests] = useState([])
   const [certificateUpdating, setCertificateUpdating] = useState('')
   const [bookings, setBookings] = useState([])
@@ -1047,6 +1052,30 @@ export default function AdminPage() {
     } catch (error) {
       if (userDetailsRequestRef.current !== requestId) return
       setUserDetailsDialog({ user: account, data: null, loading: false, error: error?.message || 'The complete student profile could not be loaded.' })
+    }
+  }, [])
+
+  const openInstructorDetails = useCallback(async (instructor, page = 1) => {
+    const legacyInstructorId = String(instructor?.legacyInstructorId || '').trim()
+    if (!legacyInstructorId) return
+    setInstructorDetails({ instructor, items: [], total: 0, page, limit: 25, loading: true, error: '' })
+    try {
+      const response = await api.adminInstructorSlots(legacyInstructorId, { page, limit: 25 })
+      setInstructorDetails(current => current?.instructor?.legacyInstructorId === legacyInstructorId ? {
+        ...current,
+        items: Array.isArray(response?.items) ? response.items : [],
+        total: Number(response?.total || 0),
+        page: Number(response?.page || page),
+        limit: Number(response?.limit || 25),
+        loading: false,
+        error: '',
+      } : current)
+    } catch (error) {
+      setInstructorDetails(current => current?.instructor?.legacyInstructorId === legacyInstructorId ? {
+        ...current,
+        loading: false,
+        error: error?.message || 'Instructor schedule data could not be loaded.',
+      } : current)
     }
   }, [])
 
@@ -1866,6 +1895,7 @@ export default function AdminPage() {
 
   const activeDialogKey = confirmDialog ? 'confirmation'
     : legacyDetails ? 'legacy-details'
+      : instructorDetails ? 'instructor-details'
       : userDetailsDialog ? 'user-details'
       : detailsDialog ? 'details'
     : contactConversation ? 'contact-conversation'
@@ -1882,6 +1912,7 @@ export default function AdminPage() {
     if (confirmDialog?.busy) return
     if (confirmDialog) setConfirmDialog(null)
     else if (legacyDetails) setLegacyDetails(null)
+    else if (instructorDetails) setInstructorDetails(null)
     else if (userDetailsDialog) closeUserDetails()
     else if (detailsDialog) setDetailsDialog(null)
     else if (refundDetails) setRefundDetails(null)
@@ -1892,7 +1923,7 @@ export default function AdminPage() {
     else if (pricingEdit) requestEditorClose('pricing editor', () => setPricingEdit(null))
     else if (contactConversation) setContactConversation(null)
     else if (contactEdit) requestEditorClose('contact editor', () => setContactEdit(null))
-  }, [areasEdit, closeUserDetails, confirmDialog, contactConversation, contactEdit, detailsDialog, legacyDetails, locationEdit, pricingEdit, refundDetails, refundEdit, requestEditorClose, socialsEdit, userDetailsDialog])
+  }, [areasEdit, closeUserDetails, confirmDialog, contactConversation, contactEdit, detailsDialog, instructorDetails, legacyDetails, locationEdit, pricingEdit, refundDetails, refundEdit, requestEditorClose, socialsEdit, userDetailsDialog])
 
   useEffect(() => {
     const dialogOpen = Boolean(activeDialogKey)
@@ -2001,6 +2032,30 @@ export default function AdminPage() {
     loadLegacyStudents()
     return () => { cancelled = true }
   }, [activeTab, legacyPage, legacySearch, legacyStatus])
+
+  useEffect(() => {
+    if (activeTab !== 'instructors') return undefined
+    let cancelled = false
+    const loadInstructors = async () => {
+      setInstructorsLoading(true)
+      setInstructorsError('')
+      try {
+        const response = await api.adminInstructors()
+        if (cancelled) return
+        setInstructors(Array.isArray(response?.items) ? response.items : [])
+        setInstructorSummary({
+          totalSlots: Number(response?.totalSlots || 0),
+          nameDataAvailable: Boolean(response?.nameDataAvailable),
+        })
+      } catch (error) {
+        if (!cancelled) setInstructorsError(error?.message || 'Instructor schedule data could not be loaded.')
+      } finally {
+        if (!cancelled) setInstructorsLoading(false)
+      }
+    }
+    loadInstructors()
+    return () => { cancelled = true }
+  }, [activeTab])
 
   const websiteUsers = users.filter(u => u.isAdmin !== true)
   const refundStatusOptions = [...new Set(refunds.map(refund => normalizeStatus(refund.Status || 'pending')).filter(Boolean))]
@@ -2158,6 +2213,7 @@ export default function AdminPage() {
     { id: 'dashboard', label: 'Overview', icon: SVG.dashboard },
     { id: 'users', label: 'Users', icon: SVG.users },
     { id: 'legacy-students', label: 'Legacy Students', icon: SVG.users },
+    { id: 'instructors', label: 'Instructors', icon: SVG.users },
     { id: 'bookings', label: 'Bookings', icon: SVG.calendar },
     { id: 'calendar', label: 'Admin Calendar', icon: SVG.calendar },
     { id: 'contacts', label: 'Contacts', icon: SVG.mail, badge: stats.pendingContacts, badgeLabel: 'new contact message' },
@@ -2493,6 +2549,39 @@ export default function AdminPage() {
                         {filteredUsers.length === 0 && (
                           <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{userSearch ? 'No users match your search.' : 'No registered website users yet.'}</td></tr>
                         )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {!loading && !loadError && activeTab === 'instructors' && (
+                <div style={cardStyle}>
+                  <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '.6rem', margin: 0 }}>{SVG.users} Instructor Schedule Archive</h3>
+                      <p style={{ margin: '.35rem 0 0', color: '#475569', fontSize: '.9rem', lineHeight: 1.55 }}>Schedule slots imported from the previous website. The export has instructor IDs and availability only; it does not contain instructor names, emails, or phone numbers.</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '.55rem', flexWrap: 'wrap' }}>
+                      <span style={{ padding: '.4rem .7rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 900 }}>{instructors.length} legacy instructor IDs</span>
+                      <span style={{ padding: '.4rem .7rem', borderRadius: '999px', background: '#ECFDF3', color: '#087443', fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 900 }}>{instructorSummary.totalSlots.toLocaleString()} schedule slots</span>
+                    </div>
+                  </div>
+                  <div role="note" style={{ margin: '0 0 1rem', padding: '.85rem 1rem', border: '1px solid #BFDBFE', borderRadius: '12px', background: '#F8FBFF', color: '#1E3A5F', fontSize: '.88rem', lineHeight: 1.55 }}><strong>Important:</strong> “Legacy Instructor #” is the original system ID, not a staff name. View schedule data to see every available field imported from each old slot record.</div>
+                  {instructorsError && <div role="alert" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{instructorsError}</div>}
+                  <div className="admin-table-wrap">
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr><th scope="col" style={thStyle}>Instructor</th><th scope="col" style={thStyle}>Active Schedules</th><th scope="col" style={thStyle}>Schedule History</th><th scope="col" style={thStyle}>Service Zones</th><th scope="col" style={thStyle}>Details</th></tr></thead>
+                      <tbody>
+                        {instructors.map(instructor => <tr key={instructor.legacyInstructorId}>
+                          <td style={tdStyle}><strong>Legacy Instructor #{instructor.legacyInstructorId}</strong><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>Name unavailable in old export</p></td>
+                          <td style={tdStyle}><strong style={{ color: '#087443' }}>{Number(instructor.activeSlots || 0).toLocaleString()}</strong><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>of {Number(instructor.totalSlots || 0).toLocaleString()} imported slots</p></td>
+                          <td style={tdStyle}><div>{formatDateDMY(instructor.firstSlotDate)}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>to {formatDateDMY(instructor.lastSlotDate)}</p></td>
+                          <td style={tdStyle}>{(instructor.zoneIds || []).length ? (instructor.zoneIds || []).map(zone => `Zone ${zone}`).join(', ') : 'Not recorded'}</td>
+                          <td style={tdStyle}><button type="button" onClick={() => openInstructorDetails(instructor)} style={{ minHeight: '36px', padding: '.45rem .72rem', border: `1px solid ${SKY_BLUE}`, borderRadius: '9px', background: '#fff', color: SKY_BLUE, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap' }}>View schedule data</button></td>
+                        </tr>)}
+                        {!instructorsLoading && instructors.length === 0 && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>No instructor schedule data has been imported yet.</td></tr>}
+                        {instructorsLoading && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>Loading instructor schedule archive…</td></tr>}
                       </tbody>
                     </table>
                   </div>
@@ -3895,6 +3984,40 @@ Near and Long pricing is applied automatically from the selected city and verifi
               {legacyDetailSections.map(([title, fields]) => <section key={title} style={{ minWidth: 0, padding: '1.15rem', borderRadius: '14px', border: '1px solid #DCE7F3', background: 'linear-gradient(145deg,#FFFFFF,#F8FBFF)' }}><h3 style={{ margin: '0 0 .85rem', color: '#0F3F79', fontSize: '1rem', fontWeight: 900 }}>{title}</h3><dl style={{ display: 'grid', gap: '.72rem', margin: 0 }}>{fields.map(([label, value]) => <div key={label} style={{ display: 'grid', gap: '.18rem' }}><dt style={{ color: '#64748B', fontFamily: 'var(--font-mono)', fontSize: '.71rem', letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 800 }}>{label}</dt><dd style={{ margin: 0, color: value ? '#1E293B' : '#7B8CA2', fontSize: '.96rem', lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontWeight: value ? 600 : 500, fontStyle: value ? 'normal' : 'italic' }}>{value || 'Not recorded in old website'}</dd></div>)}</dl></section>)}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}><button type="button" onClick={() => setLegacyDetails(null)} style={{ minHeight: '42px', padding: '.6rem 1rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Close details</button></div>
+          </section>
+        </div>
+      )}
+
+      {instructorDetails && (
+        <div role="presentation" onClick={event => { if (event.target === event.currentTarget) setInstructorDetails(null) }} style={{ position: 'fixed', inset: 0, zIndex: 15000, display: 'grid', placeItems: 'center', padding: '1rem', background: 'rgba(10,22,40,.68)', backdropFilter: 'blur(9px)' }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="instructor-schedule-details-title" style={{ width: 'min(100%, 1180px)', maxHeight: '90vh', overflowY: 'auto', padding: '1.8rem', borderRadius: '20px', background: '#fff', boxShadow: '0 30px 90px rgba(10,22,40,.34)' }}>
+            <header style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #E2E8F0' }}>
+              <div><p style={{ margin: 0, color: GOLD_DEEP, fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase' }}>Previous website schedule archive</p><h2 id="instructor-schedule-details-title" style={{ margin: '.3rem 0 0', color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.55rem' }}>Legacy Instructor #{instructorDetails.instructor.legacyInstructorId}</h2><p style={{ margin: '.32rem 0 0', color: '#526C88' }}>Instructor name and contact details were not present in the supplied old export.</p></div>
+              <button autoFocus type="button" aria-label="Close instructor schedule details" onClick={() => setInstructorDetails(null)} style={{ width: '40px', height: '40px', border: '1px solid #CBD5E1', borderRadius: '10px', background: '#fff', color: '#334155', fontSize: '1.45rem', cursor: 'pointer' }}>&times;</button>
+            </header>
+            <p role="note" style={{ margin: '1rem 0', padding: '.75rem .9rem', borderRadius: '10px', border: '1px solid #BFDBFE', background: '#F8FBFF', color: '#334E6F', fontSize: '.85rem', lineHeight: 1.5 }}>Every field available in the old <code>tbl_zone_slots</code> record is shown below. Location and zone values are historic system IDs.</p>
+            {instructorDetails.error && <div role="alert" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{instructorDetails.error}</div>}
+            {!instructorDetails.loading && !instructorDetails.error && <TablePager page={instructorDetails.page} pages={Math.max(1, Math.ceil(instructorDetails.total / instructorDetails.limit))} total={instructorDetails.total} label="schedule slots" onChange={page => openInstructorDetails(instructorDetails.instructor, page)} />}
+            <div className="admin-table-wrap">
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr><th scope="col" style={thStyle}>Old Slot ID</th><th scope="col" style={thStyle}>Date</th><th scope="col" style={thStyle}>Zone / Location</th><th scope="col" style={thStyle}>Time Window</th><th scope="col" style={thStyle}>Break</th><th scope="col" style={thStyle}>Autism Support</th><th scope="col" style={thStyle}>Status</th><th scope="col" style={thStyle}>Imported From</th></tr></thead>
+                <tbody>
+                  {instructorDetails.items.map(slot => <tr key={slot.legacySlotId}>
+                    <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '.86rem' }}>{slot.legacySlotId || 'Not recorded'}</td>
+                    <td style={tdStyle}>{formatDateDMY(slot.slotDate)}</td>
+                    <td style={tdStyle}><div>Zone {slot.legacyZoneId || 'Not recorded'}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>Location {slot.locationId || 'Not recorded'}</p></td>
+                    <td style={tdStyle}>{slot.fromHour || 'Not recorded'} – {slot.toHour || 'Not recorded'}</td>
+                    <td style={tdStyle}>{slot.breakHours || 'Not recorded'} hour(s)</td>
+                    <td style={tdStyle}>{slot.autismSupport ? 'Yes' : 'No'}</td>
+                    <td style={tdStyle}><span style={{ display: 'inline-flex', padding: '.28rem .6rem', borderRadius: '999px', background: slot.active ? '#ECFDF3' : '#FEF2F2', color: slot.active ? '#087443' : '#B91C1C', fontFamily: 'var(--font-mono)', fontSize: '.7rem', letterSpacing: '.05em', textTransform: 'uppercase', fontWeight: 900 }}>{slot.active ? 'Active' : 'Inactive'}</span></td>
+                    <td style={tdStyle}>{slot.insertedAt || 'Not recorded'}</td>
+                  </tr>)}
+                  {instructorDetails.loading && <tr><td colSpan={8} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>Loading schedule slots…</td></tr>}
+                  {!instructorDetails.loading && !instructorDetails.error && instructorDetails.items.length === 0 && <tr><td colSpan={8} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>No schedule slots were found for this legacy instructor ID.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}><button type="button" onClick={() => setInstructorDetails(null)} style={{ minHeight: '42px', padding: '.6rem 1rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Close details</button></div>
           </section>
         </div>
       )}
