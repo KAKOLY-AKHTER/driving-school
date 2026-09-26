@@ -5012,11 +5012,33 @@ app.get('/api/admin/legacy-certificates/:candidateId', async (req, res) => {
     if (!candidateId) throw new HttpError(400, 'Legacy candidate ID is required.')
     const student = await legacyCertificateStudentsCol.findOne({ legacyCandidateId: candidateId }, { projection: { _id: 0 } })
     if (!student) throw new HttpError(404, 'Legacy certificate student was not found.')
-    const tests = await legacyCertificateTestsCol.find({ legacyCandidateId: candidateId }, { projection: { _id: 0 } })
-      .sort({ testLevelId: 1, testDate: 1, legacyTestId: 1 }).toArray()
+    const tests = await legacyCertificateTestsCol.find({ legacyCandidateId: candidateId }, { projection: { _id: 0 } }).toArray()
+    // Legacy test-level IDs are strings in MongoDB. Sort numerically so the
+    // archive follows Chapter 1 through Chapter 10, then the Final Test.
+    tests.sort((left, right) => {
+      const levelDifference = (Number(left.testLevelId) || Number.MAX_SAFE_INTEGER) - (Number(right.testLevelId) || Number.MAX_SAFE_INTEGER)
+      if (levelDifference) return levelDifference
+      return String(left.testDate || '').localeCompare(String(right.testDate || ''))
+        || String(left.legacyTestId || '').localeCompare(String(right.legacyTestId || ''))
+    })
+    // The online-course and driving-school databases use different old IDs.
+    // Only an exact normalized email is used to show related driving details.
+    const matchingEmail = normalizeEmail(student.email)
+    const drivingRecords = matchingEmail
+      ? await legacyStudentRecordsCol.find({ email: matchingEmail }, {
+        projection: {
+          _id: 0, legacyCandidateId: 1, displayName: 1, email: 1, phone: 1,
+          secondaryPhone: 1, alternatePhone: 1, dob: 1, address: 1, city: 1,
+          state: 1, zipCode: 1, legacyJoinedAt: 1, licenseNumber: 1,
+          licenseIssuedAt: 1, licenseExpiresAt: 1, permitNumber: 1,
+          permitIssuedAt: 1, permitExpiresAt: 1, usesLenses: 1,
+        },
+      }).sort({ legacyJoinedAt: -1, legacyCandidateId: -1 }).toArray()
+      : []
     res.json({
       student: { ...student, courseName: legacyCertificateCourseLabel(student.courseName) },
       tests: tests.map(test => ({ ...test, testTitle: legacyCertificateTestTitle(test.testLevelId) })),
+      drivingRecords,
     })
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message })
