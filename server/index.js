@@ -1022,7 +1022,7 @@ const GOOGLE_CALENDAR_TIME_ZONE = String(process.env.GOOGLE_CALENDAR_TIME_ZONE |
 const GOOGLE_CALENDAR_SETTING_ID = 'google-calendar'
 const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events'
 
-let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, couponsCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol, legacyStudentsCol, legacyStudentRecordsCol, legacyStudentCreditsCol, legacyStudentCancelledCreditsCol, legacyStudentPackagesCol, legacyStudentPendingPackagesCol, legacyInstructorSlotsCol, legacyInstructorsCol, legacyTimeSlotsCol, legacyCitiesCol
+let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, couponsCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol, legacyStudentsCol, legacyStudentRecordsCol, legacyStudentCreditsCol, legacyStudentCancelledCreditsCol, legacyStudentPackagesCol, legacyStudentPendingPackagesCol, legacyStudentFeesCol, legacyPackageCatalogCol, legacyCountryStatesCol, legacyInstructorSlotsCol, legacyInstructorsCol, legacyTimeSlotsCol, legacyCitiesCol
 let connectPromise = null
 
 class HttpError extends Error {
@@ -2125,6 +2125,9 @@ async function connectDB() {
     legacyStudentCancelledCreditsCol = db.collection('legacy_student_cancelled_credits')
     legacyStudentPackagesCol = db.collection('legacy_student_packages')
     legacyStudentPendingPackagesCol = db.collection('legacy_student_pending_packages')
+    legacyStudentFeesCol = db.collection('legacy_student_fees')
+    legacyPackageCatalogCol = db.collection('legacy_package_catalog')
+    legacyCountryStatesCol = db.collection('legacy_country_states')
     legacyInstructorSlotsCol = db.collection('legacy_instructor_slots')
     legacyInstructorsCol = db.collection('legacy_instructors')
     legacyTimeSlotsCol = db.collection('legacy_time_slots')
@@ -2157,6 +2160,10 @@ async function connectDB() {
     await legacyStudentPackagesCol.createIndex({ legacyCandidateId: 1, insertedAt: -1 })
     await legacyStudentPendingPackagesCol.createIndex({ legacyCandidatePackageId: 1 }, { unique: true, name: 'unique_legacy_student_package' })
     await legacyStudentPendingPackagesCol.createIndex({ legacyCandidateId: 1, insertedAt: -1 })
+    await legacyStudentFeesCol.createIndex({ legacyCandidateFeeId: 1 }, { unique: true, name: 'unique_legacy_student_fee' })
+    await legacyStudentFeesCol.createIndex({ legacyCandidateId: 1, insertedAt: -1 })
+    await legacyPackageCatalogCol.createIndex({ legacyPackageId: 1 }, { unique: true, name: 'unique_legacy_package_catalog_item' })
+    await legacyCountryStatesCol.createIndex({ legacyCountryStateId: 1 }, { unique: true, name: 'unique_legacy_country_state' })
     await legacyInstructorSlotsCol.createIndex({ legacySlotId: 1 }, { unique: true, name: 'unique_legacy_instructor_slot' })
     await legacyInstructorSlotsCol.createIndex({ legacyInstructorId: 1, slotDate: -1 })
     await legacyInstructorSlotsCol.createIndex({ legacyInstructorId: 1, active: 1, locationId: 1, slotDate: -1 }, { name: 'legacy_instructor_schedule_filters' })
@@ -4614,29 +4621,36 @@ app.get('/api/admin/legacy-students/:candidateId/records', async (req, res) => {
     const records = await legacyStudentRecordsCol.find(query, { projection: { _id: 0 } })
       .sort({ legacyJoinedAt: -1, legacyCandidateId: -1 }).toArray()
     const candidateIds = records.map(record => cleanText(record.legacyCandidateId, 40)).filter(Boolean)
-    const [scheduledCredits, cancelledCredits, packages, pendingPackages] = candidateIds.length ? await Promise.all([
+    const [scheduledCredits, cancelledCredits, packages, pendingPackages, fees] = candidateIds.length ? await Promise.all([
       legacyStudentCreditsCol.find({ legacyCandidateId: { $in: candidateIds } }, { projection: { _id: 0 } }).toArray(),
       legacyStudentCancelledCreditsCol.find({ legacyCandidateId: { $in: candidateIds } }, { projection: { _id: 0 } }).toArray(),
       legacyStudentPackagesCol.find({ legacyCandidateId: { $in: candidateIds } }, { projection: { _id: 0 } }).toArray(),
       legacyStudentPendingPackagesCol.find({ legacyCandidateId: { $in: candidateIds } }, { projection: { _id: 0 } }).toArray(),
-    ]) : [[], [], [], []]
+      legacyStudentFeesCol.find({ legacyCandidateId: { $in: candidateIds } }, { projection: { _id: 0 } }).toArray(),
+    ]) : [[], [], [], [], []]
     const credits = [
       ...scheduledCredits.map(credit => ({ ...credit, archiveType: 'scheduled' })),
       ...cancelledCredits.map(credit => ({ ...credit, archiveType: 'cancelled', cancelled: true })),
     ].sort((left, right) => String(right.scheduledDate || '').localeCompare(String(left.scheduledDate || '')) || String(right.legacyCandidateCreditId || '').localeCompare(String(left.legacyCandidateCreditId || '')))
     const instructorIds = [...new Set(credits.map(credit => cleanText(credit.legacyInstructorId, 80)).filter(Boolean))]
     const locationIds = [...new Set(credits.map(credit => cleanText(credit.locationId, 80)).filter(Boolean))]
-    const [instructors, locations] = await Promise.all([
+    const packageIds = [...new Set([...packages, ...pendingPackages].map(item => cleanText(item.legacyPackageId, 40)).filter(Boolean))]
+    const countryStateIds = [...new Set(records.map(record => cleanText(record.countryStateId, 40)).filter(Boolean))]
+    const [instructors, locations, packageCatalog, countryStates] = await Promise.all([
       instructorIds.length ? legacyInstructorsCol.find({ legacyInstructorId: { $in: instructorIds } }, { projection: { _id: 0, legacyInstructorId: 1, displayName: 1 } }).toArray() : [],
       locationIds.length ? legacyCitiesCol.find({ legacyCityId: { $in: locationIds } }, { projection: { _id: 0, legacyCityId: 1, cityName: 1, zipCode: 1 } }).toArray() : [],
+      packageIds.length ? legacyPackageCatalogCol.find({ legacyPackageId: { $in: packageIds } }, { projection: { _id: 0 } }).toArray() : [],
+      countryStateIds.length ? legacyCountryStatesCol.find({ legacyCountryStateId: { $in: countryStateIds } }, { projection: { _id: 0 } }).toArray() : [],
     ])
     const instructorNames = new Map(instructors.map(instructor => [cleanText(instructor.legacyInstructorId, 80), cleanText(instructor.displayName, 160)]))
     // Use an ASCII separator: legacy exports may be opened with a non-UTF-8
     // encoding, which made the previous middle-dot render as mojibake in the UI.
     const locationNames = new Map(locations.map(location => [cleanText(location.legacyCityId, 80), [cleanText(location.cityName, 120), cleanText(location.zipCode, 20)].filter(Boolean).join(', ')]))
+    const packageDetails = new Map(packageCatalog.map(item => [cleanText(item.legacyPackageId, 40), item]))
+    const countryStateNames = new Map(countryStates.map(item => [cleanText(item.legacyCountryStateId, 40), [cleanText(item.countryStateName, 120), cleanText(item.stateAbbreviation, 20)].filter(Boolean).join(' ') ]))
     res.json({
       selectedCandidateId: candidateId,
-      records,
+      records: records.map(record => ({ ...record, countryStateName: countryStateNames.get(cleanText(record.countryStateId, 40)) || '' })),
       credits: credits.map(credit => ({
         ...credit,
         instructorName: instructorNames.get(cleanText(credit.legacyInstructorId, 80)) || '',
@@ -4645,7 +4659,8 @@ app.get('/api/admin/legacy-students/:candidateId/records', async (req, res) => {
       packages: [
         ...packages.map(item => ({ ...item, archiveType: 'completed' })),
         ...pendingPackages.map(item => ({ ...item, archiveType: 'pending' })),
-      ].sort((left, right) => String(right.insertedAt || '').localeCompare(String(left.insertedAt || '')) || String(right.legacyCandidatePackageId || '').localeCompare(String(left.legacyCandidatePackageId || ''))),
+      ].map(item => ({ ...item, packageDetails: packageDetails.get(cleanText(item.legacyPackageId, 40)) || null })).sort((left, right) => String(right.insertedAt || '').localeCompare(String(left.insertedAt || '')) || String(right.legacyCandidatePackageId || '').localeCompare(String(left.legacyCandidatePackageId || ''))),
+      fees: fees.sort((left, right) => String(right.insertedAt || '').localeCompare(String(left.insertedAt || '')) || String(right.legacyCandidateFeeId || '').localeCompare(String(left.legacyCandidateFeeId || ''))),
     })
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message })

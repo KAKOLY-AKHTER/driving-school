@@ -1064,16 +1064,16 @@ export default function AdminPage() {
     if (!candidateId) return
     const requestId = legacyDetailsRequestRef.current + 1
     legacyDetailsRequestRef.current = requestId
-    setLegacyDetails({ selected: student, records: [], credits: [], packages: [], creditSearch: '', creditStatus: 'all', creditPage: 1, loading: true, error: '' })
+    setLegacyDetails({ selected: student, records: [], credits: [], packages: [], fees: [], creditSearch: '', creditStatus: 'all', creditPage: 1, loading: true, error: '' })
     try {
       const response = await api.adminLegacyStudentRecords(candidateId)
       if (legacyDetailsRequestRef.current !== requestId) return
       const records = Array.isArray(response?.records) ? response.records : []
       const selected = records.find(record => String(record.legacyCandidateId || '') === String(response?.selectedCandidateId || candidateId)) || records[0] || student
-      setLegacyDetails({ selected, records, credits: Array.isArray(response?.credits) ? response.credits : [], packages: Array.isArray(response?.packages) ? response.packages : [], creditSearch: '', creditStatus: 'all', creditPage: 1, loading: false, error: '' })
+      setLegacyDetails({ selected, records, credits: Array.isArray(response?.credits) ? response.credits : [], packages: Array.isArray(response?.packages) ? response.packages : [], fees: Array.isArray(response?.fees) ? response.fees : [], creditSearch: '', creditStatus: 'all', creditPage: 1, loading: false, error: '' })
     } catch (error) {
       if (legacyDetailsRequestRef.current !== requestId) return
-      setLegacyDetails({ selected: student, records: [], credits: [], packages: [], creditSearch: '', creditStatus: 'all', creditPage: 1, loading: false, error: error?.message || 'Legacy student details could not be loaded.' })
+      setLegacyDetails({ selected: student, records: [], credits: [], packages: [], fees: [], creditSearch: '', creditStatus: 'all', creditPage: 1, loading: false, error: error?.message || 'Legacy student details could not be loaded.' })
     }
   }, [])
 
@@ -2120,7 +2120,7 @@ export default function AdminPage() {
   const legacySelectedRecord = legacyDetails?.selected || null
   const legacyDetailSections = legacySelectedRecord ? [
     ['Student & contact', [['First name', legacyDisplayText(legacySelectedRecord.firstName)], ['Middle name', legacyDisplayText(legacySelectedRecord.middleName)], ['Last name', legacyDisplayText(legacySelectedRecord.lastName)], ['Username', legacyDisplayText(legacySelectedRecord.username)], ['Date of birth', legacyDisplayDate(legacySelectedRecord.dob)], ['Gender', legacyDisplayText(legacySelectedRecord.gender)], ['Primary phone', legacyDisplayText(legacySelectedRecord.phone)], ['Second phone', legacyDisplayText(legacySelectedRecord.secondaryPhone)], ['Alternate phone', legacyDisplayText(legacySelectedRecord.alternatePhone)]]],
-    ['Address & school', [['Street address', legacyDisplayText(legacySelectedRecord.address)], ['Address 2 / apartment', legacyDisplayText(legacySelectedRecord.address2)], ['Apartment number', legacyDisplayText(legacySelectedRecord.apartmentNumber)], ['Primary home address', legacyDisplayText(legacySelectedRecord.primaryHomeAddress)], ['City', legacyDisplayText(legacySelectedRecord.city)], ['State', legacyDisplayText(legacySelectedRecord.state)], ['Country / state ID', legacyDisplayText(legacySelectedRecord.countryStateId)], ['ZIP code', legacyDisplayText(legacySelectedRecord.zipCode)], ['Gate code', legacyDisplayText(legacySelectedRecord.gateCode)], ['School affiliate', legacyDisplayText(legacySelectedRecord.schoolAffiliate)], ['High school', legacyDisplayText(legacySelectedRecord.highSchool)], ['Student high school', legacyDisplayText(legacySelectedRecord.studentHighSchool)]]],
+    ['Address & school', [['Street address', legacyDisplayText(legacySelectedRecord.address)], ['Address 2 / apartment', legacyDisplayText(legacySelectedRecord.address2)], ['Apartment number', legacyDisplayText(legacySelectedRecord.apartmentNumber)], ['Primary home address', legacyDisplayText(legacySelectedRecord.primaryHomeAddress)], ['City', legacyDisplayText(legacySelectedRecord.city)], ['State', legacyDisplayText(legacySelectedRecord.state || legacySelectedRecord.countryStateName)], ['Country / state ID', legacyDisplayText(legacySelectedRecord.countryStateId)], ['ZIP code', legacyDisplayText(legacySelectedRecord.zipCode)], ['Gate code', legacyDisplayText(legacySelectedRecord.gateCode)], ['School affiliate', legacyDisplayText(legacySelectedRecord.schoolAffiliate)], ['High school', legacyDisplayText(legacySelectedRecord.highSchool)], ['Student high school', legacyDisplayText(legacySelectedRecord.studentHighSchool)]]],
     ['Driving record', [['License number', legacyDisplayText(legacySelectedRecord.licenseNumber)], ['License issued', legacyDisplayDate(legacySelectedRecord.licenseIssuedAt)], ['License expires', legacyDisplayDate(legacySelectedRecord.licenseExpiresAt)], ['Permit number', legacyDisplayText(legacySelectedRecord.permitNumber)], ['Permit issued', legacyDisplayDate(legacySelectedRecord.permitIssuedAt)], ['Permit expires', legacyDisplayDate(legacySelectedRecord.permitExpiresAt)], ['Uses lenses', legacySelectedRecord.usesLenses === true ? 'Yes' : legacySelectedRecord.usesLenses === false ? 'No' : '']]],
     ['Payer & account', [['Payer name', legacyDisplayText(legacySelectedRecord.payerName)], ['Payer relationship', legacyDisplayText(legacySelectedRecord.payerRelationship)], ['Old account active', legacySelectedRecord.legacyActive ? 'Yes' : 'No'], ['New account status', legacySelectedRecord.activationStatus === 'activated' ? 'Linked' : 'Pending activation'], ['New account UID', legacyDisplayText(legacySelectedRecord.linkedUid)], ['Old join date', legacyDisplayDate(legacySelectedRecord.legacyJoinedAt)], ['Course chapter progress', legacyDisplayText(legacySelectedRecord.chapterCheck)], ['Version type', legacyDisplayText(legacySelectedRecord.versionType)]]],
     ['Health information', [['Medical condition', legacyDisplayText(legacySelectedRecord.medicalCondition)], ['Medications', legacyDisplayText(legacySelectedRecord.medications)]]],
@@ -2128,11 +2128,16 @@ export default function AdminPage() {
   ] : []
   const legacyCredits = Array.isArray(legacyDetails?.credits) ? legacyDetails.credits : []
   const legacyPackages = Array.isArray(legacyDetails?.packages) ? legacyDetails.packages : []
+  const legacyFees = Array.isArray(legacyDetails?.fees) ? legacyDetails.fees : []
   const legacyPackageSummary = legacyPackages.reduce((summary, item) => ({
     completed: summary.completed + (item.archiveType === 'completed' ? 1 : 0),
     pending: summary.pending + (item.archiveType === 'pending' ? 1 : 0),
     paid: summary.paid + (['1', 'yes', 'true', 'paid'].includes(String(item.paymentStatus || '').toLowerCase()) ? 1 : 0),
   }), { completed: 0, pending: 0, paid: 0 })
+  const legacyFeeSummary = legacyFees.reduce((summary, item) => ({
+    paid: summary.paid + (['1', 'yes', 'true', 'paid'].includes(String(item.paymentStatus || '').toLowerCase()) ? 1 : 0),
+    active: summary.active + (item.active ? 1 : 0),
+  }), { paid: 0, active: 0 })
   const legacyCreditSummary = legacyCredits.reduce((summary, credit) => ({
     active: summary.active + (credit.active ? 1 : 0),
     paid: summary.paid + (credit.paid ? 1 : 0),
@@ -4096,11 +4101,28 @@ Near and Long pricing is applied automatically from the selected city and verifi
                   <tbody>{legacyPackages.map(item => <tr key={`${item.archiveType || 'package'}-${item.legacyCandidatePackageId}`}>
                     <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '.82rem' }}>{item.legacyCandidatePackageId || '—'}</td>
                     <td style={tdStyle}>ID {item.legacyCandidateId || '—'}</td>
-                    <td style={tdStyle}>Package {item.legacyPackageId || 'Not recorded'}<p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{item.archiveType === 'pending' ? 'Pending package archive' : 'Completed package archive'}</p></td>
+                    <td style={tdStyle}><strong>{item.packageDetails?.title || item.packageDetails?.name || `Package ${item.legacyPackageId || 'Not recorded'}`}</strong><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{item.packageDetails?.name && item.packageDetails.name !== item.packageDetails.title ? item.packageDetails.name : `Package ID ${item.legacyPackageId || 'Not recorded'}`}</p><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{item.archiveType === 'pending' ? 'Pending package archive' : 'Completed package archive'}</p></td>
                     <td style={tdStyle}>{item.packageFee ? `$${item.packageFee}` : 'Not recorded'}</td>
                     <td style={tdStyle}><span style={{ display: 'inline-flex', padding: '.28rem .6rem', borderRadius: '999px', background: ['1', 'yes', 'true', 'paid'].includes(String(item.paymentStatus || '').toLowerCase()) ? '#ECFDF3' : '#FEF3C7', color: ['1', 'yes', 'true', 'paid'].includes(String(item.paymentStatus || '').toLowerCase()) ? '#087443' : '#92400E', fontFamily: 'var(--font-mono)', fontSize: '.7rem', letterSpacing: '.05em', textTransform: 'uppercase', fontWeight: 900 }}>{item.paymentStatus || 'Not recorded'}</span></td>
                     <td style={tdStyle}>{formatDateDMY(item.insertedAt)}</td>
                   </tr>)}{!legacyPackages.length && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '1.5rem', color: '#64748B' }}>No historic package record was found for these old student ID(s).</td></tr>}</tbody>
+                </table></div>
+              </section>
+              <section style={{ marginTop: '1rem', padding: '1.15rem', borderRadius: '14px', border: '1px solid #DCE7F3', background: 'linear-gradient(145deg,#FFFFFF,#F8FBFF)' }}>
+                <h3 style={{ margin: 0, color: '#0F3F79', fontSize: '1rem', fontWeight: 900 }}>Historic Fees & Fines</h3>
+                <p style={{ margin: '.35rem 0 .85rem', color: '#526C88', fontSize: '.86rem', lineHeight: 1.5 }}>These historic fee records are matched only by the original student ID. Payment-card data was not imported.</p>
+                <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginBottom: '.9rem' }}>
+                  {[['Total', legacyFees.length, '#EFF6FF', '#0755AE'], ['Paid', legacyFeeSummary.paid, '#ECFDF3', '#087443'], ['Active', legacyFeeSummary.active, '#F3E8FF', '#6B21A8']].map(([label, value, background, color]) => <span key={label} style={{ padding: '.35rem .6rem', borderRadius: '999px', background, color, fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 900 }}>{value} {label}</span>)}
+                </div>
+                <div className="admin-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead><tr><th scope="col" style={thStyle}>Old Fee ID</th><th scope="col" style={thStyle}>Old Student ID</th><th scope="col" style={thStyle}>Fee</th><th scope="col" style={thStyle}>Payment Status</th><th scope="col" style={thStyle}>Recorded</th></tr></thead>
+                  <tbody>{legacyFees.map(item => <tr key={item.legacyCandidateFeeId}>
+                    <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '.82rem' }}>{item.legacyCandidateFeeId || '—'}</td>
+                    <td style={tdStyle}>ID {item.legacyCandidateId || '—'}</td>
+                    <td style={tdStyle}>{item.fee ? `$${item.fee}` : 'Not recorded'}</td>
+                    <td style={tdStyle}>{item.paymentStatus || 'Not recorded'}</td>
+                    <td style={tdStyle}>{formatDateDMY(item.insertedAt)}</td>
+                  </tr>)}{!legacyFees.length && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '1.5rem', color: '#64748B' }}>No historic fee or fine record was found for these old student ID(s).</td></tr>}</tbody>
                 </table></div>
               </section>
               <section style={{ marginTop: '1rem', padding: '1.15rem', borderRadius: '14px', border: '1px solid #DCE7F3', background: 'linear-gradient(145deg,#FFFFFF,#F8FBFF)' }}>
