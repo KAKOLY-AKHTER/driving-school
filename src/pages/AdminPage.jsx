@@ -939,6 +939,7 @@ export default function AdminPage() {
   const [instructorDetails, setInstructorDetails] = useState(null)
   const [certificateRequests, setCertificateRequests] = useState([])
   const [certificateUpdating, setCertificateUpdating] = useState('')
+  const [legacyCertificateDetails, setLegacyCertificateDetails] = useState(null)
   const [bookings, setBookings] = useState([])
   const [contacts, setContacts] = useState([])
   const [userSearch, setUserSearch] = useState('')
@@ -1032,6 +1033,7 @@ export default function AdminPage() {
   const previousFocusRef = useRef(null)
   const userDetailsRequestRef = useRef(0)
   const legacyDetailsRequestRef = useRef(0)
+  const legacyCertificateDetailsRequestRef = useRef(0)
   const instructorDetailsRequestRef = useRef(0)
 
   const requestConfirmation = (title, message, action) => {
@@ -1074,6 +1076,22 @@ export default function AdminPage() {
     } catch (error) {
       if (legacyDetailsRequestRef.current !== requestId) return
       setLegacyDetails({ selected: student, records: [], credits: [], packages: [], fees: [], creditSearch: '', creditStatus: 'all', creditPage: 1, loading: false, error: error?.message || 'Legacy student details could not be loaded.' })
+    }
+  }, [])
+
+  const openLegacyCertificateDetails = useCallback(async (request) => {
+    const candidateId = String(request?.legacyCandidateId || '').trim()
+    if (!candidateId) return
+    const requestId = legacyCertificateDetailsRequestRef.current + 1
+    legacyCertificateDetailsRequestRef.current = requestId
+    setLegacyCertificateDetails({ request, data: null, loading: true, error: '' })
+    try {
+      const data = await api.adminLegacyCertificateDetails(candidateId)
+      if (legacyCertificateDetailsRequestRef.current !== requestId) return
+      setLegacyCertificateDetails({ request, data, loading: false, error: '' })
+    } catch (error) {
+      if (legacyCertificateDetailsRequestRef.current !== requestId) return
+      setLegacyCertificateDetails({ request, data: null, loading: false, error: error?.message || 'Legacy certificate details could not be loaded.' })
     }
   }, [])
 
@@ -1924,6 +1942,7 @@ export default function AdminPage() {
 
   const activeDialogKey = confirmDialog ? 'confirmation'
     : legacyDetails ? 'legacy-details'
+      : legacyCertificateDetails ? 'legacy-certificate-details'
       : instructorDetails ? 'instructor-details'
       : userDetailsDialog ? 'user-details'
       : detailsDialog ? 'details'
@@ -1941,6 +1960,7 @@ export default function AdminPage() {
     if (confirmDialog?.busy) return
     if (confirmDialog) setConfirmDialog(null)
     else if (legacyDetails) setLegacyDetails(null)
+    else if (legacyCertificateDetails) setLegacyCertificateDetails(null)
     else if (instructorDetails) setInstructorDetails(null)
     else if (userDetailsDialog) closeUserDetails()
     else if (detailsDialog) setDetailsDialog(null)
@@ -1952,7 +1972,7 @@ export default function AdminPage() {
     else if (pricingEdit) requestEditorClose('pricing editor', () => setPricingEdit(null))
     else if (contactConversation) setContactConversation(null)
     else if (contactEdit) requestEditorClose('contact editor', () => setContactEdit(null))
-  }, [areasEdit, closeUserDetails, confirmDialog, contactConversation, contactEdit, detailsDialog, instructorDetails, legacyDetails, locationEdit, pricingEdit, refundDetails, refundEdit, requestEditorClose, socialsEdit, userDetailsDialog])
+  }, [areasEdit, closeUserDetails, confirmDialog, contactConversation, contactEdit, detailsDialog, instructorDetails, legacyDetails, legacyCertificateDetails, locationEdit, pricingEdit, refundDetails, refundEdit, requestEditorClose, socialsEdit, userDetailsDialog])
 
   useEffect(() => {
     const dialogOpen = Boolean(activeDialogKey)
@@ -3032,6 +3052,7 @@ export default function AdminPage() {
                       <thead><tr>{['Student', 'Request', 'Test 11', 'Paid', 'Requested', 'Status', 'Actions'].map(label => <th key={label} style={thStyle}>{label}</th>)}</tr></thead>
                       <tbody>
                         {certificateRequests.map(request => {
+                          const legacy = request.source === 'legacy'
                           const pending = String(request.status || '').toLowerCase().includes('pending')
                           const normalizedRequestStatus = String(request.status || '').trim().toLowerCase()
                           const readyForPickup = ['approved', 'ready for pickup'].includes(normalizedRequestStatus)
@@ -3039,12 +3060,12 @@ export default function AdminPage() {
                           return <tr key={request.id}>
                             <td style={tdStyle}><strong>{request.studentName || 'Student'}</strong><span style={{ display: 'block', fontSize: '.85rem', color: '#64748B', overflowWrap: 'anywhere' }}>{request.email || 'No email'}</span></td>
                             <td style={tdStyle}><strong>{request.type || 'Certificate'}</strong><span style={{ display: 'block', fontSize: '.85rem', color: '#64748B' }}>{request.title || ''}</span></td>
-                            <td style={tdStyle}>{request.finalTestResult?.passed ? <span style={{ color: '#15803D', fontWeight: 800 }}>Passed · {Number(request.finalTestResult.score || 0).toFixed(2)}%</span> : <span style={{ color: '#B45309', fontWeight: 800 }}>Not passed yet</span>}</td>
+                            <td style={tdStyle}>{request.finalTestResult?.passed ? <span style={{ color: '#15803D', fontWeight: 800 }}>Passed · {Number(request.finalTestResult.score || 0).toFixed(2)}%</span> : legacy ? <span style={{ color: '#64748B', fontWeight: 800 }}>Not recorded / not passed</span> : <span style={{ color: '#B45309', fontWeight: 800 }}>Not passed yet</span>}</td>
                             <td style={tdStyle}>${Number(request.paidAmount || 0).toFixed(2)}</td>
                             <td style={tdStyle}>{request.requestedAt ? new Date(request.requestedAt).toLocaleDateString() : '—'}</td>
-                            <td style={tdStyle}><span style={{ padding: '.28rem .58rem', borderRadius: '999px', background: (readyForPickup || collected) ? '#F0FDF4' : pending ? '#FFFBEB' : '#FEF2F2', color: (readyForPickup || collected) ? '#15803D' : pending ? '#9A6700' : '#B91C1C', fontWeight: 800 }}>{readyForPickup ? 'Ready for pickup' : collected ? 'Collected' : request.status || 'Pending approval'}</span></td>
+                            <td style={tdStyle}><span style={{ padding: '.28rem .58rem', borderRadius: '999px', background: legacy ? '#EFF6FF' : (readyForPickup || collected) ? '#F0FDF4' : pending ? '#FFFBEB' : '#FEF2F2', color: legacy ? '#0755AE' : (readyForPickup || collected) ? '#15803D' : pending ? '#9A6700' : '#B91C1C', fontWeight: 800 }}>{legacy ? request.status : readyForPickup ? 'Ready for pickup' : collected ? 'Collected' : request.status || 'Pending approval'}</span></td>
                             <td style={{ ...tdStyle, padding: '.75rem .7rem' }}>
-                              {pending ? (
+                              {legacy ? <div style={{ display: 'grid', gap: '.3rem' }}><button type="button" onClick={() => openLegacyCertificateDetails(request)} style={{ width: 'fit-content', padding: '.45rem .7rem', border: '1px solid #0755AE', borderRadius: '8px', background: '#fff', color: '#0755AE', fontWeight: 800, cursor: 'pointer' }}>View details</button>{request.certificateNumber && <code style={{ fontFamily: 'var(--font-mono)', fontSize: '.7rem', color: '#526780', overflowWrap: 'anywhere' }}>{request.certificateNumber}</code>}</div> : pending ? (
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.45rem' }}>
                                   <button type="button" disabled={certificateUpdating === request.id} onClick={() => updateCertificateRequest(request.id, 'ready')} style={{ padding: '.45rem .7rem', border: 0, borderRadius: '8px', background: '#15803D', color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Ready for pickup</button>
                                   <button type="button" disabled={certificateUpdating === request.id} onClick={() => updateCertificateRequest(request.id, 'denied')} style={{ padding: '.45rem .7rem', border: '1px solid #FCA5A5', borderRadius: '8px', background: '#fff', color: '#B91C1C', fontWeight: 800, cursor: 'pointer' }}>Deny</button>
@@ -4156,6 +4177,32 @@ Near and Long pricing is applied automatically from the selected city and verifi
               </section>
             </>}
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}><button type="button" onClick={() => setLegacyDetails(null)} style={{ minHeight: '42px', padding: '.6rem 1rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Close details</button></div>
+          </section>
+        </div>
+      )}
+
+      {legacyCertificateDetails && (
+        <div role="presentation" onClick={event => { if (event.target === event.currentTarget) setLegacyCertificateDetails(null) }} style={{ position: 'fixed', inset: 0, zIndex: 15000, display: 'grid', placeItems: 'center', padding: '1rem', background: 'rgba(10,22,40,.68)', backdropFilter: 'blur(9px)' }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="legacy-certificate-details-title" style={{ width: 'min(100%, 1060px)', maxHeight: '90vh', overflowY: 'auto', padding: '1.8rem', borderRadius: '20px', background: '#fff', boxShadow: '0 30px 90px rgba(10,22,40,.34)' }}>
+            <header style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #E2E8F0' }}>
+              <div><p style={{ margin: 0, color: GOLD_DEEP, fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase' }}>Previous website certificate archive</p><h2 id="legacy-certificate-details-title" style={{ margin: '.3rem 0 0', color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.55rem' }}>{legacyCertificateDetails.data?.student?.displayName || legacyCertificateDetails.request?.studentName || 'Legacy student'}</h2><p style={{ margin: '.32rem 0 0', color: '#526C88' }}>Old online student ID {legacyCertificateDetails.data?.student?.legacyCandidateId || legacyCertificateDetails.request?.legacyCandidateId || '—'}</p></div>
+              <button autoFocus type="button" aria-label="Close legacy certificate details" onClick={() => setLegacyCertificateDetails(null)} style={{ width: '40px', height: '40px', border: '1px solid #CBD5E1', borderRadius: '10px', background: '#fff', color: '#334155', fontSize: '1.45rem', cursor: 'pointer' }}>&times;</button>
+            </header>
+            <p role="note" style={{ margin: '1rem 0', padding: '.75rem .9rem', borderRadius: '10px', border: '1px solid #BFDBFE', background: '#F8FBFF', color: '#334E6F', fontSize: '.85rem', lineHeight: 1.5 }}>This is a read-only archive from the previous website. Legacy passwords were not imported, and this archive cannot issue or alter a new certificate.</p>
+            {legacyCertificateDetails.error && <div role="alert" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{legacyCertificateDetails.error}</div>}
+            {legacyCertificateDetails.loading ? <p style={{ margin: '1.5rem 0', color: SKY_BLUE, fontWeight: 800 }}>Loading legacy certificate details…</p> : legacyCertificateDetails.data && <>
+              {(() => {
+                const student = legacyCertificateDetails.data.student || {}
+                const fields = [['Email', student.email], ['Phone', student.phone], ['Date of birth', legacyDisplayDate(student.dob)], ['Joined', legacyDisplayDate(student.joinedAt)], ['Course', student.courseName], ['Course price', student.coursePrice ? `$${student.coursePrice}` : ''], ['Course completed', student.courseCompleted ? 'Yes' : 'No'], ['Certificate issued', student.certificateIssued ? 'Yes' : 'No'], ['Certificate details', student.certificateDetails], ['Course progress', student.courseProgress]]
+                return <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: '.8rem', padding: '1rem', border: '1px solid #DCE7F3', borderRadius: '14px', background: '#F8FBFF' }}>{fields.map(([label, value]) => <div key={label} style={{ minWidth: 0 }}><div style={{ color: '#64748B', fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase' }}>{label}</div><div style={{ marginTop: '.2rem', color: value ? '#1E293B' : '#7B8CA2', fontWeight: value ? 650 : 500, fontStyle: value ? 'normal' : 'italic', overflowWrap: 'anywhere' }}>{value || 'Not recorded'}</div></div>)}</section>
+              })()}
+              <section style={{ marginTop: '1rem', padding: '1.15rem', borderRadius: '14px', border: '1px solid #DCE7F3', background: 'linear-gradient(145deg,#FFFFFF,#F8FBFF)' }}>
+                <h3 style={{ margin: 0, color: '#0F3F79', fontSize: '1rem', fontWeight: 900 }}>Historic Exam Results</h3>
+                <p style={{ margin: '.35rem 0 .85rem', color: '#526C88', fontSize: '.86rem' }}>{legacyCertificateDetails.data.tests?.length || 0} recorded test result{legacyCertificateDetails.data.tests?.length === 1 ? '' : 's'} from the previous website.</p>
+                <div className="admin-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr><th scope="col" style={thStyle}>Test</th><th scope="col" style={thStyle}>Date</th><th scope="col" style={thStyle}>Score</th><th scope="col" style={thStyle}>Status</th></tr></thead><tbody>{(legacyCertificateDetails.data.tests || []).map(test => { const score = Number(test.score); const hasScore = Number.isFinite(score); const passed = hasScore && score >= 75; return <tr key={test.legacyTestId}><td style={tdStyle}>{test.testTitle}</td><td style={tdStyle}>{legacyDisplayDate(test.testDate)}</td><td style={tdStyle}>{hasScore ? `${score.toFixed(2)}%` : 'Not recorded'}</td><td style={tdStyle}><span style={{ padding: '.25rem .55rem', borderRadius: '999px', background: passed ? '#ECFDF3' : '#FEF2F2', color: passed ? '#087443' : '#B91C1C', fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 900 }}>{passed ? 'Passed' : 'Below 75%'}</span></td></tr> })}{!(legacyCertificateDetails.data.tests || []).length && <tr><td colSpan={4} style={{ ...tdStyle, textAlign: 'center', padding: '1.5rem', color: '#64748B' }}>No historic test results were found for this student.</td></tr>}</tbody></table></div>
+              </section>
+            </>}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}><button type="button" onClick={() => setLegacyCertificateDetails(null)} style={{ minHeight: '42px', padding: '.6rem 1rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Close details</button></div>
           </section>
         </div>
       )}

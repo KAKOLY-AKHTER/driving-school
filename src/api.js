@@ -122,6 +122,7 @@ export const api = {
   adminUpdateUser: (uid, data) => request(`/api/admin/users/${pathPart(uid)}`, { method: 'PUT', body: JSON.stringify(data) }),
   adminUserDetails: (uid) => request(`/api/admin/users/${pathPart(uid)}/details`),
   adminCertificates: () => request('/api/admin/certificates'),
+  adminLegacyCertificateDetails: (candidateId) => request(`/api/admin/legacy-certificates/${pathPart(candidateId)}`),
   adminUpdateCertificate: (requestId, status) => request(`/api/admin/certificates/${pathPart(requestId)}`, { method: 'PUT', body: JSON.stringify({ status }) }),
   adminDeleteUser: (uid) => request(`/api/admin/users/${pathPart(uid)}`, { method: 'DELETE' }),
   adminUpdateUserCourse: (uid, data) => request(`/api/admin/users/${pathPart(uid)}/courses`, { method: 'PUT', body: JSON.stringify(data) }),

@@ -463,6 +463,20 @@ const ADMIN_FINAL_TEST_FIELDS = [
 ]
 const FINAL_TEST_SIZE = 25
 const FINAL_TEST_PASSING_SCORE = Math.ceil(FINAL_TEST_SIZE * 0.75)
+const LEGACY_CERTIFICATE_TEST_TITLES = {
+  '1': 'Driving is Your Responsibility',
+  '2': 'The Human Factors Affecting the Driver',
+  '3': 'Natural Forces Affecting the Automobile',
+  '4': 'Signs, Signals and Highway Markings',
+  '5': 'The Vehicle Systems',
+  '6': 'Rules of the Road and Safe Driving Practices',
+  '7': 'Sharing the Road and Accident Prevention',
+  '8': 'Alcohol and Drugs and Driving',
+  '9': 'Licensing, Registrations and California Vehicle Codes',
+  '10': 'Acquiring a California Driver License',
+  '11': 'Final Test',
+}
+const legacyCertificateTestTitle = value => LEGACY_CERTIFICATE_TEST_TITLES[cleanText(value, 40)] || `Test ${cleanText(value, 40) || 'record'}`
 const isDuplicateCertificatePlan = (value) => String(value || '') === '13'
 const certificateRequestTypeForPlan = (value) => {
   if (isDuplicateCertificatePlan(value)) return 'Duplicate'
@@ -1022,7 +1036,7 @@ const GOOGLE_CALENDAR_TIME_ZONE = String(process.env.GOOGLE_CALENDAR_TIME_ZONE |
 const GOOGLE_CALENDAR_SETTING_ID = 'google-calendar'
 const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events'
 
-let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, couponsCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol, legacyStudentsCol, legacyStudentRecordsCol, legacyStudentCreditsCol, legacyStudentCancelledCreditsCol, legacyStudentPackagesCol, legacyStudentPendingPackagesCol, legacyStudentFeesCol, legacyPackageCatalogCol, legacyCountryStatesCol, legacyInstructorSlotsCol, legacyInstructorsCol, legacyTimeSlotsCol, legacyCitiesCol
+let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, couponsCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol, legacyStudentsCol, legacyStudentRecordsCol, legacyStudentCreditsCol, legacyStudentCancelledCreditsCol, legacyStudentPackagesCol, legacyStudentPendingPackagesCol, legacyStudentFeesCol, legacyPackageCatalogCol, legacyCountryStatesCol, legacyCertificateStudentsCol, legacyCertificateTestsCol, legacyInstructorSlotsCol, legacyInstructorsCol, legacyTimeSlotsCol, legacyCitiesCol
 let connectPromise = null
 
 class HttpError extends Error {
@@ -2128,6 +2142,8 @@ async function connectDB() {
     legacyStudentFeesCol = db.collection('legacy_student_fees')
     legacyPackageCatalogCol = db.collection('legacy_package_catalog')
     legacyCountryStatesCol = db.collection('legacy_country_states')
+    legacyCertificateStudentsCol = db.collection('legacy_certificate_students')
+    legacyCertificateTestsCol = db.collection('legacy_certificate_tests')
     legacyInstructorSlotsCol = db.collection('legacy_instructor_slots')
     legacyInstructorsCol = db.collection('legacy_instructors')
     legacyTimeSlotsCol = db.collection('legacy_time_slots')
@@ -2164,6 +2180,10 @@ async function connectDB() {
     await legacyStudentFeesCol.createIndex({ legacyCandidateId: 1, insertedAt: -1 })
     await legacyPackageCatalogCol.createIndex({ legacyPackageId: 1 }, { unique: true, name: 'unique_legacy_package_catalog_item' })
     await legacyCountryStatesCol.createIndex({ legacyCountryStateId: 1 }, { unique: true, name: 'unique_legacy_country_state' })
+    await legacyCertificateStudentsCol.createIndex({ legacyCandidateId: 1 }, { unique: true, name: 'unique_legacy_certificate_student' })
+    await legacyCertificateStudentsCol.createIndex({ email: 1, joinedAt: -1 })
+    await legacyCertificateTestsCol.createIndex({ legacyTestId: 1 }, { unique: true, name: 'unique_legacy_certificate_test' })
+    await legacyCertificateTestsCol.createIndex({ legacyCandidateId: 1, testDate: -1, testLevelId: 1 })
     await legacyInstructorSlotsCol.createIndex({ legacySlotId: 1 }, { unique: true, name: 'unique_legacy_instructor_slot' })
     await legacyInstructorSlotsCol.createIndex({ legacyInstructorId: 1, slotDate: -1 })
     await legacyInstructorSlotsCol.createIndex({ legacyInstructorId: 1, active: 1, locationId: 1, slotDate: -1 }, { name: 'legacy_instructor_schedule_filters' })
@@ -4924,7 +4944,8 @@ app.get('/api/admin/users/:uid/details', async (req, res) => {
 
 app.get('/api/admin/certificates', async (_req, res) => {
   try {
-    const rows = await usersCol.aggregate([
+    const [rows, legacyStudents, legacyTests] = await Promise.all([
+      usersCol.aggregate([
       { $match: { isAdmin: { $ne: true }, certificateRequests: { $type: 'array' } } },
       { $unwind: '$certificateRequests' },
       { $project: {
@@ -4933,17 +4954,68 @@ app.get('/api/admin/certificates', async (_req, res) => {
       } },
       { $sort: { 'request.requestedAt': -1 } },
       { $limit: 500 },
-    ]).toArray()
-    res.json(rows.map(row => ({
+      ]).toArray(),
+      legacyCertificateStudentsCol.find({}, { projection: { _id: 0 } }).toArray(),
+      legacyCertificateTestsCol.find({}, { projection: { _id: 0, legacyCandidateId: 1, testDate: 1, testLevelId: 1, score: 1 } }).toArray(),
+    ])
+    const current = rows.map(row => ({
+      source: 'current',
       uid: row.uid,
       studentName: cleanText(row.displayName || row.name || [row.firstName, row.middleName, row.lastName].filter(Boolean).join(' '), 160),
       email: cleanText(row.email, 320),
       phone: cleanText(row.phone, 30),
       finalTestResult: pickAdminDetailFields(row.finalTestResult, ADMIN_FINAL_TEST_FIELDS),
       ...pickAdminDetailFields(row.request, ADMIN_CERTIFICATE_FIELDS),
-    })))
+    }))
+    const finalTestsByCandidate = new Map()
+    for (const test of legacyTests) {
+      if (cleanText(test.testLevelId, 40) !== '11') continue
+      const candidateId = cleanText(test.legacyCandidateId, 40)
+      const currentTest = finalTestsByCandidate.get(candidateId)
+      if (!currentTest || String(test.testDate || '') > String(currentTest.testDate || '')) finalTestsByCandidate.set(candidateId, test)
+    }
+    const legacy = legacyStudents.map(student => {
+      const candidateId = cleanText(student.legacyCandidateId, 40)
+      const finalTest = finalTestsByCandidate.get(candidateId)
+      const score = Number(finalTest?.score)
+      const hasScore = Number.isFinite(score)
+      return {
+        id: `legacy-certificate-${candidateId}`,
+        source: 'legacy',
+        legacyCandidateId: candidateId,
+        studentName: cleanText(student.displayName, 160) || `Legacy Student #${candidateId}`,
+        email: cleanText(student.email, 320),
+        phone: cleanText(student.phone, 30),
+        type: 'Legacy certificate archive',
+        title: cleanText(student.courseName, 240) || 'Online Drivers Ed',
+        status: student.certificateIssued ? 'Issued (legacy)' : student.courseCompleted ? 'Course completed (legacy)' : 'Not issued (legacy)',
+        requestedAt: cleanText(student.joinedAt, 80),
+        paidAmount: cleanText(student.coursePrice, 40),
+        certificateNumber: cleanText(student.certificateDetails, 1000),
+        finalTestResult: finalTest ? { score: hasScore ? score : 0, passed: hasScore && score >= 75, attemptedAt: cleanText(finalTest.testDate, 80) } : null,
+      }
+    })
+    res.json([...current, ...legacy].sort((left, right) => String(right.requestedAt || '').localeCompare(String(left.requestedAt || ''))))
   } catch (error) {
     sendServerError(res, error, 'Certificate request lookup failed')
+  }
+})
+
+app.get('/api/admin/legacy-certificates/:candidateId', async (req, res) => {
+  try {
+    const candidateId = cleanText(req.params.candidateId, 40)
+    if (!candidateId) throw new HttpError(400, 'Legacy candidate ID is required.')
+    const student = await legacyCertificateStudentsCol.findOne({ legacyCandidateId: candidateId }, { projection: { _id: 0 } })
+    if (!student) throw new HttpError(404, 'Legacy certificate student was not found.')
+    const tests = await legacyCertificateTestsCol.find({ legacyCandidateId: candidateId }, { projection: { _id: 0 } })
+      .sort({ testLevelId: 1, testDate: 1, legacyTestId: 1 }).toArray()
+    res.json({
+      student,
+      tests: tests.map(test => ({ ...test, testTitle: legacyCertificateTestTitle(test.testLevelId) })),
+    })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    return sendServerError(res, error, 'Legacy certificate details could not be loaded')
   }
 })
 
