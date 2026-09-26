@@ -2151,6 +2151,12 @@ async function connectDB() {
     legacyInstructorsCol = db.collection('legacy_instructors')
     legacyTimeSlotsCol = db.collection('legacy_time_slots')
     legacyCitiesCol = db.collection('legacy_cities')
+    // Vercel may start several short-lived API instances for the same admin
+    // page load. Creating every index and running all seed/repair work in
+    // each cold instance can exceed the browser request timeout. Schema setup
+    // runs in the persistent/local API process and import scripts instead;
+    // serverless requests only connect and serve data.
+    if (!isVercelRuntime) {
     await usersCol.createIndex({ uid: 1 }, { unique: true })
     await bookingsCol.createIndex({ userId: 1, date: 1 })
     await bookingsCol.createIndex({ holdExpiresAt: 1 }, { expireAfterSeconds: 0, name: 'expire_booking_holds' })
@@ -2200,6 +2206,7 @@ async function connectDB() {
     await seedLocations()
     await seedSocials()
     await seedReviews()
+    }
     console.log('MongoDB connected')
     return db
   })().catch((e) => {
