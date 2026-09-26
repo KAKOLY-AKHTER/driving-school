@@ -4065,7 +4065,7 @@ Near and Long pricing is applied automatically from the selected city and verifi
                 </div>
                 <div className="admin-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead><tr><th scope="col" style={thStyle}>Old Credit ID</th><th scope="col" style={thStyle}>Old Student ID</th><th scope="col" style={thStyle}>Schedule</th><th scope="col" style={thStyle}>Instructor / Location</th><th scope="col" style={thStyle}>Historic Status</th><th scope="col" style={thStyle}>Pickup / Notes</th></tr></thead>
-                  <tbody>{legacyCredits.map(credit => <tr key={credit.legacyCandidateCreditId}>
+                  <tbody>{legacyCredits.map(credit => <tr key={`${credit.archiveType || credit.source || 'credit'}-${credit.legacyCandidateCreditId}`}>
                     <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '.82rem' }}>{credit.legacyCandidateCreditId || '—'}</td>
                     <td style={tdStyle}>ID {credit.legacyCandidateId || '—'}</td>
                     <td style={tdStyle}><strong>{formatDateDMY(credit.scheduledDate)}</strong><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{credit.fromTime || 'Time unavailable'} – {credit.toTime || 'Time unavailable'}</p></td>
