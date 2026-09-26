@@ -4600,6 +4600,7 @@ app.get('/api/admin/instructors', async (_req, res) => {
             totalSlots: { $sum: 1 },
             activeSlots: { $sum: { $cond: ['$active', 1, 0] } },
             zoneIds: { $addToSet: '$legacyZoneId' },
+            locationIds: { $addToSet: '$locationId' },
             firstSlotDate: { $min: { $cond: [{ $gte: ['$slotDate', '1970-01-01'] }, '$slotDate', null] } },
             lastSlotDate: { $max: '$slotDate' },
           },
@@ -4611,6 +4612,14 @@ app.get('/api/admin/instructors', async (_req, res) => {
     ])
     const slotsByInstructorId = new Map(slotSummaries.map(item => [cleanText(item._id, 80), item]))
     const profilesByInstructorId = new Map(profiles.map(profile => [cleanText(profile.legacyInstructorId, 80), profile]))
+    const locationIds = [...new Set(slotSummaries.flatMap(item => (item.locationIds || []).map(value => cleanText(value, 80))).filter(Boolean))]
+    const locations = locationIds.length
+      ? await legacyCitiesCol.find({ legacyCityId: { $in: locationIds } }, { projection: { _id: 0, legacyCityId: 1, cityName: 1, zipCode: 1 } }).toArray()
+      : []
+    const locationLabels = new Map(locations.map(location => [
+      cleanText(location.legacyCityId, 80),
+      [cleanText(location.cityName, 120), cleanText(location.zipCode, 20)].filter(Boolean).join(' · '),
+    ]))
     const instructorIds = [...new Set([...slotsByInstructorId.keys(), ...profilesByInstructorId.keys()])]
       .sort((left, right) => Number(left) - Number(right) || left.localeCompare(right))
     res.json({
@@ -4630,6 +4639,7 @@ app.get('/api/admin/instructors', async (_req, res) => {
           totalSlots: Number(item.totalSlots || 0),
           activeSlots: Number(item.activeSlots || 0),
           zoneIds: (item.zoneIds || []).filter(Boolean).map(value => cleanText(value, 80)).sort(),
+          locationLabels: [...new Set((item.locationIds || []).map(value => locationLabels.get(cleanText(value, 80))).filter(Boolean))],
           firstSlotDate: cleanText(item.firstSlotDate, 40),
           lastSlotDate: cleanText(item.lastSlotDate, 40),
         }

@@ -2571,13 +2571,13 @@ export default function AdminPage() {
                   {instructorsError && <div role="alert" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{instructorsError}</div>}
                   <div className="admin-table-wrap">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead><tr><th scope="col" style={thStyle}>Instructor</th><th scope="col" style={thStyle}>Active Schedules</th><th scope="col" style={thStyle}>Schedule History</th><th scope="col" style={thStyle}>Service Zones</th><th scope="col" style={thStyle}>Details</th></tr></thead>
+                      <thead><tr><th scope="col" style={thStyle}>Instructor</th><th scope="col" style={thStyle}>Active Schedules</th><th scope="col" style={thStyle}>Schedule History</th><th scope="col" style={thStyle}>Locations</th><th scope="col" style={thStyle}>Details</th></tr></thead>
                       <tbody>
                         {instructors.map(instructor => <tr key={instructor.legacyInstructorId}>
                           <td style={tdStyle}><strong>{instructor.displayName || `Legacy Instructor #${instructor.legacyInstructorId}`}</strong><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{instructor.displayName ? `ID ${instructor.legacyInstructorId}${instructor.username ? ` · @${instructor.username}` : ''}` : 'No matching profile in old instructor table'}</p></td>
                           <td style={tdStyle}><strong style={{ color: '#087443' }}>{Number(instructor.activeSlots || 0).toLocaleString()}</strong><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>of {Number(instructor.totalSlots || 0).toLocaleString()} imported slots</p></td>
                           <td style={tdStyle}><div>{formatDateDMY(instructor.firstSlotDate)}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>to {formatDateDMY(instructor.lastSlotDate)}</p></td>
-                          <td style={tdStyle}>{(instructor.zoneIds || []).length ? (instructor.zoneIds || []).map(zone => `Zone ${zone}`).join(', ') : 'Not recorded'}</td>
+                          <td style={tdStyle}>{(instructor.locationLabels || []).length ? instructor.locationLabels.join(', ') : 'Not recorded'}</td>
                           <td style={tdStyle}><button type="button" onClick={() => openInstructorDetails(instructor)} style={{ minHeight: '36px', padding: '.45rem .72rem', border: `1px solid ${SKY_BLUE}`, borderRadius: '9px', background: '#fff', color: SKY_BLUE, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap' }}>View schedule data</button></td>
                         </tr>)}
                         {!instructorsLoading && instructors.length === 0 && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>No instructor schedule data has been imported yet.</td></tr>}
@@ -4000,20 +4000,18 @@ Near and Long pricing is applied automatically from the selected city and verifi
             {!instructorDetails.loading && !instructorDetails.error && <TablePager page={instructorDetails.page} pages={Math.max(1, Math.ceil(instructorDetails.total / instructorDetails.limit))} total={instructorDetails.total} label="schedule slots" onChange={page => openInstructorDetails(instructorDetails.instructor, page)} />}
             <div className="admin-table-wrap">
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead><tr><th scope="col" style={thStyle}>Old Slot ID</th><th scope="col" style={thStyle}>Date</th><th scope="col" style={thStyle}>Zone / Location</th><th scope="col" style={thStyle}>Time Window</th><th scope="col" style={thStyle}>Break</th><th scope="col" style={thStyle}>Autism Support</th><th scope="col" style={thStyle}>Status</th><th scope="col" style={thStyle}>Imported From</th></tr></thead>
+                <thead><tr><th scope="col" style={thStyle}>Old Slot ID</th><th scope="col" style={thStyle}>Date</th><th scope="col" style={thStyle}>Location</th><th scope="col" style={thStyle}>Time Window</th><th scope="col" style={thStyle}>Availability</th><th scope="col" style={thStyle}>Imported From</th></tr></thead>
                 <tbody>
                   {instructorDetails.items.map(slot => <tr key={slot.legacySlotId}>
                     <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '.86rem' }}>{slot.legacySlotId || 'Not recorded'}</td>
                     <td style={tdStyle}>{formatDateDMY(slot.slotDate)}</td>
-                    <td style={tdStyle}><div>Zone {slot.legacyZoneId || 'Not recorded'}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{slot.locationLabel || `Location ${slot.locationId || 'Not recorded'}`}</p></td>
+                    <td style={tdStyle}>{slot.locationLabel || `Location ${slot.locationId || 'Not recorded'}`}</td>
                     <td style={tdStyle}>{slot.fromTimeLabel || slot.fromHour || 'Not recorded'} – {slot.toTimeLabel || slot.toHour || 'Not recorded'}</td>
-                    <td style={tdStyle}>{slot.breakHours || 'Not recorded'} hour(s)</td>
-                    <td style={tdStyle}>{slot.autismSupport ? 'Yes' : 'No'}</td>
                     <td style={tdStyle}><span style={{ display: 'inline-flex', padding: '.28rem .6rem', borderRadius: '999px', background: slot.active ? '#ECFDF3' : '#FEF2F2', color: slot.active ? '#087443' : '#B91C1C', fontFamily: 'var(--font-mono)', fontSize: '.7rem', letterSpacing: '.05em', textTransform: 'uppercase', fontWeight: 900 }}>{slot.active ? 'Active' : 'Inactive'}</span></td>
                     <td style={tdStyle}>{slot.insertedAt || 'Not recorded'}</td>
                   </tr>)}
-                  {instructorDetails.loading && <tr><td colSpan={8} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>Loading schedule slots…</td></tr>}
-                  {!instructorDetails.loading && !instructorDetails.error && instructorDetails.items.length === 0 && <tr><td colSpan={8} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>No schedule slots were found for this legacy instructor ID.</td></tr>}
+                  {instructorDetails.loading && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>Loading schedule slots…</td></tr>}
+                  {!instructorDetails.loading && !instructorDetails.error && instructorDetails.items.length === 0 && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>No schedule slots were found for this legacy instructor ID.</td></tr>}
                 </tbody>
               </table>
             </div>
