@@ -1022,7 +1022,7 @@ const GOOGLE_CALENDAR_TIME_ZONE = String(process.env.GOOGLE_CALENDAR_TIME_ZONE |
 const GOOGLE_CALENDAR_SETTING_ID = 'google-calendar'
 const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events'
 
-let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, couponsCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol, legacyStudentsCol, legacyInstructorSlotsCol
+let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, couponsCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol, legacyStudentsCol, legacyInstructorSlotsCol, legacyInstructorsCol
 let connectPromise = null
 
 class HttpError extends Error {
@@ -2121,6 +2121,7 @@ async function connectDB() {
     paypalOrdersCol = db.collection('paypal_orders')
     legacyStudentsCol = db.collection('legacy_students')
     legacyInstructorSlotsCol = db.collection('legacy_instructor_slots')
+    legacyInstructorsCol = db.collection('legacy_instructors')
     await usersCol.createIndex({ uid: 1 }, { unique: true })
     await bookingsCol.createIndex({ userId: 1, date: 1 })
     await bookingsCol.createIndex({ holdExpiresAt: 1 }, { expireAfterSeconds: 0, name: 'expire_booking_holds' })
@@ -2141,6 +2142,7 @@ async function connectDB() {
     await legacyStudentsCol.createIndex({ email: 1 }, { unique: true, name: 'unique_legacy_student_email' })
     await legacyInstructorSlotsCol.createIndex({ legacySlotId: 1 }, { unique: true, name: 'unique_legacy_instructor_slot' })
     await legacyInstructorSlotsCol.createIndex({ legacyInstructorId: 1, slotDate: -1 })
+    await legacyInstructorsCol.createIndex({ legacyInstructorId: 1 }, { unique: true, name: 'unique_legacy_instructor_profile' })
     await cleanupExpiredHolds(true)
     await backfillBookingSlotLocks()
     await seedPricing()
@@ -4586,7 +4588,7 @@ app.get('/api/admin/legacy-students', async (req, res) => {
 // It is kept in its own collection so it cannot be mistaken for student data.
 app.get('/api/admin/instructors', async (_req, res) => {
   try {
-    const [items, totalSlots] = await Promise.all([
+    const [slotSummaries, profiles, totalSlots] = await Promise.all([
       legacyInstructorSlotsCol.aggregate([
         {
           $group: {
@@ -4600,19 +4602,36 @@ app.get('/api/admin/instructors', async (_req, res) => {
         },
         { $sort: { _id: 1 } },
       ]).toArray(),
+      legacyInstructorsCol.find({}, { projection: { _id: 0, legacyInstructorId: 1, displayName: 1, username: 1, email: 1, phone: 1, address: 1, active: 1, addedAt: 1, color: 1 } }).toArray(),
       legacyInstructorSlotsCol.countDocuments(),
     ])
+    const slotsByInstructorId = new Map(slotSummaries.map(item => [cleanText(item._id, 80), item]))
+    const profilesByInstructorId = new Map(profiles.map(profile => [cleanText(profile.legacyInstructorId, 80), profile]))
+    const instructorIds = [...new Set([...slotsByInstructorId.keys(), ...profilesByInstructorId.keys()])]
+      .sort((left, right) => Number(left) - Number(right) || left.localeCompare(right))
     res.json({
-      items: items.map(item => ({
-        legacyInstructorId: cleanText(item._id, 80),
-        totalSlots: Number(item.totalSlots || 0),
-        activeSlots: Number(item.activeSlots || 0),
-        zoneIds: (item.zoneIds || []).filter(Boolean).map(value => cleanText(value, 80)).sort(),
-        firstSlotDate: cleanText(item.firstSlotDate, 40),
-        lastSlotDate: cleanText(item.lastSlotDate, 40),
-      })),
+      items: instructorIds.map(legacyInstructorId => {
+        const item = slotsByInstructorId.get(legacyInstructorId) || {}
+        const profile = profilesByInstructorId.get(legacyInstructorId) || {}
+        return {
+          legacyInstructorId,
+          displayName: cleanText(profile.displayName, 160),
+          username: cleanText(profile.username, 160),
+          email: cleanText(profile.email, 320),
+          phone: cleanText(profile.phone, 40),
+          address: cleanText(profile.address, 500),
+          active: profile.active === true,
+          addedAt: cleanText(profile.addedAt, 40),
+          color: cleanText(profile.color, 30),
+          totalSlots: Number(item.totalSlots || 0),
+          activeSlots: Number(item.activeSlots || 0),
+          zoneIds: (item.zoneIds || []).filter(Boolean).map(value => cleanText(value, 80)).sort(),
+          firstSlotDate: cleanText(item.firstSlotDate, 40),
+          lastSlotDate: cleanText(item.lastSlotDate, 40),
+        }
+      }),
       totalSlots,
-      nameDataAvailable: false,
+      nameDataAvailable: profiles.some(profile => cleanText(profile.displayName, 160)),
     })
   } catch (error) {
     sendServerError(res, error, 'Instructor lookup failed')
