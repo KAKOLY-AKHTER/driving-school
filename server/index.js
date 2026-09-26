@@ -1022,7 +1022,7 @@ const GOOGLE_CALENDAR_TIME_ZONE = String(process.env.GOOGLE_CALENDAR_TIME_ZONE |
 const GOOGLE_CALENDAR_SETTING_ID = 'google-calendar'
 const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events'
 
-let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, couponsCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol, legacyStudentsCol, legacyInstructorSlotsCol, legacyInstructorsCol
+let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, couponsCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol, legacyStudentsCol, legacyInstructorSlotsCol, legacyInstructorsCol, legacyTimeSlotsCol, legacyCitiesCol
 let connectPromise = null
 
 class HttpError extends Error {
@@ -2122,6 +2122,8 @@ async function connectDB() {
     legacyStudentsCol = db.collection('legacy_students')
     legacyInstructorSlotsCol = db.collection('legacy_instructor_slots')
     legacyInstructorsCol = db.collection('legacy_instructors')
+    legacyTimeSlotsCol = db.collection('legacy_time_slots')
+    legacyCitiesCol = db.collection('legacy_cities')
     await usersCol.createIndex({ uid: 1 }, { unique: true })
     await bookingsCol.createIndex({ userId: 1, date: 1 })
     await bookingsCol.createIndex({ holdExpiresAt: 1 }, { expireAfterSeconds: 0, name: 'expire_booking_holds' })
@@ -2143,6 +2145,8 @@ async function connectDB() {
     await legacyInstructorSlotsCol.createIndex({ legacySlotId: 1 }, { unique: true, name: 'unique_legacy_instructor_slot' })
     await legacyInstructorSlotsCol.createIndex({ legacyInstructorId: 1, slotDate: -1 })
     await legacyInstructorsCol.createIndex({ legacyInstructorId: 1 }, { unique: true, name: 'unique_legacy_instructor_profile' })
+    await legacyTimeSlotsCol.createIndex({ legacySlotId: 1 }, { unique: true, name: 'unique_legacy_time_slot' })
+    await legacyCitiesCol.createIndex({ legacyCityId: 1 }, { unique: true, name: 'unique_legacy_city' })
     await cleanupExpiredHolds(true)
     await backfillBookingSlotLocks()
     await seedPricing()
@@ -4596,7 +4600,7 @@ app.get('/api/admin/instructors', async (_req, res) => {
             totalSlots: { $sum: 1 },
             activeSlots: { $sum: { $cond: ['$active', 1, 0] } },
             zoneIds: { $addToSet: '$legacyZoneId' },
-            firstSlotDate: { $min: '$slotDate' },
+            firstSlotDate: { $min: { $cond: [{ $gte: ['$slotDate', '1970-01-01'] }, '$slotDate', null] } },
             lastSlotDate: { $max: '$slotDate' },
           },
         },
@@ -4651,7 +4655,26 @@ app.get('/api/admin/instructors/:instructorId/slots', async (req, res) => {
       }).sort({ slotDate: -1, legacySlotId: -1 }).skip((page - 1) * limit).limit(limit).toArray(),
       legacyInstructorSlotsCol.countDocuments(query),
     ])
-    res.json({ items, total, page, limit })
+    const timingIds = [...new Set(items.flatMap(item => [cleanText(item.fromHour, 40), cleanText(item.toHour, 40)]).filter(Boolean))]
+    const timingRecords = timingIds.length
+      ? await legacyTimeSlotsCol.find({ legacySlotId: { $in: timingIds } }, { projection: { _id: 0, legacySlotId: 1, timeLabel: 1 } }).toArray()
+      : []
+    const timeLabels = new Map(timingRecords.map(record => [cleanText(record.legacySlotId, 40), cleanText(record.timeLabel, 80)]))
+    const locationIds = [...new Set(items.map(item => cleanText(item.locationId, 80)).filter(Boolean))]
+    const locationRecords = locationIds.length
+      ? await legacyCitiesCol.find({ legacyCityId: { $in: locationIds } }, { projection: { _id: 0, legacyCityId: 1, cityName: 1, zipCode: 1 } }).toArray()
+      : []
+    const locationLabels = new Map(locationRecords.map(record => {
+      const city = cleanText(record.cityName, 120)
+      const zip = cleanText(record.zipCode, 20)
+      return [cleanText(record.legacyCityId, 80), [city, zip].filter(Boolean).join(' · ')]
+    }))
+    res.json({
+      items: items.map(item => ({ ...item, fromTimeLabel: timeLabels.get(cleanText(item.fromHour, 40)) || '', toTimeLabel: timeLabels.get(cleanText(item.toHour, 40)) || '', locationLabel: locationLabels.get(cleanText(item.locationId, 80)) || '' })),
+      total,
+      page,
+      limit,
+    })
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message })
     sendServerError(res, error, 'Instructor schedule lookup failed')

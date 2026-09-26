@@ -4005,8 +4005,8 @@ Near and Long pricing is applied automatically from the selected city and verifi
                   {instructorDetails.items.map(slot => <tr key={slot.legacySlotId}>
                     <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '.86rem' }}>{slot.legacySlotId || 'Not recorded'}</td>
                     <td style={tdStyle}>{formatDateDMY(slot.slotDate)}</td>
-                    <td style={tdStyle}><div>Zone {slot.legacyZoneId || 'Not recorded'}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>Location {slot.locationId || 'Not recorded'}</p></td>
-                    <td style={tdStyle}>{slot.fromHour || 'Not recorded'} – {slot.toHour || 'Not recorded'}</td>
+                    <td style={tdStyle}><div>Zone {slot.legacyZoneId || 'Not recorded'}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{slot.locationLabel || `Location ${slot.locationId || 'Not recorded'}`}</p></td>
+                    <td style={tdStyle}>{slot.fromTimeLabel || slot.fromHour || 'Not recorded'} – {slot.toTimeLabel || slot.toHour || 'Not recorded'}</td>
                     <td style={tdStyle}>{slot.breakHours || 'Not recorded'} hour(s)</td>
                     <td style={tdStyle}>{slot.autismSupport ? 'Yes' : 'No'}</td>
                     <td style={tdStyle}><span style={{ display: 'inline-flex', padding: '.28rem .6rem', borderRadius: '999px', background: slot.active ? '#ECFDF3' : '#FEF2F2', color: slot.active ? '#087443' : '#B91C1C', fontFamily: 'var(--font-mono)', fontSize: '.7rem', letterSpacing: '.05em', textTransform: 'uppercase', fontWeight: 900 }}>{slot.active ? 'Active' : 'Inactive'}</span></td>
