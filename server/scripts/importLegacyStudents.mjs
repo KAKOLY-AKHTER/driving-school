@@ -132,10 +132,13 @@ if (!sourceFile) {
   const rows = Array.isArray(table?.data) ? table.data : []
   if (!rows.length) throw new Error('tbl_candidate_new was not found or has no rows.')
 
+  // Preserve every row from tbl_candidate_new for the administrator archive.
+  // A separate email-keyed collection remains for the one-to-one account-link
+  // workflow, so duplicate old rows can never create duplicate new accounts.
+  const rawStudents = rows.map(toLegacyStudent)
   const byEmail = new Map()
   let skippedWithoutEmail = 0
-  for (const row of rows) {
-    const student = toLegacyStudent(row)
+  for (const student of rawStudents) {
     if (!validEmail(student.email)) {
       skippedWithoutEmail += 1
       continue
@@ -146,6 +149,7 @@ if (!sourceFile) {
   }
 
   const importedAt = new Date().toISOString()
+  const duplicateCountByEmail = new Map([...byEmail.entries()].map(([email, records]) => [email, records.length]))
   const students = [...byEmail.values()].map(group => {
     const sorted = [...group].sort(newestFirst)
     const primary = sorted[0]
@@ -160,6 +164,7 @@ if (!sourceFile) {
   const duplicateEmailGroups = students.filter(student => student.duplicateRecordCount > 1).length
   const summary = {
     sourceRows: rows.length,
+    rawRecordsRetained: rawStudents.length,
     validUniqueEmails: students.length,
     skippedWithoutValidEmail: skippedWithoutEmail,
     duplicateEmailGroups,
@@ -176,7 +181,10 @@ if (!sourceFile) {
     try {
       await client.connect()
       const collection = client.db('driving_school').collection('legacy_students')
+      const rawRecordsCollection = client.db('driving_school').collection('legacy_student_records')
       await collection.createIndex({ email: 1 }, { unique: true, name: 'unique_legacy_student_email' })
+      await rawRecordsCollection.createIndex({ legacyCandidateId: 1 }, { unique: true, name: 'unique_legacy_student_record' })
+      await rawRecordsCollection.createIndex({ email: 1, legacyJoinedAt: -1 })
       const operations = students.map(student => ({
         updateOne: {
           filter: { email: student.email },
@@ -197,6 +205,32 @@ if (!sourceFile) {
       ).toArray()
       const activatedAt = new Date().toISOString()
       const matchedAccounts = websiteUsers.filter(user => legacyByEmail.has(normalizeEmail(user.email)) && cleanText(user.uid, 160))
+      const accountsByEmail = new Map(matchedAccounts.map(user => [normalizeEmail(user.email), user]))
+      const rawRecordOperations = rawStudents.map(student => {
+        const matchedAccount = accountsByEmail.get(student.email)
+        const linked = Boolean(matchedAccount?.uid && validEmail(student.email))
+        const duplicateRecordCount = duplicateCountByEmail.get(student.email) || 1
+        return {
+          updateOne: {
+            filter: { legacyCandidateId: student.legacyCandidateId },
+            update: {
+              $set: {
+                ...student,
+                importedAt,
+                hasValidEmail: validEmail(student.email),
+                duplicateRecordCount,
+                requiresAdminReview: duplicateRecordCount > 1,
+                activationStatus: linked ? 'activated' : 'pending',
+                linkedUid: linked ? matchedAccount.uid : '',
+                activatedAt: linked ? activatedAt : '',
+              },
+              $setOnInsert: { createdAt: importedAt },
+            },
+            upsert: true,
+          },
+        }
+      })
+      const rawResult = await rawRecordsCollection.bulkWrite(rawRecordOperations, { ordered: false })
       if (matchedAccounts.length) {
         await collection.bulkWrite(matchedAccounts.map(user => ({
           updateOne: {
@@ -214,8 +248,8 @@ if (!sourceFile) {
           },
         })), { ordered: false })
       }
-      console.log(JSON.stringify({ ...summary, matched: result.matchedCount, modified: result.modifiedCount, upserted: result.upsertedCount, linkedExistingAccounts: matchedAccounts.length }, null, 2))
-      console.log('Import complete. Legacy passwords and reset tokens were never imported.')
+      console.log(JSON.stringify({ ...summary, matched: result.matchedCount, modified: result.modifiedCount, upserted: result.upsertedCount, rawMatched: rawResult.matchedCount, rawModified: rawResult.modifiedCount, rawUpserted: rawResult.upsertedCount, linkedExistingAccounts: matchedAccounts.length }, null, 2))
+      console.log('Import complete. All original rows are retained; legacy passwords and reset tokens were never imported.')
     } finally {
       await client.close()
     }

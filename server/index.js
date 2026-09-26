@@ -1022,7 +1022,7 @@ const GOOGLE_CALENDAR_TIME_ZONE = String(process.env.GOOGLE_CALENDAR_TIME_ZONE |
 const GOOGLE_CALENDAR_SETTING_ID = 'google-calendar'
 const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events'
 
-let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, couponsCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol, legacyStudentsCol, legacyInstructorSlotsCol, legacyInstructorsCol, legacyTimeSlotsCol, legacyCitiesCol
+let db, mongoClient, usersCol, bookingsCol, bookingSlotsCol, availabilityCol, contactCol, settingsCol, pricingCol, couponsCol, enrollmentsCol, areasCol, locationsCol, socialsCol, reviewsCol, blogsCol, refundsCol, cartsCol, paypalOrdersCol, legacyStudentsCol, legacyStudentRecordsCol, legacyStudentCreditsCol, legacyInstructorSlotsCol, legacyInstructorsCol, legacyTimeSlotsCol, legacyCitiesCol
 let connectPromise = null
 
 class HttpError extends Error {
@@ -2120,6 +2120,8 @@ async function connectDB() {
     cartsCol = db.collection('carts')
     paypalOrdersCol = db.collection('paypal_orders')
     legacyStudentsCol = db.collection('legacy_students')
+    legacyStudentRecordsCol = db.collection('legacy_student_records')
+    legacyStudentCreditsCol = db.collection('legacy_student_credits')
     legacyInstructorSlotsCol = db.collection('legacy_instructor_slots')
     legacyInstructorsCol = db.collection('legacy_instructors')
     legacyTimeSlotsCol = db.collection('legacy_time_slots')
@@ -2142,6 +2144,10 @@ async function connectDB() {
     await blogsCol.createIndex({ slug: 1 }, { unique: true, name: 'unique_blog_slug' })
     await blogsCol.createIndex({ published: 1, featured: -1, publishedAt: -1 })
     await legacyStudentsCol.createIndex({ email: 1 }, { unique: true, name: 'unique_legacy_student_email' })
+    await legacyStudentRecordsCol.createIndex({ legacyCandidateId: 1 }, { unique: true, name: 'unique_legacy_student_record' })
+    await legacyStudentRecordsCol.createIndex({ email: 1, legacyJoinedAt: -1 })
+    await legacyStudentCreditsCol.createIndex({ legacyCandidateCreditId: 1 }, { unique: true, name: 'unique_legacy_student_credit' })
+    await legacyStudentCreditsCol.createIndex({ legacyCandidateId: 1, scheduledDate: -1 })
     await legacyInstructorSlotsCol.createIndex({ legacySlotId: 1 }, { unique: true, name: 'unique_legacy_instructor_slot' })
     await legacyInstructorSlotsCol.createIndex({ legacyInstructorId: 1, slotDate: -1 })
     await legacyInstructorSlotsCol.createIndex({ legacyInstructorId: 1, active: 1, locationId: 1, slotDate: -1 }, { name: 'legacy_instructor_schedule_filters' })
@@ -2513,25 +2519,20 @@ async function linkLegacyStudentAccount(uid, email) {
   const normalizedEmail = normalizeEmail(email)
   if (!uid || !normalizedEmail || !legacyStudentsCol) return null
   const now = new Date().toISOString()
-  const result = await legacyStudentsCol.findOneAndUpdate(
-    {
-      email: normalizedEmail,
-      $or: [
-        { linkedUid: { $exists: false } },
-        { linkedUid: null },
-        { linkedUid: '' },
-        { linkedUid: uid },
-      ],
-    },
-    {
-      $set: {
-        linkedUid: uid,
-        activationStatus: 'activated',
-        activatedAt: now,
-      },
-    },
-    { returnDocument: 'after' }
-  )
+  const linkableRecordQuery = {
+    email: normalizedEmail,
+    $or: [
+      { linkedUid: { $exists: false } },
+      { linkedUid: null },
+      { linkedUid: '' },
+      { linkedUid: uid },
+    ],
+  }
+  const linkUpdate = { $set: { linkedUid: uid, activationStatus: 'activated', activatedAt: now } }
+  const [result] = await Promise.all([
+    legacyStudentsCol.findOneAndUpdate(linkableRecordQuery, linkUpdate, { returnDocument: 'after' }),
+    legacyStudentRecordsCol ? legacyStudentRecordsCol.updateMany(linkableRecordQuery, linkUpdate) : Promise.resolve(),
+  ])
   const legacyStudent = result?.value || result
   if (!legacyStudent?.legacyCandidateId) return null
   await usersCol.updateOne(
@@ -4577,15 +4578,56 @@ app.get('/api/admin/legacy-students', async (req, res) => {
       licenseNumber: 1, licenseIssuedAt: 1, licenseExpiresAt: 1, permitNumber: 1, permitIssuedAt: 1,
       permitExpiresAt: 1, medicalCondition: 1, medications: 1, usesLenses: 1, comments: 1, legacyNotes: 1,
     }
-    const [items, total, pending, activated] = await Promise.all([
-      legacyStudentsCol.find(query, { projection }).sort({ legacyJoinedAt: -1, legacyCandidateId: -1 }).skip((page - 1) * limit).limit(limit).toArray(),
-      legacyStudentsCol.countDocuments(query),
-      legacyStudentsCol.countDocuments({ activationStatus: { $ne: 'activated' } }),
+    const [items, total, pending, activated, uniqueAccounts, linkedAccounts, duplicateEmailGroups, recordsWithoutValidEmail] = await Promise.all([
+      legacyStudentRecordsCol.find(query, { projection }).sort({ legacyJoinedAt: -1, legacyCandidateId: -1 }).skip((page - 1) * limit).limit(limit).toArray(),
+      legacyStudentRecordsCol.countDocuments(query),
+      legacyStudentRecordsCol.countDocuments({ activationStatus: { $ne: 'activated' } }),
+      legacyStudentRecordsCol.countDocuments({ activationStatus: 'activated' }),
+      legacyStudentsCol.countDocuments(),
       legacyStudentsCol.countDocuments({ activationStatus: 'activated' }),
+      legacyStudentsCol.countDocuments({ requiresAdminReview: true }),
+      legacyStudentRecordsCol.countDocuments({ hasValidEmail: false }),
     ])
-    res.json({ items, total, page, limit, pending, activated })
+    res.json({ items, total, page, limit, pending, activated, uniqueAccounts, linkedAccounts, duplicateEmailGroups, recordsWithoutValidEmail })
   } catch (error) {
     sendServerError(res, error, 'Legacy student lookup failed')
+  }
+})
+
+app.get('/api/admin/legacy-students/:candidateId/records', async (req, res) => {
+  try {
+    const candidateId = cleanText(req.params.candidateId, 40)
+    if (!candidateId) throw new HttpError(400, 'Legacy candidate ID is required.')
+    const selectedRecord = await legacyStudentRecordsCol.findOne({ legacyCandidateId: candidateId }, { projection: { _id: 0 } })
+    if (!selectedRecord) throw new HttpError(404, 'Legacy student record was not found.')
+    const email = normalizeEmail(selectedRecord.email)
+    const query = email ? { email } : { legacyCandidateId: candidateId }
+    const records = await legacyStudentRecordsCol.find(query, { projection: { _id: 0 } })
+      .sort({ legacyJoinedAt: -1, legacyCandidateId: -1 }).toArray()
+    const candidateIds = records.map(record => cleanText(record.legacyCandidateId, 40)).filter(Boolean)
+    const credits = candidateIds.length
+      ? await legacyStudentCreditsCol.find({ legacyCandidateId: { $in: candidateIds } }, { projection: { _id: 0 } }).sort({ scheduledDate: -1, legacyCandidateCreditId: -1 }).toArray()
+      : []
+    const instructorIds = [...new Set(credits.map(credit => cleanText(credit.legacyInstructorId, 80)).filter(Boolean))]
+    const locationIds = [...new Set(credits.map(credit => cleanText(credit.locationId, 80)).filter(Boolean))]
+    const [instructors, locations] = await Promise.all([
+      instructorIds.length ? legacyInstructorsCol.find({ legacyInstructorId: { $in: instructorIds } }, { projection: { _id: 0, legacyInstructorId: 1, displayName: 1 } }).toArray() : [],
+      locationIds.length ? legacyCitiesCol.find({ legacyCityId: { $in: locationIds } }, { projection: { _id: 0, legacyCityId: 1, cityName: 1, zipCode: 1 } }).toArray() : [],
+    ])
+    const instructorNames = new Map(instructors.map(instructor => [cleanText(instructor.legacyInstructorId, 80), cleanText(instructor.displayName, 160)]))
+    const locationNames = new Map(locations.map(location => [cleanText(location.legacyCityId, 80), [cleanText(location.cityName, 120), cleanText(location.zipCode, 20)].filter(Boolean).join(' Â· ')]))
+    res.json({
+      selectedCandidateId: candidateId,
+      records,
+      credits: credits.map(credit => ({
+        ...credit,
+        instructorName: instructorNames.get(cleanText(credit.legacyInstructorId, 80)) || '',
+        locationName: locationNames.get(cleanText(credit.locationId, 80)) || '',
+      })),
+    })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Legacy student details could not be loaded')
   }
 })
 
