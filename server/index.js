@@ -4678,6 +4678,35 @@ app.get('/api/admin/legacy-students/:candidateId/records', async (req, res) => {
     const locationNames = new Map(locations.map(location => [cleanText(location.legacyCityId, 80), [cleanText(location.cityName, 120), cleanText(location.zipCode, 20)].filter(Boolean).join(', ')]))
     const packageDetails = new Map(packageCatalog.map(item => [cleanText(item.legacyPackageId, 40), item]))
     const countryStateNames = new Map(countryStates.map(item => [cleanText(item.legacyCountryStateId, 40), [cleanText(item.countryStateName, 120), cleanText(item.stateAbbreviation, 20)].filter(Boolean).join(' ') ]))
+    // The two old systems use different candidate IDs. Attach online-course
+    // certificate data only when both archives have the exact normalized email.
+    const certificateProfiles = email
+      ? await legacyCertificateStudentsCol.find({ email }, {
+        projection: {
+          _id: 0, legacyCandidateId: 1, displayName: 1, username: 1, email: 1,
+          phone: 1, dob: 1, address: 1, address2: 1, city: 1, state: 1,
+          zipCode: 1, joinedAt: 1, courseName: 1, coursePrice: 1,
+          courseProgress: 1, courseCompleted: 1, certificateDetails: 1,
+          certificateIssued: 1, active: 1, paid: 1,
+        },
+      }).sort({ joinedAt: -1, legacyCandidateId: -1 }).toArray()
+      : []
+    const certificateCandidateIds = certificateProfiles.map(profile => cleanText(profile.legacyCandidateId, 40)).filter(Boolean)
+    const certificateTests = certificateCandidateIds.length
+      ? await legacyCertificateTestsCol.find({ legacyCandidateId: { $in: certificateCandidateIds } }, { projection: { _id: 0 } }).toArray()
+      : []
+    const certificateTestsByCandidateId = new Map()
+    for (const test of certificateTests) {
+      const testCandidateId = cleanText(test.legacyCandidateId, 40)
+      const items = certificateTestsByCandidateId.get(testCandidateId) || []
+      items.push({ ...test, testTitle: legacyCertificateTestTitle(test.testLevelId) })
+      certificateTestsByCandidateId.set(testCandidateId, items)
+    }
+    for (const tests of certificateTestsByCandidateId.values()) {
+      tests.sort((left, right) => (Number(left.testLevelId) || Number.MAX_SAFE_INTEGER) - (Number(right.testLevelId) || Number.MAX_SAFE_INTEGER)
+        || String(left.testDate || '').localeCompare(String(right.testDate || ''))
+        || String(left.legacyTestId || '').localeCompare(String(right.legacyTestId || '')))
+    }
     res.json({
       selectedCandidateId: candidateId,
       records: records.map(record => ({ ...record, countryStateName: countryStateNames.get(cleanText(record.countryStateId, 40)) || '' })),
@@ -4691,6 +4720,11 @@ app.get('/api/admin/legacy-students/:candidateId/records', async (req, res) => {
         ...pendingPackages.map(item => ({ ...item, archiveType: 'pending' })),
       ].map(item => ({ ...item, packageDetails: packageDetails.get(cleanText(item.legacyPackageId, 40)) || null })).sort((left, right) => String(right.insertedAt || '').localeCompare(String(left.insertedAt || '')) || String(right.legacyCandidatePackageId || '').localeCompare(String(left.legacyCandidatePackageId || ''))),
       fees: fees.sort((left, right) => String(right.insertedAt || '').localeCompare(String(left.insertedAt || '')) || String(right.legacyCandidateFeeId || '').localeCompare(String(left.legacyCandidateFeeId || ''))),
+      certificateProfiles: certificateProfiles.map(profile => ({
+        ...profile,
+        courseName: legacyCertificateCourseLabel(profile.courseName),
+        tests: certificateTestsByCandidateId.get(cleanText(profile.legacyCandidateId, 40)) || [],
+      })),
     })
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message })
