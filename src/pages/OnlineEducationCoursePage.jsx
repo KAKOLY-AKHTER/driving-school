@@ -69,7 +69,8 @@ function getRandomQuestions(lessonId) {
 function ChapterTest({ testNumber, questions, isFinal = false, isPassed = false, onNewTest, onPassed, onContinue, onFinalResult }) {
   const [answers, setAnswers] = useState({})
   const [result, setResult] = useState(null)
-  const [saved, setSaved] = useState(false)
+  // A verified Final Test pass should reopen directly on its completion page.
+  const [saved, setSaved] = useState(() => isFinal && isPassed)
   const [hasStarted, setHasStarted] = useState(false)
   const answeredCount = Object.keys(answers).length
   const passingScore = isFinal ? Math.ceil(questions.length * 0.75) : PASSING_SCORE
@@ -90,7 +91,7 @@ function ChapterTest({ testNumber, questions, isFinal = false, isPassed = false,
     setHasStarted(true)
   }
 
-  const gradeTest = () => {
+  const gradeTest = async () => {
     if (answeredCount !== questions.length) {
       setResult({ incomplete: true })
       return
@@ -99,13 +100,21 @@ function ChapterTest({ testNumber, questions, isFinal = false, isPassed = false,
     const missed = questions.map((question, index) => ({ question, index })).filter(({ question }) => answers[question.id] !== question.answer)
     const correct = questions.length - missed.length
     const passed = correct >= passingScore
-    setResult({ correct, missed, incomplete: false, passed })
     if (isFinal) {
-      void onFinalResult?.({
+      const savedResult = await onFinalResult?.({
         questionIds: questions.map(question => String(question.id)),
         answers,
       })
+      if (!savedResult) {
+        setResult({ correct, missed, incomplete: false, passed: false, saveFailed: true })
+        return
+      }
+      const serverPassed = savedResult.passed === true
+      setResult({ correct, missed, incomplete: false, passed: serverPassed })
+      if (serverPassed) onPassed?.()
+      return
     }
+    setResult({ correct, missed, incomplete: false, passed })
     if (passed) onPassed?.()
   }
 
@@ -424,9 +433,13 @@ export default function OnlineEducationCoursePage() {
         setUnlockedStep(mergedStep)
         setPassedTests(mergedTests)
 
-        // Resume from the first lesson or test that has not yet been
-        // completed, so switching from laptop to phone needs no navigation.
-        if (progress?.hasSavedProgress === true || localLegacyStep > 1) {
+        // A verified course completion always opens on the final completion
+        // page. Otherwise resume from the first unfinished lesson or test.
+        if (progress?.finalTestPassed === true) {
+          setActiveChapter(10)
+          setActiveLesson(0)
+          setOpenChapters(new Set([10]))
+        } else if (progress?.hasSavedProgress === true || localLegacyStep > 1) {
           const resumeStep = COURSE_STEPS[Math.min(mergedStep, COURSE_STEPS.length - 1)]
           if (resumeStep) {
             setActiveChapter(resumeStep.chapterIndex)
@@ -609,10 +622,12 @@ export default function OnlineEducationCoursePage() {
       return
     }
     try {
-      await api.saveFinalTestResult(uid, questionIds, answers)
+      const response = await api.saveFinalTestResult(uid, questionIds, answers)
       setFinalTestSaveError('')
+      return response?.result || null
     } catch (error) {
       setFinalTestSaveError(error?.message || 'Your Final Test result could not be saved. Please grade the test again.')
+      return null
     }
   }
   const continueAfterTest = () => {
