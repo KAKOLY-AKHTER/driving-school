@@ -463,6 +463,12 @@ const ADMIN_FINAL_TEST_FIELDS = [
 ]
 const FINAL_TEST_SIZE = 25
 const FINAL_TEST_PASSING_SCORE = Math.ceil(FINAL_TEST_SIZE * 0.75)
+// The online curriculum has 63 ordered lessons/tests. Progress is stored on
+// the server (rather than in a browser) so it follows a learner to every
+// device they use. An active course enrollment keeps its own progress; other
+// signed-in learners use the account-level fallback.
+const ONLINE_COURSE_LAST_STEP = 63
+const ONLINE_COURSE_FIRST_STEP = 1
 const LEGACY_CERTIFICATE_TEST_TITLES = {
   '1': 'Driving is Your Responsibility',
   '2': 'The Human Factors Affecting the Driver',
@@ -1697,6 +1703,29 @@ const normalizedCourseStatus = (value) => cleanText(value || 'Enrolled', 40).toL
 const courseCanAcceptMoreBookings = (course) => {
   const status = normalizedCourseStatus(course?.status)
   return !['cancelled', 'refunded', 'refund pending'].includes(status)
+}
+// These bundled lesson packages explicitly include the online driver
+// education course. Students who bought one of them must be able to submit
+// the Final Test just like students who bought the standalone course.
+const ONLINE_DRIVER_EDUCATION_COURSE_IDS = new Set(['1', '2', '3', '4', '5'])
+const isOnlineDriverEducationCourse = (course) => {
+  const title = String(course?.title || course?.planName || '').toUpperCase()
+  return ONLINE_DRIVER_EDUCATION_COURSE_IDS.has(String(course?.id)) || title.includes('ONLINE DRIVER')
+}
+const latestActiveOnlineCourseIndex = (courses) => courses.findLastIndex(course => (
+  isOnlineDriverEducationCourse(course) && courseCanAcceptMoreBookings(course)
+))
+const normalizeOnlineCourseProgress = (value = {}) => {
+  const rawStep = Number(value?.unlockedStep)
+  const unlockedStep = Number.isInteger(rawStep)
+    ? Math.min(ONLINE_COURSE_LAST_STEP, Math.max(ONLINE_COURSE_FIRST_STEP, rawStep))
+    : ONLINE_COURSE_FIRST_STEP
+  const passedTests = [...new Set(
+    (Array.isArray(value?.passedTests) ? value.passedTests : [])
+      .map(Number)
+      .filter(testNumber => Number.isInteger(testNumber) && testNumber >= 1 && testNumber <= 11)
+  )].sort((left, right) => left - right)
+  return { unlockedStep, passedTests, updatedAt: cleanText(value?.updatedAt, 80) }
 }
 const courseEnrollmentFingerprint = (course) => cleanText(
   course?.enrolledAt || course?.createdAt || course?.paymentRef || 'legacy-current-enrollment',
@@ -2981,6 +3010,87 @@ app.put('/api/users/:uid/courses/:enrollmentId/progress', async (req, res) => {
   }
 })
 
+// Unlike the three dashboard modules above, this is the ordered 30-hour
+// curriculum. Keep the state with the paid enrollment so another browser or
+// device resumes at exactly the same point.
+app.get('/api/users/:uid/online-course-progress', async (req, res) => {
+  try {
+    const uid = req.auth.uid
+    const user = await usersCol.findOne(
+      { uid },
+      { projection: { courses: 1, finalTestResult: 1, onlineCourseProgress: 1 } },
+    )
+    const courseIndex = latestActiveOnlineCourseIndex(user?.courses || [])
+    const course = courseIndex >= 0 ? user.courses[courseIndex] : null
+    const savedProgress = course?.onlineCourseProgress ?? user?.onlineCourseProgress
+    const hasSavedProgress = Number.isInteger(Number(savedProgress?.unlockedStep))
+    const finalTestPassed = user?.finalTestResult?.passed === true
+    const progress = normalizeOnlineCourseProgress(savedProgress)
+    if (finalTestPassed) {
+      progress.unlockedStep = ONLINE_COURSE_LAST_STEP
+      progress.passedTests = [...new Set([...progress.passedTests, 11])]
+    }
+    res.json({ ok: true, enrollmentId: course?.enrollmentId || '', hasSavedProgress, finalTestPassed, ...progress })
+  } catch (error) {
+    sendServerError(res, error, 'Online course progress lookup failed')
+  }
+})
+
+app.put('/api/users/:uid/online-course-progress', async (req, res) => {
+  try {
+    const uid = req.auth.uid
+    if (!Number.isInteger(Number(req.body?.unlockedStep))) {
+      throw new HttpError(400, 'Unlocked course step must be a whole number.')
+    }
+    if (!Array.isArray(req.body?.passedTests)) {
+      throw new HttpError(400, 'Passed tests must be provided as a list.')
+    }
+    const requested = normalizeOnlineCourseProgress({
+      unlockedStep: req.body.unlockedStep,
+      passedTests: req.body.passedTests,
+    })
+    const requestedFinalPass = requested.unlockedStep >= ONLINE_COURSE_LAST_STEP || requested.passedTests.includes(11)
+
+    const result = await withMongoTransaction(async (session) => {
+      const user = await usersCol.findOne(
+        { uid },
+        { session, projection: { courses: 1, finalTestResult: 1, onlineCourseProgress: 1 } },
+      )
+      if (!user) return { found: false }
+      const courses = user?.courses || []
+      const courseIndex = latestActiveOnlineCourseIndex(courses)
+      const finalTestPassed = user?.finalTestResult?.passed === true
+      if (requestedFinalPass && !finalTestPassed) {
+        throw new HttpError(409, 'Test 11 must be passed before completing the online course.')
+      }
+
+      const course = courseIndex >= 0 ? courses[courseIndex] : null
+      const existing = normalizeOnlineCourseProgress(course?.onlineCourseProgress ?? user?.onlineCourseProgress)
+      // Merge instead of replacing so a stale second device can never move a
+      // learner backwards after another device has progressed further.
+      const progress = {
+        unlockedStep: Math.max(existing.unlockedStep, requested.unlockedStep, finalTestPassed ? ONLINE_COURSE_LAST_STEP : ONLINE_COURSE_FIRST_STEP),
+        passedTests: [...new Set([...existing.passedTests, ...requested.passedTests, ...(finalTestPassed ? [11] : [])])].sort((left, right) => left - right),
+        updatedAt: new Date().toISOString(),
+      }
+      const update = course
+        ? { $set: { [`courses.${courseIndex}`]: { ...course, onlineCourseProgress: progress } } }
+        : { $set: { onlineCourseProgress: progress } }
+      await usersCol.updateOne(
+        { uid },
+        update,
+        { session },
+      )
+      return { found: true, course, progress }
+    })
+    if (!result.found) return res.status(404).json({ error: 'Student account not found.' })
+    res.json({ ok: true, enrollmentId: result.course?.enrollmentId || '', ...result.progress })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Online course progress update failed')
+  }
+})
+
 // Test 11 is graded against the server's question bank before it is stored.
 // This result is used when the school releases a completion certificate.
 app.put('/api/users/:uid/final-test-result', async (req, res) => {
@@ -3002,10 +3112,7 @@ app.put('/api/users/:uid/final-test-result', async (req, res) => {
     }
 
     const student = await usersCol.findOne({ uid }, { projection: { courses: 1 } })
-    const hasOnlineCourse = (student?.courses || []).some(course => {
-      const title = String(course?.title || course?.planName || '').toUpperCase()
-      return String(course?.id) === '1' || title.includes('ONLINE DRIVER')
-    })
+    const hasOnlineCourse = (student?.courses || []).some(isOnlineDriverEducationCourse)
     if (!hasOnlineCourse) throw new HttpError(403, 'An active online driver education enrollment is required for Test 11.')
 
     const correct = questions.reduce((count, question) => count + (Number(submittedAnswers[String(question.id)]) === Number(question.answer) ? 1 : 0), 0)
@@ -7047,9 +7154,8 @@ app.delete('/api/admin/refunds/:id', async (req, res) => {
       const existing = await refundsCol.findOne({ _id: refundId }, { session })
       if (!existing) return false
       const existingStatus = cleanText(existing.Status || 'pending', 20).toLowerCase()
-      if (isFinalRefundStatus(existingStatus)) {
-        throw new HttpError(409, `This refund is already ${existingStatus} and cannot be deleted.`)
-      }
+      // Removing this administrative row never reverses an already completed
+      // PayPal refund. Payment and course records remain unchanged.
       if (String(existing.Status || 'pending').toLowerCase() === 'pending') {
         const uid = cleanText(existing.uid || existing.User_UID, 160)
         const courseId = cleanText(existing.Course_ID, 120)
@@ -7083,10 +7189,10 @@ app.delete('/api/admin/refunds/:id', async (req, res) => {
         }
       }
       await refundsCol.deleteOne({ _id: refundId }, { session })
-      return true
+      return { status: existingStatus }
     })
     if (!result) return res.status(404).json({ error: 'Refund record not found.' })
-    res.json({ ok: true })
+    res.json({ ok: true, deletedStatus: result.status })
   } catch (e) {
     if (e.status) return res.status(e.status).json({ error: e.message })
     sendServerError(res, e, 'Refund record deletion failed')
@@ -7206,6 +7312,7 @@ export {
   adminUserProfileDetails,
   canonicalAdminBookingStatus,
   bookingsForEnrollment,
+  isOnlineDriverEducationCourse,
   checkoutFingerprint,
   couponCheckoutFingerprint,
   couponDiscountQuote,
