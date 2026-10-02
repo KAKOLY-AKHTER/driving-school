@@ -3086,7 +3086,8 @@ app.put('/api/users/:uid/online-course-progress', async (req, res) => {
 })
 
 // Test 11 is graded against the server's question bank before it is stored.
-// This result is used when the school releases a completion certificate.
+// Any signed-in student may take it; course completion does not depend on an
+// administrator approving an enrollment first.
 app.put('/api/users/:uid/final-test-result', async (req, res) => {
   try {
     const uid = req.auth.uid
@@ -3104,10 +3105,6 @@ app.put('/api/users/:uid/final-test-result', async (req, res) => {
     if (questions.some(question => !Number.isInteger(Number(submittedAnswers[String(question.id)])))) {
       throw new HttpError(400, 'Submit an answer for every Final Test question.')
     }
-
-    const student = await usersCol.findOne({ uid }, { projection: { courses: 1 } })
-    const hasOnlineCourse = (student?.courses || []).some(isOnlineDriverEducationCourse)
-    if (!hasOnlineCourse) throw new HttpError(403, 'An active online driver education enrollment is required for Test 11.')
 
     const correct = questions.reduce((count, question) => count + (Number(submittedAnswers[String(question.id)]) === Number(question.answer) ? 1 : 0), 0)
     const score = Number(((correct / FINAL_TEST_SIZE) * 100).toFixed(2))
