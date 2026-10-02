@@ -464,8 +464,9 @@ const ADMIN_FINAL_TEST_FIELDS = [
 const FINAL_TEST_SIZE = 25
 const FINAL_TEST_PASSING_SCORE = Math.ceil(FINAL_TEST_SIZE * 0.75)
 // The online curriculum has 63 ordered lessons/tests. Progress is stored on
-// the enrollment (rather than in a browser) so it follows a learner to every
-// device they use.
+// the server (rather than in a browser) so it follows a learner to every
+// device they use. An active course enrollment keeps its own progress; other
+// signed-in learners use the account-level fallback.
 const ONLINE_COURSE_LAST_STEP = 63
 const ONLINE_COURSE_FIRST_STEP = 1
 const LEGACY_CERTIFICATE_TEST_TITLES = {
@@ -3013,20 +3014,19 @@ app.get('/api/users/:uid/online-course-progress', async (req, res) => {
     const uid = req.auth.uid
     const user = await usersCol.findOne(
       { uid },
-      { projection: { courses: 1, finalTestResult: 1 } },
+      { projection: { courses: 1, finalTestResult: 1, onlineCourseProgress: 1 } },
     )
     const courseIndex = latestActiveOnlineCourseIndex(user?.courses || [])
-    if (courseIndex < 0) return res.status(404).json({ error: 'Online course enrollment not found.' })
-
-    const course = user.courses[courseIndex]
-    const hasSavedProgress = Number.isInteger(Number(course?.onlineCourseProgress?.unlockedStep))
+    const course = courseIndex >= 0 ? user.courses[courseIndex] : null
+    const savedProgress = course?.onlineCourseProgress ?? user?.onlineCourseProgress
+    const hasSavedProgress = Number.isInteger(Number(savedProgress?.unlockedStep))
     const finalTestPassed = user?.finalTestResult?.passed === true
-    const progress = normalizeOnlineCourseProgress(course.onlineCourseProgress)
+    const progress = normalizeOnlineCourseProgress(savedProgress)
     if (finalTestPassed) {
       progress.unlockedStep = ONLINE_COURSE_LAST_STEP
       progress.passedTests = [...new Set([...progress.passedTests, 11])]
     }
-    res.json({ ok: true, enrollmentId: course.enrollmentId || '', hasSavedProgress, finalTestPassed, ...progress })
+    res.json({ ok: true, enrollmentId: course?.enrollmentId || '', hasSavedProgress, finalTestPassed, ...progress })
   } catch (error) {
     sendServerError(res, error, 'Online course progress lookup failed')
   }
@@ -3050,18 +3050,18 @@ app.put('/api/users/:uid/online-course-progress', async (req, res) => {
     const result = await withMongoTransaction(async (session) => {
       const user = await usersCol.findOne(
         { uid },
-        { session, projection: { courses: 1, finalTestResult: 1 } },
+        { session, projection: { courses: 1, finalTestResult: 1, onlineCourseProgress: 1 } },
       )
+      if (!user) return { found: false }
       const courses = user?.courses || []
       const courseIndex = latestActiveOnlineCourseIndex(courses)
-      if (courseIndex < 0) return { found: false }
       const finalTestPassed = user?.finalTestResult?.passed === true
       if (requestedFinalPass && !finalTestPassed) {
         throw new HttpError(409, 'Test 11 must be passed before completing the online course.')
       }
 
-      const course = courses[courseIndex]
-      const existing = normalizeOnlineCourseProgress(course.onlineCourseProgress)
+      const course = courseIndex >= 0 ? courses[courseIndex] : null
+      const existing = normalizeOnlineCourseProgress(course?.onlineCourseProgress ?? user?.onlineCourseProgress)
       // Merge instead of replacing so a stale second device can never move a
       // learner backwards after another device has progressed further.
       const progress = {
@@ -3069,16 +3069,18 @@ app.put('/api/users/:uid/online-course-progress', async (req, res) => {
         passedTests: [...new Set([...existing.passedTests, ...requested.passedTests, ...(finalTestPassed ? [11] : [])])].sort((left, right) => left - right),
         updatedAt: new Date().toISOString(),
       }
-      const updatedCourse = { ...course, onlineCourseProgress: progress }
+      const update = course
+        ? { $set: { [`courses.${courseIndex}`]: { ...course, onlineCourseProgress: progress } } }
+        : { $set: { onlineCourseProgress: progress } }
       await usersCol.updateOne(
         { uid },
-        { $set: { [`courses.${courseIndex}`]: updatedCourse } },
+        update,
         { session },
       )
-      return { found: true, course: updatedCourse, progress }
+      return { found: true, course, progress }
     })
-    if (!result.found) return res.status(404).json({ error: 'Online course enrollment not found.' })
-    res.json({ ok: true, enrollmentId: result.course.enrollmentId || '', ...result.progress })
+    if (!result.found) return res.status(404).json({ error: 'Student account not found.' })
+    res.json({ ok: true, enrollmentId: result.course?.enrollmentId || '', ...result.progress })
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message })
     sendServerError(res, error, 'Online course progress update failed')
@@ -3086,8 +3088,7 @@ app.put('/api/users/:uid/online-course-progress', async (req, res) => {
 })
 
 // Test 11 is graded against the server's question bank before it is stored.
-// Any signed-in student may take it; course completion does not depend on an
-// administrator approving an enrollment first.
+// This result is used when the school releases a completion certificate.
 app.put('/api/users/:uid/final-test-result', async (req, res) => {
   try {
     const uid = req.auth.uid
@@ -3105,6 +3106,10 @@ app.put('/api/users/:uid/final-test-result', async (req, res) => {
     if (questions.some(question => !Number.isInteger(Number(submittedAnswers[String(question.id)])))) {
       throw new HttpError(400, 'Submit an answer for every Final Test question.')
     }
+
+    const student = await usersCol.findOne({ uid }, { projection: { courses: 1 } })
+    const hasOnlineCourse = (student?.courses || []).some(isOnlineDriverEducationCourse)
+    if (!hasOnlineCourse) throw new HttpError(403, 'An active online driver education enrollment is required for Test 11.')
 
     const correct = questions.reduce((count, question) => count + (Number(submittedAnswers[String(question.id)]) === Number(question.answer) ? 1 : 0), 0)
     const score = Number(((correct / FINAL_TEST_SIZE) * 100).toFixed(2))

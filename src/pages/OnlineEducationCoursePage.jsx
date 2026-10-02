@@ -128,7 +128,7 @@ function ChapterTest({ testNumber, questions, isFinal = false, isPassed = false,
           <div>
             <p><strong>Congratulations!</strong></p>
             <p>You have successfully completed the final test.</p>
-            <p>Your course completion has been recorded successfully.</p>
+            <p>You will receive your certificate in 5-7 business days.</p>
           </div>
         </article>
       )
