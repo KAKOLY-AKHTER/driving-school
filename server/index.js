@@ -1704,9 +1704,13 @@ const courseCanAcceptMoreBookings = (course) => {
   const status = normalizedCourseStatus(course?.status)
   return !['cancelled', 'refunded', 'refund pending'].includes(status)
 }
+// These bundled lesson packages explicitly include the online driver
+// education course. Students who bought one of them must be able to submit
+// the Final Test just like students who bought the standalone course.
+const ONLINE_DRIVER_EDUCATION_COURSE_IDS = new Set(['1', '2', '3', '4', '5'])
 const isOnlineDriverEducationCourse = (course) => {
   const title = String(course?.title || course?.planName || '').toUpperCase()
-  return String(course?.id) === '1' || title.includes('ONLINE DRIVER')
+  return ONLINE_DRIVER_EDUCATION_COURSE_IDS.has(String(course?.id)) || title.includes('ONLINE DRIVER')
 }
 const latestActiveOnlineCourseIndex = (courses) => courses.findLastIndex(course => (
   isOnlineDriverEducationCourse(course) && courseCanAcceptMoreBookings(course)
@@ -7308,6 +7312,7 @@ export {
   adminUserProfileDetails,
   canonicalAdminBookingStatus,
   bookingsForEnrollment,
+  isOnlineDriverEducationCourse,
   checkoutFingerprint,
   couponCheckoutFingerprint,
   couponDiscountQuote,
