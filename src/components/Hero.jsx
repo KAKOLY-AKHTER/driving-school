@@ -33,15 +33,16 @@ export default function Hero() {
         width: 100%;
         min-width: 0;
         min-height: 46px;
-        padding: 0.6rem 0.7rem;
+        padding: 0.6rem 0.45rem;
         border-radius: 9px;
         box-sizing: border-box;
-        font-size: clamp(0.6rem, 0.9vw, 0.7rem);
-        letter-spacing: 0.07em;
-        line-height: 1.35;
+        /* Keep the four long labels readable without letting them spill from
+           the two-column desktop buttons. */
+        font-size: 0.74rem;
+        letter-spacing: 0.035em;
+        line-height: 1.2;
         text-align: center;
-        white-space: normal;
-        overflow-wrap: anywhere;
+        white-space: nowrap;
         cursor: pointer;
       }
       .hero-cta .btn-gold {
