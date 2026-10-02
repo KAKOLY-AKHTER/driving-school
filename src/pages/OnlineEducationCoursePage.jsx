@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
 import { api } from '../api'
+import { useAuth } from '../contexts/AuthContext'
 import { usePageMeta } from '../usePageMeta'
 import { onlineCourseTestQuestions } from '../data/onlineCourseTestQuestions'
 import { AutomobileHistoryLesson, ChapterOneTestLesson, ImportanceEducationLesson, NewDrivingLawsLesson, SmokeFreeCarsLesson } from '../components/online-course/ChapterOneLessons'
@@ -89,7 +90,7 @@ function ChapterTest({ testNumber, questions, isFinal = false, isPassed = false,
     setHasStarted(true)
   }
 
-  const gradeTest = () => {
+  const gradeTest = async () => {
     if (answeredCount !== questions.length) {
       setResult({ incomplete: true })
       return
@@ -98,13 +99,24 @@ function ChapterTest({ testNumber, questions, isFinal = false, isPassed = false,
     const missed = questions.map((question, index) => ({ question, index })).filter(({ question }) => answers[question.id] !== question.answer)
     const correct = questions.length - missed.length
     const passed = correct >= passingScore
-    setResult({ correct, missed, incomplete: false, passed })
     if (isFinal) {
-      void onFinalResult?.({
+      const savedResult = await onFinalResult?.({
         questionIds: questions.map(question => String(question.id)),
         answers,
       })
+      // Test 11 must be confirmed by the server before it unlocks the final
+      // completion state. This keeps the displayed result and synced progress
+      // consistent on every device.
+      if (!savedResult) {
+        setResult({ correct, missed, incomplete: false, passed: false, saveFailed: true })
+        return
+      }
+      const serverPassed = savedResult.passed === true
+      setResult({ correct, missed, incomplete: false, passed: serverPassed })
+      if (serverPassed) onPassed?.()
+      return
     }
+    setResult({ correct, missed, incomplete: false, passed })
     if (passed) onPassed?.()
   }
 
@@ -372,18 +384,23 @@ function ObeyingLawsLesson({ onPrevious, onNext }) {
 export default function OnlineEducationCoursePage() {
   usePageMeta('30 Hour Drivers Ed Curriculum — A Precision Driving School', 'Protected online driver education curriculum.', { noIndex: true })
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [activeChapter, setActiveChapter] = useState(0)
   const [activeLesson, setActiveLesson] = useState(-1)
   const [openChapters, setOpenChapters] = useState(() => new Set([0]))
   const [started, setStarted] = useState(false)
   const [quizVersion, setQuizVersion] = useState(0)
   const [finalTestSaveError, setFinalTestSaveError] = useState('')
-  const progressStorageKey = `precision-drivers-ed-progress:${auth.currentUser?.uid || 'new-user'}`
+  const userId = user?.uid || ''
+  const progressStorageKey = `precision-drivers-ed-progress:${userId || 'new-user'}`
   const [unlockedStep, setUnlockedStep] = useState(() => {
     const saved = Number.parseInt(window.localStorage.getItem(progressStorageKey), 10)
     // New learners can begin with both 1.1 and 1.2 available.
     return Number.isInteger(saved) && saved >= 0 ? Math.max(saved, 1) : 1
   })
+  const [passedTests, setPassedTests] = useState([])
+  const [progressReady, setProgressReady] = useState(false)
+  const savedRemoteProgress = useRef('')
   const chapter = useMemo(() => CHAPTERS[activeChapter], [activeChapter])
   const isChapterTest = activeChapter < 10 && activeLesson === CHAPTERS[activeChapter].topics.length - 1
   const testQuestions = useMemo(() => isChapterTest ? getRandomQuestions(activeChapter + 1) : [], [activeChapter, activeLesson, isChapterTest, quizVersion])
@@ -392,8 +409,58 @@ export default function OnlineEducationCoursePage() {
   const currentStepIndex = activeLesson >= 0 ? getCourseStepIndex(activeChapter, activeLesson) : -1
 
   useEffect(() => {
+    if (!userId) {
+      setProgressReady(false)
+      return undefined
+    }
+
+    let cancelled = false
+    const localStep = Number.parseInt(window.localStorage.getItem(progressStorageKey), 10)
+    void api.getOnlineCourseProgress(userId)
+      .then(progress => {
+        if (cancelled) return
+        const remoteStep = Number.isInteger(Number(progress?.unlockedStep)) ? Number(progress.unlockedStep) : 1
+        const remoteTests = Array.isArray(progress?.passedTests) ? progress.passedTests.map(Number).filter(Number.isInteger) : []
+        // A learner's prior local progress is migrated only once. After that,
+        // the saved enrollment record is authoritative on every device.
+        // A legacy local value cannot mark Test 11 as passed: that status is
+        // accepted only when the server has a verified Final Test result.
+        const localLegacyStep = Math.min(progress?.finalTestPassed === true ? 63 : 62, Number.isInteger(localStep) ? localStep : 1)
+        const mergedStep = progress?.hasSavedProgress === true
+          ? Math.max(1, remoteStep)
+          : Math.max(1, remoteStep, localLegacyStep)
+        const mergedTests = [...new Set(remoteTests)].sort((left, right) => left - right)
+        savedRemoteProgress.current = JSON.stringify({ unlockedStep: remoteStep, passedTests: remoteTests.sort((left, right) => left - right) })
+        setUnlockedStep(mergedStep)
+        setPassedTests(mergedTests)
+        setProgressReady(true)
+      })
+      .catch(error => {
+        if (cancelled) return
+        // Keep the existing browser copy usable during a temporary outage; it
+        // will be uploaded the next time this course page can reach the API.
+        console.warn('Online course progress could not be loaded:', error)
+        setProgressReady(true)
+      })
+    return () => { cancelled = true }
+  }, [progressStorageKey, userId])
+
+  useEffect(() => {
+    if (!userId || !progressReady) return
     window.localStorage.setItem(progressStorageKey, String(unlockedStep))
-  }, [progressStorageKey, unlockedStep])
+    const snapshot = JSON.stringify({ unlockedStep, passedTests: [...passedTests].sort((left, right) => left - right) })
+    if (snapshot === savedRemoteProgress.current) return
+
+    void api.saveOnlineCourseProgress(userId, unlockedStep, passedTests)
+      .then(progress => {
+        const remoteStep = Number(progress?.unlockedStep)
+        const remoteTests = Array.isArray(progress?.passedTests) ? progress.passedTests.map(Number).filter(Number.isInteger) : []
+        if (Number.isInteger(remoteStep)) setUnlockedStep(current => Math.max(current, remoteStep))
+        setPassedTests(current => [...new Set([...current, ...remoteTests])].sort((left, right) => left - right))
+        savedRemoteProgress.current = JSON.stringify({ unlockedStep: remoteStep, passedTests: remoteTests.sort((left, right) => left - right) })
+      })
+      .catch(error => console.warn('Online course progress could not be saved:', error))
+  }, [passedTests, progressReady, progressStorageKey, unlockedStep, userId])
   const isDriverLicenseLesson = activeChapter === 0 && activeLesson === 0
   const isObeyingLawsLesson = activeChapter === 0 && activeLesson === 1
   const isImportanceLesson = activeChapter === 0 && activeLesson === 2
@@ -526,18 +593,24 @@ export default function OnlineEducationCoursePage() {
   }
 
   const beginNewTest = () => setQuizVersion(version => version + 1)
-  const passCurrentTest = () => unlockThrough(currentStepIndex + 1)
+  const passCurrentTest = () => {
+    const testNumber = isFinalCourseTest ? 11 : (isChapterTest ? activeChapter + 1 : null)
+    if (testNumber) setPassedTests(current => [...new Set([...current, testNumber])].sort((left, right) => left - right))
+    unlockThrough(currentStepIndex + 1)
+  }
   const saveFinalTestResult = async ({ questionIds, answers }) => {
-    const uid = auth.currentUser?.uid
+    const uid = userId
     if (!uid) {
       setFinalTestSaveError('Please sign in again before saving your Final Test result.')
       return
     }
     try {
-      await api.saveFinalTestResult(uid, questionIds, answers)
+      const response = await api.saveFinalTestResult(uid, questionIds, answers)
       setFinalTestSaveError('')
+      return response.result
     } catch (error) {
       setFinalTestSaveError(error?.message || 'Your Final Test result could not be saved. Please grade the test again.')
+      return null
     }
   }
   const continueAfterTest = () => {
