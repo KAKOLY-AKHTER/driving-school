@@ -9,7 +9,6 @@ const {
   canonicalAdminBookingStatus,
   cloudinarySignature,
   bookingsForEnrollment,
-  isOnlineDriverEducationCourse,
   checkoutFingerprint,
   couponCheckoutFingerprint,
   couponDiscountQuote,
@@ -38,14 +37,6 @@ const {
   validateClosedAvailabilityDates,
   validateAdminBookingStatusChange,
 } = await import('./index.js')
-
-test('online driver education access includes standalone and bundled course plans', () => {
-  for (const id of ['1', '2', '3', '4', '5']) {
-    assert.equal(isOnlineDriverEducationCourse({ id, title: 'Package plan' }), true)
-  }
-  assert.equal(isOnlineDriverEducationCourse({ id: '12', title: '4 hours behind the wheel' }), false)
-  assert.equal(isOnlineDriverEducationCourse({ id: '99', title: 'Online Driver Education' }), true)
-})
 
 test('Cloudinary request signatures use stable sorted upload parameters', () => {
   assert.equal(

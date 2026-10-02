@@ -1881,14 +1881,18 @@ export default function AdminPage() {
   }
 
   const deleteRefund = async (id) => {
+    const deletedRefund = refunds.find(item => String(item._id) === String(id))
     try {
       await api.adminDeleteRefund(id)
       setRefunds(prev => prev.filter(item => item._id !== id))
       setRefundTotal(prev => Math.max(0, prev - 1))
-      setRefundAttempt(value => value + 1)
+      if (normalizeStatus(deletedRefund?.Status || 'pending') === 'pending') {
+        setRefundStats(previous => ({ ...previous, pending: Math.max(0, previous.pending - 1), totalRequests: Math.max(0, previous.totalRequests - 1) }))
+        setStats(previous => ({ ...previous, pendingRefunds: Math.max(0, previous.pendingRefunds - 1) }))
+      }
       setMsg('Refund record deleted.')
-    } catch (error) {
-      setMsg(error?.message || 'Failed to delete refund record.')
+    } catch {
+      setMsg('Failed to delete refund record.')
     }
     setTimeout(() => setMsg(''), 2500)
   }
@@ -3401,7 +3405,7 @@ export default function AdminPage() {
                               <td style={{ ...tdStyle, minWidth: '118px', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{formatDateDMY(r.created_at)}</td>
                               <td className="refund-actions-cell" style={{ ...tdStyle, minWidth: '205px', whiteSpace: 'nowrap' }}>
                                 <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                  {['refunded', 'denied'].includes(normalizeStatus(r.Status)) ? <><button type="button" onClick={() => setRefundDetails(r)} style={{ background: '#F8FAFC', border: '1.5px solid #CBD5E1', color: '#475569', borderRadius: 'var(--radius-sm)', padding: '0.35rem .6rem', fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer' }}>Details</button><button type="button" onClick={() => { setRefundForm({ Full_Name: r.Full_Name || '', Email: r.Email || '', Phone: r.Phone || '', Course_Name: r.Course_Name || '', Amount: r.Amount || '', Reason: r.Reason || '', Status: r.Status || 'pending' }); setRefundEdit(r._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '.35rem .6rem', fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer' }}>Edit</button><AdminDeleteIconButton label={`Delete refund record for ${r.Full_Name || 'student'}`} title="Delete refund record" onClick={() => requestConfirmation('Delete refund record?', `${r.Full_Name || 'This completed refund record'} will be permanently removed from this list. The payment refund and course status will not be reversed.`, () => deleteRefund(r._id))} /></> : <><button onClick={() => { setRefundForm({ Full_Name: r.Full_Name || '', Email: r.Email || '', Phone: r.Phone || '', Course_Name: r.Course_Name || '', Amount: r.Amount || '', Reason: r.Reason || '', Status: r.Status || 'pending' }); setRefundEdit(r._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Review</button><AdminDeleteIconButton label={`Delete refund record for ${r.Full_Name || 'student'}`} title="Delete refund record" onClick={() => requestConfirmation('Delete refund record?', `${r.Full_Name || 'This record'} will be permanently removed. No funds are transferred by this action; a pending request restores the linked course to Enrolled.`, () => deleteRefund(r._id))} /></>}
+                                  {['refunded', 'denied'].includes(normalizeStatus(r.Status)) ? <><button type="button" onClick={() => setRefundDetails(r)} style={{ background: '#F8FAFC', border: '1.5px solid #CBD5E1', color: '#475569', borderRadius: 'var(--radius-sm)', padding: '0.35rem .6rem', fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer' }}>Details</button><button type="button" onClick={() => { setRefundForm({ Full_Name: r.Full_Name || '', Email: r.Email || '', Phone: r.Phone || '', Course_Name: r.Course_Name || '', Amount: r.Amount || '', Reason: r.Reason || '', Status: r.Status || 'pending' }); setRefundEdit(r._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '.35rem .6rem', fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 700, cursor: 'pointer' }}>Edit</button></> : <><button onClick={() => { setRefundForm({ Full_Name: r.Full_Name || '', Email: r.Email || '', Phone: r.Phone || '', Course_Name: r.Course_Name || '', Amount: r.Amount || '', Reason: r.Reason || '', Status: r.Status || 'pending' }); setRefundEdit(r._id) }} style={{ background: 'none', border: `1.5px solid ${SKY_BLUE}`, color: SKY_BLUE, borderRadius: 'var(--radius-sm)', padding: '0.35rem 0.6rem', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>Review</button><AdminDeleteIconButton label={`Delete refund record for ${r.Full_Name || 'student'}`} title="Delete refund record" onClick={() => requestConfirmation('Delete refund record?', `${r.Full_Name || 'This record'} will be permanently removed. No funds are transferred by this action.`, () => deleteRefund(r._id))} /></>}
                                 </div>
                               </td>
                             </tr>
