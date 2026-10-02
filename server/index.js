@@ -7047,9 +7047,8 @@ app.delete('/api/admin/refunds/:id', async (req, res) => {
       const existing = await refundsCol.findOne({ _id: refundId }, { session })
       if (!existing) return false
       const existingStatus = cleanText(existing.Status || 'pending', 20).toLowerCase()
-      if (isFinalRefundStatus(existingStatus)) {
-        throw new HttpError(409, `This refund is already ${existingStatus} and cannot be deleted.`)
-      }
+      // Removing this administrative row never reverses an already completed
+      // PayPal refund. Payment and course records remain unchanged.
       if (String(existing.Status || 'pending').toLowerCase() === 'pending') {
         const uid = cleanText(existing.uid || existing.User_UID, 160)
         const courseId = cleanText(existing.Course_ID, 120)
@@ -7083,10 +7082,10 @@ app.delete('/api/admin/refunds/:id', async (req, res) => {
         }
       }
       await refundsCol.deleteOne({ _id: refundId }, { session })
-      return true
+      return { status: existingStatus }
     })
     if (!result) return res.status(404).json({ error: 'Refund record not found.' })
-    res.json({ ok: true })
+    res.json({ ok: true, deletedStatus: result.status })
   } catch (e) {
     if (e.status) return res.status(e.status).json({ error: e.message })
     sendServerError(res, e, 'Refund record deletion failed')
