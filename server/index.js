@@ -1698,6 +1698,13 @@ const courseCanAcceptMoreBookings = (course) => {
   const status = normalizedCourseStatus(course?.status)
   return !['cancelled', 'refunded', 'refund pending'].includes(status)
 }
+// The bundled lesson packages also include the online driver education course.
+// Treat them the same as the standalone online course for Test 11 access.
+const ONLINE_DRIVER_EDUCATION_COURSE_IDS = new Set(['1', '2', '3', '4', '5'])
+const isOnlineDriverEducationCourse = (course) => {
+  const title = String(course?.title || course?.planName || '').toUpperCase()
+  return ONLINE_DRIVER_EDUCATION_COURSE_IDS.has(String(course?.id)) || title.includes('ONLINE DRIVER')
+}
 const courseEnrollmentFingerprint = (course) => cleanText(
   course?.enrolledAt || course?.createdAt || course?.paymentRef || 'legacy-current-enrollment',
   160
@@ -3002,10 +3009,7 @@ app.put('/api/users/:uid/final-test-result', async (req, res) => {
     }
 
     const student = await usersCol.findOne({ uid }, { projection: { courses: 1 } })
-    const hasOnlineCourse = (student?.courses || []).some(course => {
-      const title = String(course?.title || course?.planName || '').toUpperCase()
-      return String(course?.id) === '1' || title.includes('ONLINE DRIVER')
-    })
+    const hasOnlineCourse = (student?.courses || []).some(isOnlineDriverEducationCourse)
     if (!hasOnlineCourse) throw new HttpError(403, 'An active online driver education enrollment is required for Test 11.')
 
     const correct = questions.reduce((count, question) => count + (Number(submittedAnswers[String(question.id)]) === Number(question.answer) ? 1 : 0), 0)
@@ -7206,6 +7210,7 @@ export {
   adminUserProfileDetails,
   canonicalAdminBookingStatus,
   bookingsForEnrollment,
+  isOnlineDriverEducationCourse,
   checkoutFingerprint,
   couponCheckoutFingerprint,
   couponDiscountQuote,
