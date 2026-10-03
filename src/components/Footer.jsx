@@ -144,12 +144,22 @@ export default function Footer() {
           box-sizing: border-box;
           overflow: hidden;
         }
+        .ft-road::after {
+          content: '';
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 7px;
+          height: 1px;
+          background: rgba(255,255,255,0.18);
+        }
         .ft-road-car {
           position: absolute;
           right: -115px;
           bottom: -3px;
           width: 115px;
           height: 46px;
+          z-index: 1;
           filter: drop-shadow(0 5px 5px rgba(0,0,0,0.45));
           animation: ftCarDrive 15s linear infinite;
         }
@@ -164,6 +174,7 @@ export default function Footer() {
         }
         @media (max-width: 600px) {
           .ft-road { height: 44px; }
+          .ft-road::after { bottom: 5px; }
           .ft-road-car { width: 92px; height: auto; bottom: -2px; }
         }
         @media (prefers-reduced-motion: reduce) {
