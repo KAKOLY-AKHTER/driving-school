@@ -139,25 +139,35 @@ export default function Footer() {
           padding-top: 2rem;
         }
         .ft-road {
-          height: 52px;
+          height: 58px;
           position: relative;
           box-sizing: border-box;
           overflow: hidden;
+        }
+        .ft-road::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          height: 12px;
+          background: linear-gradient(180deg, #3a4754 0%, #222d39 22%, #101924 100%);
+          border-top: 1px solid rgba(203,216,226,0.65);
+          box-shadow: inset 0 2px 3px rgba(255,255,255,0.06), inset 0 -2px 3px rgba(0,0,0,0.45);
         }
         .ft-road::after {
           content: '';
           position: absolute;
           left: 0;
           right: 0;
-          bottom: 1px;
-          height: 3px;
-          background: linear-gradient(90deg, #526170 0%, #aebbc4 18%, #d7e0e5 50%, #aebbc4 82%, #526170 100%);
-          box-shadow: 0 2px 0 rgba(0,0,0,0.3);
+          bottom: 3px;
+          height: 2px;
+          background: repeating-linear-gradient(90deg, transparent 0 42px, rgba(238,245,249,0.72) 42px 74px, transparent 74px 116px);
         }
         .ft-road-car {
           position: absolute;
           right: -115px;
-          bottom: -3px;
+          bottom: 5px;
           width: 115px;
           height: 46px;
           z-index: 1;
@@ -174,9 +184,10 @@ export default function Footer() {
           .ft-bottom { flex-direction: row !important; justify-content: space-between !important; text-align: left !important; }
         }
         @media (max-width: 600px) {
-          .ft-road { height: 44px; }
-          .ft-road::after { bottom: 1px; }
-          .ft-road-car { width: 92px; height: auto; bottom: -2px; }
+          .ft-road { height: 50px; }
+          .ft-road::before { height: 9px; }
+          .ft-road::after { bottom: 2px; height: 1px; }
+          .ft-road-car { width: 92px; height: auto; bottom: 4px; }
         }
         @media (prefers-reduced-motion: reduce) {
           .ft-road-car { animation: none !important; }
