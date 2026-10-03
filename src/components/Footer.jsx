@@ -13,7 +13,7 @@ const DARK = '#0a1628'
 function RoadCar({ color, delay = '0s' }) {
   const id = color.replace('#', '')
   return (
-    <svg className="ft-road-car" style={{ animationDelay: delay }} width="148" height="64" viewBox="0 0 148 64" aria-hidden="true">
+    <svg className="ft-road-car" style={{ animationDelay: delay }} width="164" height="68" viewBox="0 0 164 68" aria-hidden="true">
       <defs>
         <linearGradient id={`car-body-${id}`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor={color} />
@@ -30,17 +30,18 @@ function RoadCar({ color, delay = '0s' }) {
           <stop offset="1" stopColor="#7c93a6" />
         </linearGradient>
       </defs>
-      <ellipse cx="74" cy="54" rx="62" ry="5" fill="rgba(0,0,0,.48)" />
-      <path d="M8 43c0-5 3-9 9-10l15-3 16-15c3-3 7-5 12-5h35c5 0 9 2 13 6l14 15 13 3c5 1 8 5 8 10v5H8v-6Z" fill={`url(#car-body-${id})`} stroke="rgba(235,248,255,.72)" strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="m37 30 14-14c2-2 5-3 9-3h16v17H37Zm43 0V13h13c4 0 7 2 10 5l11 12H80Z" fill={`url(#car-glass-${id})`} stroke="rgba(231,248,255,.85)" strokeWidth="1.2" strokeLinejoin="round" />
-      <path d="M77 14v16M42 31h72" stroke="rgba(16,44,67,.7)" strokeWidth="2" />
-      <path d="M15 39h118" stroke="rgba(255,255,255,.26)" strokeWidth="1.2" />
-      <path d="M48 44h49" stroke="rgba(3,12,23,.42)" strokeWidth="1.4" strokeLinecap="round" />
-      <path d="m113 26 7-2 2 4-8 2Z" fill="#18324c" stroke="rgba(235,248,255,.65)" strokeWidth="1" />
-      <path d="M133 35h8v6h-9Z" fill="#fff4a8" stroke="#f4c64e" strokeWidth="1" /><path d="M8 37h8v5H8Z" fill="#ef4d4d" stroke="#ff9a87" strokeWidth="1" />
-      <path d="M20 45h14M112 45h14" stroke={`url(#car-chrome-${id})`} strokeWidth="2" strokeLinecap="round" />
-      <g><circle cx="35" cy="49" r="11" fill="#07111d" stroke="#b9c8d3" strokeWidth="2.5" /><circle cx="35" cy="49" r="5" fill={`url(#car-chrome-${id})`} /><circle cx="35" cy="49" r="1.8" fill="#203b54" /></g>
-      <g><circle cx="112" cy="49" r="11" fill="#07111d" stroke="#b9c8d3" strokeWidth="2.5" /><circle cx="112" cy="49" r="5" fill={`url(#car-chrome-${id})`} /><circle cx="112" cy="49" r="1.8" fill="#203b54" /></g>
+      <ellipse cx="82" cy="57" rx="69" ry="5" fill="rgba(0,0,0,.5)" />
+      <path d="M7 47c0-6 4-10 12-11l18-4 17-15c4-4 9-6 15-6h39c6 0 11 2 15 6l16 15 13 3c7 1 11 6 11 12v4H7v-4Z" fill={`url(#car-body-${id})`} stroke="rgba(244,252,255,.8)" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="m42 31 15-13c3-3 7-4 12-4h20v17H42Zm52 0V14h14c5 0 8 2 12 5l13 12H94Z" fill={`url(#car-glass-${id})`} stroke="rgba(238,252,255,.9)" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M91 15v16M46 32h86" stroke="rgba(14,42,64,.72)" strokeWidth="2.4" />
+      <path d="M18 42h127" stroke="rgba(255,255,255,.3)" strokeWidth="1.2" />
+      <path d="M55 46h55" stroke="rgba(2,13,27,.48)" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="m131 28 8-2 3 5-10 2Z" fill="#193852" stroke="rgba(240,252,255,.75)" strokeWidth="1" />
+      <path d="M145 37h11v5h-12Z" fill="#fff7bd" stroke="#f9ce58" strokeWidth="1" /><path d="M7 39h10v5H7Z" fill="#f15151" stroke="#ff9c8d" strokeWidth="1" />
+      <path d="M121 38h24" stroke="#d9f8ff" strokeWidth="1.5" strokeLinecap="round" opacity=".85" />
+      <path d="M22 48h15M126 48h15" stroke={`url(#car-chrome-${id})`} strokeWidth="2.2" strokeLinecap="round" />
+      <g><circle cx="39" cy="51" r="12" fill="#050d16" stroke="#c2d1dc" strokeWidth="2.7" /><circle cx="39" cy="51" r="6.5" fill={`url(#car-chrome-${id})`} /><circle cx="39" cy="51" r="3" fill="#193852" /><path d="M39 45v12M33 51h12" stroke="#edf6fb" strokeWidth="1" opacity=".8" /></g>
+      <g><circle cx="124" cy="51" r="12" fill="#050d16" stroke="#c2d1dc" strokeWidth="2.7" /><circle cx="124" cy="51" r="6.5" fill={`url(#car-chrome-${id})`} /><circle cx="124" cy="51" r="3" fill="#193852" /><path d="M124 45v12M118 51h12" stroke="#edf6fb" strokeWidth="1" opacity=".8" /></g>
     </svg>
   )
 }
@@ -141,7 +142,7 @@ export default function Footer() {
         .ft-road::after { content:''; position:absolute; left:0; right:0; bottom:0; height:24px; background:linear-gradient(180deg, rgba(0,0,0,.12), rgba(0,0,0,.42)); }
         .ft-road-car {
           position: absolute;
-          right: -176px;
+          right: -192px;
           left: auto;
           bottom: 7px;
           z-index: 1;
@@ -150,8 +151,8 @@ export default function Footer() {
         }
         @keyframes ftCarDrive {
           0% { transform: translateX(0) translateY(0); }
-          50% { transform: translateX(calc(-50vw - 176px)) translateY(-2px); }
-          100% { transform: translateX(calc(-100vw - 352px)) translateY(0); }
+          50% { transform: translateX(calc(-50vw - 192px)) translateY(-2px); }
+          100% { transform: translateX(calc(-100vw - 384px)) translateY(0); }
         }
         @media (min-width: 768px) {
           .ft-grid { grid-template-columns: 1.5fr 1fr 1fr 1.2fr !important; }
@@ -159,7 +160,7 @@ export default function Footer() {
         }
         @media (max-width: 600px) {
           .ft-road { height: 82px; padding-inline: 0.5rem; }
-          .ft-road-car { width: 104px; height: auto; bottom:3px; }
+          .ft-road-car { width: 116px; height: auto; bottom:3px; }
         }
         @media (prefers-reduced-motion: reduce) {
           .ft-road-car { animation:none !important; }
