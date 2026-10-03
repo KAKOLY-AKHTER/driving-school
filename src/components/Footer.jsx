@@ -130,37 +130,37 @@ export default function Footer() {
           padding-top: 2rem;
         }
         .ft-road {
-          height: 108px;
+          height: 96px;
           position: relative;
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          align-items: end;
           padding: 0 8vw 8px;
-          background: linear-gradient(180deg, #0d1b2d 0%, #081423 58%, #050d18 100%);
-          border-bottom: 2px solid rgba(255,255,255,0.16);
+          background: linear-gradient(180deg, ${DARK} 0%, #060e1a 100%);
+          border-bottom: 1px dashed rgba(255,255,255,0.35);
           box-sizing: border-box;
           overflow: hidden;
         }
-        .ft-road::before { content:''; position:absolute; left:0; right:0; bottom:25px; height:2px; background:repeating-linear-gradient(90deg, rgba(255,255,255,.54) 0 38px, transparent 38px 82px); opacity:.75; }
-        .ft-road::after { content:''; position:absolute; left:0; right:0; bottom:0; height:24px; background:linear-gradient(180deg, rgba(0,0,0,.12), rgba(0,0,0,.42)); }
         .ft-road-car {
           position: absolute;
-          right: -192px;
+          right: -170px;
           left: auto;
-          bottom: 7px;
-          z-index: 1;
-          filter: drop-shadow(0 7px 7px rgba(0,0,0,0.5));
+          bottom: -6px;
+          filter: drop-shadow(0 5px 5px rgba(0,0,0,0.45));
           animation: ftCarDrive 15s linear infinite;
         }
         @keyframes ftCarDrive {
           0% { transform: translateX(0) translateY(0); }
-          50% { transform: translateX(calc(-50vw - 192px)) translateY(-2px); }
-          100% { transform: translateX(calc(-100vw - 384px)) translateY(0); }
+          50% { transform: translateX(calc(-50vw - 170px)) translateY(-2px); }
+          100% { transform: translateX(calc(-100vw - 340px)) translateY(0); }
         }
         @media (min-width: 768px) {
           .ft-grid { grid-template-columns: 1.5fr 1fr 1fr 1.2fr !important; }
           .ft-bottom { flex-direction: row !important; justify-content: space-between !important; text-align: left !important; }
         }
         @media (max-width: 600px) {
-          .ft-road { height: 82px; padding-inline: 0.5rem; }
-          .ft-road-car { width: 116px; height: auto; bottom:3px; }
+          .ft-road { height: 78px; padding-inline: 0.5rem; }
+          .ft-road-car { width: 100px; height: auto; bottom:-3px; }
         }
         @media (prefers-reduced-motion: reduce) {
           .ft-road-car { animation:none !important; }
