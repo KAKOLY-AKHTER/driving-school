@@ -9,6 +9,44 @@ const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
 const DARK = '#0a1628'
 
+function RoadCar({ color, delay = '0s' }) {
+  const id = color.replace('#', '')
+  return (
+    <svg className="ft-road-car" style={{ animationDelay: delay }} width="180" height="72" viewBox="0 0 180 72" aria-hidden="true">
+      <defs>
+        <linearGradient id={`car-body-${id}`} x1="0" y1="0" x2="0.18" y2="1">
+          <stop offset="0" stopColor="#ffffff" stopOpacity=".95" />
+          <stop offset=".08" stopColor={color} />
+          <stop offset=".62" stopColor={color} />
+          <stop offset="1" stopColor="#071322" />
+        </linearGradient>
+        <linearGradient id={`car-glass-${id}`} x1="0" y1="0" x2=".6" y2="1">
+          <stop offset="0" stopColor="#e9fbff" />
+          <stop offset=".42" stopColor="#75a7be" />
+          <stop offset="1" stopColor="#142b42" />
+        </linearGradient>
+        <linearGradient id={`car-wheel-${id}`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#d8e6ef" />
+          <stop offset=".5" stopColor="#657c8d" />
+          <stop offset="1" stopColor="#f4fbff" />
+        </linearGradient>
+        <filter id={`car-glow-${id}`} x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="2" /></filter>
+      </defs>
+      <ellipse cx="90" cy="61" rx="75" ry="5" fill="rgba(0,0,0,.46)" />
+      <path d="M10 48c0-5 3-9 10-11l18-5 21-17c4-3 8-5 15-5h39c7 0 12 2 17 6l18 16 18 4c8 2 12 6 12 12v5H10v-5Z" fill={`url(#car-body-${id})`} stroke="rgba(255,255,255,.7)" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="m45 31 17-14c3-2 7-4 12-4h17v18H45Zm52 0V13h14c5 0 9 2 13 5l15 13H97Z" fill={`url(#car-glass-${id})`} stroke="rgba(238,252,255,.8)" strokeWidth="1" strokeLinejoin="round" />
+      <path d="M94 14v17M49 32h91" stroke="rgba(7,31,50,.6)" strokeWidth="2" />
+      <path d="M18 43h146" stroke="rgba(255,255,255,.3)" strokeWidth="1" />
+      <path d="M63 49h62" stroke="rgba(0,0,0,.34)" strokeWidth="2" strokeLinecap="round" />
+      <path d="m136 28 11-3 4 6-13 3Z" fill="#102c45" stroke="rgba(255,255,255,.7)" strokeWidth=".8" />
+      <path d="M151 39h13v5h-14Z" fill="#fff7be" filter={`url(#car-glow-${id})`} opacity=".9" /><path d="M151 39h13v5h-14Z" fill="#fffbe7" /><path d="M10 39h12v5H10Z" fill="#e94a4b" />
+      <path d="M131 39h21" stroke="#e4fbff" strokeWidth="1.4" strokeLinecap="round" opacity=".8" />
+      <g><circle cx="40" cy="53" r="12" fill="#050a10" stroke="#b7cad5" strokeWidth="2.2" /><circle cx="40" cy="53" r="6.8" fill={`url(#car-wheel-${id})`} /><circle cx="40" cy="53" r="2.7" fill="#102b43" /><path d="M40 47v12M34 53h12" stroke="#f3fbff" strokeWidth=".9" /></g>
+      <g><circle cx="133" cy="53" r="12" fill="#050a10" stroke="#b7cad5" strokeWidth="2.2" /><circle cx="133" cy="53" r="6.8" fill={`url(#car-wheel-${id})`} /><circle cx="133" cy="53" r="2.7" fill="#102b43" /><path d="M133 47v12M127 53h12" stroke="#f3fbff" strokeWidth=".9" /></g>
+    </svg>
+  )
+}
+
 export default function Footer() {
   const currentYear = new Date().getFullYear()
   const settings = useSiteSettings()
@@ -86,11 +124,46 @@ export default function Footer() {
           border-top: 1px solid rgba(255,255,255,0.04);
           padding-top: 2rem;
         }
+        .ft-road {
+          height: 96px;
+          position: relative;
+          background: linear-gradient(180deg, #17263a 0 44%, #0d1725 45% 100%);
+          border-bottom: 1px solid rgba(255,255,255,0.12);
+          box-sizing: border-box;
+          overflow: hidden;
+        }
+        .ft-road::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 42%;
+          height: 3px;
+          background: repeating-linear-gradient(90deg, transparent 0 4%, rgba(255,255,255,.7) 4% 8%, transparent 8% 16%);
+          opacity: .7;
+        }
+        .ft-road-car {
+          position: absolute;
+          right: -170px;
+          bottom: -6px;
+          filter: drop-shadow(0 5px 5px rgba(0,0,0,0.45));
+          animation: ftCarDrive 15s linear infinite;
+        }
+        @keyframes ftCarDrive {
+          0% { transform: translateX(0) translateY(0); }
+          50% { transform: translateX(calc(-50vw - 170px)) translateY(-2px); }
+          100% { transform: translateX(calc(-100vw - 340px)) translateY(0); }
+        }
         @media (min-width: 768px) {
           .ft-grid { grid-template-columns: 1.5fr 1fr 1fr 1.2fr !important; }
           .ft-bottom { flex-direction: row !important; justify-content: space-between !important; text-align: left !important; }
         }
+        @media (max-width: 600px) {
+          .ft-road { height: 78px; }
+          .ft-road-car { width: 100px; height: auto; bottom: -3px; }
+        }
         @media (prefers-reduced-motion: reduce) {
+          .ft-road-car { animation: none !important; }
           .ft-link,.ft-social { transition:none !important; }
         }
       `}</style>
@@ -101,6 +174,11 @@ export default function Footer() {
         position: 'relative',
         overflow: 'hidden',
       }}>
+        <div className="ft-road" aria-hidden="true">
+          <RoadCar color="#0878d1" delay="0s" />
+          <RoadCar color="#d8dde2" delay="5s" />
+          <RoadCar color="#e54820" delay="10s" />
+        </div>
         <div className="container" style={{ position: 'relative', zIndex: 1, paddingTop: '5rem', paddingBottom: '2rem' }}>
 
           <div className="ft-grid" style={{ display: 'grid', gap: '3rem', marginBottom: '4rem' }}>
