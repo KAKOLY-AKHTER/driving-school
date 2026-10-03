@@ -149,9 +149,10 @@ export default function Footer() {
           position: absolute;
           left: 0;
           right: 0;
-          bottom: 7px;
-          height: 1px;
-          background: rgba(255,255,255,0.18);
+          bottom: 1px;
+          height: 3px;
+          background: linear-gradient(90deg, #526170 0%, #aebbc4 18%, #d7e0e5 50%, #aebbc4 82%, #526170 100%);
+          box-shadow: 0 2px 0 rgba(0,0,0,0.3);
         }
         .ft-road-car {
           position: absolute;
@@ -174,7 +175,7 @@ export default function Footer() {
         }
         @media (max-width: 600px) {
           .ft-road { height: 44px; }
-          .ft-road::after { bottom: 5px; }
+          .ft-road::after { bottom: 1px; }
           .ft-road-car { width: 92px; height: auto; bottom: -2px; }
         }
         @media (prefers-reduced-motion: reduce) {
