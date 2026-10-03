@@ -146,7 +146,7 @@ export default function Footer() {
         }
         .ft-road-car {
           position: absolute;
-          right: -115px;
+          left: -115px;
           bottom: -3px;
           width: 115px;
           height: 46px;
@@ -155,8 +155,8 @@ export default function Footer() {
         }
         @keyframes ftCarDrive {
           0% { transform: translateX(0) translateY(0); }
-          50% { transform: translateX(calc(-50vw - 115px)) translateY(-1px); }
-          100% { transform: translateX(calc(-100vw - 230px)) translateY(0); }
+          50% { transform: translateX(calc(50vw + 115px)) translateY(-1px); }
+          100% { transform: translateX(calc(100vw + 230px)) translateY(0); }
         }
         @media (min-width: 768px) {
           .ft-grid { grid-template-columns: 1.5fr 1fr 1fr 1.2fr !important; }
