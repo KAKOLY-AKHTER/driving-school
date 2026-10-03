@@ -146,7 +146,7 @@ export default function Footer() {
         }
         .ft-road-car {
           position: absolute;
-          left: -115px;
+          right: -115px;
           bottom: -3px;
           width: 115px;
           height: 46px;
@@ -154,9 +154,9 @@ export default function Footer() {
           animation: ftCarDrive 15s linear infinite;
         }
         @keyframes ftCarDrive {
-          0% { transform: translateX(0) translateY(0); }
-          50% { transform: translateX(calc(50vw + 115px)) translateY(-1px); }
-          100% { transform: translateX(calc(100vw + 230px)) translateY(0); }
+          0% { transform: translateX(0) translateY(0) scaleX(-1); }
+          50% { transform: translateX(calc(-50vw - 115px)) translateY(-1px) scaleX(-1); }
+          100% { transform: translateX(calc(-100vw - 230px)) translateY(0) scaleX(-1); }
         }
         @media (min-width: 768px) {
           .ft-grid { grid-template-columns: 1.5fr 1fr 1fr 1.2fr !important; }
