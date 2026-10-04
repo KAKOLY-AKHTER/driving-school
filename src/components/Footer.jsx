@@ -92,7 +92,7 @@ export default function Footer() {
           box-sizing: border-box;
           overflow: hidden;
           background: transparent;
-          border-bottom: 1px solid rgba(255,255,255,0.05);
+          border-bottom: 0;
         }
         .ft-road::before {
           content: '';
@@ -114,7 +114,7 @@ export default function Footer() {
           z-index: 1;
         }
         .ft-road-car {
-          --car-width: clamp(82px, 9vw, 135px);
+          --car-width: clamp(70px, 7.5vw, 115px);
           position: absolute;
           bottom: 10px;
           left: 100%;
@@ -122,7 +122,7 @@ export default function Footer() {
           width: var(--car-width);
           height: auto;
           filter: drop-shadow(0 5px 5px rgba(0,0,0,0.55));
-          animation: ftCarDrive 18s linear infinite;
+          animation: ftCarDrive 10s linear infinite;
           will-change: transform;
         }
         @keyframes ftCarDrive {
@@ -137,7 +137,7 @@ export default function Footer() {
           .ft-road { height: 68px; }
           .ft-road::before { bottom: 7px; }
           .ft-road-car {
-            --car-width: clamp(56px, 20vw, 82px);
+            --car-width: clamp(50px, 18vw, 70px);
             bottom: 8px;
             width: var(--car-width);
           }
