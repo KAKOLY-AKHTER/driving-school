@@ -157,8 +157,8 @@ export default function Footer() {
         <div className="ft-road" aria-hidden="true">
           <div className="ft-road-cars">
             <img className="ft-road-car" style={{ animationDelay: '0s' }} src="/car-footer1.png" alt="" />
-            <img className="ft-road-car" style={{ animationDelay: '-6s' }} src="/car-footer2.png" alt="" />
-            <img className="ft-road-car" style={{ animationDelay: '-12s' }} src="/car-footer3.png" alt="" />
+            <img className="ft-road-car" style={{ animationDelay: '-3.33s' }} src="/car-footer2.png" alt="" />
+            <img className="ft-road-car" style={{ animationDelay: '-6.67s' }} src="/car-footer3.png" alt="" />
           </div>
         </div>
         <div className="container" style={{ position: 'relative', zIndex: 1, paddingTop: '4rem', paddingBottom: '2rem' }}>
