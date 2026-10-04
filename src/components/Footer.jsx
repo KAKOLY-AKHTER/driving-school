@@ -91,8 +91,8 @@ export default function Footer() {
           position: relative;
           box-sizing: border-box;
           overflow: hidden;
-          background: linear-gradient(180deg, #121212 0%, #121212 84%, #090909 84%, #090909 100%);
-          border-bottom: 1px solid rgba(255,255,255,0.03);
+          background: transparent;
+          border-bottom: 1px solid rgba(255,255,255,0.05);
         }
         .ft-road::before {
           content: '';
@@ -108,23 +108,26 @@ export default function Footer() {
           content: none;
         }
         .ft-road-cars {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          align-items: end;
-          width: min(100%, 1280px);
+          position: absolute;
+          inset: 0;
           height: 100%;
-          margin: 0 auto;
-          padding: 0 clamp(1rem, 6vw, 5rem) 10px;
-          box-sizing: border-box;
-          position: relative;
           z-index: 1;
         }
         .ft-road-car {
-          justify-self: center;
+          --car-width: clamp(100px, 11vw, 162px);
+          position: absolute;
+          bottom: 10px;
+          left: 100%;
           display: block;
           width: clamp(100px, 11vw, 162px);
           height: auto;
           filter: drop-shadow(0 5px 5px rgba(0,0,0,0.55));
+          animation: ftCarDrive 18s linear infinite;
+          will-change: transform;
+        }
+        @keyframes ftCarDrive {
+          from { transform: translateX(0); }
+          to { transform: translateX(calc(-100vw - var(--car-width))); }
         }
         @media (min-width: 768px) {
           .ft-grid { grid-template-columns: 1.5fr 1fr 1fr 1.2fr !important; }
@@ -133,10 +136,14 @@ export default function Footer() {
         @media (max-width: 600px) {
           .ft-road { height: 68px; }
           .ft-road::before { bottom: 7px; }
-          .ft-road-cars { padding: 0 0.7rem 8px; }
-          .ft-road-car { width: clamp(68px, 25vw, 106px); }
+          .ft-road-car {
+            --car-width: clamp(68px, 25vw, 106px);
+            bottom: 8px;
+            width: var(--car-width);
+          }
         }
         @media (prefers-reduced-motion: reduce) {
+          .ft-road-car { animation: none; }
           .ft-link,.ft-social { transition:none !important; }
         }
       `}</style>
@@ -149,9 +156,9 @@ export default function Footer() {
       }}>
         <div className="ft-road" aria-hidden="true">
           <div className="ft-road-cars">
-            <img className="ft-road-car" src="/car-footer1.png" alt="" />
-            <img className="ft-road-car" src="/car-footer2.png" alt="" />
-            <img className="ft-road-car" src="/car-footer3.png" alt="" />
+            <img className="ft-road-car" style={{ animationDelay: '0s' }} src="/car-footer1.png" alt="" />
+            <img className="ft-road-car" style={{ animationDelay: '-6s' }} src="/car-footer2.png" alt="" />
+            <img className="ft-road-car" style={{ animationDelay: '-12s' }} src="/car-footer3.png" alt="" />
           </div>
         </div>
         <div className="container" style={{ position: 'relative', zIndex: 1, paddingTop: '4rem', paddingBottom: '2rem' }}>
