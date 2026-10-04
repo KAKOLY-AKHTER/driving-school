@@ -114,12 +114,12 @@ export default function Footer() {
           z-index: 1;
         }
         .ft-road-car {
-          --car-width: clamp(100px, 11vw, 162px);
+          --car-width: clamp(82px, 9vw, 135px);
           position: absolute;
           bottom: 10px;
           left: 100%;
           display: block;
-          width: clamp(100px, 11vw, 162px);
+          width: var(--car-width);
           height: auto;
           filter: drop-shadow(0 5px 5px rgba(0,0,0,0.55));
           animation: ftCarDrive 18s linear infinite;
@@ -137,7 +137,7 @@ export default function Footer() {
           .ft-road { height: 68px; }
           .ft-road::before { bottom: 7px; }
           .ft-road-car {
-            --car-width: clamp(68px, 25vw, 106px);
+            --car-width: clamp(56px, 20vw, 82px);
             bottom: 8px;
             width: var(--car-width);
           }
