@@ -148,8 +148,8 @@ export default function Hero() {
         .hero-cta .hero-action-button {
           min-height: 42px;
           padding: 0.5rem;
-          font-size: clamp(0.76rem, 3.5vw, 0.86rem);
-          letter-spacing: 0.04em;
+          font-size: clamp(0.84rem, 3.8vw, 0.95rem);
+          letter-spacing: 0.035em;
           line-height: 1.15;
         }
         .hero-section {
