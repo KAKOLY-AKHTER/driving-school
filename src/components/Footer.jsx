@@ -9,58 +9,6 @@ const GOLD = '#FDBC01'
 const GOLD_DEEP = '#C8960C'
 const DARK = '#0a1628'
 
-function RoadCar({ color, delay = '0s', model = 'sedan' }) {
-  const id = color.replace('#', '')
-  const isCoupe = model === 'coupe'
-  const isSuv = model === 'suv'
-  const wheelOne = isSuv ? 42 : 40
-  const wheelTwo = isSuv ? 133 : 133
-  const bodyPath = isCoupe
-    ? 'M10 48c0-5 3-9 10-11l20-5 25-15c5-3 10-5 17-5h25c7 0 12 2 16 6l14 14 24 4c8 2 12 6 12 12v5H10v-5Z'
-    : isSuv
-      ? 'M10 48c0-7 4-11 12-12l16-4 14-18c4-5 10-7 17-7h48c7 0 13 3 17 8l12 17 20 4c8 2 12 6 12 12v5H10v-5Z'
-      : 'M10 48c0-5 3-9 10-11l18-5 21-17c4-3 8-5 15-5h39c7 0 12 2 17 6l18 16 18 4c8 2 12 6 12 12v5H10v-5Z'
-  const glassPath = isCoupe
-    ? 'm48 32 21-13c4-2 8-3 13-3h17v16H48Zm56 0V16h10c5 0 8 2 12 5l14 11h-36Z'
-    : isSuv
-      ? 'm42 32 12-17c3-3 7-5 12-5h19v22H42Zm49 0V10h17c5 0 9 2 12 6l10 16h-41Z'
-      : 'm45 31 17-14c3-2 7-4 12-4h17v18H45Zm52 0V13h14c5 0 9 2 13 5l15 13H97Z'
-  return (
-    <svg className="ft-road-car" style={{ animationDelay: delay }} width="180" height="72" viewBox="0 0 180 72" aria-hidden="true">
-      <defs>
-        <linearGradient id={`car-body-${id}`} x1="0" y1="0" x2="0.18" y2="1">
-          <stop offset="0" stopColor="#ffffff" stopOpacity=".95" />
-          <stop offset=".08" stopColor={color} />
-          <stop offset=".62" stopColor={color} />
-          <stop offset="1" stopColor="#071322" />
-        </linearGradient>
-        <linearGradient id={`car-glass-${id}`} x1="0" y1="0" x2=".6" y2="1">
-          <stop offset="0" stopColor="#e9fbff" />
-          <stop offset=".42" stopColor="#75a7be" />
-          <stop offset="1" stopColor="#142b42" />
-        </linearGradient>
-        <linearGradient id={`car-wheel-${id}`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#d8e6ef" />
-          <stop offset=".5" stopColor="#657c8d" />
-          <stop offset="1" stopColor="#f4fbff" />
-        </linearGradient>
-        <filter id={`car-glow-${id}`} x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="2" /></filter>
-      </defs>
-      <ellipse cx="90" cy="61" rx="75" ry="5" fill="rgba(0,0,0,.46)" />
-      <path d={bodyPath} fill={`url(#car-body-${id})`} stroke="rgba(255,255,255,.7)" strokeWidth="1.2" strokeLinejoin="round" />
-      <path d={glassPath} fill={`url(#car-glass-${id})`} stroke="rgba(238,252,255,.8)" strokeWidth="1" strokeLinejoin="round" />
-      <path d="M94 14v17M49 32h91" stroke="rgba(7,31,50,.6)" strokeWidth="2" />
-      <path d="M18 43h146" stroke="rgba(255,255,255,.3)" strokeWidth="1" />
-      <path d="M63 49h62" stroke="rgba(0,0,0,.34)" strokeWidth="2" strokeLinecap="round" />
-      <path d="m136 28 11-3 4 6-13 3Z" fill="#102c45" stroke="rgba(255,255,255,.7)" strokeWidth=".8" />
-      <path d="M151 39h13v5h-14Z" fill="#fff7be" filter={`url(#car-glow-${id})`} opacity=".9" /><path d="M151 39h13v5h-14Z" fill="#fffbe7" /><path d="M10 39h12v5H10Z" fill="#e94a4b" />
-      <path d="M131 39h21" stroke="#e4fbff" strokeWidth="1.4" strokeLinecap="round" opacity=".8" />
-      <g><circle cx={wheelOne} cy="53" r="12" fill="#050a10" stroke="#b7cad5" strokeWidth="2.2" /><circle cx={wheelOne} cy="53" r="6.8" fill={`url(#car-wheel-${id})`} /><circle cx={wheelOne} cy="53" r="2.7" fill="#102b43" /><path d={`M${wheelOne} 47v12M${wheelOne - 6} 53h12`} stroke="#f3fbff" strokeWidth=".9" /></g>
-      <g><circle cx={wheelTwo} cy="53" r="12" fill="#050a10" stroke="#b7cad5" strokeWidth="2.2" /><circle cx={wheelTwo} cy="53" r="6.8" fill={`url(#car-wheel-${id})`} /><circle cx={wheelTwo} cy="53" r="2.7" fill="#102b43" /><path d={`M${wheelTwo} 47v12M${wheelTwo - 6} 53h12`} stroke="#f3fbff" strokeWidth=".9" /></g>
-    </svg>
-  )
-}
-
 export default function Footer() {
   const currentYear = new Date().getFullYear()
   const settings = useSiteSettings()
@@ -139,58 +87,56 @@ export default function Footer() {
           padding-top: 2rem;
         }
         .ft-road {
-          height: 58px;
+          height: 94px;
           position: relative;
           box-sizing: border-box;
           overflow: hidden;
+          background: linear-gradient(180deg, #121212 0%, #121212 84%, #090909 84%, #090909 100%);
+          border-bottom: 1px solid rgba(255,255,255,0.03);
         }
         .ft-road::before {
           content: '';
           position: absolute;
           left: 0;
           right: 0;
-          bottom: 0;
-          height: 12px;
-          background: linear-gradient(180deg, #3a4754 0%, #222d39 22%, #101924 100%);
-          border-top: 1px solid rgba(203,216,226,0.65);
-          box-shadow: inset 0 2px 3px rgba(255,255,255,0.06), inset 0 -2px 3px rgba(0,0,0,0.45);
+          bottom: 9px;
+          height: 1px;
+          background: repeating-linear-gradient(90deg, rgba(255,255,255,0.46) 0 2px, transparent 2px 5px);
+          opacity: 0.8;
         }
         .ft-road::after {
-          content: '';
-          position: absolute;
-          left: 0;
-          right: 0;
-          bottom: 3px;
-          height: 2px;
-          background: repeating-linear-gradient(90deg, transparent 0 42px, rgba(238,245,249,0.72) 42px 74px, transparent 74px 116px);
+          content: none;
+        }
+        .ft-road-cars {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          align-items: end;
+          width: min(100%, 1280px);
+          height: 100%;
+          margin: 0 auto;
+          padding: 0 clamp(1rem, 6vw, 5rem) 10px;
+          box-sizing: border-box;
+          position: relative;
+          z-index: 1;
         }
         .ft-road-car {
-          position: absolute;
-          right: -115px;
-          bottom: 5px;
-          width: 115px;
-          height: 46px;
-          z-index: 1;
-          filter: drop-shadow(0 5px 5px rgba(0,0,0,0.45));
-          animation: ftCarDrive 15s linear infinite;
-        }
-        @keyframes ftCarDrive {
-          0% { transform: translateX(0) translateY(0) scaleX(-1); }
-          50% { transform: translateX(calc(-50vw - 115px)) translateY(-1px) scaleX(-1); }
-          100% { transform: translateX(calc(-100vw - 230px)) translateY(0) scaleX(-1); }
+          justify-self: center;
+          display: block;
+          width: clamp(100px, 11vw, 162px);
+          height: auto;
+          filter: drop-shadow(0 5px 5px rgba(0,0,0,0.55));
         }
         @media (min-width: 768px) {
           .ft-grid { grid-template-columns: 1.5fr 1fr 1fr 1.2fr !important; }
           .ft-bottom { flex-direction: row !important; justify-content: space-between !important; text-align: left !important; }
         }
         @media (max-width: 600px) {
-          .ft-road { height: 50px; }
-          .ft-road::before { height: 9px; }
-          .ft-road::after { bottom: 2px; height: 1px; }
-          .ft-road-car { width: 92px; height: auto; bottom: 4px; }
+          .ft-road { height: 68px; }
+          .ft-road::before { bottom: 7px; }
+          .ft-road-cars { padding: 0 0.7rem 8px; }
+          .ft-road-car { width: clamp(68px, 25vw, 106px); }
         }
         @media (prefers-reduced-motion: reduce) {
-          .ft-road-car { animation: none !important; }
           .ft-link,.ft-social { transition:none !important; }
         }
       `}</style>
@@ -202,9 +148,11 @@ export default function Footer() {
         overflow: 'hidden',
       }}>
         <div className="ft-road" aria-hidden="true">
-          <RoadCar color="#1169b6" model="coupe" delay="0s" />
-          <RoadCar color="#d8dde2" model="sedan" delay="5s" />
-          <RoadCar color="#b51f39" model="suv" delay="10s" />
+          <div className="ft-road-cars">
+            <img className="ft-road-car" src="/car-footer1.png" alt="" />
+            <img className="ft-road-car" src="/car-footer2.png" alt="" />
+            <img className="ft-road-car" src="/car-footer3.png" alt="" />
+          </div>
         </div>
         <div className="container" style={{ position: 'relative', zIndex: 1, paddingTop: '4rem', paddingBottom: '2rem' }}>
 
