@@ -140,8 +140,18 @@ export default function Hero() {
         .hero-logo { margin-bottom: 1.5rem !important; }
         .hero-title { font-size: 2.2rem !important; margin-bottom: 0.8rem !important; }
         .hero-subtitle { font-size: 0.9rem !important; margin-bottom: 1rem !important; }
-        .hero-cta { grid-template-columns: 1fr; width: 100%; }
-        .hero-cta .hero-action-button { min-height: 46px; }
+        .hero-cta {
+          grid-template-columns: 1fr;
+          gap: 0.4rem;
+          width: 100%;
+        }
+        .hero-cta .hero-action-button {
+          min-height: 38px;
+          padding: 0.45rem 0.5rem;
+          font-size: 0.68rem;
+          letter-spacing: 0.025em;
+          line-height: 1.15;
+        }
         .hero-section {
           padding-top: 14rem !important;
           padding-bottom: 8rem !important;
