@@ -15,13 +15,6 @@ const GOLD_BRIGHT = '#FFD54F'
 const SKY_BLUE = '#0145A8'
 const DARK = '#0a1628'
 
-const PICKUP_TIMES = [
-  '07:00 AM - 09:00 AM',
-  '09:30 AM - 11:30 AM',
-  '12:00 PM - 02:00 PM',
-  '02:30 PM - 04:30 PM',
-  '05:00 PM - 07:00 PM',
-]
 const DMV_APPOINTMENT_HOURS = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0'))
 const DMV_APPOINTMENT_MINUTES = ['00', '15', '30', '45']
 const isDmvAppointmentPlan = tier => {
@@ -107,6 +100,7 @@ export default function PricingPage() {
   const [pendingDate, setPendingDate] = useState('')
   const [bookedTimes, setBookedTimes] = useState([])
   const [timeAvailability, setTimeAvailability] = useState({})
+  const [timeSlots, setTimeSlots] = useState([])
   const [customBookedTimes, setCustomBookedTimes] = useState([])
   const [appointmentHour, setAppointmentHour] = useState('09')
   const [appointmentMinute, setAppointmentMinute] = useState('00')
@@ -249,6 +243,7 @@ export default function PricingPage() {
     setBookedTimes([])
     setCustomBookedTimes([])
     setTimeAvailability({})
+    setTimeSlots([])
     setAvailabilityLoading(true)
     api.getBookingAvailability(pendingDate)
       .then(data => {
@@ -257,11 +252,12 @@ export default function PricingPage() {
         setBookedTimes(Array.isArray(data?.bookedTimes) ? data.bookedTimes : [])
         setCustomBookedTimes(Array.isArray(data?.customBookedTimes) ? data.customBookedTimes : [])
         setTimeAvailability(Object.fromEntries(slots.map(slot => [slot.time, slot.status])))
+        setTimeSlots(slots)
       })
       .catch(() => {
         if (!active) return
-        setBookedTimes([...PICKUP_TIMES])
-        setTimeAvailability(Object.fromEntries(PICKUP_TIMES.map(time => [time, 'unavailable'])))
+        setBookedTimes([])
+        setTimeSlots([])
       })
       .finally(() => { if (active) setAvailabilityLoading(false) })
     return () => { active = false }
@@ -788,7 +784,7 @@ export default function PricingPage() {
                     </div>
                   ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
-                    {PICKUP_TIMES.map(time => {
+                    {timeSlots.map(({ time }) => {
                       const effectiveStatus = timeAvailability[time] || (availabilityLoading ? 'loading' : 'unavailable')
                       const booked = bookedTimes.includes(time)
                         || selectedSlots.some(slot => slot.date === pendingDate && slot.time === time)

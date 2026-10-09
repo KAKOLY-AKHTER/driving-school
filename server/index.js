@@ -897,20 +897,34 @@ const BOOKING_TIME_ORDER = new Map([
   '04:00 PM - 06:00 PM',
   '05:00 PM - 07:00 PM',
 ].map((time, index) => [time, index]))
-const ADMIN_AVAILABILITY_TIMES = [
-  '07:00 AM - 09:00 AM',
-  '09:30 AM - 11:30 AM',
-  '12:00 PM - 02:00 PM',
-  '02:30 PM - 04:30 PM',
-  '05:00 PM - 07:00 PM',
-]
-const ADMIN_AVAILABILITY_TIME_SET = new Set(ADMIN_AVAILABILITY_TIMES)
 const CUSTOM_APPOINTMENT_TIME_PATTERN = /^(0[1-9]|1[0-2]):(00|15|30|45) (AM|PM)$/
 const BOOKING_HOLD_MINUTES = Math.max(5, Math.min(60, Number(process.env.BOOKING_HOLD_MINUTES) || 15))
 const ACTIVE_BOOKING_STATUSES = ['held', 'scheduled', 'confirmed', 'booked']
 const COUNTED_PACKAGE_BOOKING_STATUSES = new Set(['scheduled', 'confirmed', 'booked', 'completed'])
 
 const normalizeEmail = (value) => cleanText(value, 320).toLowerCase()
+const clockTimeToMinutes = (hour, minute, meridiem) => {
+  const parsedHour = Number(hour)
+  const parsedMinute = Number(minute)
+  if (!Number.isInteger(parsedHour) || !Number.isInteger(parsedMinute) || parsedHour < 1 || parsedHour > 12 || parsedMinute < 0 || parsedMinute > 59) return null
+  let value = parsedHour % 12
+  if (String(meridiem).toUpperCase() === 'PM') value += 12
+  return value * 60 + parsedMinute
+}
+const formatLessonClockTime = minutes => {
+  const hour24 = Math.floor(minutes / 60)
+  const minute = minutes % 60
+  const meridiem = hour24 >= 12 ? 'PM' : 'AM'
+  return `${String(hour24 % 12 || 12).padStart(2, '0')}:${String(minute).padStart(2, '0')} ${meridiem}`
+}
+const canonicalLessonTimeRange = value => {
+  const match = cleanText(value, 80).replace(/\s+/g, ' ').match(/^(\d{1,2}):(\d{2}) (AM|PM)\s*-\s*(\d{1,2}):(\d{2}) (AM|PM)$/i)
+  if (!match) return ''
+  const start = clockTimeToMinutes(match[1], match[2], match[3])
+  const end = clockTimeToMinutes(match[4], match[5], match[6])
+  if (start === null || end === null || end - start !== 120 || start % 15 || end >= 24 * 60) return ''
+  return `${formatLessonClockTime(start)} - ${formatLessonClockTime(end)}`
+}
 const normalizeBookingTime = (value) => {
   const compact = cleanText(value, 80).replace(/\s+/g, ' ')
   const aliases = {
@@ -922,12 +936,13 @@ const normalizeBookingTime = (value) => {
     '4:00 PM - 6:00 PM': '04:00 PM - 06:00 PM',
     '5:00 PM - 7:00 PM': '05:00 PM - 07:00 PM',
   }
-  return aliases[compact] || compact
+  return aliases[compact] || canonicalLessonTimeRange(compact) || compact
 }
 const isCustomAppointmentTime = value => CUSTOM_APPOINTMENT_TIME_PATTERN.test(normalizeBookingTime(value))
+const isLessonTimeRange = value => Boolean(canonicalLessonTimeRange(value))
 const isSupportedStoredBookingTime = value => {
   const normalized = normalizeBookingTime(value)
-  return BOOKING_TIMES.has(normalized) || isCustomAppointmentTime(normalized)
+  return BOOKING_TIMES.has(normalized) || isLessonTimeRange(normalized) || isCustomAppointmentTime(normalized)
 }
 const isDmvRentalTier = tier => {
   const id = String(tier?.id || '')
@@ -1533,7 +1548,7 @@ const activeHoldExpiry = () => new Date(Date.now() + BOOKING_HOLD_MINUTES * 60_0
 function validateBookingSlot(date, timeSlot, { allowCustomAppointment = false } = {}) {
   const cleanDate = cleanText(date, 10)
   const cleanTime = normalizeBookingTime(timeSlot)
-  const validTime = BOOKING_TIMES.has(cleanTime) || (allowCustomAppointment && isCustomAppointmentTime(cleanTime))
+  const validTime = BOOKING_TIMES.has(cleanTime) || isLessonTimeRange(cleanTime) || (allowCustomAppointment && isCustomAppointmentTime(cleanTime))
   if (!isDateKey(cleanDate) || !validTime) {
     throw new HttpError(400, 'Please choose a valid booking date and time.')
   }
@@ -1544,14 +1559,33 @@ function validateBookingSlot(date, timeSlot, { allowCustomAppointment = false } 
 }
 
 function validateAvailabilitySlot(date, timeSlot, { allowToday = true } = {}) {
-  const slot = validateBookingSlot(date, timeSlot)
-  if (!ADMIN_AVAILABILITY_TIME_SET.has(slot.timeSlot)) {
-    throw new HttpError(400, 'Please choose one of the five supported lesson times.')
+  const normalizedTime = normalizeBookingTime(timeSlot)
+  if (!isLessonTimeRange(normalizedTime)) {
+    throw new HttpError(400, 'Lesson times must be two-hour ranges that start on a 15-minute interval.')
   }
+  const slot = validateBookingSlot(date, timeSlot)
   if (!allowToday && slot.date <= californiaDateKey()) {
     throw new HttpError(400, 'Please choose a future date.')
   }
   return slot
+}
+
+function lessonTimeRangeBounds(value) {
+  const range = canonicalLessonTimeRange(value)
+  const match = range.match(/^(\d{2}):(\d{2}) (AM|PM) - (\d{2}):(\d{2}) (AM|PM)$/)
+  if (!match) return null
+  return {
+    start: clockTimeToMinutes(match[1], match[2], match[3]),
+    end: clockTimeToMinutes(match[4], match[5], match[6]),
+  }
+}
+
+function lessonTimesKeepRequiredBreak(first, second) {
+  if (normalizeBookingTime(first) === normalizeBookingTime(second)) return true
+  const firstRange = lessonTimeRangeBounds(first)
+  const secondRange = lessonTimeRangeBounds(second)
+  if (!firstRange || !secondRange) return false
+  return firstRange.end + 30 <= secondRange.start || secondRange.end + 30 <= firstRange.start
 }
 
 function validateClosedAvailabilityDates(dates, today = californiaDateKey()) {
@@ -1566,7 +1600,7 @@ function validateClosedAvailabilityDates(dates, today = californiaDateKey()) {
 function adminAvailabilityStatus(slot, today = californiaDateKey()) {
   if (slot?.status === 'held' || slot?.status === 'booked') return slot.status
   if (slot?.status === 'available' && slot?.date <= today) return 'expired'
-  if (slot?.time && !ADMIN_AVAILABILITY_TIME_SET.has(normalizeBookingTime(slot.time))) return 'legacy'
+  if (slot?.time && !isLessonTimeRange(slot.time)) return 'legacy'
   return slot?.status
 }
 
@@ -1579,18 +1613,12 @@ async function assertSlotsOpenForBooking(slots, session, status = 409, { dateAva
   if (dateAvailabilityOnly) {
     const dates = requestedDates
     if (!dates.length) throw new HttpError(status, 'Please choose at least one available appointment date.')
-    const openDateSlots = await effectiveAvailabilitySlots({
-      date: { $in: dates },
-      time: { $in: ADMIN_AVAILABILITY_TIMES },
-    }, session)
+    const openDateSlots = await effectiveAvailabilitySlots({ date: { $in: dates } }, session)
     const availableDateSet = new Set(openDateSlots.filter(slot => slot.status === 'available').map(slot => slot.date))
     if (dates.some(date => !availableDateSet.has(date))) {
       throw new HttpError(status, 'One or more selected appointment dates are no longer available. Please choose again.')
     }
     return
-  }
-  if (slots.some(slot => !ADMIN_AVAILABILITY_TIME_SET.has(normalizeBookingTime(slot.timeSlot)))) {
-    throw new HttpError(status, 'One or more selected lesson times use an old schedule. Please choose a current time slot.')
   }
   const keys = [...new Set(slots.map(slot => bookingSlotKey(slot.date, slot.timeSlot)))]
   if (!keys.length) throw new HttpError(status, 'Please choose at least one available time slot.')
@@ -2684,15 +2712,15 @@ app.get('/api/bookings/availability', async (req, res) => {
         advanceNoticeBlocked: true,
         bookingLeadTimeDays: leadTime.days,
         bookingBlockedThrough: leadTime.bookingBlockedThrough,
-        slots: ADMIN_AVAILABILITY_TIMES.map(time => ({ time, status: 'advance-notice' })),
+        slots: [],
         availableTimes: [],
-        bookedTimes: [...ADMIN_AVAILABILITY_TIMES],
+        bookedTimes: [],
         customBookedTimes: [],
       })
     }
-    const slots = await effectiveAvailabilitySlots({ date, time: { $in: ADMIN_AVAILABILITY_TIMES } })
+    const slots = await effectiveAvailabilitySlots({ date })
     const availableTimes = slots.filter(slot => slot.status === 'available').map(slot => slot.time)
-    const bookedTimes = ADMIN_AVAILABILITY_TIMES.filter(time => !availableTimes.includes(time))
+    const bookedTimes = slots.filter(slot => slot.status !== 'available').map(slot => slot.time)
     const customLocks = await bookingSlotsCol.find({
       date,
       status: { $in: ['held', 'confirmed', 'booked', 'scheduled'] },
@@ -2705,10 +2733,7 @@ app.get('/api/bookings/availability', async (req, res) => {
       advanceNoticeBlocked: false,
       bookingLeadTimeDays: leadTime.days,
       bookingBlockedThrough: leadTime.bookingBlockedThrough,
-      slots: ADMIN_AVAILABILITY_TIMES.map(time => {
-        const slot = slots.find(item => item.time === time)
-        return { time, status: slot?.status || 'unavailable' }
-      }),
+      slots: slots.map(slot => ({ time: slot.time, status: slot.status })),
       availableTimes,
       bookedTimes,
       customBookedTimes: [...new Set(customLocks.map(lock => normalizeBookingTime(lock.timeSlot)))],
@@ -2729,10 +2754,7 @@ app.get('/api/availability', async (req, res) => {
     if (rangeDays > 93) return res.status(400).json({ error: 'Availability can be viewed up to 93 days at a time.' })
     await cleanupExpiredHolds()
     const [allSlots, leadTime] = await Promise.all([
-      effectiveAvailabilitySlots({
-        date: { $gte: from, $lte: to },
-        time: { $in: ADMIN_AVAILABILITY_TIMES },
-      }),
+      effectiveAvailabilitySlots({ date: { $gte: from, $lte: to } }),
       bookingLeadTimeSetting(),
     ])
     const slots = allSlots
@@ -2763,8 +2785,8 @@ app.get('/api/bookings/:uid', requireAuth, requireSelf, async (req, res) => {
     bookings.sort((a, b) => {
       const dateOrder = String(b.date || '').localeCompare(String(a.date || ''))
       if (dateOrder) return dateOrder
-      const aTime = BOOKING_TIME_ORDER.get(normalizeBookingTime(a.timeSlot)) ?? -1
-      const bTime = BOOKING_TIME_ORDER.get(normalizeBookingTime(b.timeSlot)) ?? -1
+      const aTime = lessonTimeRangeBounds(a.timeSlot)?.start ?? BOOKING_TIME_ORDER.get(normalizeBookingTime(a.timeSlot)) ?? -1
+      const bTime = lessonTimeRangeBounds(b.timeSlot)?.start ?? BOOKING_TIME_ORDER.get(normalizeBookingTime(b.timeSlot)) ?? -1
       return bTime - aTime
     })
     const today = californiaDateKey()
@@ -5540,8 +5562,24 @@ app.post('/api/admin/availability', rateLimit({ windowMs: 60_000, max: 30 }), as
     const dates = [...new Set((Array.isArray(req.body?.dates) ? req.body.dates : []).map(date => cleanText(date, 10)))]
     const times = [...new Set((Array.isArray(req.body?.times) ? req.body.times : []).map(time => normalizeBookingTime(time)))]
     if (!dates.length || dates.length > 90) throw new HttpError(400, 'Choose between 1 and 90 future dates.')
-    if (!times.length || times.length > ADMIN_AVAILABILITY_TIMES.length) throw new HttpError(400, 'Choose at least one supported lesson time.')
+    if (!times.length || times.length > 48) throw new HttpError(400, 'Choose between 1 and 48 lesson times.')
     const slots = dates.flatMap(date => times.map(time => validateAvailabilitySlot(date, time, { allowToday: false })))
+    for (let index = 0; index < times.length; index += 1) {
+      if (times.slice(index + 1).some(time => !lessonTimesKeepRequiredBreak(times[index], time))) {
+        throw new HttpError(400, 'Lesson times must not overlap and need a 30-minute break between lessons.')
+      }
+    }
+    const existingSlots = await availabilityCol.find({ date: { $in: dates } }, { projection: { date: 1, time: 1 } }).toArray()
+    for (const slot of slots) {
+      const conflicting = existingSlots.find(existing =>
+        existing.date === slot.date
+        && normalizeBookingTime(existing.time) !== slot.timeSlot
+        && !lessonTimesKeepRequiredBreak(existing.time, slot.timeSlot)
+      )
+      if (conflicting) {
+        throw new HttpError(409, `${slot.date} already has ${conflicting.time}. Keep a 30-minute break between lessons.`)
+      }
+    }
     const now = new Date().toISOString()
     const operations = slots.map(slot => {
       const slotKey = bookingSlotKey(slot.date, slot.timeSlot)
@@ -5553,7 +5591,7 @@ app.post('/api/admin/availability', rateLimit({ windowMs: 60_000, max: 30 }), as
               slotKey,
               date: slot.date,
               time: slot.timeSlot,
-              timeOrder: ADMIN_AVAILABILITY_TIMES.indexOf(slot.timeSlot),
+              timeOrder: lessonTimeRangeBounds(slot.timeSlot).start,
               status: 'available',
               updatedAt: now,
               updatedBy: req.auth.uid,
