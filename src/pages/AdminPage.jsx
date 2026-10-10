@@ -638,6 +638,7 @@ function InstructorSlotsReport({ cardStyle, inputStyle, instructors, loadingInst
   const [instructorId, setInstructorId] = useState('')
   const [reportMonth, setReportMonth] = useState(() => localDateKey().slice(0, 7))
   const [reportSlots, setReportSlots] = useState([])
+  const [selectedReportDate, setSelectedReportDate] = useState('')
   const [reportLoading, setReportLoading] = useState(false)
   const [reportError, setReportError] = useState('')
 
@@ -651,6 +652,7 @@ function InstructorSlotsReport({ cardStyle, inputStyle, instructors, loadingInst
   const selectableInstructors = instructorsForZone
     .filter(instructor => !locationId || (instructor.locationOptions || []).some(option => String(option?.value) === locationId))
     .sort((left, right) => String(left.displayName).localeCompare(String(right.displayName)))
+  const selectedInstructor = instructors.find(instructor => String(instructor.legacyInstructorId) === instructorId)
   const reportDate = new Date(`${reportMonth}-01T12:00:00`)
   const reportYear = reportDate.getFullYear()
   const reportMonthIndex = reportDate.getMonth()
@@ -662,6 +664,28 @@ function InstructorSlotsReport({ cardStyle, inputStyle, instructors, loadingInst
     map.set(slot.slotDate, current)
     return map
   }, new Map())
+  const selectedDaySlots = selectedReportDate ? (slotsByDate.get(selectedReportDate) || []) : []
+  const scheduleStartMonth = /^\d{4}-\d{2}/.test(String(selectedInstructor?.firstSlotDate || '')) ? String(selectedInstructor.firstSlotDate).slice(0, 7) : reportMonth
+  const scheduleEndMonth = /^\d{4}-\d{2}/.test(String(selectedInstructor?.lastSlotDate || '')) ? String(selectedInstructor.lastSlotDate).slice(0, 7) : reportMonth
+  const reportMonths = []
+  const monthCursor = new Date(`${scheduleStartMonth}-01T12:00:00`)
+  const lastReportMonth = new Date(`${scheduleEndMonth}-01T12:00:00`)
+  while (monthCursor <= lastReportMonth) {
+    reportMonths.push(`${monthCursor.getFullYear()}-${String(monthCursor.getMonth() + 1).padStart(2, '0')}`)
+    monthCursor.setMonth(monthCursor.getMonth() + 1)
+  }
+  if (!reportMonths.includes(reportMonth)) reportMonths.push(reportMonth)
+  reportMonths.sort().reverse()
+  const locationPalette = [
+    { background: '#DBEAFE', color: '#0755AE', border: '#93C5FD' },
+    { background: '#FCE7F3', color: '#BE185D', border: '#F9A8D4' },
+    { background: '#EDE9FE', color: '#6D28D9', border: '#C4B5FD' },
+    { background: '#FEF3C7', color: '#92400E', border: '#FCD34D' },
+    { background: '#CCFBF1', color: '#0F766E', border: '#99F6E4' },
+  ]
+  const locationTone = value => locationPalette[Math.abs([...String(value || '')].reduce((total, char) => total + char.charCodeAt(0), 0)) % locationPalette.length]
+  const reportLocations = [...new Map(reportSlots.map(slot => [String(slot.locationId || slot.locationLabel || 'unknown'), { id: String(slot.locationId || slot.locationLabel || 'unknown'), label: slot.locationLabel || 'Location not recorded' }])).values()]
+  const breakLabel = value => ({ 1: '15-minute break', 2: '30-minute break', 3: '45-minute break', 4: '60-minute break' }[Number(value)] || 'Break not recorded')
 
   useEffect(() => {
     if (!instructorId) {
@@ -672,6 +696,7 @@ function InstructorSlotsReport({ cardStyle, inputStyle, instructors, loadingInst
     let active = true
     setReportLoading(true)
     setReportError('')
+    setSelectedReportDate('')
     api.adminInstructorSlotsReport(instructorId, { month: reportMonth, zoneId, locationId })
       .then(data => { if (active) setReportSlots(Array.isArray(data?.items) ? data.items : []) })
       .catch(error => { if (active) setReportError(error?.message || 'Instructor slots could not be loaded.') })
@@ -683,15 +708,18 @@ function InstructorSlotsReport({ cardStyle, inputStyle, instructors, loadingInst
   const shiftMonth = amount => {
     const next = new Date(reportYear, reportMonthIndex + amount, 1)
     setReportMonth(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`)
+    setSelectedReportDate('')
   }
   const changeZone = value => {
     setZoneId(value)
     setLocationId('')
     setInstructorId('')
+    setSelectedReportDate('')
   }
   const changeLocation = value => {
     setLocationId(value)
     setInstructorId('')
+    setSelectedReportDate('')
   }
 
   return (
@@ -711,16 +739,24 @@ function InstructorSlotsReport({ cardStyle, inputStyle, instructors, loadingInst
           <select aria-label="Filter instructor report by location" value={locationId} disabled={loadingInstructors} onChange={event => changeLocation(event.target.value)} style={inputStyle}><option value="">All locations</option>{locationOptions.map(location => <option key={location.value} value={location.value}>{location.label}</option>)}</select>
         </label>
         <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontSize: '.84rem', fontWeight: 800 }}>Instructor
-          <select aria-label="Choose an instructor for the slots report" value={instructorId} disabled={loadingInstructors} onChange={event => setInstructorId(event.target.value)} style={inputStyle}><option value="">Select instructor</option>{selectableInstructors.map(instructor => <option key={instructor.legacyInstructorId} value={instructor.legacyInstructorId}>{instructor.displayName}</option>)}</select>
+          <select aria-label="Choose an instructor for the slots report" value={instructorId} disabled={loadingInstructors} onChange={event => { setInstructorId(event.target.value); setSelectedReportDate('') }} style={inputStyle}><option value="">Select instructor</option>{selectableInstructors.map(instructor => <option key={instructor.legacyInstructorId} value={instructor.legacyInstructorId}>{instructor.displayName}</option>)}</select>
         </label>
       </div>
       {loadingInstructors && <p style={{ margin: '.85rem 0 0', color: '#64748B', fontSize: '.86rem' }}>Loading instructors…</p>}
       {instructorsError && <p role="alert" style={{ margin: '.85rem 0 0', color: '#B91C1C', fontSize: '.86rem' }}>{instructorsError}</p>}
       {!loadingInstructors && !instructorsError && !instructors.length && <p style={{ margin: '.85rem 0 0', color: '#64748B', fontSize: '.86rem' }}>No instructor profiles are available yet.</p>}
+      {selectedInstructor && <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem', padding: '.85rem 1rem', border: '1px solid #BFDBFE', borderRadius: '12px', background: '#F8FBFF' }}>
+        <div style={{ minWidth: '190px', flex: '1 1 220px' }}><strong style={{ color: DARK }}>{selectedInstructor.displayName}</strong><p style={{ margin: '.2rem 0 0', color: '#64748B', fontSize: '.82rem' }}>{[selectedInstructor.phone, selectedInstructor.email].filter(Boolean).join(' · ') || 'Contact not recorded'}</p></div>
+        <span style={{ padding: '.35rem .6rem', borderRadius: '8px', background: '#DCFCE7', color: '#166534', fontFamily: 'var(--font-mono)', fontSize: '.74rem', fontWeight: 900 }}>{Number(selectedInstructor.activeSlots || 0).toLocaleString()} ACTIVE SLOTS</span>
+        <span style={{ padding: '.35rem .6rem', borderRadius: '8px', background: '#E8F1FC', color: '#0755AE', fontFamily: 'var(--font-mono)', fontSize: '.74rem', fontWeight: 900 }}>{Number(selectedInstructor.totalSlots || 0).toLocaleString()} TOTAL SLOTS</span>
+        <span style={{ color: '#475569', fontSize: '.8rem', flex: '1 1 240px' }}>{(selectedInstructor.locationLabels || []).join(', ') || 'Location not recorded'}</span>
+      </div>}
       <div style={{ marginTop: '1rem', padding: '.85rem', border: '1px solid #D8E4F0', borderRadius: '14px', background: 'linear-gradient(180deg,#F8FBFF,#fff)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.7rem', marginBottom: '.8rem' }}>
           <button type="button" aria-label="Previous report month" onClick={() => shiftMonth(-1)} style={{ width: '38px', height: '38px', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: DARK, fontSize: '1.2rem', cursor: 'pointer' }}>&lsaquo;</button>
-          <strong style={{ color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.1rem' }}>{reportDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</strong>
+          <label style={{ display: 'grid', gap: '.15rem', textAlign: 'center', color: '#64748B', fontSize: '.68rem', fontWeight: 800 }}>REPORT MONTH
+            <select aria-label="Choose report month" value={reportMonth} onChange={event => { setReportMonth(event.target.value); setSelectedReportDate('') }} style={{ minWidth: '185px', padding: '.35rem .5rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', color: DARK, fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 800, cursor: 'pointer' }}>{reportMonths.map(month => <option key={month} value={month}>{new Date(`${month}-01T12:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</option>)}</select>
+          </label>
           <button type="button" aria-label="Next report month" onClick={() => shiftMonth(1)} style={{ width: '38px', height: '38px', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: DARK, fontSize: '1.2rem', cursor: 'pointer' }}>&rsaquo;</button>
         </div>
         {!instructorId && <p style={{ margin: '.3rem 0 .75rem', textAlign: 'center', color: '#64748B', fontSize: '.88rem' }}>Select an instructor to view schedule slots for this month.</p>}
@@ -732,13 +768,22 @@ function InstructorSlotsReport({ cardStyle, inputStyle, instructors, loadingInst
             const day = index + 1
             const dateKey = `${reportMonth}-${String(day).padStart(2, '0')}`
             const slots = slotsByDate.get(dateKey) || []
-            return <div key={dateKey} style={{ minHeight: '78px', padding: '.35rem', border: `1px solid ${slots.length ? '#86EFAC' : '#E2E8F0'}`, borderRadius: '9px', background: slots.length ? '#F0FDF4' : '#fff', overflow: 'hidden' }}><div style={{ textAlign: 'right', color: slots.length ? '#166534' : '#64748B', fontSize: '.75rem', fontWeight: 850 }}>{day}</div>{slots.slice(0, 3).map(slot => <div key={slot.legacySlotId} title={[slot.fromTimeLabel, slot.toTimeLabel, slot.locationLabel].filter(Boolean).join(' - ')} style={{ marginTop: '.2rem', padding: '.18rem .25rem', borderRadius: '5px', background: slot.active ? '#DCFCE7' : '#E2E8F0', color: slot.active ? '#166534' : '#475569', fontSize: '.62rem', fontWeight: 800, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{slot.fromTimeLabel || 'Scheduled'}{slot.toTimeLabel ? ` – ${slot.toTimeLabel}` : ''}</div>)}{slots.length > 3 && <div style={{ marginTop: '.18rem', color: '#166534', fontSize: '.64rem', fontWeight: 850 }}>+{slots.length - 3} more</div>}</div>
+            const daySelected = selectedReportDate === dateKey
+            return <button type="button" key={dateKey} aria-pressed={daySelected} aria-label={`${new Date(`${dateKey}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}${slots.length ? `, ${slots.length} scheduled slot${slots.length === 1 ? '' : 's'}` : ', no scheduled slots'}`} onClick={() => setSelectedReportDate(dateKey)} style={{ minHeight: '78px', padding: '.35rem', border: daySelected ? `2px solid ${SKY_BLUE}` : `1px solid ${slots.length ? '#86EFAC' : '#E2E8F0'}`, borderRadius: '9px', background: daySelected ? '#EFF6FF' : slots.length ? '#F0FDF4' : '#fff', textAlign: 'left', cursor: 'pointer', overflow: 'hidden', boxShadow: daySelected ? '0 0 0 2px rgba(7,85,174,.12)' : 'none' }}><div style={{ textAlign: 'right', color: slots.length ? '#166534' : '#64748B', fontSize: '.75rem', fontWeight: 850 }}>{day}</div>{slots.slice(0, 3).map(slot => { const tone = locationTone(slot.locationId || slot.locationLabel); return <span key={slot.legacySlotId} title={[slot.fromTimeLabel, slot.toTimeLabel, slot.locationLabel].filter(Boolean).join(' - ')} style={{ display: 'block', marginTop: '.2rem', padding: '.18rem .25rem', border: `1px solid ${tone.border}`, borderRadius: '5px', background: tone.background, color: tone.color, opacity: slot.active ? 1 : .52, fontSize: '.62rem', fontWeight: 800, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{slot.fromTimeLabel || 'Scheduled'}{slot.toTimeLabel ? ` – ${slot.toTimeLabel}` : ''}</span> })}{slots.length > 3 && <span style={{ display: 'block', marginTop: '.18rem', color: '#166534', fontSize: '.64rem', fontWeight: 850 }}>+{slots.length - 3} more</span>}</button>
           })}
         </div>
         {instructorId && !reportLoading && !reportError && !reportSlots.length && <p style={{ margin: '.85rem 0 .1rem', textAlign: 'center', color: '#64748B', fontSize: '.86rem' }}>No imported schedule slots match these filters this month.</p>}
         {reportLoading && <p style={{ margin: '.85rem 0 .1rem', textAlign: 'center', color: '#64748B', fontSize: '.86rem' }}>Loading instructor schedule…</p>}
       </div>
-      <div aria-label="Instructor report calendar guide" style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap', marginTop: '.75rem', color: '#475569', fontSize: '.76rem', fontWeight: 750 }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}><span aria-hidden="true" style={{ width: '12px', height: '12px', borderRadius: '4px', background: '#DCFCE7', border: '1px solid #86EFAC' }} />Active archived slot</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}><span aria-hidden="true" style={{ width: '12px', height: '12px', borderRadius: '4px', background: '#E2E8F0' }} />Inactive archived slot</span></div>
+      {selectedReportDate && !reportLoading && <section aria-live="polite" style={{ marginTop: '.9rem', padding: '.9rem', border: '1px solid #D8E4F0', borderRadius: '12px', background: '#fff' }}>
+        <h3 style={{ margin: 0, color: DARK, fontSize: '1rem' }}>{new Date(`${selectedReportDate}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</h3>
+        {!selectedDaySlots.length && <p style={{ margin: '.4rem 0 0', color: '#64748B', fontSize: '.86rem' }}>No imported schedule slots on this date.</p>}
+        {!!selectedDaySlots.length && <div style={{ display: 'grid', gap: '.5rem', marginTop: '.7rem' }}>{selectedDaySlots.map(slot => { const tone = locationTone(slot.locationId || slot.locationLabel); return <div key={slot.legacySlotId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.7rem', flexWrap: 'wrap', padding: '.65rem .75rem', border: `1px solid ${tone.border}`, borderRadius: '9px', background: tone.background, color: tone.color, opacity: slot.active ? 1 : .58 }}><strong>{slot.fromTimeLabel || 'Time not recorded'}{slot.toTimeLabel ? ` – ${slot.toTimeLabel}` : ''}</strong><span style={{ fontSize: '.82rem', fontWeight: 750 }}>{slot.locationLabel || 'Location not recorded'} · {breakLabel(slot.breakHours)} · {slot.active ? 'Active' : 'Inactive'}</span></div> })}</div>}
+      </section>}
+      <div aria-label="Instructor report calendar guide" style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap', marginTop: '.75rem', color: '#475569', fontSize: '.76rem', fontWeight: 750 }}>
+        {reportLocations.map(location => { const tone = locationTone(location.id); return <span key={location.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}><span aria-hidden="true" style={{ width: '12px', height: '12px', borderRadius: '4px', background: tone.background, border: `1px solid ${tone.border}` }} />{location.label}</span> })}
+        {!!reportLocations.length && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}><span aria-hidden="true" style={{ width: '12px', height: '12px', borderRadius: '4px', background: '#CBD5E1', opacity: .58 }} />Faded = inactive archived slot</span>}
+      </div>
     </section>
   )
 }
