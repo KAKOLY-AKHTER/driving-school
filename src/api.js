@@ -118,6 +118,7 @@ export const api = {
   adminLegacyStudents: (params = {}) => request(`/api/admin/legacy-students?${new URLSearchParams(params)}`),
   adminLegacyStudentRecords: (candidateId) => request(`/api/admin/legacy-students/${pathPart(candidateId)}/records`),
   adminInstructors: () => request('/api/admin/instructors'),
+  adminCreateInstructor: (data) => request('/api/admin/instructors', { method: 'POST', body: JSON.stringify(data) }),
   adminInstructorSlots: (instructorId, params = {}) => request(`/api/admin/instructors/${pathPart(instructorId)}/slots?${new URLSearchParams(params)}`),
   adminUpdateUser: (uid, data) => request(`/api/admin/users/${pathPart(uid)}`, { method: 'PUT', body: JSON.stringify(data) }),
   adminUserDetails: (uid) => request(`/api/admin/users/${pathPart(uid)}/details`),

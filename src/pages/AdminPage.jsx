@@ -108,6 +108,16 @@ const formatDateDMY = (value) => {
     : new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date)
 }
 
+const newInstructorForm = () => ({
+  displayName: '',
+  username: '',
+  email: '',
+  phone: '',
+  address: '',
+  locationLabels: '',
+  active: true,
+})
+
 const normalizeStatus = (value) => String(value || '').trim().toLowerCase().replace(/[\s_-]+/g, ' ')
 
 const BOOKING_STATUS_LABELS = {
@@ -987,6 +997,7 @@ export default function AdminPage() {
   const [instructorSearch, setInstructorSearch] = useState('')
   const [instructorScheduleFilter, setInstructorScheduleFilter] = useState('all')
   const [instructorDetails, setInstructorDetails] = useState(null)
+  const [instructorCreate, setInstructorCreate] = useState(null)
   const [certificateRequests, setCertificateRequests] = useState([])
   const [certificateUpdating, setCertificateUpdating] = useState('')
   const [legacyCertificateDetails, setLegacyCertificateDetails] = useState(null)
@@ -1181,6 +1192,25 @@ export default function AdminPage() {
       } : current)
     }
   }, [])
+
+  const openInstructorCreate = () => setInstructorCreate({ form: newInstructorForm(), saving: false, error: '' })
+
+  const saveInstructor = async (event) => {
+    event.preventDefault()
+    if (!instructorCreate || instructorCreate.saving) return
+    setInstructorCreate(current => ({ ...current, saving: true, error: '' }))
+    try {
+      const response = await api.adminCreateInstructor(instructorCreate.form)
+      const created = response?.item
+      if (!created?.legacyInstructorId) throw new Error('The instructor profile could not be created.')
+      setInstructors(current => [...current, created])
+      setInstructorCreate(null)
+      setMsg(`${created.displayName} was added as an instructor.`)
+      window.setTimeout(() => setMsg(''), 3000)
+    } catch (error) {
+      setInstructorCreate(current => current ? { ...current, saving: false, error: error?.message || 'The instructor profile could not be created.' } : current)
+    }
+  }
 
   const openUserEdit = async (account) => {
     if (!account?.uid) return
@@ -2044,6 +2074,7 @@ export default function AdminPage() {
     : legacyDetails ? 'legacy-details'
       : legacyCertificateDetails ? 'legacy-certificate-details'
         : instructorDetails ? 'instructor-details'
+          : instructorCreate ? 'instructor-create'
           : userDetailsDialog ? 'user-details'
             : detailsDialog ? 'details'
               : contactConversation ? 'contact-conversation'
@@ -2062,6 +2093,7 @@ export default function AdminPage() {
     else if (legacyDetails) setLegacyDetails(null)
     else if (legacyCertificateDetails) setLegacyCertificateDetails(null)
     else if (instructorDetails) setInstructorDetails(null)
+    else if (instructorCreate && !instructorCreate.saving) setInstructorCreate(null)
     else if (userDetailsDialog) closeUserDetails()
     else if (detailsDialog) setDetailsDialog(null)
     else if (refundDetails) setRefundDetails(null)
@@ -2072,7 +2104,7 @@ export default function AdminPage() {
     else if (pricingEdit) requestEditorClose('pricing editor', () => setPricingEdit(null))
     else if (contactConversation) setContactConversation(null)
     else if (contactEdit) requestEditorClose('contact editor', () => setContactEdit(null))
-  }, [areasEdit, closeUserDetails, confirmDialog, contactConversation, contactEdit, detailsDialog, instructorDetails, legacyDetails, legacyCertificateDetails, locationEdit, pricingEdit, refundDetails, refundEdit, requestEditorClose, socialsEdit, userDetailsDialog])
+  }, [areasEdit, closeUserDetails, confirmDialog, contactConversation, contactEdit, detailsDialog, instructorCreate, instructorDetails, legacyDetails, legacyCertificateDetails, locationEdit, pricingEdit, refundDetails, refundEdit, requestEditorClose, socialsEdit, userDetailsDialog])
 
   useEffect(() => {
     const dialogOpen = Boolean(activeDialogKey)
@@ -2839,15 +2871,16 @@ export default function AdminPage() {
                   <div style={cardStyle}>
                     <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
                       <div>
-                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '.6rem', margin: 0 }}>{SVG.users} Instructor Schedule Archive</h3>
-                        <p style={{ margin: '.35rem 0 0', color: '#475569', fontSize: '.9rem', lineHeight: 1.55 }}>Instructor profiles and schedule slots imported from the previous website. Profiles are matched to schedules using the original instructor ID.</p>
+                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '.6rem', margin: 0 }}>{SVG.users} Instructors</h3>
+                        <p style={{ margin: '.35rem 0 0', color: '#475569', fontSize: '.9rem', lineHeight: 1.55 }}>Current instructor profiles and schedule records imported from the previous website. Historical profiles remain matched to schedules using their original instructor ID.</p>
                       </div>
                       <div style={{ display: 'flex', gap: '.55rem', flexWrap: 'wrap' }}>
-                        <span style={{ padding: '.4rem .7rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 900 }}>{instructors.length} legacy instructor IDs</span>
-                        <span style={{ padding: '.4rem .7rem', borderRadius: '999px', background: '#ECFDF3', color: '#087443', fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 900 }}>{instructorSummary.totalSlots.toLocaleString()} schedule slots</span>
+                        <span style={{ padding: '.4rem .7rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 900 }}>{instructors.length} instructor profiles</span>
+                        <span style={{ padding: '.4rem .7rem', borderRadius: '999px', background: '#ECFDF3', color: '#087443', fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 900 }}>{instructorSummary.totalSlots.toLocaleString()} imported schedule slots</span>
+                        <button type="button" onClick={openInstructorCreate} style={{ padding: '.55rem .85rem', border: 0, borderRadius: '9px', background: `linear-gradient(135deg, ${SKY_BLUE}, #0A2A5E)`, color: '#fff', fontWeight: 900, cursor: 'pointer', boxShadow: '0 4px 14px rgba(1,69,168,.2)' }}>+ Add instructor</button>
                       </div>
                     </div>
-                    <div role="note" style={{ margin: '0 0 1rem', padding: '.85rem 1rem', border: '1px solid #BFDBFE', borderRadius: '12px', background: '#F8FBFF', color: '#1E3A5F', fontSize: '.88rem', lineHeight: 1.55 }}><strong>Record matching:</strong> profiles are joined to schedules by their old instructor ID. An ID without a profile is clearly marked as an archived / unknown instructor instead of assigning an incorrect name.</div>
+                    <div role="note" style={{ margin: '0 0 1rem', padding: '.85rem 1rem', border: '1px solid #BFDBFE', borderRadius: '12px', background: '#F8FBFF', color: '#1E3A5F', fontSize: '.88rem', lineHeight: 1.55 }}><strong>Record matching:</strong> historical profiles are joined to schedules by their old instructor ID. New instructors are added as separate current profiles, so none of the imported archive data changes.</div>
                     <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', gap: '.65rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
                       <input className="admin-toolbar-input" aria-label="Search instructors" type="search" placeholder="Search name, email, location, old ID…" value={instructorSearch} onChange={event => setInstructorSearch(event.target.value)} style={{ ...inputStyle, width: 'min(100%, 330px)' }} />
                       <select aria-label="Filter instructors by schedule availability" value={instructorScheduleFilter} onChange={event => setInstructorScheduleFilter(event.target.value)} style={{ ...inputStyle, width: '190px' }}>
@@ -4492,6 +4525,28 @@ export default function AdminPage() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}><button type="button" onClick={() => setInstructorDetails(null)} style={{ minHeight: '42px', padding: '.6rem 1rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Close details</button></div>
           </section>
+        </div>
+      )}
+
+      {instructorCreate && (
+        <div className="admin-modal-backdrop" role="presentation" onClick={event => { if (event.target === event.currentTarget && !instructorCreate.saving) setInstructorCreate(null) }} style={{ position: 'fixed', inset: 0, zIndex: 15000, display: 'grid', placeItems: 'center', padding: '1rem', background: 'rgba(10,22,40,.68)', backdropFilter: 'blur(8px)' }}>
+          <form onSubmit={saveInstructor} role="dialog" aria-modal="true" aria-labelledby="create-instructor-title" style={{ width: 'min(100%, 720px)', maxHeight: '92vh', overflowY: 'auto', padding: '1.5rem', borderRadius: '16px', background: '#fff', boxShadow: '0 30px 90px rgba(10,22,40,.32)' }}>
+            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '1rem' }}>
+              <div><h2 id="create-instructor-title" style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.45rem' }}>Add Instructor</h2><p style={{ margin: '.35rem 0 0', color: '#526C88', lineHeight: 1.5 }}>The profile will appear in the same instructor table. It starts without schedule slots; its schedule data is available from the Details button.</p></div>
+              <button type="button" aria-label="Close add instructor" disabled={instructorCreate.saving} onClick={() => setInstructorCreate(null)} style={{ width: '40px', height: '40px', border: '1px solid #CBD5E1', borderRadius: '10px', background: '#fff', color: '#334155', fontSize: '1.45rem', cursor: instructorCreate.saving ? 'wait' : 'pointer' }}>&times;</button>
+            </header>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '.9rem' }}>
+              <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Instructor name *<input autoFocus required maxLength="160" value={instructorCreate.form.displayName} onChange={event => setInstructorCreate(current => ({ ...current, form: { ...current.form, displayName: event.target.value } }))} style={inputStyle} /></label>
+              <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Username<input maxLength="160" value={instructorCreate.form.username} onChange={event => setInstructorCreate(current => ({ ...current, form: { ...current.form, username: event.target.value } }))} style={inputStyle} /></label>
+              <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Email<input type="email" maxLength="320" value={instructorCreate.form.email} onChange={event => setInstructorCreate(current => ({ ...current, form: { ...current.form, email: event.target.value } }))} style={inputStyle} /></label>
+              <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Phone<input type="tel" maxLength="40" value={instructorCreate.form.phone} onChange={event => setInstructorCreate(current => ({ ...current, form: { ...current.form, phone: event.target.value } }))} style={inputStyle} /></label>
+              <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800, gridColumn: '1 / -1' }}>Service locations <span style={{ color: '#64748B', fontSize: '.76rem', fontWeight: 600 }}>Separate multiple locations with commas.</span><input maxLength="1000" placeholder="San Ramon · 94582, Dublin · 94568" value={instructorCreate.form.locationLabels} onChange={event => setInstructorCreate(current => ({ ...current, form: { ...current.form, locationLabels: event.target.value } }))} style={inputStyle} /></label>
+              <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800, gridColumn: '1 / -1' }}>Address<textarea rows="3" maxLength="500" value={instructorCreate.form.address} onChange={event => setInstructorCreate(current => ({ ...current, form: { ...current.form, address: event.target.value } }))} style={{ ...inputStyle, resize: 'vertical' }} /></label>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', color: '#334155', fontWeight: 800, gridColumn: '1 / -1', cursor: 'pointer' }}><input type="checkbox" checked={instructorCreate.form.active} onChange={event => setInstructorCreate(current => ({ ...current, form: { ...current.form, active: event.target.checked } }))} /> Active instructor</label>
+            </div>
+            {instructorCreate.error && <p role="alert" style={{ margin: '1rem 0 0', color: '#B91C1C', fontWeight: 750 }}>{instructorCreate.error}</p>}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.65rem', flexWrap: 'wrap', marginTop: '1.25rem' }}><button type="button" disabled={instructorCreate.saving} onClick={() => setInstructorCreate(null)} style={{ padding: '.65rem .95rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#334155', fontWeight: 800, cursor: instructorCreate.saving ? 'wait' : 'pointer' }}>Cancel</button><button type="submit" disabled={instructorCreate.saving} style={{ padding: '.65rem .95rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 900, cursor: instructorCreate.saving ? 'wait' : 'pointer', opacity: instructorCreate.saving ? .7 : 1 }}>{instructorCreate.saving ? 'Adding…' : 'Add instructor'}</button></div>
+          </form>
         </div>
       )}
 

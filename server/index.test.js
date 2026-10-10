@@ -25,6 +25,7 @@ const {
   pricingForBookingLocation,
   refundedPaymentCents,
   sanitizeLocation,
+  sanitizeInstructorProfile,
   sanitizePricing,
   sanitizeReview,
   sanitizeBlog,
@@ -226,6 +227,30 @@ test('customer reviews require clear text and constrain rating, order, and visib
     () => sanitizeReview({ name: 'Jane Doe', text: 'Helpful', imageUrl: 'https://example.com/reviewer.jpg', imagePublicId: 'a-precision-driving-school/reviews/review-123' }),
     error => error.status === 400 && /secure image uploader/i.test(error.message)
   )
+})
+
+test('instructor profiles require a name and retain clean contact and location details', () => {
+  assert.deepEqual(
+    sanitizeInstructorProfile({
+      displayName: '  Maya   Chen ',
+      email: ' MAYA@EXAMPLE.COM ',
+      phone: ' 555-0100 ',
+      locationLabels: 'San Ramon · 94582, Dublin · 94568, san ramon · 94582',
+      active: false,
+    }),
+    {
+      displayName: 'Maya Chen',
+      username: '',
+      email: 'maya@example.com',
+      phone: '555-0100',
+      address: '',
+      locationLabels: ['San Ramon · 94582', 'Dublin · 94568'],
+      active: false,
+      color: '',
+    },
+  )
+  assert.throws(() => sanitizeInstructorProfile({ displayName: '' }), /Instructor name is required/)
+  assert.throws(() => sanitizeInstructorProfile({ displayName: 'Maya Chen', email: 'not-an-email' }), /valid instructor email/)
 })
 
 test('blog posts sanitize publish data and require secure images', () => {

@@ -668,6 +668,29 @@ function sanitizeLocation(value) {
   return { name, key, zipCode, distance, order: cleanInteger(value.order, 0, 0, 10_000) }
 }
 
+function sanitizeInstructorProfile(value) {
+  if (!isPlainObject(value)) throw new HttpError(400, 'A valid instructor profile is required.')
+  const displayName = cleanText(value.displayName, 160).replace(/\s+/g, ' ')
+  const email = cleanText(value.email, 320).toLowerCase()
+  const locationLabels = (Array.isArray(value.locationLabels) ? value.locationLabels : String(value.locationLabels || '').split(','))
+    .map(location => cleanText(location, 140).replace(/\s+/g, ' '))
+    .filter(Boolean)
+    .filter((location, index, values) => values.findIndex(item => item.toLowerCase() === location.toLowerCase()) === index)
+    .slice(0, 30)
+  if (!displayName) throw new HttpError(400, 'Instructor name is required.')
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HttpError(400, 'Enter a valid instructor email address.')
+  return {
+    displayName,
+    username: cleanText(value.username, 160),
+    email,
+    phone: cleanText(value.phone, 40),
+    address: cleanText(value.address, 500),
+    locationLabels,
+    active: value.active !== false,
+    color: cleanText(value.color, 30),
+  }
+}
+
 async function locationUsage(location) {
   const safeName = cleanText(location?.name, 120).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   if (!safeName) return { enrollments: 0, carts: 0, bookings: 0, total: 0 }
@@ -4889,7 +4912,7 @@ app.get('/api/admin/instructors', async (_req, res) => {
         },
         { $sort: { _id: 1 } },
       ]).toArray(),
-      legacyInstructorsCol.find({}, { projection: { _id: 0, legacyInstructorId: 1, displayName: 1, username: 1, email: 1, phone: 1, address: 1, active: 1, addedAt: 1, color: 1 } }).toArray(),
+      legacyInstructorsCol.find({}, { projection: { _id: 0, legacyInstructorId: 1, displayName: 1, username: 1, email: 1, phone: 1, address: 1, active: 1, addedAt: 1, color: 1, locationLabels: 1, source: 1 } }).toArray(),
       legacyInstructorSlotsCol.countDocuments(),
     ])
     const slotsByInstructorId = new Map(slotSummaries.map(item => [cleanText(item._id, 80), item]))
@@ -4908,6 +4931,8 @@ app.get('/api/admin/instructors', async (_req, res) => {
       items: instructorIds.map(legacyInstructorId => {
         const item = slotsByInstructorId.get(legacyInstructorId) || {}
         const profile = profilesByInstructorId.get(legacyInstructorId) || {}
+        const profileLocations = Array.isArray(profile.locationLabels) ? profile.locationLabels.map(location => cleanText(location, 140)).filter(Boolean) : []
+        const scheduleLocations = (item.locationIds || []).map(value => locationLabels.get(cleanText(value, 80))).filter(Boolean)
         return {
           legacyInstructorId,
           displayName: cleanText(profile.displayName, 160),
@@ -4918,10 +4943,11 @@ app.get('/api/admin/instructors', async (_req, res) => {
           active: profile.active === true,
           addedAt: cleanText(profile.addedAt, 40),
           color: cleanText(profile.color, 30),
+          isCurrentProfile: profile.source === 'admin-created',
           totalSlots: Number(item.totalSlots || 0),
           activeSlots: Number(item.activeSlots || 0),
           zoneIds: (item.zoneIds || []).filter(Boolean).map(value => cleanText(value, 80)).sort(),
-          locationLabels: [...new Set((item.locationIds || []).map(value => locationLabels.get(cleanText(value, 80))).filter(Boolean))],
+          locationLabels: [...new Set([...scheduleLocations, ...profileLocations])],
           locationOptions: [...new Map((item.locationIds || []).map(value => {
             const locationId = cleanText(value, 80)
             return [locationId, { value: locationId, label: locationLabels.get(locationId) || `Location ${locationId}` }]
@@ -4935,6 +4961,34 @@ app.get('/api/admin/instructors', async (_req, res) => {
     })
   } catch (error) {
     sendServerError(res, error, 'Instructor lookup failed')
+  }
+})
+
+app.post('/api/admin/instructors', async (req, res) => {
+  try {
+    const profile = sanitizeInstructorProfile(req.body)
+    const now = new Date().toISOString()
+    const legacyInstructorId = `admin-${new ObjectId().toHexString()}`
+    const record = { ...profile, legacyInstructorId, source: 'admin-created', addedAt: now, createdAt: now, updatedAt: now }
+    await legacyInstructorsCol.insertOne(record)
+    res.status(201).json({
+      item: {
+        ...profile,
+        legacyInstructorId,
+        addedAt: now,
+        isCurrentProfile: true,
+        totalSlots: 0,
+        activeSlots: 0,
+        zoneIds: [],
+        locationOptions: [],
+        firstSlotDate: '',
+        lastSlotDate: '',
+      },
+    })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    if (error?.code === 11000) return res.status(409).json({ error: 'An instructor with this ID already exists. Please try again.' })
+    sendServerError(res, error, 'Instructor could not be created')
   }
 })
 
@@ -7367,6 +7421,7 @@ export {
   pricingForBookingLocation,
   refundedPaymentCents,
   sanitizeLocation,
+  sanitizeInstructorProfile,
   sanitizeBlog,
   detectBlogImageType,
   sanitizeCoupon,
