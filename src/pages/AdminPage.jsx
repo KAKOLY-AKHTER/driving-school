@@ -1102,6 +1102,7 @@ export default function AdminPage() {
   const legacyDetailsRequestRef = useRef(0)
   const legacyCertificateDetailsRequestRef = useRef(0)
   const instructorDetailsRequestRef = useRef(0)
+  const instructorCreateRef = useRef(null)
 
   const requestConfirmation = (title, message, action) => {
     setConfirmDialog({ title, message, action, busy: false })
@@ -2093,7 +2094,7 @@ export default function AdminPage() {
     else if (legacyDetails) setLegacyDetails(null)
     else if (legacyCertificateDetails) setLegacyCertificateDetails(null)
     else if (instructorDetails) setInstructorDetails(null)
-    else if (instructorCreate && !instructorCreate.saving) setInstructorCreate(null)
+    else if (instructorCreateRef.current) setInstructorCreate(current => current?.saving ? current : null)
     else if (userDetailsDialog) closeUserDetails()
     else if (detailsDialog) setDetailsDialog(null)
     else if (refundDetails) setRefundDetails(null)
@@ -2104,7 +2105,11 @@ export default function AdminPage() {
     else if (pricingEdit) requestEditorClose('pricing editor', () => setPricingEdit(null))
     else if (contactConversation) setContactConversation(null)
     else if (contactEdit) requestEditorClose('contact editor', () => setContactEdit(null))
-  }, [areasEdit, closeUserDetails, confirmDialog, contactConversation, contactEdit, detailsDialog, instructorCreate, instructorDetails, legacyDetails, legacyCertificateDetails, locationEdit, pricingEdit, refundDetails, refundEdit, requestEditorClose, socialsEdit, userDetailsDialog])
+  }, [areasEdit, closeUserDetails, confirmDialog, contactConversation, contactEdit, detailsDialog, instructorDetails, legacyDetails, legacyCertificateDetails, locationEdit, pricingEdit, refundDetails, refundEdit, requestEditorClose, socialsEdit, userDetailsDialog])
+
+  useEffect(() => {
+    instructorCreateRef.current = instructorCreate
+  }, [instructorCreate])
 
   useEffect(() => {
     const dialogOpen = Boolean(activeDialogKey)
