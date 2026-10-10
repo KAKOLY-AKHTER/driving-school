@@ -204,13 +204,13 @@ export default function Hero() {
             Safe, confident driving starts here. Dual-control cars, background-checked instructors, and a method refined over three decades to get you licensed on the first try.
           </p>
 
-          {/* 3. Hero Icon Logo Image */}
+          {/* 3. Licensing, rating, and payment information */}
           <img
             className="hero-logo"
-            src="/hero-icon-logo.png"
-            alt="A Precision Driving School"
-            width="432"
-            height="164"
+            src="/home.jpeg"
+            alt="California DMV license E4566, BBB A+ rating, and accepted payment methods"
+            width="1600"
+            height="607"
             decoding="async"
             fetchPriority="high"
             style={{
