@@ -1067,6 +1067,7 @@ export default function AdminPage() {
   const [enrollLimit, setEnrollLimit] = useState('10')
   const [enrollSearch, setEnrollSearch] = useState('')
   const [enrollStatusFilter, setEnrollStatusFilter] = useState('all')
+  const [enrollInstructorFilter, setEnrollInstructorFilter] = useState('all')
   const [enrollmentStatusUpdating, setEnrollmentStatusUpdating] = useState('')
   const [enrollmentInstructorUpdating, setEnrollmentInstructorUpdating] = useState('')
   const [enrollmentEdit, setEnrollmentEdit] = useState(null)
@@ -1645,6 +1646,25 @@ export default function AdminPage() {
     } finally {
       setEnrollmentInstructorUpdating('')
     }
+  }
+
+  const requestEnrollmentInstructorChange = ({ account, course, key }, instructorId) => {
+    if (instructorId === String(course.instructorId || '') || enrollmentInstructorUpdating) return
+    const instructor = instructors.find(item => item.legacyInstructorId === instructorId)
+    const courseName = course.title || COURSE_MAP[course.id] || 'this course'
+    if (!instructorId) {
+      requestConfirmation(
+        'Remove instructor assignment?',
+        `Remove the instructor assignment from ${adminUserName(account)}'s ${courseName} enrollment?`,
+        () => updateEnrollmentInstructor({ account, course, key }, instructorId),
+      )
+      return
+    }
+    requestConfirmation(
+      'Assign instructor?',
+      `Assign ${instructor?.displayName || 'this instructor'} to ${adminUserName(account)}'s ${courseName} enrollment?`,
+      () => updateEnrollmentInstructor({ account, course, key }, instructorId),
+    )
   }
 
   const downloadEnrollmentInvoice = async ({ account, course }) => {
@@ -2422,6 +2442,9 @@ export default function AdminPage() {
   const enrolledQuery = enrollSearch.trim().toLowerCase()
   const filteredEnrollmentRows = enrollmentRows.filter(({ account, course }) => {
     const matchesStatus = enrollStatusFilter === 'all' || enrollmentStatusValue(course) === enrollStatusFilter
+    const matchesInstructor = enrollInstructorFilter === 'all'
+      || (enrollInstructorFilter === 'unassigned' && !course.instructorId)
+      || String(course.instructorId || '') === enrollInstructorFilter
     const matchesSearch = !enrolledQuery || [
       adminUserName(account),
       account.email,
@@ -2431,7 +2454,7 @@ export default function AdminPage() {
       course.city,
       course.status,
     ].some(value => String(value || '').toLowerCase().includes(enrolledQuery))
-    return matchesStatus && matchesSearch
+    return matchesStatus && matchesInstructor && matchesSearch
   })
   const enrollTotal = filteredEnrollmentRows.length
   const enrollPages = Math.max(1, Math.ceil(enrollTotal / Number(enrollLimit)))
@@ -2925,7 +2948,13 @@ export default function AdminPage() {
                         <thead><tr><th scope="col" style={thStyle}>Instructor</th><th scope="col" style={thStyle}>Active Schedules</th><th scope="col" style={thStyle}>Schedule History</th><th scope="col" style={thStyle}>Locations</th><th scope="col" style={thStyle}>Details</th></tr></thead>
                         <tbody>
                           {filteredInstructors.map(instructor => <tr key={instructor.legacyInstructorId}>
-                            <td style={tdStyle}><strong>{instructor.displayName || `Legacy Instructor #${instructor.legacyInstructorId}`}</strong><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{instructor.displayName ? `ID ${instructor.legacyInstructorId}${instructor.username ? ` · @${instructor.username}` : ''}` : 'No matching profile in old instructor table'}</p></td>
+                            <td style={tdStyle}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '.45rem', flexWrap: 'wrap' }}>
+                                <strong>{instructor.displayName || `Legacy Instructor #${instructor.legacyInstructorId}`}</strong>
+                                <span style={{ padding: '.16rem .42rem', borderRadius: '999px', background: instructor.isCurrentProfile ? '#DCFCE7' : '#E8F1FC', color: instructor.isCurrentProfile ? '#087443' : '#0755AE', fontFamily: 'var(--font-mono)', fontSize: '.66rem', fontWeight: 800, letterSpacing: '.04em' }}>{instructor.isCurrentProfile ? 'CURRENT' : 'LEGACY'}</span>
+                              </div>
+                              <p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{instructor.displayName ? `ID ${instructor.legacyInstructorId}${instructor.username ? ` · @${instructor.username}` : ''}` : 'No matching profile in old instructor table'}</p>
+                            </td>
                             <td style={tdStyle}><strong style={{ color: '#087443' }}>{Number(instructor.activeSlots || 0).toLocaleString()}</strong><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>of {Number(instructor.totalSlots || 0).toLocaleString()} imported slots</p></td>
                             <td style={tdStyle}><div>{formatDateDMY(instructor.firstSlotDate)}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>to {formatDateDMY(instructor.lastSlotDate)}</p></td>
                             <td style={tdStyle}>{(instructor.locationLabels || []).length ? instructor.locationLabels.join(', ') : 'Not recorded'}</td>
@@ -3360,7 +3389,12 @@ export default function AdminPage() {
                             <option value="completed">Completed</option>
                             <option value="cancelled">Cancelled</option>
                           </select>
-                          {(enrollSearch || enrollStatusFilter !== 'all') && <button type="button" onClick={() => { setEnrollSearch(''); setEnrollStatusFilter('all'); setEnrollPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
+                          <select aria-label="Filter enrollments by instructor" value={enrollInstructorFilter} onChange={e => { setEnrollInstructorFilter(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '185px', fontSize: '1.05rem' }}>
+                            <option value="all">All instructors</option>
+                            <option value="unassigned">Unassigned</option>
+                            {assignableInstructors.map(instructor => <option key={instructor.legacyInstructorId} value={instructor.legacyInstructorId}>{instructor.displayName}</option>)}
+                          </select>
+                          {(enrollSearch || enrollStatusFilter !== 'all' || enrollInstructorFilter !== 'all') && <button type="button" onClick={() => { setEnrollSearch(''); setEnrollStatusFilter('all'); setEnrollInstructorFilter('all'); setEnrollPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                         </div>
                       </div>
 
@@ -3393,6 +3427,8 @@ export default function AdminPage() {
                                 || course.slotAllowance?.used != null || course.slotUsage?.used != null || course.slotUsed != null
                                 || course.slotAllowance?.maximum != null || course.slotUsage?.maximum != null || course.slotMaximum != null
                               const enrolledDate = course.enrolledAt ? new Date(course.enrolledAt) : null
+                              const assignedInstructor = assignableInstructors.find(instructor => instructor.legacyInstructorId === course.instructorId)
+                              const instructorContact = assignedInstructor ? [assignedInstructor.phone, assignedInstructor.email].filter(Boolean).join(' · ') : ''
                               return (
                                 <tr key={key}>
                                   <td style={tdStyle}>
@@ -3404,7 +3440,7 @@ export default function AdminPage() {
                                   <td style={tdStyle}>{account.email || '—'}</td>
                                   <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{account.phone || 'Not recorded'}</td>
                                   <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}><select aria-label={`Change enrollment status for ${adminUserName(account)}`} value={enrollmentStatus} disabled={Boolean(enrollmentStatusUpdating)} onChange={event => updateEnrollmentStatus({ account, course, key }, event.target.value)} style={{ minWidth: '145px', padding: '.45rem .62rem', border: `1px solid ${statusMeta.color}55`, borderRadius: '9px', background: statusMeta.background, color: statusMeta.color, fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.05em', textTransform: 'uppercase', fontWeight: 800, cursor: enrollmentStatusUpdating ? 'wait' : 'pointer' }}><option value="enrolled">Enrolled</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></div></td>
-                                  <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><select aria-label={`Assign an instructor to ${adminUserName(account)}`} value={course.instructorId || ''} disabled={Boolean(enrollmentInstructorUpdating) || instructorsLoading} onChange={event => updateEnrollmentInstructor({ account, course, key }, event.target.value)} style={{ minWidth: '175px', padding: '.45rem .62rem', border: '1px solid #BFD2E8', borderRadius: '9px', background: '#fff', color: '#1E3A5F', fontWeight: 800, cursor: enrollmentInstructorUpdating || instructorsLoading ? 'wait' : 'pointer' }}><option value="">Unassigned</option>{course.instructorId && !assignableInstructors.some(instructor => instructor.legacyInstructorId === course.instructorId) && <option value={course.instructorId}>{course.instructorName || 'Previously assigned'}</option>}{assignableInstructors.map(instructor => <option key={instructor.legacyInstructorId} value={instructor.legacyInstructorId}>{instructor.displayName}</option>)}</select></td>
+                                  <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><div style={{ display: 'grid', gap: '.28rem' }}><select aria-label={`Assign an instructor to ${adminUserName(account)}`} value={course.instructorId || ''} disabled={Boolean(enrollmentInstructorUpdating) || instructorsLoading} onChange={event => requestEnrollmentInstructorChange({ account, course, key }, event.target.value)} style={{ minWidth: '175px', padding: '.45rem .62rem', border: '1px solid #BFD2E8', borderRadius: '9px', background: '#fff', color: '#1E3A5F', fontWeight: 800, cursor: enrollmentInstructorUpdating || instructorsLoading ? 'wait' : 'pointer' }}><option value="">Unassigned</option>{course.instructorId && !assignableInstructors.some(instructor => instructor.legacyInstructorId === course.instructorId) && <option value={course.instructorId}>{course.instructorName || 'Previously assigned'}</option>}{assignableInstructors.map(instructor => <option key={instructor.legacyInstructorId} value={instructor.legacyInstructorId}>{instructor.displayName}</option>)}</select>{course.instructorId && <small style={{ color: '#64748B', fontSize: '.72rem', maxWidth: '210px', whiteSpace: 'normal' }}>{instructorContact || 'Contact not recorded'}</small>}</div></td>
                                   <td style={{ ...tdStyle, minWidth: '240px', whiteSpace: 'nowrap', fontWeight: 700 }}>{course.title || COURSE_MAP[course.id] || `Course ${course.id || ''}`}</td>
                                   <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{course.city ? <>{course.city}{course.cityZip ? `, CA ${course.cityZip}` : ''}</> : <span title="Legacy record" style={{ color: '#64748B' }}>Not recorded</span>}{course.cityDistance ? <span style={{ display: 'block', color: '#334155', fontSize: '.78rem' }}>{locationDistanceLabel(course.cityDistance)}</span> : null}</td>
                                   <td style={{ ...tdStyle, fontWeight: 800 }}>{course.price || '—'}</td>
@@ -3414,7 +3450,7 @@ export default function AdminPage() {
                                 </tr>
                               )
                             })}
-                            {!visibleEnrollmentRows.length && <tr><td colSpan={11} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{enrollSearch || enrollStatusFilter !== 'all' ? 'No enrollments match the selected search or status.' : 'No website users have enrolled in a course yet.'}</td></tr>}
+                            {!visibleEnrollmentRows.length && <tr><td colSpan={11} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{enrollSearch || enrollStatusFilter !== 'all' || enrollInstructorFilter !== 'all' ? 'No enrollments match the selected filters.' : 'No website users have enrolled in a course yet.'}</td></tr>}
                           </tbody>
                         </table>
                       </div>
