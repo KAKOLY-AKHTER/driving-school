@@ -632,7 +632,118 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
   )
 }
 
-function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, requestConfirmation, setMessage }) {
+function InstructorSlotsReport({ cardStyle, inputStyle, instructors, loadingInstructors, instructorsError }) {
+  const [zoneId, setZoneId] = useState('')
+  const [locationId, setLocationId] = useState('')
+  const [instructorId, setInstructorId] = useState('')
+  const [reportMonth, setReportMonth] = useState(() => localDateKey().slice(0, 7))
+  const [reportSlots, setReportSlots] = useState([])
+  const [reportLoading, setReportLoading] = useState(false)
+  const [reportError, setReportError] = useState('')
+
+  const zones = [...new Set(instructors.flatMap(instructor => instructor.zoneIds || []).filter(Boolean).map(String))]
+    .sort((left, right) => left.localeCompare(right, undefined, { numeric: true }))
+  const instructorsForZone = instructors.filter(instructor => instructor.displayName && (!zoneId || (instructor.zoneIds || []).map(String).includes(zoneId)))
+  const locationOptions = [...new Map(instructorsForZone.flatMap(instructor => instructor.locationOptions || [])
+    .filter(option => option?.value)
+    .map(option => [String(option.value), { value: String(option.value), label: option.label || `Location ${option.value}` }])).values()]
+    .sort((left, right) => left.label.localeCompare(right.label))
+  const selectableInstructors = instructorsForZone
+    .filter(instructor => !locationId || (instructor.locationOptions || []).some(option => String(option?.value) === locationId))
+    .sort((left, right) => String(left.displayName).localeCompare(String(right.displayName)))
+  const reportDate = new Date(`${reportMonth}-01T12:00:00`)
+  const reportYear = reportDate.getFullYear()
+  const reportMonthIndex = reportDate.getMonth()
+  const reportDays = new Date(reportYear, reportMonthIndex + 1, 0).getDate()
+  const reportStartDay = new Date(reportYear, reportMonthIndex, 1).getDay()
+  const slotsByDate = reportSlots.reduce((map, slot) => {
+    const current = map.get(slot.slotDate) || []
+    current.push(slot)
+    map.set(slot.slotDate, current)
+    return map
+  }, new Map())
+
+  useEffect(() => {
+    if (!instructorId) {
+      setReportSlots([])
+      setReportError('')
+      return undefined
+    }
+    let active = true
+    setReportLoading(true)
+    setReportError('')
+    api.adminInstructorSlotsReport(instructorId, { month: reportMonth, zoneId, locationId })
+      .then(data => { if (active) setReportSlots(Array.isArray(data?.items) ? data.items : []) })
+      .catch(error => { if (active) setReportError(error?.message || 'Instructor slots could not be loaded.') })
+      .finally(() => { if (active) setReportLoading(false) })
+    return () => { active = false }
+  }, [instructorId, locationId, reportMonth, zoneId])
+
+  const formatZone = value => /^zone\s/i.test(value) ? value : `Zone ${value}`
+  const shiftMonth = amount => {
+    const next = new Date(reportYear, reportMonthIndex + amount, 1)
+    setReportMonth(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`)
+  }
+  const changeZone = value => {
+    setZoneId(value)
+    setLocationId('')
+    setInstructorId('')
+  }
+  const changeLocation = value => {
+    setLocationId(value)
+    setInstructorId('')
+  }
+
+  return (
+    <section style={cardStyle} aria-labelledby="instructor-slots-report-heading">
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '1.1rem' }}>
+        <div>
+          <h2 id="instructor-slots-report-heading" style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.3rem' }}>Instructor Slots Report</h2>
+          <p style={{ margin: '.35rem 0 0', color: '#475569', lineHeight: 1.5 }}>Choose a zone, location, and instructor to view that instructor&apos;s imported schedule in a monthly calendar.</p>
+        </div>
+        <span style={{ padding: '.35rem .65rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontWeight: 800, fontSize: '.8rem' }}>Schedule archive</span>
+      </div>
+      <div className="admin-grid-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(190px, 1fr))', gap: '.85rem', alignItems: 'end' }}>
+        <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontSize: '.84rem', fontWeight: 800 }}>Zone / County
+          <select aria-label="Filter instructor report by zone or county" value={zoneId} disabled={loadingInstructors} onChange={event => changeZone(event.target.value)} style={inputStyle}><option value="">All zones</option>{zones.map(zone => <option key={zone} value={zone}>{formatZone(zone)}</option>)}</select>
+        </label>
+        <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontSize: '.84rem', fontWeight: 800 }}>Location
+          <select aria-label="Filter instructor report by location" value={locationId} disabled={loadingInstructors} onChange={event => changeLocation(event.target.value)} style={inputStyle}><option value="">All locations</option>{locationOptions.map(location => <option key={location.value} value={location.value}>{location.label}</option>)}</select>
+        </label>
+        <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontSize: '.84rem', fontWeight: 800 }}>Instructor
+          <select aria-label="Choose an instructor for the slots report" value={instructorId} disabled={loadingInstructors} onChange={event => setInstructorId(event.target.value)} style={inputStyle}><option value="">Select instructor</option>{selectableInstructors.map(instructor => <option key={instructor.legacyInstructorId} value={instructor.legacyInstructorId}>{instructor.displayName}</option>)}</select>
+        </label>
+      </div>
+      {loadingInstructors && <p style={{ margin: '.85rem 0 0', color: '#64748B', fontSize: '.86rem' }}>Loading instructors…</p>}
+      {instructorsError && <p role="alert" style={{ margin: '.85rem 0 0', color: '#B91C1C', fontSize: '.86rem' }}>{instructorsError}</p>}
+      {!loadingInstructors && !instructorsError && !instructors.length && <p style={{ margin: '.85rem 0 0', color: '#64748B', fontSize: '.86rem' }}>No instructor profiles are available yet.</p>}
+      <div style={{ marginTop: '1rem', padding: '.85rem', border: '1px solid #D8E4F0', borderRadius: '14px', background: 'linear-gradient(180deg,#F8FBFF,#fff)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.7rem', marginBottom: '.8rem' }}>
+          <button type="button" aria-label="Previous report month" onClick={() => shiftMonth(-1)} style={{ width: '38px', height: '38px', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: DARK, fontSize: '1.2rem', cursor: 'pointer' }}>&lsaquo;</button>
+          <strong style={{ color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.1rem' }}>{reportDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</strong>
+          <button type="button" aria-label="Next report month" onClick={() => shiftMonth(1)} style={{ width: '38px', height: '38px', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: DARK, fontSize: '1.2rem', cursor: 'pointer' }}>&rsaquo;</button>
+        </div>
+        {!instructorId && <p style={{ margin: '.3rem 0 .75rem', textAlign: 'center', color: '#64748B', fontSize: '.88rem' }}>Select an instructor to view schedule slots for this month.</p>}
+        {reportError && <p role="alert" style={{ margin: '.3rem 0 .75rem', textAlign: 'center', color: '#B91C1C', fontSize: '.88rem' }}>{reportError}</p>}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '.32rem' }}>
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => <span key={day} aria-hidden="true" style={{ padding: '.25rem 0', textAlign: 'center', color: '#64748B', fontSize: '.72rem', fontWeight: 850 }}>{day}</span>)}
+          {Array.from({ length: reportStartDay }, (_, index) => <span key={`report-blank-${index}`} />)}
+          {Array.from({ length: reportDays }, (_, index) => {
+            const day = index + 1
+            const dateKey = `${reportMonth}-${String(day).padStart(2, '0')}`
+            const slots = slotsByDate.get(dateKey) || []
+            return <div key={dateKey} style={{ minHeight: '78px', padding: '.35rem', border: `1px solid ${slots.length ? '#86EFAC' : '#E2E8F0'}`, borderRadius: '9px', background: slots.length ? '#F0FDF4' : '#fff', overflow: 'hidden' }}><div style={{ textAlign: 'right', color: slots.length ? '#166534' : '#64748B', fontSize: '.75rem', fontWeight: 850 }}>{day}</div>{slots.slice(0, 3).map(slot => <div key={slot.legacySlotId} title={[slot.fromTimeLabel, slot.toTimeLabel, slot.locationLabel].filter(Boolean).join(' - ')} style={{ marginTop: '.2rem', padding: '.18rem .25rem', borderRadius: '5px', background: slot.active ? '#DCFCE7' : '#E2E8F0', color: slot.active ? '#166534' : '#475569', fontSize: '.62rem', fontWeight: 800, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{slot.fromTimeLabel || 'Scheduled'}{slot.toTimeLabel ? ` – ${slot.toTimeLabel}` : ''}</div>)}{slots.length > 3 && <div style={{ marginTop: '.18rem', color: '#166534', fontSize: '.64rem', fontWeight: 850 }}>+{slots.length - 3} more</div>}</div>
+          })}
+        </div>
+        {instructorId && !reportLoading && !reportError && !reportSlots.length && <p style={{ margin: '.85rem 0 .1rem', textAlign: 'center', color: '#64748B', fontSize: '.86rem' }}>No imported schedule slots match these filters this month.</p>}
+        {reportLoading && <p style={{ margin: '.85rem 0 .1rem', textAlign: 'center', color: '#64748B', fontSize: '.86rem' }}>Loading instructor schedule…</p>}
+      </div>
+      <div aria-label="Instructor report calendar guide" style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap', marginTop: '.75rem', color: '#475569', fontSize: '.76rem', fontWeight: 750 }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}><span aria-hidden="true" style={{ width: '12px', height: '12px', borderRadius: '4px', background: '#DCFCE7', border: '1px solid #86EFAC' }} />Active archived slot</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}><span aria-hidden="true" style={{ width: '12px', height: '12px', borderRadius: '4px', background: '#E2E8F0' }} />Inactive archived slot</span></div>
+    </section>
+  )
+}
+
+function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, requestConfirmation, setMessage, instructors, instructorsLoading, instructorsError }) {
   const [dates, setDates] = useState([])
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const [year, month] = localDateKey().split('-').map(Number)
@@ -928,6 +1039,14 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
           <button type="button" disabled={saving} onClick={() => { setDates([]); setTimes([]); setTimeInput('') }} style={{ minHeight: '44px', padding: '.7rem 1.15rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Reset</button>
         </div>
       </div>
+
+      <InstructorSlotsReport
+        cardStyle={cardStyle}
+        inputStyle={inputStyle}
+        instructors={instructors}
+        loadingInstructors={instructorsLoading}
+        instructorsError={instructorsError}
+      />
 
       <div style={cardStyle}>
         <div className="admin-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
@@ -2263,7 +2382,7 @@ export default function AdminPage() {
   }, [activeTab, legacyPage, legacySearch, legacyStatus, legacyCertificateFilter])
 
   useEffect(() => {
-    if (!['instructors', 'enrolled'].includes(activeTab)) return undefined
+    if (!['instructors', 'enrolled', 'calendar'].includes(activeTab)) return undefined
     let cancelled = false
     const loadInstructors = async () => {
       setInstructorsLoading(true)
@@ -3140,6 +3259,9 @@ export default function AdminPage() {
                     tdStyle={tdStyle}
                     requestConfirmation={requestConfirmation}
                     setMessage={message => { setMsg(message); window.setTimeout(() => setMsg(''), 3200) }}
+                    instructors={instructors}
+                    instructorsLoading={instructorsLoading}
+                    instructorsError={instructorsError}
                   />
                 )}
 

@@ -4992,6 +4992,51 @@ app.post('/api/admin/instructors', async (req, res) => {
   }
 })
 
+app.get('/api/admin/instructors/:instructorId/slots-report', async (req, res) => {
+  try {
+    const instructorId = cleanText(req.params.instructorId, 80)
+    const month = cleanText(req.query.month, 7)
+    const locationId = cleanText(req.query.locationId, 80)
+    const zoneId = cleanText(req.query.zoneId, 80)
+    if (!instructorId) throw new HttpError(400, 'Instructor ID is required.')
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new HttpError(400, 'Choose a valid report month.')
+
+    const [year, monthNumber] = month.split('-').map(Number)
+    const monthStart = `${month}-01`
+    const monthEnd = `${month}-${String(new Date(year, monthNumber, 0).getDate()).padStart(2, '0')}`
+    const query = { legacyInstructorId: instructorId, slotDate: { $gte: monthStart, $lte: monthEnd } }
+    if (locationId) query.locationId = locationId
+    if (zoneId) query.legacyZoneId = zoneId
+
+    const items = await legacyInstructorSlotsCol.find(query, {
+      projection: { _id: 0, legacySlotId: 1, legacyZoneId: 1, slotDate: 1, locationId: 1, active: 1, fromHour: 1, toHour: 1, breakHours: 1, autismSupport: 1 },
+    }).sort({ slotDate: 1, fromHour: 1, legacySlotId: 1 }).limit(1000).toArray()
+    const timingIds = [...new Set(items.flatMap(item => [cleanText(item.fromHour, 40), cleanText(item.toHour, 40)]).filter(Boolean))]
+    const locationIds = [...new Set(items.map(item => cleanText(item.locationId, 80)).filter(Boolean))]
+    const [timingRecords, locationRecords] = await Promise.all([
+      timingIds.length ? legacyTimeSlotsCol.find({ legacySlotId: { $in: timingIds } }, { projection: { _id: 0, legacySlotId: 1, timeLabel: 1 } }).toArray() : [],
+      locationIds.length ? legacyCitiesCol.find({ legacyCityId: { $in: locationIds } }, { projection: { _id: 0, legacyCityId: 1, cityName: 1, zipCode: 1 } }).toArray() : [],
+    ])
+    const timeLabels = new Map(timingRecords.map(record => [cleanText(record.legacySlotId, 40), cleanText(record.timeLabel, 80)]))
+    const locationLabels = new Map(locationRecords.map(record => [
+      cleanText(record.legacyCityId, 80),
+      [cleanText(record.cityName, 120), cleanText(record.zipCode, 20)].filter(Boolean).join(' - '),
+    ]))
+    res.json({
+      month,
+      items: items.map(item => ({
+        ...item,
+        fromTimeLabel: timeLabels.get(cleanText(item.fromHour, 40)) || '',
+        toTimeLabel: timeLabels.get(cleanText(item.toHour, 40)) || '',
+        locationLabel: locationLabels.get(cleanText(item.locationId, 80)) || '',
+      })),
+    })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Instructor slots report lookup failed')
+  }
+})
+
 app.get('/api/admin/instructors/:instructorId/slots', async (req, res) => {
   try {
     const instructorId = cleanText(req.params.instructorId, 80)
