@@ -1068,6 +1068,7 @@ export default function AdminPage() {
   const [enrollSearch, setEnrollSearch] = useState('')
   const [enrollStatusFilter, setEnrollStatusFilter] = useState('all')
   const [enrollmentStatusUpdating, setEnrollmentStatusUpdating] = useState('')
+  const [enrollmentInstructorUpdating, setEnrollmentInstructorUpdating] = useState('')
   const [enrollmentEdit, setEnrollmentEdit] = useState(null)
   const [enrollmentForm, setEnrollmentForm] = useState({ title: '', status: 'Enrolled', city: '', cityZip: '', cityDistance: '', price: '', slotUsed: 0, slotMaximum: 0, enrolledAt: '' })
   const [refunds, setRefunds] = useState([])
@@ -1623,6 +1624,26 @@ export default function AdminPage() {
       setTimeout(() => setMsg(''), 2500)
     } finally {
       setEnrollmentStatusUpdating('')
+    }
+  }
+
+  const updateEnrollmentInstructor = async ({ account, course, key }, instructorId) => {
+    const currentInstructorId = String(course.instructorId || '')
+    if (instructorId === currentInstructorId || enrollmentInstructorUpdating) return
+    setEnrollmentInstructorUpdating(key)
+    try {
+      const result = await api.adminUpdateUserCourse(account.uid, {
+        enrollmentId: course.enrollmentId || '', courseId: course.id || '', enrolledAt: course.enrolledAt || '', course: { instructorId },
+      })
+      const updatedCourse = result?.course || { instructorId, instructorName: instructors.find(item => item.legacyInstructorId === instructorId)?.displayName || '' }
+      setUsers(previous => previous.map(item => item.uid !== account.uid ? item : { ...item, courses: (item.courses || []).map(entry => (entry.enrollmentId === course.enrollmentId || (entry.id === course.id && entry.enrolledAt === course.enrolledAt)) ? { ...entry, ...updatedCourse } : entry) }))
+      setMsg(updatedCourse.instructorName ? `Instructor assigned: ${updatedCourse.instructorName}.` : 'Instructor assignment removed.')
+      window.setTimeout(() => setMsg(''), 2200)
+    } catch (error) {
+      setMsg(error?.message || 'Instructor could not be assigned.')
+      window.setTimeout(() => setMsg(''), 2500)
+    } finally {
+      setEnrollmentInstructorUpdating('')
     }
   }
 
@@ -2222,7 +2243,7 @@ export default function AdminPage() {
   }, [activeTab, legacyPage, legacySearch, legacyStatus, legacyCertificateFilter])
 
   useEffect(() => {
-    if (activeTab !== 'instructors') return undefined
+    if (!['instructors', 'enrolled'].includes(activeTab)) return undefined
     let cancelled = false
     const loadInstructors = async () => {
       setInstructorsLoading(true)
@@ -2299,6 +2320,9 @@ export default function AdminPage() {
       || (instructorScheduleFilter === 'without-schedules' && totalSlots === 0)
     return matchesSearch && matchesScheduleFilter
   })
+  const assignableInstructors = instructors
+    .filter(instructor => instructor.displayName && (!instructor.isCurrentProfile || instructor.active))
+    .sort((left, right) => String(left.displayName).localeCompare(String(right.displayName)))
   const userPages = Math.max(1, Math.ceil(filteredUsers.length / Number(userLimit)))
   const safeUserPage = Math.min(userPage, userPages)
   const visibleUsers = filteredUsers.slice(
@@ -3349,6 +3373,7 @@ export default function AdminPage() {
                               <th scope="col" style={thStyle}>Email Address</th>
                               <th scope="col" style={thStyle}>Phone Number</th>
                               <th scope="col" style={thStyle}>Enrollment Status</th>
+                              <th scope="col" style={thStyle}>Instructor</th>
                               <th scope="col" style={{ ...thStyle, minWidth: '240px', whiteSpace: 'nowrap' }}>Enrolled Course</th>
                               <th scope="col" style={thStyle}>Pickup Location</th>
                               <th scope="col" style={thStyle}>Paid Price</th>
@@ -3379,6 +3404,7 @@ export default function AdminPage() {
                                   <td style={tdStyle}>{account.email || '—'}</td>
                                   <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{account.phone || 'Not recorded'}</td>
                                   <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}><select aria-label={`Change enrollment status for ${adminUserName(account)}`} value={enrollmentStatus} disabled={Boolean(enrollmentStatusUpdating)} onChange={event => updateEnrollmentStatus({ account, course, key }, event.target.value)} style={{ minWidth: '145px', padding: '.45rem .62rem', border: `1px solid ${statusMeta.color}55`, borderRadius: '9px', background: statusMeta.background, color: statusMeta.color, fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.05em', textTransform: 'uppercase', fontWeight: 800, cursor: enrollmentStatusUpdating ? 'wait' : 'pointer' }}><option value="enrolled">Enrolled</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></div></td>
+                                  <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><select aria-label={`Assign an instructor to ${adminUserName(account)}`} value={course.instructorId || ''} disabled={Boolean(enrollmentInstructorUpdating) || instructorsLoading} onChange={event => updateEnrollmentInstructor({ account, course, key }, event.target.value)} style={{ minWidth: '175px', padding: '.45rem .62rem', border: '1px solid #BFD2E8', borderRadius: '9px', background: '#fff', color: '#1E3A5F', fontWeight: 800, cursor: enrollmentInstructorUpdating || instructorsLoading ? 'wait' : 'pointer' }}><option value="">Unassigned</option>{course.instructorId && !assignableInstructors.some(instructor => instructor.legacyInstructorId === course.instructorId) && <option value={course.instructorId}>{course.instructorName || 'Previously assigned'}</option>}{assignableInstructors.map(instructor => <option key={instructor.legacyInstructorId} value={instructor.legacyInstructorId}>{instructor.displayName}</option>)}</select></td>
                                   <td style={{ ...tdStyle, minWidth: '240px', whiteSpace: 'nowrap', fontWeight: 700 }}>{course.title || COURSE_MAP[course.id] || `Course ${course.id || ''}`}</td>
                                   <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{course.city ? <>{course.city}{course.cityZip ? `, CA ${course.cityZip}` : ''}</> : <span title="Legacy record" style={{ color: '#64748B' }}>Not recorded</span>}{course.cityDistance ? <span style={{ display: 'block', color: '#334155', fontSize: '.78rem' }}>{locationDistanceLabel(course.cityDistance)}</span> : null}</td>
                                   <td style={{ ...tdStyle, fontWeight: 800 }}>{course.price || '—'}</td>
@@ -3388,7 +3414,7 @@ export default function AdminPage() {
                                 </tr>
                               )
                             })}
-                            {!visibleEnrollmentRows.length && <tr><td colSpan={10} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{enrollSearch || enrollStatusFilter !== 'all' ? 'No enrollments match the selected search or status.' : 'No website users have enrolled in a course yet.'}</td></tr>}
+                            {!visibleEnrollmentRows.length && <tr><td colSpan={11} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{enrollSearch || enrollStatusFilter !== 'all' ? 'No enrollments match the selected search or status.' : 'No website users have enrolled in a course yet.'}</td></tr>}
                           </tbody>
                         </table>
                       </div>

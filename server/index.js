@@ -5789,6 +5789,7 @@ const sanitizeAdminCourseUpdate = value => {
     if (!status) throw new HttpError(400, 'Please choose a valid enrollment status.')
     output.status = status
   }
+  if (value.instructorId !== undefined) output.instructorId = cleanText(value.instructorId, 80)
   for (const field of ['city', 'cityZip', 'price']) if (value[field] !== undefined) output[field] = cleanText(value[field], field === 'price' ? 40 : 120)
   if (value.cityDistance !== undefined) {
     const distance = cleanText(value.cityDistance, 20)
@@ -5820,6 +5821,19 @@ app.put('/api/admin/users/:uid/courses', async (req, res) => {
     const index = findAdminCourseIndex(courses, req.body)
     if (index < 0) throw new HttpError(404, 'Enrollment was not found.')
     const update = sanitizeAdminCourseUpdate(req.body?.course)
+    if (Object.prototype.hasOwnProperty.call(update, 'instructorId')) {
+      if (!update.instructorId) {
+        update.instructorName = ''
+      } else {
+        const instructor = await legacyInstructorsCol.findOne(
+          { legacyInstructorId: update.instructorId },
+          { projection: { displayName: 1, active: 1, source: 1 } },
+        )
+        if (!instructor || !cleanText(instructor.displayName, 160)) throw new HttpError(400, 'Choose an instructor from the instructor list.')
+        if (instructor.source === 'admin-created' && instructor.active === false) throw new HttpError(400, 'That instructor is inactive and cannot be assigned.')
+        update.instructorName = cleanText(instructor.displayName, 160)
+      }
+    }
     const shouldSendConfirmation = req.body?.sendConfirmation === true && update.status === 'Enrolled'
     await usersCol.updateOne({ uid }, { $set: Object.fromEntries(Object.entries(update).map(([key, value]) => [`courses.${index}.${key}`, value])) })
     const updatedCourse = { ...courses[index], ...update }
@@ -7422,6 +7436,7 @@ export {
   refundedPaymentCents,
   sanitizeLocation,
   sanitizeInstructorProfile,
+  sanitizeAdminCourseUpdate,
   sanitizeBlog,
   detectBlogImageType,
   sanitizeCoupon,

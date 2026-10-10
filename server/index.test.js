@@ -26,6 +26,7 @@ const {
   refundedPaymentCents,
   sanitizeLocation,
   sanitizeInstructorProfile,
+  sanitizeAdminCourseUpdate,
   sanitizePricing,
   sanitizeReview,
   sanitizeBlog,
@@ -251,6 +252,13 @@ test('instructor profiles require a name and retain clean contact and location d
   )
   assert.throws(() => sanitizeInstructorProfile({ displayName: '' }), /Instructor name is required/)
   assert.throws(() => sanitizeInstructorProfile({ displayName: 'Maya Chen', email: 'not-an-email' }), /valid instructor email/)
+})
+
+test('admin enrollment updates retain an instructor assignment identifier', () => {
+  assert.deepEqual(
+    sanitizeAdminCourseUpdate({ instructorId: ' admin-123 ' }),
+    { instructorId: 'admin-123' },
+  )
 })
 
 test('blog posts sanitize publish data and require secure images', () => {
