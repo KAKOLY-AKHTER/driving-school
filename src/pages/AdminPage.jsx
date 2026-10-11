@@ -1344,10 +1344,20 @@ export default function AdminPage() {
     instructorDetailsRequestRef.current = requestId
     setInstructorDetails({ instructor, items: [], assignedStudents: [], total: 0, page, limit: 25, search, status, locationId, loading: true, error: '' })
     try {
-      const response = await api.adminInstructorSlots(legacyInstructorId, { page, limit: 25, search, status: status === 'all' ? '' : status, locationId })
+      const response = await api.adminInstructorSlots(legacyInstructorId, { page, limit: 25, search, status: status === 'all' ? '' : status, locationId: locationId.startsWith('current:') ? '' : locationId })
       if (instructorDetailsRequestRef.current !== requestId) return
       setInstructorDetails(current => current?.instructor?.legacyInstructorId === legacyInstructorId ? {
         ...current,
+        instructor: (() => {
+          const existingOptions = Array.isArray(current.instructor.locationOptions) ? current.instructor.locationOptions : []
+          const knownLabels = new Set(existingOptions.map(option => String(option.label || '').trim().toLowerCase()).filter(Boolean))
+          const currentLocations = (Array.isArray(response?.assignedStudents) ? response.assignedStudents : []).flatMap(student => [
+            student.location,
+            ...(Array.isArray(student.bookings) ? student.bookings.map(booking => booking.location) : []),
+          ]).map(location => String(location || '').trim()).filter(Boolean)
+          const assignmentOptions = [...new Set(currentLocations)].filter(label => !knownLabels.has(label.toLowerCase())).map(label => ({ value: `current:${label}`, label }))
+          return { ...current.instructor, locationOptions: [...existingOptions, ...assignmentOptions] }
+        })(),
         items: Array.isArray(response?.items) ? response.items : [],
         assignedStudents: Array.isArray(response?.assignedStudents) ? response.assignedStudents : [],
         total: Number(response?.total || 0),
@@ -2727,8 +2737,8 @@ export default function AdminPage() {
   const thStyle = { fontFamily: 'var(--font-body)', fontSize: '0.95rem', letterSpacing: '0.01em', textTransform: 'none', lineHeight: 1.35, color: '#102F55', fontWeight: 900, padding: '1rem', textAlign: 'left', borderBottom: '1px solid #D8E4F0', WebkitFontSmoothing: 'antialiased' }
   const tdStyle = { fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#1a2332', padding: '0.75rem 1rem', borderBottom: '1px solid #f0f2f5' }
   const inputStyle = { width: '100%', padding: '0.65rem 0.8rem', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#1a2332', outline: 'none', boxSizing: 'border-box' }
-  const instructorDetailRows = instructorDetails ? [
-    ...((instructorDetails.page === 1 ? instructorDetails.assignedStudents : []) || []).flatMap(student => {
+  const currentInstructorAssignmentRows = instructorDetails
+    ? (instructorDetails.assignedStudents || []).flatMap(student => {
       const bookingsForCourse = Array.isArray(student.bookings) ? student.bookings : []
       const rowFrom = ({ bookingId = '', date = '', timeWindow = '', status = student.enrollmentStatus, location = student.location, createdAt = '', isBooking = false } = {}) => ({
         legacySlotId: bookingId || student.enrollmentId || student.key,
@@ -2747,8 +2757,34 @@ export default function AdminPage() {
       return bookingsForCourse.length
         ? bookingsForCourse.map(booking => rowFrom({ ...booking, isBooking: true }))
         : [rowFrom()]
-    }),
-    ...(instructorDetails.items || []),
+    })
+    : []
+  const instructorLocationOptions = instructorDetails?.instructor?.locationOptions || []
+  const selectedInstructorLocation = instructorLocationOptions.find(option => option.value === instructorDetails?.locationId)
+  const selectedInstructorLocationLabel = selectedInstructorLocation?.label || String(instructorDetails?.locationId || '').replace(/^current:/, '')
+  const normalizeInstructorFilterText = value => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const instructorRowMatchesFilters = row => {
+    if (!instructorDetails) return false
+    const search = String(instructorDetails.search || '').trim().toLowerCase()
+    const searchValues = [row.legacySlotId, row.slotDate, row.locationLabel, row.timeWindow, row.courseTitle, row.enrollmentStatus, row.studentName, row.studentEmail, row.fromTimeLabel, row.toTimeLabel]
+    const matchesSearch = !search || searchValues.some(value => String(value || '').toLowerCase().includes(search))
+    const matchesStatus = instructorDetails.status === 'all'
+      || (instructorDetails.status === 'active' && row.active)
+      || (instructorDetails.status === 'inactive' && !row.active)
+    const selectedLocation = normalizeInstructorFilterText(selectedInstructorLocationLabel)
+    const rowLocation = normalizeInstructorFilterText(row.locationLabel)
+    const matchesLocation = !selectedLocation || rowLocation.includes(selectedLocation) || selectedLocation.includes(rowLocation)
+    return matchesSearch && matchesStatus && matchesLocation
+  }
+  const filteredCurrentInstructorAssignmentRows = currentInstructorAssignmentRows.filter(instructorRowMatchesFilters)
+  const filteredLegacyInstructorRows = (instructorDetails?.items || []).filter(instructorRowMatchesFilters)
+  const instructorCurrentScheduleRecordCount = filteredCurrentInstructorAssignmentRows.length
+  const instructorLegacyScheduleRecordCount = instructorDetails?.locationId?.startsWith('current:')
+    ? filteredLegacyInstructorRows.length
+    : Number(instructorDetails?.total || 0)
+  const instructorDetailRows = instructorDetails ? [
+    ...(instructorDetails.page === 1 ? filteredCurrentInstructorAssignmentRows : []),
+    ...filteredLegacyInstructorRows,
   ] : []
 
   const navItems = [
@@ -4753,7 +4789,7 @@ export default function AdminPage() {
               <div><p style={{ margin: 0, color: GOLD_DEEP, fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase' }}>Instructor schedule and assignments</p><h2 id="instructor-schedule-details-title" style={{ margin: '.3rem 0 0', color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.55rem' }}>{instructorDetails.instructor.displayName || `Legacy Instructor #${instructorDetails.instructor.legacyInstructorId}`}</h2><p style={{ margin: '.32rem 0 0', color: '#526C88' }}>{instructorDetails.instructor.displayName ? `Instructor ID ${instructorDetails.instructor.legacyInstructorId}${instructorDetails.instructor.email ? ` · ${instructorDetails.instructor.email}` : ''}${instructorDetails.instructor.phone ? ` · ${instructorDetails.instructor.phone}` : ''}` : `Legacy ID ${instructorDetails.instructor.legacyInstructorId} · no matching instructor profile was found in the old database.`}</p></div>
               <button autoFocus type="button" aria-label="Close instructor schedule details" onClick={() => setInstructorDetails(null)} style={{ width: '40px', height: '40px', border: '1px solid #CBD5E1', borderRadius: '10px', background: '#fff', color: '#334155', fontSize: '1.45rem', cursor: 'pointer' }}>&times;</button>
             </header>
-            <p role="note" style={{ margin: '1rem 0', padding: '.75rem .9rem', borderRadius: '10px', border: '1px solid #BFDBFE', background: '#F8FBFF', color: '#334E6F', fontSize: '.85rem', lineHeight: 1.5 }}>Current website course assignments appear in this table with their enrollment ID, date, location, course, status, and student. Historical schedule records remain below them.</p>
+            <p role="note" style={{ margin: '1rem 0', padding: '.75rem .9rem', borderRadius: '10px', border: '1px solid #BFDBFE', background: '#F8FBFF', color: '#334E6F', fontSize: '.85rem', lineHeight: 1.5 }}>Current website bookings appear in this table with their booking ID, lesson date, location, time, status, and student. If a course has no booking yet, its enrollment details appear instead. Historical schedule records remain below them.</p>
             <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', gap: '.65rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
               <input className="admin-toolbar-input" aria-label="Search this instructor's schedule" type="search" placeholder="Search slot ID, date, time…" value={instructorDetails.search || ''} onChange={event => openInstructorDetails(instructorDetails.instructor, 1, { ...instructorDetails, search: event.target.value })} style={{ ...inputStyle, width: 'min(100%, 280px)' }} />
               <select aria-label="Filter this instructor's schedule by availability" value={instructorDetails.status || 'all'} onChange={event => openInstructorDetails(instructorDetails.instructor, 1, { ...instructorDetails, status: event.target.value })} style={{ ...inputStyle, width: '175px' }}>
@@ -4768,7 +4804,7 @@ export default function AdminPage() {
               {(instructorDetails.search || instructorDetails.status !== 'all' || instructorDetails.locationId) && <button type="button" onClick={() => openInstructorDetails(instructorDetails.instructor, 1)} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
             </div>
             {instructorDetails.error && <div role="alert" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{instructorDetails.error}</div>}
-            {!instructorDetails.loading && !instructorDetails.error && <TablePager page={instructorDetails.page} pages={Math.max(1, Math.ceil((instructorDetails.total + (instructorDetails.assignedStudents?.length || 0)) / instructorDetails.limit))} total={instructorDetails.total + (instructorDetails.assignedStudents?.length || 0)} label="schedule records" onChange={page => openInstructorDetails(instructorDetails.instructor, page, instructorDetails)} />}
+            {!instructorDetails.loading && !instructorDetails.error && <TablePager page={instructorDetails.page} pages={Math.max(1, Math.ceil((instructorLegacyScheduleRecordCount + instructorCurrentScheduleRecordCount) / instructorDetails.limit))} total={instructorLegacyScheduleRecordCount + instructorCurrentScheduleRecordCount} label="schedule records" onChange={page => openInstructorDetails(instructorDetails.instructor, page, instructorDetails)} />}
             <div className="admin-table-wrap">
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead><tr><th scope="col" style={thStyle}>Old Slot ID</th><th scope="col" style={thStyle}>Date</th><th scope="col" style={thStyle}>Location</th><th scope="col" style={thStyle}>Course / Time</th><th scope="col" style={thStyle}>Availability</th><th scope="col" style={thStyle}>Imported From</th></tr></thead>
