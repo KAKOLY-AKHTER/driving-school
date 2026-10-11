@@ -323,6 +323,10 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
             min-width: 280px;
             flex-shrink: 0;
           }
+          .price-card .price-option-text {
+            min-width: 0;
+            max-width: 30ch;
+          }
           .price-scroll-hint {
             display: flex !important;
           }
@@ -464,7 +468,7 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
                             <circle cx="12" cy="12" r="10" />
                           </svg>
                         )}
-                        <span style={{
+                        <span className="price-option-text" style={{
                           fontFamily: 'var(--font-body)',
                           color: opt.permission === 'Included' ? '#34455f' : opt.permission === 'Not Included' ? '#7b8798' : '#64748b',
                           fontSize: '0.9rem',
