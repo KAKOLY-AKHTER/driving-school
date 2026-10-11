@@ -5069,11 +5069,19 @@ app.get('/api/admin/instructors/:instructorId/slots', async (req, res) => {
       if (matchingTimeIds.length) query.$or.push({ fromHour: { $in: matchingTimeIds } }, { toHour: { $in: matchingTimeIds } })
       if (matchingLocationIds.length) query.$or.push({ locationId: { $in: matchingLocationIds } })
     }
-    const [items, total] = await Promise.all([
+    // Current course assignments live on the website student account, while
+    // legacy slots live in their own archive. Return both here so an admin can
+    // see the students assigned to an instructor even when that instructor has
+    // no imported legacy slots (for example, a newly-created instructor).
+    const [items, total, assignedAccounts] = await Promise.all([
       legacyInstructorSlotsCol.find(query, {
         projection: { _id: 0, legacySlotId: 1, legacyInstructorId: 1, legacyZoneId: 1, slotDate: 1, locationId: 1, insertedAt: 1, active: 1, fromHour: 1, toHour: 1, breakHours: 1, autismSupport: 1 },
       }).sort({ slotDate: -1, legacySlotId: -1 }).skip((page - 1) * limit).limit(limit).toArray(),
       legacyInstructorSlotsCol.countDocuments(query),
+      usersCol.find(
+        { courses: { $elemMatch: { instructorId } } },
+        { projection: { _id: 0, uid: 1, displayName: 1, name: 1, firstName: 1, lastName: 1, username: 1, email: 1, phone: 1, courses: 1 } },
+      ).limit(500).toArray(),
     ])
     const timingIds = [...new Set(items.flatMap(item => [cleanText(item.fromHour, 40), cleanText(item.toHour, 40)]).filter(Boolean))]
     const timingRecords = timingIds.length
@@ -5089,8 +5097,28 @@ app.get('/api/admin/instructors/:instructorId/slots', async (req, res) => {
       const zip = cleanText(record.zipCode, 20)
       return [cleanText(record.legacyCityId, 80), [city, zip].filter(Boolean).join(' · ')]
     }))
+    const assignedStudents = assignedAccounts.flatMap(account => {
+      const studentName = cleanText(
+        account.displayName || account.name || [account.firstName, account.lastName].filter(Boolean).join(' ') || account.username || account.email,
+        160,
+      ) || 'Student'
+      return (Array.isArray(account.courses) ? account.courses : [])
+        .filter(course => cleanText(course?.instructorId, 80) === instructorId)
+        .map((course, index) => ({
+          key: cleanText(course?.enrollmentId, 160) || `${cleanText(account.uid, 160)}-${cleanText(course?.id, 120)}-${index}`,
+          uid: cleanText(account.uid, 160),
+          studentName,
+          email: cleanText(account.email, 320),
+          phone: cleanText(account.phone, 40),
+          courseTitle: cleanText(course?.title || course?.planName || course?.id, 200) || 'Course not recorded',
+          enrollmentStatus: cleanText(course?.status, 60) || 'Enrolled',
+          enrolledAt: cleanText(course?.enrolledAt, 80),
+          location: [cleanText(course?.city, 120), cleanText(course?.cityZip, 24)].filter(Boolean).join(', '),
+        }))
+    }).sort((left, right) => String(right.enrolledAt || '').localeCompare(String(left.enrolledAt || '')) || left.studentName.localeCompare(right.studentName))
     res.json({
       items: items.map(item => ({ ...item, fromTimeLabel: timeLabels.get(cleanText(item.fromHour, 40)) || '', toTimeLabel: timeLabels.get(cleanText(item.toHour, 40)) || '', locationLabel: locationLabels.get(cleanText(item.locationId, 80)) || '' })),
+      assignedStudents,
       total,
       page,
       limit,
