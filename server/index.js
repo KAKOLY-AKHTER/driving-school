@@ -5005,12 +5005,23 @@ app.get('/api/admin/instructors/:instructorId/slots-report', async (req, res) =>
     const monthStart = `${month}-01`
     const monthEnd = `${month}-${String(new Date(year, monthNumber, 0).getDate()).padStart(2, '0')}`
     const query = { legacyInstructorId: instructorId, slotDate: { $gte: monthStart, $lte: monthEnd } }
-    if (locationId) query.locationId = locationId
+    // Current website booking locations are stored as readable labels rather
+    // than legacy city IDs.  Keep that filter separate from the archive query.
+    const currentLocationLabel = locationId.startsWith('current:') ? locationId.slice('current:'.length).trim() : ''
+    if (locationId && !currentLocationLabel) query.locationId = locationId
     if (zoneId) query.legacyZoneId = zoneId
 
-    const items = await legacyInstructorSlotsCol.find(query, {
+    const [items, assignedAccounts] = await Promise.all([
+      legacyInstructorSlotsCol.find(query, {
       projection: { _id: 0, legacySlotId: 1, legacyZoneId: 1, slotDate: 1, locationId: 1, active: 1, fromHour: 1, toHour: 1, breakHours: 1, autismSupport: 1 },
-    }).sort({ slotDate: 1, fromHour: 1, legacySlotId: 1 }).limit(1000).toArray()
+      }).sort({ slotDate: 1, fromHour: 1, legacySlotId: 1 }).limit(1000).toArray(),
+      // New instructors do not have imported archive slots. Their report is
+      // built from the students and bookings assigned on the current site.
+      usersCol.find(
+        { courses: { $elemMatch: { instructorId } } },
+        { projection: { _id: 0, uid: 1, displayName: 1, name: 1, firstName: 1, lastName: 1, username: 1, email: 1, courses: 1 } },
+      ).limit(500).toArray(),
+    ])
     const timingIds = [...new Set(items.flatMap(item => [cleanText(item.fromHour, 40), cleanText(item.toHour, 40)]).filter(Boolean))]
     const locationIds = [...new Set(items.map(item => cleanText(item.locationId, 80)).filter(Boolean))]
     const [timingRecords, locationRecords] = await Promise.all([
@@ -5022,14 +5033,79 @@ app.get('/api/admin/instructors/:instructorId/slots-report', async (req, res) =>
       cleanText(record.legacyCityId, 80),
       [cleanText(record.cityName, 120), cleanText(record.zipCode, 20)].filter(Boolean).join(' - '),
     ]))
+
+    const assignedCourses = assignedAccounts.flatMap(account => {
+      const studentName = cleanText(
+        account.displayName || account.name || [account.firstName, account.lastName].filter(Boolean).join(' ') || account.username || account.email,
+        160,
+      ) || 'Student'
+      return (Array.isArray(account.courses) ? account.courses : [])
+        .filter(course => cleanText(course?.instructorId, 80) === instructorId)
+        .map((course, index) => ({
+          key: cleanText(course?.enrollmentId, 160) || `${cleanText(account.uid, 160)}-${cleanText(course?.id, 120)}-${index}`,
+          enrollmentId: cleanText(course?.enrollmentId, 160),
+          uid: cleanText(account.uid, 160),
+          studentName,
+          studentEmail: cleanText(account.email, 320),
+          courseTitle: cleanText(course?.title || course?.planName || course?.id, 200) || 'Course not recorded',
+          courseId: cleanText(course?.id, 120),
+          location: [cleanText(course?.city, 120), cleanText(course?.cityZip, 24)].filter(Boolean).join(', '),
+        }))
+    })
+    const bookingFilters = assignedCourses.map(course => (
+      course.enrollmentId
+        ? { userId: course.uid, enrollmentId: course.enrollmentId }
+        : { userId: course.uid, courseId: course.courseId }
+    )).filter(filter => filter.userId && (filter.enrollmentId || filter.courseId))
+    const currentBookings = bookingFilters.length
+      ? await bookingsCol.find(
+        { date: { $gte: monthStart, $lte: monthEnd }, $or: bookingFilters },
+        { projection: { _id: 1, userId: 1, enrollmentId: 1, courseId: 1, date: 1, timeSlot: 1, time: 1, status: 1, city: 1, location: 1, pickupAddress: 1, createdAt: 1, updatedAt: 1 } },
+      ).sort({ date: 1, timeSlot: 1, createdAt: 1 }).limit(2000).toArray()
+      : []
+    const currentItems = currentBookings.flatMap(booking => {
+      const course = assignedCourses.find(candidate => candidate.uid === cleanText(booking.userId, 160) && (
+        candidate.enrollmentId
+          ? candidate.enrollmentId === cleanText(booking.enrollmentId, 160)
+          : candidate.courseId === cleanText(booking.courseId, 120)
+      ))
+      if (!course) return []
+      const locationLabel = cleanText(booking.location || booking.city || booking.pickupAddress, 500) || course.location || 'Location not recorded'
+      const normalizedBookingLocation = locationLabel.toLowerCase().replace(/\s+/g, '')
+      const normalizedLocationFilter = currentLocationLabel.toLowerCase().replace(/\s+/g, '')
+      if (currentLocationLabel && normalizedBookingLocation !== normalizedLocationFilter) return []
+      const bookingStatus = cleanText(booking.status, 60) || 'Scheduled'
+      const unavailableStatuses = new Set(['cancelled', 'canceled', 'refunded', 'expired', 'completed', 'no show', 'no-show'])
+      return [{
+        reportItemId: `booking:${String(booking._id || course.key)}`,
+        source: 'current-booking',
+        legacySlotId: '',
+        bookingId: String(booking._id || ''),
+        slotDate: cleanText(booking.date, 20),
+        locationId: `current:${locationLabel}`,
+        locationLabel,
+        fromTimeLabel: cleanText(booking.timeSlot || booking.time, 80) || 'Time not recorded',
+        toTimeLabel: '',
+        active: !unavailableStatuses.has(bookingStatus.toLowerCase()),
+        availabilityLabel: unavailableStatuses.has(bookingStatus.toLowerCase()) ? 'INACTIVE' : 'ACTIVE',
+        bookingStatus,
+        studentName: course.studentName,
+        studentEmail: course.studentEmail,
+        courseTitle: course.courseTitle,
+        insertedAt: cleanText(booking.createdAt || booking.updatedAt, 80),
+      }]
+    })
+    const legacyItems = items.map(item => ({
+      ...item,
+      reportItemId: `legacy:${cleanText(item.legacySlotId, 80)}`,
+      source: 'legacy-slot',
+      fromTimeLabel: timeLabels.get(cleanText(item.fromHour, 40)) || '',
+      toTimeLabel: timeLabels.get(cleanText(item.toHour, 40)) || '',
+      locationLabel: locationLabels.get(cleanText(item.locationId, 80)) || '',
+    }))
     res.json({
       month,
-      items: items.map(item => ({
-        ...item,
-        fromTimeLabel: timeLabels.get(cleanText(item.fromHour, 40)) || '',
-        toTimeLabel: timeLabels.get(cleanText(item.toHour, 40)) || '',
-        locationLabel: locationLabels.get(cleanText(item.locationId, 80)) || '',
-      })),
+      items: [...legacyItems, ...currentItems].sort((left, right) => String(left.slotDate || '').localeCompare(String(right.slotDate || '')) || String(left.fromTimeLabel || '').localeCompare(String(right.fromTimeLabel || ''))),
     })
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message })
