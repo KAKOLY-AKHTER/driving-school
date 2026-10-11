@@ -650,22 +650,32 @@ const normalizeLocationKey = (value) => cleanText(value, 120)
   .replace(/[^a-z0-9]+/g, ' ')
   .trim()
 
+// A city can legitimately contain more than one ZIP code.  Keep the city
+// normalisation separate from the persisted identity so "San Ramon 94582"
+// and "San Ramon 94583" remain two selectable booking locations.
+const bookingLocationKey = (name, zipCode = '') => {
+  const cityKey = normalizeLocationKey(name)
+  const zip = cleanText(zipCode, 10)
+  return zip ? `${cityKey}::${zip}` : cityKey
+}
+
 function sanitizeLocation(value) {
   if (!isPlainObject(value)) throw new HttpError(400, 'A valid booking location is required.')
   const name = cleanText(value.name, 120)
     .replace(/\s+/g, ' ')
     .toLowerCase()
     .replace(/(^|[\s'-])([a-z])/g, (_match, boundary, letter) => `${boundary}${letter.toUpperCase()}`)
-  const key = normalizeLocationKey(name)
   const zipCode = cleanText(value.zipCode, 10)
+  const cityKey = normalizeLocationKey(name)
+  const key = bookingLocationKey(name, zipCode)
   const rawDistance = cleanText(value.distance, 20).toLowerCase()
   const distance = rawDistance === 'near' ? 'Near' : rawDistance === 'long' ? 'Long' : ''
-  if (!name || !key) throw new HttpError(400, 'City name is required.')
+  if (!name || !cityKey) throw new HttpError(400, 'City name is required.')
   if (zipCode && !/^\d{5}(?:-\d{4})?$/.test(zipCode)) {
     throw new HttpError(400, 'ZIP code must contain 5 digits or use ZIP+4 format.')
   }
   if (!distance) throw new HttpError(400, 'Package distance must be Near or Long.')
-  return { name, key, zipCode, distance, order: cleanInteger(value.order, 0, 0, 10_000) }
+  return { name, cityKey, key, zipCode, distance, order: cleanInteger(value.order, 0, 0, 10_000) }
 }
 
 function sanitizeInstructorProfile(value) {
@@ -1909,12 +1919,29 @@ async function pricingTierById(courseId, session) {
   return pricingCol.findOne({ id: { $in: candidates } }, { session })
 }
 
-async function bookingLocationByName(name, session) {
-  const key = normalizeLocationKey(name)
-  if (!key) throw new HttpError(400, 'Please select a booking city.')
-  const location = await locationsCol.findOne({ key }, { session })
-  if (!location) throw new HttpError(400, 'The selected booking city is not available.')
-  return location
+async function bookingLocationByName(name, zipCode = '', session) {
+  const cityKey = normalizeLocationKey(name)
+  const zip = cleanText(zipCode, 10)
+  if (!cityKey) throw new HttpError(400, 'Please select a booking city.')
+
+  if (zip) {
+    const location = await locationsCol.findOne({
+      $or: [
+        { key: bookingLocationKey(name, zip) },
+        // Supports any pending carts created before City + ZIP identities.
+        { key: cityKey, zipCode: zip },
+      ],
+    }, { session })
+    if (location) return location
+    throw new HttpError(400, 'The selected booking city and ZIP code are not available.')
+  }
+
+  const matches = await locationsCol.find({
+    $or: [{ cityKey }, { key: cityKey }],
+  }, { session }).limit(2).toArray()
+  if (matches.length === 1) return matches[0]
+  if (matches.length > 1) throw new HttpError(400, 'Please select the city together with its ZIP code.')
+  throw new HttpError(400, 'The selected booking city is not available.')
 }
 
 function pricingForBookingLocation(tier, location) {
@@ -3449,7 +3476,7 @@ app.post('/api/users/:uid/cart', async (req, res) => {
       if (purchaseOnly && slots.length) throw new HttpError(400, 'A package-only purchase cannot include lesson times.')
       const customDmvAppointment = slots.length > 0 && isDmvRentalTier(tier) && slots.every(slot => isCustomAppointmentTime(slot.timeSlot))
       if (!purchaseOnly) await assertSlotsOpenForBooking(slots, session, 409, { dateAvailabilityOnly: customDmvAppointment })
-      const bookingLocation = purchaseOnly ? null : await bookingLocationByName(req.body?.city, session)
+      const bookingLocation = purchaseOnly ? null : await bookingLocationByName(req.body?.city, req.body?.cityZip, session)
       const locationPrice = pricingForBookingLocation(tier, bookingLocation)
       const user = await usersCol.findOne({ uid }, { session, projection: { courses: 1 } })
       const courses = user?.courses || []
@@ -3618,7 +3645,7 @@ async function processCartCheckout(req, { quoteOnly = false, couponCode = '', co
         const slots = pickupSlotsFromCourse(item, tier)
         if (purchaseOnly && slots.length) throw new HttpError(409, 'A package-only purchase cannot include lesson times.')
         const customDmvAppointment = slots.length > 0 && isDmvRentalTier(tier) && slots.every(slot => isCustomAppointmentTime(slot.timeSlot))
-        const bookingLocation = purchaseOnly ? null : await bookingLocationByName(item.city, session)
+        const bookingLocation = purchaseOnly ? null : await bookingLocationByName(item.city, item.cityZip, session)
         const locationPrice = pricingForBookingLocation(tier, bookingLocation)
         const requestedEnrollmentId = cleanText(item.enrollmentId, 160)
         const repeatableCertificate = isDuplicateCertificatePlan(courseId)
@@ -6562,7 +6589,7 @@ app.post('/api/admin/locations', async (req, res) => {
     const result = await locationsCol.insertOne(doc)
     res.status(201).json({ ok: true, location: { ...doc, _id: result.insertedId } })
   } catch (error) {
-    if (isDuplicateKey(error)) return res.status(409).json({ error: 'This city already exists.' })
+    if (isDuplicateKey(error)) return res.status(409).json({ error: 'This city and ZIP code already exist.' })
     if (error.status) return res.status(error.status).json({ error: error.message })
     sendServerError(res, error, 'Booking location creation failed')
   }
@@ -6580,7 +6607,7 @@ app.put('/api/admin/locations/:id', async (req, res) => {
     if (!result) return res.status(404).json({ error: 'Location not found.' })
     res.json({ ok: true, location: result })
   } catch (error) {
-    if (isDuplicateKey(error)) return res.status(409).json({ error: 'This city already exists.' })
+    if (isDuplicateKey(error)) return res.status(409).json({ error: 'This city and ZIP code already exist.' })
     if (error.status) return res.status(error.status).json({ error: error.message })
     sendServerError(res, error, 'Booking location update failed')
   }
@@ -7170,6 +7197,10 @@ const DEFAULT_LOCATIONS = [
   ['Fremont', '94536'], ['Newark', '94560'], ['Hayward', '94541'],
   ['Union City', '94587'], ['San Lorenzo', '94580'], ['San Leandro', '94577'],
   ['Castro Valley', '94546'], ['Ashland', '94541'], ['Oakland', '94612'],
+  ['Livermore', '94550'], ['Livermore', '94551'], ['Dublin', '94568'],
+  ['San Ramon', '94582'], ['San Ramon', '94583'], ['Pleasanton', '94566'],
+  ['Pleasanton', '94568'], ['Pleasanton', '94588'], ['Alamo', '94507'],
+  ['Danville', '94506'], ['Danville', '94526'],
 ].map(([name, zipCode], index) => ({ name, zipCode, distance: 'Near', order: index + 1 }))
   .concat([
     ['San Jose', '95112'], ['Santa Clara', '95050'], ['Sunnyvale', '94086'],
@@ -7178,7 +7209,7 @@ const DEFAULT_LOCATIONS = [
     ['San Francisco', '94103'], ['Millbrae', '94030'], ['San Bruno', '94066'],
     ['Burlingame', '94010'], ['Hillsborough', '94010'], ['South San Francisco', '94080'],
     ['Foster City', '94404'], ['Brisbane', '94005'], ['Belmont', '94002'],
-    ['Alameda', '94501'], ['Pleasanton', '94566'], ['San Ramon', '94582'], ['Milpitas', '95035'],
+    ['Alameda', '94501'], ['Milpitas', '95035'], ['Diablo', '94528'],
   ].map(([name, zipCode], index) => ({ name, zipCode, distance: 'Long', order: index + 10 })))
 
 const DEFAULT_SOCIALS = [
@@ -7645,14 +7676,14 @@ async function seedLocations() {
     return [
       {
         updateOne: {
-          filter: { key: doc.key },
+          filter: { cityKey: doc.cityKey, zipCode: doc.zipCode },
           update: { $setOnInsert: { ...doc, createdAt, updatedAt: createdAt } },
           upsert: true,
         },
       },
       {
         updateOne: {
-          filter: { key: doc.key, $or: [{ zipCode: { $exists: false } }, { zipCode: '' }, { zipCode: null }] },
+          filter: { cityKey: doc.cityKey, $or: [{ zipCode: { $exists: false } }, { zipCode: '' }, { zipCode: null }] },
           update: { $set: { zipCode: doc.zipCode, updatedAt: createdAt } },
         },
       },

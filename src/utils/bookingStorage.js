@@ -77,6 +77,7 @@ export const normalizeCartItem = (item) => {
     holdExpired: item.holdExpired === true,
     slotAllowance,
     city: cleanText(item.city, 100),
+    cityZip: cleanText(item.cityZip, 10),
     cityDistance: cleanText(item.cityDistance, 20),
     priceBasis: cleanText(item.priceBasis, 20),
     nearPrice: cleanText(item.nearPrice, 40),

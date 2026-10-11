@@ -3796,6 +3796,13 @@ export default function AdminPage() {
                       ))}
                     </div>
 
+                    <div role="note" style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', padding: '1rem 1.2rem', border: '1px solid #F6D48A', borderRadius: '14px', background: '#FFF9ED', color: '#713F12' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: '#A16207' }}>Weekend lesson hours</span>
+                      <span style={{ fontWeight: 800 }}>First appointment: 9:00 AM</span>
+                      <span aria-hidden="true" style={{ color: '#D4A72C' }}>•</span>
+                      <span style={{ fontWeight: 800 }}>Last appointment start: 4:30 PM</span>
+                    </div>
+
                     <div style={cardStyle}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '.65rem', flexWrap: 'wrap' }}><h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.refund} Refunds ({refundTotal})</h3><button onClick={() => { setRefundForm({ Full_Name: '', Email: '', Phone: '', Course_Name: '', Amount: '', Reason: '', Status: 'pending' }); setRefundEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Refund</button></div>
