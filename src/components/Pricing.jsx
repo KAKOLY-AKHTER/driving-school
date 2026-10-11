@@ -296,18 +296,24 @@ export default function Pricing({ light = false, onEnroll = null, tiers: propTie
         }
         @media (min-width: 768px) {
           .price-scroll {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
             width: 100%;
-            column-gap: 2rem;
-            row-gap: 1.5rem;
+            gap: 1.5rem 2rem;
           }
           .price-card {
+            /* A partly filled row (one, two, or three plans) stays centered. */
+            flex: 0 0 calc((100% - 6rem) / 4);
+            margin-right: 0;
             border-radius: var(--radius-lg);
             border: 2px solid #cbd8e7;
             border-right: 2px solid #cbd8e7;
           }
           .price-card:last-child { border-right: 2px solid #cbd8e7; }
+        }
+        @media (min-width: 768px) and (max-width: 1199px) {
+          .price-card { flex-basis: calc((100% - 4rem) / 3); }
         }
         @media (max-width: 767px) {
           .price-scroll {
