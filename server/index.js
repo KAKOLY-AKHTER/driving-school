@@ -5007,6 +5007,48 @@ app.post('/api/admin/instructors', async (req, res) => {
   }
 })
 
+// Instructor contact details are shared by every enrollment assigned to that
+// instructor. Keep them on the instructor profile instead of duplicating an
+// editable email on each student's enrollment.
+app.put('/api/admin/instructors/:instructorId', async (req, res) => {
+  try {
+    const legacyInstructorId = cleanText(req.params.instructorId, 80)
+    if (!legacyInstructorId) throw new HttpError(400, 'Instructor ID is required.')
+    const profile = sanitizeInstructorProfile(req.body)
+    const existing = await legacyInstructorsCol.findOne(
+      { legacyInstructorId },
+      { projection: { source: 1, addedAt: 1, createdAt: 1 } },
+    )
+    const now = new Date().toISOString()
+    await legacyInstructorsCol.updateOne(
+      { legacyInstructorId },
+      {
+        $set: { ...profile, updatedAt: now },
+        $setOnInsert: {
+          legacyInstructorId,
+          source: existing?.source || 'admin-updated',
+          addedAt: existing?.addedAt || now,
+          createdAt: existing?.createdAt || now,
+        },
+      },
+      { upsert: true },
+    )
+    res.json({
+      ok: true,
+      item: {
+        ...profile,
+        legacyInstructorId,
+        source: existing?.source || 'admin-updated',
+        isCurrentProfile: existing?.source === 'admin-created',
+        updatedAt: now,
+      },
+    })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Instructor profile could not be updated')
+  }
+})
+
 app.get('/api/admin/instructors/:instructorId/slots-report', async (req, res) => {
   try {
     const instructorId = cleanText(req.params.instructorId, 80)

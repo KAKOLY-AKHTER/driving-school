@@ -118,6 +118,16 @@ const newInstructorForm = () => ({
   active: true,
 })
 
+const instructorFormFrom = (instructor = {}) => ({
+  displayName: instructor.displayName || '',
+  username: instructor.username || '',
+  email: instructor.email || '',
+  phone: instructor.phone || '',
+  address: instructor.address || '',
+  locationLabels: Array.isArray(instructor.locationLabels) ? instructor.locationLabels.join(', ') : (instructor.locationLabels || ''),
+  active: instructor.active !== false,
+})
+
 const normalizeStatus = (value) => String(value || '').trim().toLowerCase().replace(/[\s_-]+/g, ' ')
 
 const BOOKING_STATUS_LABELS = {
@@ -1180,6 +1190,7 @@ export default function AdminPage() {
   const [instructorScheduleFilter, setInstructorScheduleFilter] = useState('all')
   const [instructorDetails, setInstructorDetails] = useState(null)
   const [instructorCreate, setInstructorCreate] = useState(null)
+  const [instructorEdit, setInstructorEdit] = useState(null)
   const [certificateRequests, setCertificateRequests] = useState([])
   const [certificateUpdating, setCertificateUpdating] = useState('')
   const [legacyCertificateDetails, setLegacyCertificateDetails] = useState(null)
@@ -1406,6 +1417,28 @@ export default function AdminPage() {
       window.setTimeout(() => setMsg(''), 3000)
     } catch (error) {
       setInstructorCreate(current => current ? { ...current, saving: false, error: error?.message || 'The instructor profile could not be created.' } : current)
+    }
+  }
+
+  const openInstructorEdit = (instructor) => {
+    if (!instructor?.legacyInstructorId) return
+    setInstructorEdit({ instructor, form: instructorFormFrom(instructor), saving: false, error: '' })
+  }
+
+  const saveInstructorEdit = async (event) => {
+    event.preventDefault()
+    if (!instructorEdit || instructorEdit.saving) return
+    setInstructorEdit(current => ({ ...current, saving: true, error: '' }))
+    try {
+      const response = await api.adminUpdateInstructor(instructorEdit.instructor.legacyInstructorId, instructorEdit.form)
+      const updated = response?.item
+      if (!updated?.legacyInstructorId) throw new Error('The instructor profile could not be updated.')
+      setInstructors(current => current.map(item => item.legacyInstructorId === updated.legacyInstructorId ? { ...item, ...updated } : item))
+      setInstructorEdit(null)
+      setMsg(`${updated.displayName}'s instructor profile was updated.`)
+      window.setTimeout(() => setMsg(''), 3000)
+    } catch (error) {
+      setInstructorEdit(current => current ? { ...current, saving: false, error: error?.message || 'The instructor profile could not be updated.' } : current)
     }
   }
 
@@ -3241,7 +3274,7 @@ export default function AdminPage() {
                             <td style={tdStyle}><strong style={{ color: '#087443' }}>{Number(instructor.activeSlots || 0).toLocaleString()}</strong><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>of {Number(instructor.totalSlots || 0).toLocaleString()} imported slots</p></td>
                             <td style={tdStyle}><div>{formatDateDMY(instructor.firstSlotDate)}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>to {formatDateDMY(instructor.lastSlotDate)}</p></td>
                             <td style={tdStyle}>{(instructor.locationLabels || []).length ? instructor.locationLabels.join(', ') : 'Not recorded'}</td>
-                            <td style={tdStyle}><button type="button" onClick={() => openInstructorDetails(instructor)} style={{ minHeight: '36px', padding: '.45rem .72rem', border: `1px solid ${SKY_BLUE}`, borderRadius: '9px', background: '#fff', color: SKY_BLUE, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap' }}>View schedule data</button></td>
+                            <td style={tdStyle}><div style={{ display: 'flex', gap: '.45rem', flexWrap: 'wrap' }}><button type="button" onClick={() => openInstructorDetails(instructor)} style={{ minHeight: '36px', padding: '.45rem .72rem', border: `1px solid ${SKY_BLUE}`, borderRadius: '9px', background: '#fff', color: SKY_BLUE, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap' }}>View schedule data</button><button type="button" onClick={() => openInstructorEdit(instructor)} style={{ minHeight: '36px', padding: '.45rem .72rem', border: `1px solid ${SKY_BLUE}`, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap' }}>Edit profile</button></div></td>
                           </tr>)}
                           {!instructorsLoading && instructors.length === 0 && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>No instructor schedule data has been imported yet.</td></tr>}
                           {!instructorsLoading && instructors.length > 0 && filteredInstructors.length === 0 && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>No instructors match the current search and filter.</td></tr>}
@@ -3714,8 +3747,9 @@ export default function AdminPage() {
                                 || course.slotAllowance?.maximum != null || course.slotUsage?.maximum != null || course.slotMaximum != null
                               const enrolledDate = course.enrolledAt ? new Date(course.enrolledAt) : null
                               const assignedInstructor = assignableInstructors.find(instructor => instructor.legacyInstructorId === course.instructorId)
+                              const instructorProfile = instructors.find(instructor => instructor.legacyInstructorId === course.instructorId)
                               const instructorContact = assignedInstructor ? [assignedInstructor.phone, assignedInstructor.email].filter(Boolean).join(' · ') : ''
-                              const instructorCell = <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><div style={{ display: 'grid', gap: '.28rem' }}><select aria-label={`Assign an instructor to ${adminUserName(account)}`} value={course.instructorId || ''} disabled={Boolean(enrollmentInstructorUpdating) || instructorsLoading} onChange={event => requestEnrollmentInstructorChange({ account, course, key }, event.target.value)} style={{ minWidth: '175px', padding: '.45rem .62rem', border: '1px solid #BFD2E8', borderRadius: '9px', background: '#fff', color: '#1E3A5F', fontWeight: 800, cursor: enrollmentInstructorUpdating || instructorsLoading ? 'wait' : 'pointer' }}><option value="">Unassigned</option>{course.instructorId && !assignableInstructors.some(instructor => instructor.legacyInstructorId === course.instructorId) && <option value={course.instructorId}>{course.instructorName || 'Previously assigned'}</option>}{assignableInstructors.map(instructor => <option key={instructor.legacyInstructorId} value={instructor.legacyInstructorId}>{instructor.displayName}</option>)}</select>{course.instructorId && <small style={{ color: '#64748B', fontSize: '.72rem', maxWidth: '210px', whiteSpace: 'normal' }}>{instructorContact || 'Contact not recorded'}</small>}{course.instructorId && <button type="button" onClick={() => requestEnrollmentCalendarSync({ account, course, key })} disabled={Boolean(enrollmentCalendarSyncing)} style={{ justifySelf: 'start', border: `1px solid ${enrollmentCalendarSyncing === key ? '#CBD5E1' : SKY_BLUE}`, borderRadius: '7px', background: enrollmentCalendarSyncing === key ? '#E2E8F0' : SKY_BLUE, color: enrollmentCalendarSyncing === key ? '#64748B' : '#fff', padding: '.38rem .62rem', fontFamily: 'var(--font-mono)', fontSize: '.66rem', fontWeight: 800, letterSpacing: '.04em', cursor: enrollmentCalendarSyncing ? 'wait' : 'pointer', boxShadow: enrollmentCalendarSyncing === key ? 'none' : '0 3px 8px rgba(7,85,174,.22)' }}>{enrollmentCalendarSyncing === key ? 'SYNCING...' : 'SYNC TO CALENDAR'}</button>}</div></td>
+                              const instructorCell = <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><div style={{ display: 'grid', gap: '.28rem' }}><select aria-label={`Assign an instructor to ${adminUserName(account)}`} value={course.instructorId || ''} disabled={Boolean(enrollmentInstructorUpdating) || instructorsLoading} onChange={event => requestEnrollmentInstructorChange({ account, course, key }, event.target.value)} style={{ minWidth: '175px', padding: '.45rem .62rem', border: '1px solid #BFD2E8', borderRadius: '9px', background: '#fff', color: '#1E3A5F', fontWeight: 800, cursor: enrollmentInstructorUpdating || instructorsLoading ? 'wait' : 'pointer' }}><option value="">Unassigned</option>{course.instructorId && !assignableInstructors.some(instructor => instructor.legacyInstructorId === course.instructorId) && <option value={course.instructorId}>{course.instructorName || 'Previously assigned'}</option>}{assignableInstructors.map(instructor => <option key={instructor.legacyInstructorId} value={instructor.legacyInstructorId}>{instructor.displayName}</option>)}</select>{course.instructorId && <small style={{ color: '#64748B', fontSize: '.72rem', maxWidth: '210px', whiteSpace: 'normal' }}>{instructorContact || 'Contact not recorded'}</small>}{instructorProfile && <button type="button" onClick={() => openInstructorEdit(instructorProfile)} style={{ justifySelf: 'start', border: `1px solid ${SKY_BLUE}`, borderRadius: '7px', background: '#fff', color: SKY_BLUE, padding: '.3rem .5rem', fontFamily: 'var(--font-mono)', fontSize: '.64rem', fontWeight: 800, letterSpacing: '.03em', cursor: 'pointer' }}>EDIT INSTRUCTOR</button>}{course.instructorId && <button type="button" onClick={() => requestEnrollmentCalendarSync({ account, course, key })} disabled={Boolean(enrollmentCalendarSyncing)} style={{ justifySelf: 'start', border: `1px solid ${enrollmentCalendarSyncing === key ? '#CBD5E1' : SKY_BLUE}`, borderRadius: '7px', background: enrollmentCalendarSyncing === key ? '#E2E8F0' : SKY_BLUE, color: enrollmentCalendarSyncing === key ? '#64748B' : '#fff', padding: '.38rem .62rem', fontFamily: 'var(--font-mono)', fontSize: '.66rem', fontWeight: 800, letterSpacing: '.04em', cursor: enrollmentCalendarSyncing ? 'wait' : 'pointer', boxShadow: enrollmentCalendarSyncing === key ? 'none' : '0 3px 8px rgba(7,85,174,.22)' }}>{enrollmentCalendarSyncing === key ? 'SYNCING...' : 'SYNC TO CALENDAR'}</button>}</div></td>
                               return (
                                 <tr key={key}>
                                   <td style={tdStyle}>
@@ -4907,6 +4941,28 @@ export default function AdminPage() {
             </div>
             {instructorCreate.error && <p role="alert" style={{ margin: '1rem 0 0', color: '#B91C1C', fontWeight: 750 }}>{instructorCreate.error}</p>}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.65rem', flexWrap: 'wrap', marginTop: '1.25rem' }}><button type="button" disabled={instructorCreate.saving} onClick={() => setInstructorCreate(null)} style={{ padding: '.65rem .95rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#334155', fontWeight: 800, cursor: instructorCreate.saving ? 'wait' : 'pointer' }}>Cancel</button><button type="submit" disabled={instructorCreate.saving} style={{ padding: '.65rem .95rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 900, cursor: instructorCreate.saving ? 'wait' : 'pointer', opacity: instructorCreate.saving ? .7 : 1 }}>{instructorCreate.saving ? 'Adding…' : 'Add instructor'}</button></div>
+          </form>
+        </div>
+      )}
+
+      {instructorEdit && (
+        <div className="admin-modal-backdrop" role="presentation" onClick={event => { if (event.target === event.currentTarget && !instructorEdit.saving) setInstructorEdit(null) }} style={{ position: 'fixed', inset: 0, zIndex: 15000, display: 'grid', placeItems: 'center', padding: '1rem', background: 'rgba(10,22,40,.68)', backdropFilter: 'blur(8px)' }}>
+          <form onSubmit={saveInstructorEdit} role="dialog" aria-modal="true" aria-labelledby="edit-instructor-title" style={{ width: 'min(100%, 720px)', maxHeight: '92vh', overflowY: 'auto', padding: '1.5rem', borderRadius: '16px', background: '#fff', boxShadow: '0 30px 90px rgba(10,22,40,.32)' }}>
+            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '1rem' }}>
+              <div><h2 id="edit-instructor-title" style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.45rem' }}>Edit Instructor</h2><p style={{ margin: '.35rem 0 0', color: '#526C88', lineHeight: 1.5 }}>Update the instructor's email, phone, service locations, or active status. This does not change student enrollment details.</p></div>
+              <button type="button" aria-label="Close edit instructor" disabled={instructorEdit.saving} onClick={() => setInstructorEdit(null)} style={{ width: '40px', height: '40px', border: '1px solid #CBD5E1', borderRadius: '10px', background: '#fff', color: '#334155', fontSize: '1.45rem', cursor: instructorEdit.saving ? 'wait' : 'pointer' }}>&times;</button>
+            </header>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '.9rem' }}>
+              <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Instructor name *<input autoFocus required maxLength="160" value={instructorEdit.form.displayName} onChange={event => setInstructorEdit(current => ({ ...current, form: { ...current.form, displayName: event.target.value } }))} style={inputStyle} /></label>
+              <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Username<input maxLength="160" value={instructorEdit.form.username} onChange={event => setInstructorEdit(current => ({ ...current, form: { ...current.form, username: event.target.value } }))} style={inputStyle} /></label>
+              <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Email<input type="email" maxLength="320" value={instructorEdit.form.email} onChange={event => setInstructorEdit(current => ({ ...current, form: { ...current.form, email: event.target.value } }))} style={inputStyle} /></label>
+              <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Phone<input type="tel" maxLength="40" value={instructorEdit.form.phone} onChange={event => setInstructorEdit(current => ({ ...current, form: { ...current.form, phone: event.target.value } }))} style={inputStyle} /></label>
+              <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800, gridColumn: '1 / -1' }}>Service locations <span style={{ color: '#64748B', fontSize: '.76rem', fontWeight: 600 }}>Separate multiple locations with commas.</span><input maxLength="1000" value={instructorEdit.form.locationLabels} onChange={event => setInstructorEdit(current => ({ ...current, form: { ...current.form, locationLabels: event.target.value } }))} style={inputStyle} /></label>
+              <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800, gridColumn: '1 / -1' }}>Address<textarea rows="3" maxLength="500" value={instructorEdit.form.address} onChange={event => setInstructorEdit(current => ({ ...current, form: { ...current.form, address: event.target.value } }))} style={{ ...inputStyle, resize: 'vertical' }} /></label>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', color: '#334155', fontWeight: 800, gridColumn: '1 / -1', cursor: 'pointer' }}><input type="checkbox" checked={instructorEdit.form.active} onChange={event => setInstructorEdit(current => ({ ...current, form: { ...current.form, active: event.target.checked } }))} /> Active instructor</label>
+            </div>
+            {instructorEdit.error && <p role="alert" style={{ margin: '1rem 0 0', color: '#B91C1C', fontWeight: 750 }}>{instructorEdit.error}</p>}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.65rem', flexWrap: 'wrap', marginTop: '1.25rem' }}><button type="button" disabled={instructorEdit.saving} onClick={() => setInstructorEdit(null)} style={{ padding: '.65rem .95rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#334155', fontWeight: 800, cursor: instructorEdit.saving ? 'wait' : 'pointer' }}>Cancel</button><button type="submit" disabled={instructorEdit.saving} style={{ padding: '.65rem .95rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 900, cursor: instructorEdit.saving ? 'wait' : 'pointer', opacity: instructorEdit.saving ? .7 : 1 }}>{instructorEdit.saving ? 'Saving…' : 'Save instructor'}</button></div>
           </form>
         </div>
       )}
