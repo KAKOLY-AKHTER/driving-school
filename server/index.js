@@ -1257,7 +1257,7 @@ async function googleCalendarEventBody(booking) {
   const plan = cleanText(course?.title || course?.planName || booking?.courseTitle || booking?.courseName || booking?.planName, 180) || 'Legacy / Unassigned'
   const city = cleanText(course?.city || course?.location || booking?.location, 200)
   const cityZip = cleanText(course?.cityZip || booking?.cityZip, 10)
-  const location = city ? `${city}, California${cityZip ? ` ${cityZip}` : ''}` : ''
+  const location = city ? `${city}${cityZip ? `, ${cityZip}` : ''}` : ''
   const status = canonicalAdminBookingStatus(booking)
   const statusMeta = {
     scheduled: { label: 'Pending', title: '⏳ Pending Lesson', colorId: '5' },

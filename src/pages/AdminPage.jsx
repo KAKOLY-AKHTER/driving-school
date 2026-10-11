@@ -1964,7 +1964,7 @@ export default function AdminPage() {
           enrolledAt: formatDateDMY(course.enrolledAt),
           paymentDate: formatDateDMY(course.paidAt || course.enrolledAt),
           issuedAt: formatDateDMY(new Date()),
-          location: course.city ? `${course.city}${course.cityZip ? `, CA ${course.cityZip}` : ''}` : 'Not recorded', lessonSlots: Number.isFinite(used) && Number.isFinite(maximum) ? `${used} / ${maximum}` : 'Not recorded',
+          location: course.city ? `${course.city}${course.cityZip ? `, ${course.cityZip}` : ''}` : 'Not recorded', lessonSlots: Number.isFinite(used) && Number.isFinite(maximum) ? `${used} / ${maximum}` : 'Not recorded',
           couponCode: course.couponCode,
         },
       })
@@ -3763,7 +3763,7 @@ export default function AdminPage() {
                                   <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{account.phone || 'Not recorded'}</td>
                                   <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}><select aria-label={`Change enrollment status for ${adminUserName(account)}`} value={enrollmentStatus} disabled={Boolean(enrollmentStatusUpdating)} onChange={event => updateEnrollmentStatus({ account, course, key }, event.target.value)} style={{ minWidth: '145px', padding: '.45rem .62rem', border: `1px solid ${statusMeta.color}55`, borderRadius: '9px', background: statusMeta.background, color: statusMeta.color, fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.05em', textTransform: 'uppercase', fontWeight: 800, cursor: enrollmentStatusUpdating ? 'wait' : 'pointer' }}><option value="enrolled">Enrolled</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></div></td>
                                   <td style={{ ...tdStyle, minWidth: '240px', whiteSpace: 'nowrap', fontWeight: 700 }}>{course.title || COURSE_MAP[course.id] || `Course ${course.id || ''}`}</td>
-                                  <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{course.city ? <>{course.city}{course.cityZip ? `, CA ${course.cityZip}` : ''}</> : <span title="Legacy record" style={{ color: '#64748B' }}>Not recorded</span>}{course.cityDistance ? <span style={{ display: 'block', color: '#334155', fontSize: '.78rem' }}>{locationDistanceLabel(course.cityDistance)}</span> : null}</td>
+                                  <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{course.city ? <>{course.city}{course.cityZip ? `, ${course.cityZip}` : ''}</> : <span title="Legacy record" style={{ color: '#64748B' }}>Not recorded</span>}{course.cityDistance ? <span style={{ display: 'block', color: '#334155', fontSize: '.78rem' }}>{locationDistanceLabel(course.cityDistance)}</span> : null}</td>
                                   <td style={{ ...tdStyle, fontWeight: 800 }}>{course.price || '—'}</td>
                                   <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{hasSlotRecord ? (Number.isFinite(used) && Number.isFinite(maximum) ? `${used} / ${maximum}` : Number.isFinite(used) ? used : 'Not recorded') : <span title="Legacy record" style={{ color: '#64748B' }}>Not recorded</span>}</td>
                                   <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{enrolledDate && !Number.isNaN(enrolledDate.getTime()) ? enrolledDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
@@ -3794,13 +3794,6 @@ export default function AdminPage() {
                           <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#334155', fontWeight: 600 }}>{s.label}</div>
                         </div>
                       ))}
-                    </div>
-
-                    <div role="note" style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', padding: '1rem 1.2rem', border: '1px solid #F6D48A', borderRadius: '14px', background: '#FFF9ED', color: '#713F12' }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: '#A16207' }}>Weekend lesson hours</span>
-                      <span style={{ fontWeight: 800 }}>First appointment: 9:00 AM</span>
-                      <span aria-hidden="true" style={{ color: '#D4A72C' }}>•</span>
-                      <span style={{ fontWeight: 800 }}>Last appointment start: 4:30 PM</span>
                     </div>
 
                     <div style={cardStyle}>
@@ -3889,6 +3882,13 @@ export default function AdminPage() {
                           </div>
                         </div>
                       ))}
+                    </div>
+
+                    <div role="note" style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', padding: '1rem 1.2rem', border: '1px solid #F6D48A', borderRadius: '14px', background: '#FFF9ED', color: '#713F12' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase', color: '#A16207' }}>Weekend lesson hours</span>
+                      <span style={{ fontWeight: 800 }}>First appointment: 9:00 AM</span>
+                      <span aria-hidden="true" style={{ color: '#D4A72C' }}>•</span>
+                      <span style={{ fontWeight: 800 }}>Last appointment start: 4:30 PM</span>
                     </div>
 
                     <div style={cardStyle}>

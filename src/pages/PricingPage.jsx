@@ -625,7 +625,7 @@ export default function PricingPage() {
                   const group = bookingLocations.filter(item => locationDistanceLabel(item.distance) === distance)
                   return group.length ? (
                     <optgroup key={distance} label={`${distance} pickup locations`}>
-                      {group.map(item => <option key={item._id || item.key || `${item.name}-${item.zipCode}`} value={locationSelectionValue(item)}>{item.name}{item.zipCode ? `, CA ${item.zipCode}` : ''}</option>)}
+                      {group.map(item => <option key={item._id || item.key || `${item.name}-${item.zipCode}`} value={locationSelectionValue(item)}>{item.name}{item.zipCode ? `, ${item.zipCode}` : ''}</option>)}
                     </optgroup>
                   ) : null
                 })}
@@ -718,7 +718,7 @@ export default function PricingPage() {
                   <div>
                     <strong style={{ color: '#586576', fontFamily: 'var(--font-body)', fontSize: '0.8rem' }}>{selectedTier.planName}</strong>
                     <span style={{ color: '#334155', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}> ({selectionInstruction(selectedTier)} · {selectedSlots.length} selected / {selectionLimitForPlan(selectedTier)} available)</span>
-                    <div style={{ marginTop: '0.2rem', color: '#334155', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>{cityNameForSelection(selectedCity)}{zipForCity(selectedCity) ? `, CA ${zipForCity(selectedCity)}` : ''}</div>
+                    <div style={{ marginTop: '0.2rem', color: '#334155', fontFamily: 'var(--font-body)', fontSize: '0.7rem' }}>{cityNameForSelection(selectedCity)}{zipForCity(selectedCity) ? `, ${zipForCity(selectedCity)}` : ''}</div>
                     <button onClick={() => removePlan(selectedTier.id)} style={{ marginTop: '0.45rem', padding: '0.35rem 0.55rem', border: 0, borderRadius: '4px', background: '#e93647', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer' }}>Remove plan</button>
                   </div>
                   <span style={{ alignSelf: 'flex-start', padding: '0.25rem 0.55rem', borderRadius: '999px', background: planIsContinuation(selectedTier) ? '#15803D' : '#0755ae', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.7rem', fontWeight: 800 }}>{planPriceLabel(selectedTier, selectedCity)}</span>
@@ -867,7 +867,7 @@ export default function PricingPage() {
                   )
                 })}
               </div>
-              {selectedCity && <p style={{ margin: '-.75rem 0 1.25rem', color: '#0755AE', fontFamily: 'var(--font-body)', fontSize: '.82rem', fontWeight: 800 }}>{cityNameForSelection(selectedCity)}{zipForCity(selectedCity) ? `, CA ${zipForCity(selectedCity)}` : ''} is a {distanceForCity(selectedCity)} location. Your price is {planLocationPrice(selectedTier, selectedCity)}.</p>}
+              {selectedCity && <p style={{ margin: '-.75rem 0 1.25rem', color: '#0755AE', fontFamily: 'var(--font-body)', fontSize: '.82rem', fontWeight: 800 }}>{cityNameForSelection(selectedCity)}{zipForCity(selectedCity) ? `, ${zipForCity(selectedCity)}` : ''} is a {distanceForCity(selectedCity)} location. Your price is {planLocationPrice(selectedTier, selectedCity)}.</p>}
 
               <div style={{ width: '100%', height: '1px', background: '#E2EBF5', marginBottom: '1.25rem' }} />
 

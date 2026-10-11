@@ -1474,7 +1474,7 @@ export default function DashboardPage() {
                         </div>
                         <div style={{ background:'#F8FAFD', borderRadius:'12px', padding:'1rem', border:'1px solid #E8EDF4', gridColumn:'1 / -1' }}>
                           <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.3rem', fontWeight:600 }}>Location</p>
-                          <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:DARK, fontWeight:700, margin:0 }}>{courseDetail.city ? `${courseDetail.city}${courseDetail.cityZip ? `, CA ${courseDetail.cityZip}` : ''}` : 'Not recorded · Legacy record'}</p>
+                          <p style={{ fontFamily:'var(--font-body)', fontSize:'1.05rem', color:DARK, fontWeight:700, margin:0 }}>{courseDetail.city ? `${courseDetail.city}${courseDetail.cityZip ? `, ${courseDetail.cityZip}` : ''}` : 'Not recorded · Legacy record'}</p>
                         </div>
                       </div>
                       {courseDetail.enrolledAt && (
