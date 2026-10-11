@@ -2740,20 +2740,24 @@ export default function AdminPage() {
   const currentInstructorAssignmentRows = instructorDetails
     ? (instructorDetails.assignedStudents || []).flatMap(student => {
       const bookingsForCourse = Array.isArray(student.bookings) ? student.bookings : []
-      const rowFrom = ({ bookingId = '', date = '', timeWindow = '', status = student.enrollmentStatus, location = student.location, createdAt = '', isBooking = false } = {}) => ({
-        legacySlotId: bookingId || student.enrollmentId || student.key,
-        slotDate: date || student.enrolledAt,
-        locationLabel: location || student.location,
-        courseTitle: student.courseTitle,
-        timeWindow,
-        enrollmentStatus: status || 'Enrolled',
-        studentName: student.studentName,
-        studentEmail: student.email,
-        sourceDate: createdAt || student.enrolledAt,
-        active: ['enrolled', 'active', 'completed', 'scheduled', 'confirmed', 'booked'].includes(String(status || '').toLowerCase()),
-        isCurrentAssignment: true,
-        isBooking,
-      })
+      const rowFrom = ({ bookingId = '', date = '', timeWindow = '', status = student.enrollmentStatus, location = student.location, createdAt = '', isBooking = false } = {}) => {
+        const bookingStatus = status || 'Enrolled'
+        const active = !['cancelled', 'canceled', 'refunded', 'expired', 'completed'].includes(String(bookingStatus).toLowerCase())
+        return {
+          legacySlotId: bookingId || student.enrollmentId || student.key,
+          slotDate: date || student.enrolledAt,
+          locationLabel: location || student.location,
+          courseTitle: student.courseTitle,
+          timeWindow,
+          bookingStatus,
+          studentName: student.studentName,
+          studentEmail: student.email,
+          sourceDate: createdAt || student.enrolledAt,
+          active,
+          isCurrentAssignment: true,
+          isBooking,
+        }
+      }
       return bookingsForCourse.length
         ? bookingsForCourse.map(booking => rowFrom({ ...booking, isBooking: true }))
         : [rowFrom()]
@@ -2766,7 +2770,7 @@ export default function AdminPage() {
   const instructorRowMatchesFilters = row => {
     if (!instructorDetails) return false
     const search = String(instructorDetails.search || '').trim().toLowerCase()
-    const searchValues = [row.legacySlotId, row.slotDate, row.locationLabel, row.timeWindow, row.courseTitle, row.enrollmentStatus, row.studentName, row.studentEmail, row.fromTimeLabel, row.toTimeLabel]
+    const searchValues = [row.legacySlotId, row.slotDate, row.locationLabel, row.timeWindow, row.courseTitle, row.bookingStatus, row.studentName, row.studentEmail, row.fromTimeLabel, row.toTimeLabel]
     const matchesSearch = !search || searchValues.some(value => String(value || '').toLowerCase().includes(search))
     const matchesStatus = instructorDetails.status === 'all'
       || (instructorDetails.status === 'active' && row.active)
@@ -4814,7 +4818,7 @@ export default function AdminPage() {
                     <td style={tdStyle}>{formatDateDMY(slot.slotDate)}</td>
                     <td style={tdStyle}>{slot.locationLabel || 'Location not recorded'}</td>
                     <td style={tdStyle}>{slot.isBooking && slot.timeWindow ? <><strong>{slot.timeWindow}</strong><p style={{ margin: '.16rem 0 0', color: '#64748B', fontSize: '.78rem' }}>{slot.courseTitle || 'Current website course'}</p></> : <><strong>{slot.courseTitle || 'Course not recorded'}</strong><p style={{ margin: '.16rem 0 0', color: '#64748B', fontSize: '.78rem' }}>Course has no booked lesson time yet</p></>}</td>
-                    <td style={tdStyle}><span style={{ display: 'inline-flex', padding: '.28rem .6rem', borderRadius: '999px', background: slot.active ? '#ECFDF3' : '#FEF2F2', color: slot.active ? '#087443' : '#B91C1C', fontFamily: 'var(--font-mono)', fontSize: '.7rem', letterSpacing: '.05em', textTransform: 'uppercase', fontWeight: 900 }}>{slot.enrollmentStatus}</span></td>
+                    <td style={tdStyle}><span style={{ display: 'inline-flex', padding: '.28rem .6rem', borderRadius: '999px', background: slot.active ? '#ECFDF3' : '#FEF2F2', color: slot.active ? '#087443' : '#B91C1C', fontFamily: 'var(--font-mono)', fontSize: '.7rem', letterSpacing: '.05em', textTransform: 'uppercase', fontWeight: 900 }}>{slot.active ? 'Active' : 'Inactive'}</span><p style={{ margin: '.22rem 0 0', color: '#64748B', fontSize: '.76rem' }}>{slot.isBooking ? 'Booking' : 'Enrollment'}: {slot.bookingStatus}</p></td>
                     <td style={tdStyle}><strong>{slot.studentName || 'Student'}</strong><p style={{ margin: '.16rem 0 0', color: '#64748B', fontSize: '.78rem' }}>{slot.studentEmail || 'Current website'}</p>{slot.sourceDate && <p style={{ margin: '.16rem 0 0', color: '#94A3B8', fontSize: '.72rem' }}>Created {formatDateDMY(slot.sourceDate)}</p>}</td>
                   </tr> : <tr key={`legacy-${slot.legacySlotId}`}>
                     <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '.86rem' }}>{slot.legacySlotId || 'Not recorded'}</td>
