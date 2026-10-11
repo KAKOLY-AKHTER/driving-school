@@ -3656,10 +3656,10 @@ export default function AdminPage() {
                           <thead>
                             <tr>
                               <th scope="col" style={thStyle}>Student Name</th>
+                              <th scope="col" style={thStyle}>Instructor</th>
                               <th scope="col" style={thStyle}>Email Address</th>
                               <th scope="col" style={thStyle}>Phone Number</th>
                               <th scope="col" style={thStyle}>Enrollment Status</th>
-                              <th scope="col" style={thStyle}>Instructor</th>
                               <th scope="col" style={{ ...thStyle, minWidth: '240px', whiteSpace: 'nowrap' }}>Enrolled Course</th>
                               <th scope="col" style={thStyle}>Pickup Location</th>
                               <th scope="col" style={thStyle}>Paid Price</th>
@@ -3681,6 +3681,7 @@ export default function AdminPage() {
                               const enrolledDate = course.enrolledAt ? new Date(course.enrolledAt) : null
                               const assignedInstructor = assignableInstructors.find(instructor => instructor.legacyInstructorId === course.instructorId)
                               const instructorContact = assignedInstructor ? [assignedInstructor.phone, assignedInstructor.email].filter(Boolean).join(' · ') : ''
+                              const instructorCell = <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><div style={{ display: 'grid', gap: '.28rem' }}><select aria-label={`Assign an instructor to ${adminUserName(account)}`} value={course.instructorId || ''} disabled={Boolean(enrollmentInstructorUpdating) || instructorsLoading} onChange={event => requestEnrollmentInstructorChange({ account, course, key }, event.target.value)} style={{ minWidth: '175px', padding: '.45rem .62rem', border: '1px solid #BFD2E8', borderRadius: '9px', background: '#fff', color: '#1E3A5F', fontWeight: 800, cursor: enrollmentInstructorUpdating || instructorsLoading ? 'wait' : 'pointer' }}><option value="">Unassigned</option>{course.instructorId && !assignableInstructors.some(instructor => instructor.legacyInstructorId === course.instructorId) && <option value={course.instructorId}>{course.instructorName || 'Previously assigned'}</option>}{assignableInstructors.map(instructor => <option key={instructor.legacyInstructorId} value={instructor.legacyInstructorId}>{instructor.displayName}</option>)}</select>{course.instructorId && <small style={{ color: '#64748B', fontSize: '.72rem', maxWidth: '210px', whiteSpace: 'normal' }}>{instructorContact || 'Contact not recorded'}</small>}</div></td>
                               return (
                                 <tr key={key}>
                                   <td style={tdStyle}>
@@ -3689,10 +3690,10 @@ export default function AdminPage() {
                                       <span style={{ fontWeight: 700 }}>{adminUserName(account)}</span>
                                     </div>
                                   </td>
+                                  {instructorCell}
                                   <td style={tdStyle}>{account.email || '—'}</td>
                                   <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{account.phone || 'Not recorded'}</td>
                                   <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}><select aria-label={`Change enrollment status for ${adminUserName(account)}`} value={enrollmentStatus} disabled={Boolean(enrollmentStatusUpdating)} onChange={event => updateEnrollmentStatus({ account, course, key }, event.target.value)} style={{ minWidth: '145px', padding: '.45rem .62rem', border: `1px solid ${statusMeta.color}55`, borderRadius: '9px', background: statusMeta.background, color: statusMeta.color, fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.05em', textTransform: 'uppercase', fontWeight: 800, cursor: enrollmentStatusUpdating ? 'wait' : 'pointer' }}><option value="enrolled">Enrolled</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></div></td>
-                                  <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><div style={{ display: 'grid', gap: '.28rem' }}><select aria-label={`Assign an instructor to ${adminUserName(account)}`} value={course.instructorId || ''} disabled={Boolean(enrollmentInstructorUpdating) || instructorsLoading} onChange={event => requestEnrollmentInstructorChange({ account, course, key }, event.target.value)} style={{ minWidth: '175px', padding: '.45rem .62rem', border: '1px solid #BFD2E8', borderRadius: '9px', background: '#fff', color: '#1E3A5F', fontWeight: 800, cursor: enrollmentInstructorUpdating || instructorsLoading ? 'wait' : 'pointer' }}><option value="">Unassigned</option>{course.instructorId && !assignableInstructors.some(instructor => instructor.legacyInstructorId === course.instructorId) && <option value={course.instructorId}>{course.instructorName || 'Previously assigned'}</option>}{assignableInstructors.map(instructor => <option key={instructor.legacyInstructorId} value={instructor.legacyInstructorId}>{instructor.displayName}</option>)}</select>{course.instructorId && <small style={{ color: '#64748B', fontSize: '.72rem', maxWidth: '210px', whiteSpace: 'normal' }}>{instructorContact || 'Contact not recorded'}</small>}</div></td>
                                   <td style={{ ...tdStyle, minWidth: '240px', whiteSpace: 'nowrap', fontWeight: 700 }}>{course.title || COURSE_MAP[course.id] || `Course ${course.id || ''}`}</td>
                                   <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{course.city ? <>{course.city}{course.cityZip ? `, CA ${course.cityZip}` : ''}</> : <span title="Legacy record" style={{ color: '#64748B' }}>Not recorded</span>}{course.cityDistance ? <span style={{ display: 'block', color: '#334155', fontSize: '.78rem' }}>{locationDistanceLabel(course.cityDistance)}</span> : null}</td>
                                   <td style={{ ...tdStyle, fontWeight: 800 }}>{course.price || '—'}</td>
