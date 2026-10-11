@@ -1252,6 +1252,7 @@ export default function AdminPage() {
   const [enrollInstructorFilter, setEnrollInstructorFilter] = useState('all')
   const [enrollmentStatusUpdating, setEnrollmentStatusUpdating] = useState('')
   const [enrollmentInstructorUpdating, setEnrollmentInstructorUpdating] = useState('')
+  const [enrollmentCalendarSyncing, setEnrollmentCalendarSyncing] = useState('')
   const [enrollmentEdit, setEnrollmentEdit] = useState(null)
   const [enrollmentForm, setEnrollmentForm] = useState({ title: '', status: 'Enrolled', city: '', cityZip: '', cityDistance: '', price: '', slotUsed: 0, slotMaximum: 0, enrolledAt: '' })
   const [refunds, setRefunds] = useState([])
@@ -1860,6 +1861,39 @@ export default function AdminPage() {
       'Assign instructor?',
       `Assign ${instructor?.displayName || 'this instructor'} to ${adminUserName(account)}'s ${courseName} enrollment?`,
       () => updateEnrollmentInstructor({ account, course, key }, instructorId),
+    )
+  }
+
+  const syncEnrollmentInstructorCalendar = async ({ account, course, key }) => {
+    if (!course.instructorId || enrollmentCalendarSyncing) return
+    setEnrollmentCalendarSyncing(key)
+    try {
+      const result = await api.adminSyncInstructorCalendar(account.uid, {
+        enrollmentId: course.enrollmentId || '', courseId: course.id || '', enrolledAt: course.enrolledAt || '',
+      })
+      const instructorEmail = result?.instructor?.email || 'the instructor'
+      const synced = Number(result?.synced || 0)
+      const failed = Number(result?.failed || 0)
+      setMsg(failed
+        ? `${synced} lesson invitation${synced === 1 ? '' : 's'} sent to ${instructorEmail}; ${failed} could not be synced.`
+        : `${synced} lesson invitation${synced === 1 ? '' : 's'} sent to ${instructorEmail}.`)
+      window.setTimeout(() => setMsg(''), 3200)
+    } catch (error) {
+      setMsg(error?.message || 'Instructor calendar sync could not be completed.')
+      window.setTimeout(() => setMsg(''), 3200)
+    } finally {
+      setEnrollmentCalendarSyncing('')
+    }
+  }
+
+  const requestEnrollmentCalendarSync = ({ account, course, key }) => {
+    if (!course.instructorId || enrollmentCalendarSyncing) return
+    const instructor = instructors.find(item => item.legacyInstructorId === course.instructorId)
+    const courseName = course.title || COURSE_MAP[course.id] || 'this course'
+    requestConfirmation(
+      'Sync booked lessons to instructor calendar?',
+      `Google Calendar will send ${instructor?.displayName || course.instructorName || 'the assigned instructor'} an invitation for ${adminUserName(account)}'s booked ${courseName} lessons. Existing events are updated, not duplicated.`,
+      () => syncEnrollmentInstructorCalendar({ account, course, key }),
     )
   }
 
@@ -3681,7 +3715,7 @@ export default function AdminPage() {
                               const enrolledDate = course.enrolledAt ? new Date(course.enrolledAt) : null
                               const assignedInstructor = assignableInstructors.find(instructor => instructor.legacyInstructorId === course.instructorId)
                               const instructorContact = assignedInstructor ? [assignedInstructor.phone, assignedInstructor.email].filter(Boolean).join(' · ') : ''
-                              const instructorCell = <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><div style={{ display: 'grid', gap: '.28rem' }}><select aria-label={`Assign an instructor to ${adminUserName(account)}`} value={course.instructorId || ''} disabled={Boolean(enrollmentInstructorUpdating) || instructorsLoading} onChange={event => requestEnrollmentInstructorChange({ account, course, key }, event.target.value)} style={{ minWidth: '175px', padding: '.45rem .62rem', border: '1px solid #BFD2E8', borderRadius: '9px', background: '#fff', color: '#1E3A5F', fontWeight: 800, cursor: enrollmentInstructorUpdating || instructorsLoading ? 'wait' : 'pointer' }}><option value="">Unassigned</option>{course.instructorId && !assignableInstructors.some(instructor => instructor.legacyInstructorId === course.instructorId) && <option value={course.instructorId}>{course.instructorName || 'Previously assigned'}</option>}{assignableInstructors.map(instructor => <option key={instructor.legacyInstructorId} value={instructor.legacyInstructorId}>{instructor.displayName}</option>)}</select>{course.instructorId && <small style={{ color: '#64748B', fontSize: '.72rem', maxWidth: '210px', whiteSpace: 'normal' }}>{instructorContact || 'Contact not recorded'}</small>}</div></td>
+                              const instructorCell = <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}><div style={{ display: 'grid', gap: '.28rem' }}><select aria-label={`Assign an instructor to ${adminUserName(account)}`} value={course.instructorId || ''} disabled={Boolean(enrollmentInstructorUpdating) || instructorsLoading} onChange={event => requestEnrollmentInstructorChange({ account, course, key }, event.target.value)} style={{ minWidth: '175px', padding: '.45rem .62rem', border: '1px solid #BFD2E8', borderRadius: '9px', background: '#fff', color: '#1E3A5F', fontWeight: 800, cursor: enrollmentInstructorUpdating || instructorsLoading ? 'wait' : 'pointer' }}><option value="">Unassigned</option>{course.instructorId && !assignableInstructors.some(instructor => instructor.legacyInstructorId === course.instructorId) && <option value={course.instructorId}>{course.instructorName || 'Previously assigned'}</option>}{assignableInstructors.map(instructor => <option key={instructor.legacyInstructorId} value={instructor.legacyInstructorId}>{instructor.displayName}</option>)}</select>{course.instructorId && <small style={{ color: '#64748B', fontSize: '.72rem', maxWidth: '210px', whiteSpace: 'normal' }}>{instructorContact || 'Contact not recorded'}</small>}{course.instructorId && <button type="button" onClick={() => requestEnrollmentCalendarSync({ account, course, key })} disabled={Boolean(enrollmentCalendarSyncing)} style={{ justifySelf: 'start', border: `1px solid ${SKY_BLUE}`, borderRadius: '7px', background: enrollmentCalendarSyncing === key ? '#E2E8F0' : '#EFF6FF', color: enrollmentCalendarSyncing === key ? '#64748B' : SKY_BLUE, padding: '.3rem .5rem', fontFamily: 'var(--font-mono)', fontSize: '.64rem', fontWeight: 800, letterSpacing: '.03em', cursor: enrollmentCalendarSyncing ? 'wait' : 'pointer' }}>{enrollmentCalendarSyncing === key ? 'SYNCING...' : 'SYNC TO CALENDAR'}</button>}</div></td>
                               return (
                                 <tr key={key}>
                                   <td style={tdStyle}>

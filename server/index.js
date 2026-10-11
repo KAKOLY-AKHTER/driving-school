@@ -1227,6 +1227,20 @@ async function googleCalendarEventBody(booking) {
     (booking.enrollmentId && String(item?.enrollmentId || '') === String(booking.enrollmentId))
       || String(item?.id || '') === String(booking.courseId || '')
   )
+  // The school calendar remains the event owner.  When an administrator has
+  // assigned an instructor, including that address as the sole attendee lets
+  // Google send the instructor an invite without ever needing their password.
+  // Supplying an empty array on an unassigned lesson also removes a previous
+  // instructor invite when the event is later updated.
+  const instructorId = cleanText(course?.instructorId, 80)
+  const instructor = instructorId
+    ? await legacyInstructorsCol.findOne(
+      { legacyInstructorId: instructorId },
+      { projection: { displayName: 1, email: 1 } },
+    )
+    : null
+  const instructorEmail = normalizeEmail(instructor?.email)
+  const instructorName = cleanText(instructor?.displayName || course?.instructorName, 160)
   const studentName = cleanText(profile?.displayName || profile?.name || [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || booking?.callerName || booking?.studentName, 160) || 'Student'
   const studentEmail = normalizeEmail(booking?.email || booking?.callerEmail || profile?.email)
   const studentPhone = cleanText(profile?.phone || booking?.callerPhone || booking?.phone, 40)
@@ -1281,6 +1295,7 @@ async function googleCalendarEventBody(booking) {
         { method: 'popup', minutes: 2 * 60 },
       ],
     },
+    attendees: instructorEmail ? [{ email: instructorEmail, ...(instructorName ? { displayName: instructorName } : {}) }] : [],
     extendedProperties: { private: { bookingId: String(booking._id), source: 'aprecision-driving-school' } },
   }
 }
@@ -6022,6 +6037,68 @@ app.put('/api/admin/users/:uid/courses', async (req, res) => {
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message })
     sendServerError(res, error, 'Enrollment update failed')
+  }
+})
+
+// Explicitly re-sync a student's existing booked lessons after an instructor
+// is assigned.  The existing Google event ID is patched where present, so a
+// click never creates duplicate calendar events or changes the booking itself.
+app.post('/api/admin/users/:uid/courses/sync-instructor-calendar', async (req, res) => {
+  try {
+    const uid = cleanText(req.params.uid, 160)
+    if (!uid) throw new HttpError(400, 'User id is required.')
+    if (!googleCalendarIsConfigured()) throw new HttpError(409, 'Google Calendar is not configured for this website.')
+
+    const integration = await settingsCol.findOne({ _id: GOOGLE_CALENDAR_SETTING_ID })
+    if (!integration?.connected || !integration?.refreshToken) {
+      throw new HttpError(409, 'Connect the school Google Calendar before sending instructor invitations.')
+    }
+
+    const student = await usersCol.findOne({ uid }, { projection: { courses: 1 } })
+    if (!student) throw new HttpError(404, 'Student account was not found.')
+    const courses = Array.isArray(student.courses) ? student.courses : []
+    const index = findAdminCourseIndex(courses, req.body)
+    if (index < 0) throw new HttpError(404, 'Enrollment was not found.')
+    const course = courses[index]
+    const instructorId = cleanText(course?.instructorId, 80)
+    if (!instructorId) throw new HttpError(400, 'Assign an instructor before syncing lessons to a calendar.')
+
+    const instructor = await legacyInstructorsCol.findOne(
+      { legacyInstructorId: instructorId },
+      { projection: { displayName: 1, email: 1 } },
+    )
+    const instructorEmail = normalizeEmail(instructor?.email)
+    if (!instructorEmail || !/^\S+@\S+\.\S+$/.test(instructorEmail)) {
+      throw new HttpError(400, 'The assigned instructor needs a valid email address before lessons can be synced.')
+    }
+
+    const linked = await linkedCourseBookings(uid, course.id, undefined, course)
+    const bookings = linked.filter(booking =>
+      normalizedBookingStatus(booking?.status) !== 'cancelled'
+      && isDateKey(booking?.date)
+      && Boolean(normalizeBookingTime(booking?.timeSlot || booking?.time))
+    )
+    if (!bookings.length) throw new HttpError(409, 'This enrollment does not have any booked lessons to sync yet.')
+
+    const accessToken = await googleCalendarAccessToken(integration)
+    const results = []
+    for (const booking of bookings) {
+      results.push(await syncBookingWithGoogleCalendar(booking, { integration, accessToken }))
+    }
+    const synced = results.filter(result => result?.synced).length
+    const failed = results.filter(result => result?.synced === false).length
+    if (!synced) throw new HttpError(502, 'Google Calendar could not sync these lesson events. Please test the school calendar connection and try again.')
+
+    res.json({
+      ok: true,
+      synced,
+      failed,
+      total: bookings.length,
+      instructor: { name: cleanText(instructor?.displayName || course?.instructorName, 160), email: instructorEmail },
+    })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Instructor calendar sync failed')
   }
 })
 
