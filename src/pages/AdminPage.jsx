@@ -2727,6 +2727,29 @@ export default function AdminPage() {
   const thStyle = { fontFamily: 'var(--font-body)', fontSize: '0.95rem', letterSpacing: '0.01em', textTransform: 'none', lineHeight: 1.35, color: '#102F55', fontWeight: 900, padding: '1rem', textAlign: 'left', borderBottom: '1px solid #D8E4F0', WebkitFontSmoothing: 'antialiased' }
   const tdStyle = { fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#1a2332', padding: '0.75rem 1rem', borderBottom: '1px solid #f0f2f5' }
   const inputStyle = { width: '100%', padding: '0.65rem 0.8rem', border: '1.5px solid #E2EBF5', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: '#1a2332', outline: 'none', boxSizing: 'border-box' }
+  const instructorDetailRows = instructorDetails ? [
+    ...((instructorDetails.page === 1 ? instructorDetails.assignedStudents : []) || []).flatMap(student => {
+      const bookingsForCourse = Array.isArray(student.bookings) ? student.bookings : []
+      const rowFrom = ({ bookingId = '', date = '', timeWindow = '', status = student.enrollmentStatus, location = student.location, createdAt = '', isBooking = false } = {}) => ({
+        legacySlotId: bookingId || student.enrollmentId || student.key,
+        slotDate: date || student.enrolledAt,
+        locationLabel: location || student.location,
+        courseTitle: student.courseTitle,
+        timeWindow,
+        enrollmentStatus: status || 'Enrolled',
+        studentName: student.studentName,
+        studentEmail: student.email,
+        sourceDate: createdAt || student.enrolledAt,
+        active: ['enrolled', 'active', 'completed', 'scheduled', 'confirmed', 'booked'].includes(String(status || '').toLowerCase()),
+        isCurrentAssignment: true,
+        isBooking,
+      })
+      return bookingsForCourse.length
+        ? bookingsForCourse.map(booking => rowFrom({ ...booking, isBooking: true }))
+        : [rowFrom()]
+    }),
+    ...(instructorDetails.items || []),
+  ] : []
 
   const navItems = [
     { id: 'dashboard', label: 'Overview', icon: SVG.dashboard },
@@ -4730,14 +4753,7 @@ export default function AdminPage() {
               <div><p style={{ margin: 0, color: GOLD_DEEP, fontFamily: 'var(--font-mono)', fontSize: '.72rem', fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase' }}>Instructor schedule and assignments</p><h2 id="instructor-schedule-details-title" style={{ margin: '.3rem 0 0', color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.55rem' }}>{instructorDetails.instructor.displayName || `Legacy Instructor #${instructorDetails.instructor.legacyInstructorId}`}</h2><p style={{ margin: '.32rem 0 0', color: '#526C88' }}>{instructorDetails.instructor.displayName ? `Instructor ID ${instructorDetails.instructor.legacyInstructorId}${instructorDetails.instructor.email ? ` · ${instructorDetails.instructor.email}` : ''}${instructorDetails.instructor.phone ? ` · ${instructorDetails.instructor.phone}` : ''}` : `Legacy ID ${instructorDetails.instructor.legacyInstructorId} · no matching instructor profile was found in the old database.`}</p></div>
               <button autoFocus type="button" aria-label="Close instructor schedule details" onClick={() => setInstructorDetails(null)} style={{ width: '40px', height: '40px', border: '1px solid #CBD5E1', borderRadius: '10px', background: '#fff', color: '#334155', fontSize: '1.45rem', cursor: 'pointer' }}>&times;</button>
             </header>
-            <section aria-labelledby="assigned-students-title" style={{ marginTop: '1rem', padding: '1rem', border: '1px solid #D7E9FD', borderRadius: '13px', background: '#F8FBFF' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '.75rem', marginBottom: '.7rem' }}>
-                <div><p style={{ margin: 0, color: SKY_BLUE, fontFamily: 'var(--font-mono)', fontSize: '.7rem', fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase' }}>Current website enrollments</p><h3 id="assigned-students-title" style={{ margin: '.18rem 0 0', color: DARK, fontSize: '1.05rem' }}>Assigned students ({instructorDetails.assignedStudents?.length || 0})</h3></div>
-                <span style={{ flexShrink: 0, padding: '.28rem .55rem', borderRadius: '999px', background: '#E0F2FE', color: SKY_BLUE, fontFamily: 'var(--font-mono)', fontSize: '.68rem', fontWeight: 900 }}>{instructorDetails.assignedStudents?.length || 0} assigned</span>
-              </div>
-              {instructorDetails.loading ? <p style={{ margin: 0, color: '#526C88', fontSize: '.88rem' }}>Loading assigned students…</p> : instructorDetails.assignedStudents?.length ? <div className="admin-table-wrap" style={{ maxHeight: '260px', overflowY: 'auto' }}><table style={{ width: '100%', minWidth: '760px', borderCollapse: 'collapse' }}><thead><tr><th scope="col" style={{ ...thStyle, padding: '.65rem .75rem' }}>Student</th><th scope="col" style={{ ...thStyle, padding: '.65rem .75rem' }}>Contact</th><th scope="col" style={{ ...thStyle, padding: '.65rem .75rem' }}>Enrolled Course</th><th scope="col" style={{ ...thStyle, padding: '.65rem .75rem' }}>Status</th><th scope="col" style={{ ...thStyle, padding: '.65rem .75rem' }}>Enrolled</th></tr></thead><tbody>{instructorDetails.assignedStudents.map(student => <tr key={student.key}><td style={{ ...tdStyle, padding: '.65rem .75rem' }}><strong>{student.studentName}</strong><p style={{ margin: '.15rem 0 0', color: '#64748B', fontFamily: 'var(--font-mono)', fontSize: '.72rem' }}>{student.uid || 'Student account'}</p></td><td style={{ ...tdStyle, padding: '.65rem .75rem' }}><div>{student.email || 'Email not recorded'}</div><p style={{ margin: '.15rem 0 0', color: '#64748B', fontSize: '.82rem' }}>{student.phone || 'Phone not recorded'}</p></td><td style={{ ...tdStyle, padding: '.65rem .75rem' }}><strong>{student.courseTitle}</strong>{student.location && <p style={{ margin: '.15rem 0 0', color: '#64748B', fontSize: '.82rem' }}>{student.location}</p>}</td><td style={{ ...tdStyle, padding: '.65rem .75rem' }}><span style={{ display: 'inline-flex', padding: '.26rem .5rem', borderRadius: '999px', background: '#ECFDF3', color: '#087443', fontFamily: 'var(--font-mono)', fontSize: '.68rem', letterSpacing: '.04em', textTransform: 'uppercase', fontWeight: 900 }}>{student.enrollmentStatus}</span></td><td style={{ ...tdStyle, padding: '.65rem .75rem', whiteSpace: 'nowrap' }}>{formatDateDMY(student.enrolledAt)}</td></tr>)}</tbody></table></div> : <p style={{ margin: 0, color: '#526C88', fontSize: '.88rem', lineHeight: 1.5 }}>No current website student is assigned to this instructor yet. Assign a student from Enrolled Courses and the student details will appear here.</p>}
-            </section>
-            <p role="note" style={{ margin: '1rem 0', padding: '.75rem .9rem', borderRadius: '10px', border: '1px solid #BFDBFE', background: '#F8FBFF', color: '#334E6F', fontSize: '.85rem', lineHeight: 1.5 }}>The student assignments above are from the current website. Search by old slot ID, date, or time below; the filters apply only to this instructor&apos;s historical schedule records.</p>
+            <p role="note" style={{ margin: '1rem 0', padding: '.75rem .9rem', borderRadius: '10px', border: '1px solid #BFDBFE', background: '#F8FBFF', color: '#334E6F', fontSize: '.85rem', lineHeight: 1.5 }}>Current website course assignments appear in this table with their enrollment ID, date, location, course, status, and student. Historical schedule records remain below them.</p>
             <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', gap: '.65rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
               <input className="admin-toolbar-input" aria-label="Search this instructor's schedule" type="search" placeholder="Search slot ID, date, time…" value={instructorDetails.search || ''} onChange={event => openInstructorDetails(instructorDetails.instructor, 1, { ...instructorDetails, search: event.target.value })} style={{ ...inputStyle, width: 'min(100%, 280px)' }} />
               <select aria-label="Filter this instructor's schedule by availability" value={instructorDetails.status || 'all'} onChange={event => openInstructorDetails(instructorDetails.instructor, 1, { ...instructorDetails, status: event.target.value })} style={{ ...inputStyle, width: '175px' }}>
@@ -4752,12 +4768,19 @@ export default function AdminPage() {
               {(instructorDetails.search || instructorDetails.status !== 'all' || instructorDetails.locationId) && <button type="button" onClick={() => openInstructorDetails(instructorDetails.instructor, 1)} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
             </div>
             {instructorDetails.error && <div role="alert" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{instructorDetails.error}</div>}
-            {!instructorDetails.loading && !instructorDetails.error && <TablePager page={instructorDetails.page} pages={Math.max(1, Math.ceil(instructorDetails.total / instructorDetails.limit))} total={instructorDetails.total} label="schedule slots" onChange={page => openInstructorDetails(instructorDetails.instructor, page, instructorDetails)} />}
+            {!instructorDetails.loading && !instructorDetails.error && <TablePager page={instructorDetails.page} pages={Math.max(1, Math.ceil((instructorDetails.total + (instructorDetails.assignedStudents?.length || 0)) / instructorDetails.limit))} total={instructorDetails.total + (instructorDetails.assignedStudents?.length || 0)} label="schedule records" onChange={page => openInstructorDetails(instructorDetails.instructor, page, instructorDetails)} />}
             <div className="admin-table-wrap">
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead><tr><th scope="col" style={thStyle}>Old Slot ID</th><th scope="col" style={thStyle}>Date</th><th scope="col" style={thStyle}>Location</th><th scope="col" style={thStyle}>Time Window</th><th scope="col" style={thStyle}>Availability</th><th scope="col" style={thStyle}>Imported From</th></tr></thead>
+                <thead><tr><th scope="col" style={thStyle}>Old Slot ID</th><th scope="col" style={thStyle}>Date</th><th scope="col" style={thStyle}>Location</th><th scope="col" style={thStyle}>Course / Time</th><th scope="col" style={thStyle}>Availability</th><th scope="col" style={thStyle}>Imported From</th></tr></thead>
                 <tbody>
-                  {instructorDetails.items.map(slot => <tr key={slot.legacySlotId}>
+                  {instructorDetailRows.map(slot => slot.isCurrentAssignment ? <tr key={`assignment-${slot.legacySlotId}`}>
+                    <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '.86rem' }}>{slot.legacySlotId || 'Not recorded'}</td>
+                    <td style={tdStyle}>{formatDateDMY(slot.slotDate)}</td>
+                    <td style={tdStyle}>{slot.locationLabel || 'Location not recorded'}</td>
+                    <td style={tdStyle}>{slot.isBooking && slot.timeWindow ? <><strong>{slot.timeWindow}</strong><p style={{ margin: '.16rem 0 0', color: '#64748B', fontSize: '.78rem' }}>{slot.courseTitle || 'Current website course'}</p></> : <><strong>{slot.courseTitle || 'Course not recorded'}</strong><p style={{ margin: '.16rem 0 0', color: '#64748B', fontSize: '.78rem' }}>Course has no booked lesson time yet</p></>}</td>
+                    <td style={tdStyle}><span style={{ display: 'inline-flex', padding: '.28rem .6rem', borderRadius: '999px', background: slot.active ? '#ECFDF3' : '#FEF2F2', color: slot.active ? '#087443' : '#B91C1C', fontFamily: 'var(--font-mono)', fontSize: '.7rem', letterSpacing: '.05em', textTransform: 'uppercase', fontWeight: 900 }}>{slot.enrollmentStatus}</span></td>
+                    <td style={tdStyle}><strong>{slot.studentName || 'Student'}</strong><p style={{ margin: '.16rem 0 0', color: '#64748B', fontSize: '.78rem' }}>{slot.studentEmail || 'Current website'}</p>{slot.sourceDate && <p style={{ margin: '.16rem 0 0', color: '#94A3B8', fontSize: '.72rem' }}>Created {formatDateDMY(slot.sourceDate)}</p>}</td>
+                  </tr> : <tr key={`legacy-${slot.legacySlotId}`}>
                     <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontSize: '.86rem' }}>{slot.legacySlotId || 'Not recorded'}</td>
                     <td style={tdStyle}>{formatDateDMY(slot.slotDate)}</td>
                     <td style={tdStyle}>{slot.locationLabel || `Location ${slot.locationId || 'Not recorded'}`}</td>
@@ -4766,7 +4789,7 @@ export default function AdminPage() {
                     <td style={tdStyle}>{slot.insertedAt || 'Not recorded'}</td>
                   </tr>)}
                   {instructorDetails.loading && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>Loading schedule slots…</td></tr>}
-                  {!instructorDetails.loading && !instructorDetails.error && instructorDetails.items.length === 0 && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>{instructorDetails.search || instructorDetails.status !== 'all' || instructorDetails.locationId ? 'No schedule slots match the current filters.' : 'No schedule slots were found for this legacy instructor ID.'}</td></tr>}
+                  {!instructorDetails.loading && !instructorDetails.error && instructorDetailRows.length === 0 && <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>{instructorDetails.search || instructorDetails.status !== 'all' || instructorDetails.locationId ? 'No schedule slots match the current filters.' : 'No schedule slots or current course assignments were found for this instructor.'}</td></tr>}
                 </tbody>
               </table>
             </div>

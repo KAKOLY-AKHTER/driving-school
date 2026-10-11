@@ -5097,7 +5097,7 @@ app.get('/api/admin/instructors/:instructorId/slots', async (req, res) => {
       const zip = cleanText(record.zipCode, 20)
       return [cleanText(record.legacyCityId, 80), [city, zip].filter(Boolean).join(' · ')]
     }))
-    const assignedStudents = assignedAccounts.flatMap(account => {
+    const assignedCourses = assignedAccounts.flatMap(account => {
       const studentName = cleanText(
         account.displayName || account.name || [account.firstName, account.lastName].filter(Boolean).join(' ') || account.username || account.email,
         160,
@@ -5106,6 +5106,7 @@ app.get('/api/admin/instructors/:instructorId/slots', async (req, res) => {
         .filter(course => cleanText(course?.instructorId, 80) === instructorId)
         .map((course, index) => ({
           key: cleanText(course?.enrollmentId, 160) || `${cleanText(account.uid, 160)}-${cleanText(course?.id, 120)}-${index}`,
+          enrollmentId: cleanText(course?.enrollmentId, 160),
           uid: cleanText(account.uid, 160),
           studentName,
           email: cleanText(account.email, 320),
@@ -5114,8 +5115,37 @@ app.get('/api/admin/instructors/:instructorId/slots', async (req, res) => {
           enrollmentStatus: cleanText(course?.status, 60) || 'Enrolled',
           enrolledAt: cleanText(course?.enrolledAt, 80),
           location: [cleanText(course?.city, 120), cleanText(course?.cityZip, 24)].filter(Boolean).join(', '),
+          courseId: cleanText(course?.id, 120),
         }))
-    }).sort((left, right) => String(right.enrolledAt || '').localeCompare(String(left.enrolledAt || '')) || left.studentName.localeCompare(right.studentName))
+    })
+    const bookingFilters = assignedCourses.map(course => (
+      course.enrollmentId
+        ? { userId: course.uid, enrollmentId: course.enrollmentId }
+        : { userId: course.uid, courseId: course.courseId }
+    )).filter(filter => filter.userId && (filter.enrollmentId || filter.courseId))
+    const currentBookings = bookingFilters.length
+      ? await bookingsCol.find(
+        { $or: bookingFilters },
+        { projection: { _id: 1, userId: 1, enrollmentId: 1, courseId: 1, date: 1, timeSlot: 1, time: 1, status: 1, city: 1, location: 1, pickupAddress: 1, createdAt: 1, updatedAt: 1 } },
+      ).sort({ date: -1, createdAt: -1 }).limit(2000).toArray()
+      : []
+    const assignedStudents = assignedCourses.map(course => ({
+      ...course,
+      bookings: currentBookings
+        .filter(booking => booking.userId === course.uid && (
+          course.enrollmentId
+            ? cleanText(booking.enrollmentId, 160) === course.enrollmentId
+            : cleanText(booking.courseId, 120) === course.courseId
+        ))
+        .map(booking => ({
+          bookingId: String(booking._id || ''),
+          date: cleanText(booking.date, 20),
+          timeWindow: cleanText(booking.timeSlot || booking.time, 80),
+          status: cleanText(booking.status, 60) || 'Scheduled',
+          location: cleanText(booking.location || booking.city || booking.pickupAddress, 500),
+          createdAt: cleanText(booking.createdAt || booking.updatedAt, 80),
+        })),
+    })).sort((left, right) => String(right.enrolledAt || '').localeCompare(String(left.enrolledAt || '')) || left.studentName.localeCompare(right.studentName))
     res.json({
       items: items.map(item => ({ ...item, fromTimeLabel: timeLabels.get(cleanText(item.fromHour, 40)) || '', toTimeLabel: timeLabels.get(cleanText(item.toHour, 40)) || '', locationLabel: locationLabels.get(cleanText(item.locationId, 80)) || '' })),
       assignedStudents,
