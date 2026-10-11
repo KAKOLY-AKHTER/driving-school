@@ -421,25 +421,24 @@ test('booking locations match the approved Near and Long city groups', () => {
     .map(location => location.name)
 
   assert.deepEqual(nearNames, [
-    'Fremont', 'Newark', 'Hayward', 'Union City', 'San Lorenzo', 'San Leandro',
-    'Castro Valley', 'Ashland', 'Oakland', 'Livermore', 'Livermore', 'Dublin',
+    'Livermore', 'Livermore', 'Dublin',
     'San Ramon', 'San Ramon', 'Pleasanton', 'Pleasanton', 'Pleasanton', 'Alamo',
     'Danville', 'Danville',
   ])
-  assert.equal(longNames.length, 21)
-  assert.equal(DEFAULT_LOCATIONS.length, 41)
-  assert.equal(new Set(DEFAULT_LOCATIONS.map(location => `${location.name.toLowerCase()}-${location.zipCode}`)).size, 41)
+  assert.deepEqual(longNames, ['Diablo'])
+  assert.equal(DEFAULT_LOCATIONS.length, 12)
+  assert.equal(new Set(DEFAULT_LOCATIONS.map(location => `${location.name.toLowerCase()}-${location.zipCode}`)).size, 12)
   assert.equal(DEFAULT_LOCATIONS.every(location => /^\d{5}$/.test(location.zipCode)), true)
   assert.deepEqual(
-    Object.fromEntries(DEFAULT_LOCATIONS.slice(0, 2).map(location => [location.name, location.zipCode])),
-    { Fremont: '94536', Newark: '94560' }
+    DEFAULT_LOCATIONS.slice(0, 2).map(location => [location.name, location.zipCode]),
+    [['Livermore', '94550'], ['Livermore', '94551']]
   )
 })
 
 test('booking location input is normalized and constrained to Near or Long', () => {
   assert.deepEqual(
     sanitizeLocation({ name: '  Redwood   CITY ', zipCode: '94063', distance: 'long', order: 10 }),
-    { name: 'Redwood City', cityKey: 'redwood city', key: 'redwood city::94063', zipCode: '94063', distance: 'Long', order: 10 }
+    { name: 'Redwood City', cityKey: 'redwood city', key: 'redwood city::94063', zipCode: '94063', distance: 'Long', active: true, order: 10 }
   )
   assert.equal(sanitizeLocation({ name: 'REDWOOD city', distance: 'Near' }).key, 'redwood city')
   assert.equal(sanitizeLocation({ name: 'Fremont', zipCode: '94536-1234', distance: 'Near' }).zipCode, '94536-1234')

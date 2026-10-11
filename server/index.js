@@ -675,7 +675,7 @@ function sanitizeLocation(value) {
     throw new HttpError(400, 'ZIP code must contain 5 digits or use ZIP+4 format.')
   }
   if (!distance) throw new HttpError(400, 'Package distance must be Near or Long.')
-  return { name, cityKey, key, zipCode, distance, order: cleanInteger(value.order, 0, 0, 10_000) }
+  return { name, cityKey, key, zipCode, distance, active: value.active !== false, order: cleanInteger(value.order, 0, 0, 10_000) }
 }
 
 function sanitizeInstructorProfile(value) {
@@ -1926,6 +1926,7 @@ async function bookingLocationByName(name, zipCode = '', session) {
 
   if (zip) {
     const location = await locationsCol.findOne({
+      active: { $ne: false },
       $or: [
         { key: bookingLocationKey(name, zip) },
         // Supports any pending carts created before City + ZIP identities.
@@ -1937,6 +1938,7 @@ async function bookingLocationByName(name, zipCode = '', session) {
   }
 
   const matches = await locationsCol.find({
+    active: { $ne: false },
     $or: [{ cityKey }, { key: cityKey }],
   }, { session }).limit(2).toArray()
   if (matches.length === 1) return matches[0]
@@ -6575,7 +6577,7 @@ app.delete('/api/admin/areas/:id', async (req, res) => {
 
 app.get('/api/locations', async (_req, res) => {
   try {
-    const locations = await locationsCol.find().sort({ order: 1, name: 1 }).toArray()
+    const locations = await locationsCol.find({ active: { $ne: false } }).sort({ order: 1, name: 1 }).toArray()
     res.json(locations)
   } catch (error) {
     sendServerError(res, error, 'Booking location lookup failed')
@@ -7194,22 +7196,13 @@ const DEFAULT_AREAS = [
 ]
 
 const DEFAULT_LOCATIONS = [
-  ['Fremont', '94536'], ['Newark', '94560'], ['Hayward', '94541'],
-  ['Union City', '94587'], ['San Lorenzo', '94580'], ['San Leandro', '94577'],
-  ['Castro Valley', '94546'], ['Ashland', '94541'], ['Oakland', '94612'],
   ['Livermore', '94550'], ['Livermore', '94551'], ['Dublin', '94568'],
   ['San Ramon', '94582'], ['San Ramon', '94583'], ['Pleasanton', '94566'],
   ['Pleasanton', '94568'], ['Pleasanton', '94588'], ['Alamo', '94507'],
   ['Danville', '94506'], ['Danville', '94526'],
 ].map(([name, zipCode], index) => ({ name, zipCode, distance: 'Near', order: index + 1 }))
   .concat([
-    ['San Jose', '95112'], ['Santa Clara', '95050'], ['Sunnyvale', '94086'],
-    ['Palo Alto', '94301'], ['San Mateo', '94401'], ['Mountain View', '94040'],
-    ['Cupertino', '95014'], ['Menlo Park', '94025'], ['Redwood City', '94063'],
-    ['San Francisco', '94103'], ['Millbrae', '94030'], ['San Bruno', '94066'],
-    ['Burlingame', '94010'], ['Hillsborough', '94010'], ['South San Francisco', '94080'],
-    ['Foster City', '94404'], ['Brisbane', '94005'], ['Belmont', '94002'],
-    ['Alameda', '94501'], ['Milpitas', '95035'], ['Diablo', '94528'],
+    ['Diablo', '94528'],
   ].map(([name, zipCode], index) => ({ name, zipCode, distance: 'Long', order: index + 10 })))
 
 const DEFAULT_SOCIALS = [

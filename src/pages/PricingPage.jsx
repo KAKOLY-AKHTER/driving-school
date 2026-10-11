@@ -145,7 +145,7 @@ export default function PricingPage() {
     api.getLocations()
       .then(data => {
         if (!active || !Array.isArray(data)) return
-        setBookingLocations([...data].sort((a, b) =>
+        setBookingLocations([...data].filter(item => item?.active !== false).sort((a, b) =>
           (Number(a.order) || 0) - (Number(b.order) || 0) || String(a.name || '').localeCompare(String(b.name || ''))
         ))
       })

@@ -99,7 +99,7 @@ if (!shouldApply) {
       const normalizedCity = cityKey(location.name)
       await locations.updateOne(
         { _id: location._id },
-        { $set: { cityKey: normalizedCity, legacyCityKey: normalizedCity, key: normalizedCity, updatedAt: now } }
+        { $set: { cityKey: normalizedCity, legacyCityKey: normalizedCity, key: normalizedCity, active: false, updatedAt: now } }
       )
     }
 
@@ -107,7 +107,7 @@ if (!shouldApply) {
       updateOne: {
         filter: { cityKey: location.cityKey, zipCode: location.zipCode },
         update: {
-          $set: { name: location.name, cityKey: location.cityKey, zipCode: location.zipCode, distance: location.distance, updatedAt: now },
+          $set: { name: location.name, cityKey: location.cityKey, zipCode: location.zipCode, distance: location.distance, active: true, updatedAt: now },
           $setOnInsert: { order: 1000 + index, createdAt: now },
         },
         upsert: true,
