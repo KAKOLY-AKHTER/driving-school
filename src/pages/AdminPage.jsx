@@ -92,6 +92,8 @@ const userEditFormFrom = (account = {}) => ({
   medications: account.medications || '', notes: account.notes || '',
 })
 
+const newStudentForm = () => userEditFormFrom({ state: 'CA' })
+
 const localDateKey = (date = new Date()) => new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Los_Angeles',
   year: 'numeric',
@@ -1208,6 +1210,7 @@ export default function AdminPage() {
   const [userLimit, setUserLimit] = useState('10')
   const [userDetailsDialog, setUserDetailsDialog] = useState(null)
   const [userEdit, setUserEdit] = useState(null)
+  const [userCreate, setUserCreate] = useState(null)
   const [bookingSearch, setBookingSearch] = useState('')
   const [bookingStatusFilter, setBookingStatusFilter] = useState('all')
   const bookingDataFilter = 'all'
@@ -1510,6 +1513,40 @@ export default function AdminPage() {
       setTimeout(() => setMsg(''), 2200)
     } catch (error) {
       setUserEdit(current => ({ ...current, saving: false, error: error?.message || 'User could not be updated.' }))
+    }
+  }
+
+  const saveUserCreate = async (event) => {
+    event.preventDefault()
+    if (!userCreate?.form || userCreate.saving) return
+    const form = userCreate.form
+    const firstName = form.firstName.trim()
+    const lastName = form.lastName.trim()
+    const email = form.email.trim().toLowerCase()
+    const phone = form.phone.trim()
+    const displayName = form.displayName.trim() || [firstName, form.middleName.trim(), lastName].filter(Boolean).join(' ')
+    if (!firstName || !lastName || !email || !phone) {
+      setUserCreate(current => ({ ...current, error: 'First name, last name, email, and phone number are required.' }))
+      return
+    }
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      setUserCreate(current => ({ ...current, error: 'Enter a valid email address.' }))
+      return
+    }
+    setUserCreate(current => ({ ...current, saving: true, error: '' }))
+    try {
+      const response = await api.adminCreateUser({ ...form, firstName, lastName, email, phone, displayName, name: displayName })
+      const created = response?.user
+      if (!created?.uid) throw new Error('The student account could not be created.')
+      setUsers(current => [created, ...current])
+      setUserCreate(null)
+      const delivery = response?.emailDelivery || {}
+      setMsg(delivery.status === 'sent'
+        ? `Student created. A password setup email was sent to ${email}.`
+        : 'Student created, but the setup email was not sent. The student can use “Forgot password” on the login page.')
+      setTimeout(() => setMsg(''), 5000)
+    } catch (error) {
+      setUserCreate(current => current ? { ...current, saving: false, error: error?.message || 'The student account could not be created.' } : current)
     }
   }
 
@@ -3208,6 +3245,7 @@ export default function AdminPage() {
                         <p style={{ margin: '.35rem 0 0', color: '#334155', fontSize: '.9rem' }}>Every student account created on the website appears here.</p>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <button type="button" onClick={() => setUserCreate({ form: newStudentForm(), saving: false, error: '' })} style={{ padding: '.62rem .9rem', border: 0, borderRadius: '9px', background: `linear-gradient(135deg, ${SKY_BLUE}, #0A2A5E)`, color: '#fff', fontWeight: 900, cursor: 'pointer', boxShadow: '0 4px 14px rgba(1,69,168,.2)' }}>+ Add Student</button>
                         <input className="admin-toolbar-input" aria-label="Search users" type="search" placeholder="Search by name, email, phone…" value={userSearch} onChange={(e) => { setUserSearch(e.target.value); setUserPage(1) }} style={{ ...inputStyle, width: '280px' }} />
                         {userSearch && <button type="button" onClick={() => setUserSearch('')} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                       </div>
@@ -5013,6 +5051,24 @@ export default function AdminPage() {
             {userEdit.loading ? <p style={{ margin: '1.5rem 0', color: SKY_BLUE, fontWeight: 800 }}>Loading complete student profile…</p> : <div style={{ display: 'grid', gap: '1rem', maxHeight: '62vh', overflowY: 'auto', paddingRight: '.35rem' }}>{USER_EDIT_SECTIONS.map(section => <fieldset key={section.title} style={{ minWidth: 0, margin: 0, padding: '1rem', border: '1px solid #DCE7F3', borderRadius: '12px' }}><legend style={{ padding: '0 .35rem', color: DARK, fontWeight: 900 }}>{section.title}</legend><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: '.8rem' }}>{section.fields.map(([field, label, type], index) => <label key={field} style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800, gridColumn: type === 'textarea' ? '1 / -1' : undefined }}>{label}{type === 'textarea' ? <textarea autoFocus={field === 'displayName'} rows="3" value={userEdit.form[field]} onChange={event => setUserEdit(current => ({ ...current, form: { ...current.form, [field]: event.target.value } }))} style={{ ...inputStyle, resize: 'vertical' }} /> : <input autoFocus={field === 'displayName'} type={type} value={userEdit.form[field]} onChange={event => setUserEdit(current => ({ ...current, form: { ...current.form, [field]: event.target.value } }))} style={inputStyle} />}</label>)}</div></fieldset>)}</div>}
             {userEdit.error && <p role="alert" style={{ margin: '0 0 1rem', color: '#B91C1C', fontWeight: 700 }}>{userEdit.error}</p>}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.65rem', marginTop: '1rem' }}><button type="button" disabled={userEdit.saving} onClick={() => setUserEdit(null)} style={{ padding: '.65rem .9rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', color: '#334155', fontWeight: 800, cursor: 'pointer' }}>Cancel</button><button type="submit" disabled={userEdit.saving || userEdit.loading} style={{ padding: '.65rem .9rem', border: 0, borderRadius: '8px', background: SKY_BLUE, color: '#fff', fontWeight: 800, cursor: userEdit.saving || userEdit.loading ? 'wait' : 'pointer', opacity: userEdit.saving || userEdit.loading ? .7 : 1 }}>{userEdit.saving ? 'Saving…' : 'Save changes'}</button></div>
+          </form>
+        </div>
+      )}
+
+      {userCreate && (
+        <div role="presentation" onClick={event => { if (event.target === event.currentTarget && !userCreate.saving) setUserCreate(null) }} style={{ position: 'fixed', inset: 0, zIndex: 15000, display: 'grid', placeItems: 'center', padding: '1rem', background: 'rgba(10,22,40,.68)', backdropFilter: 'blur(8px)' }}>
+          <form onSubmit={saveUserCreate} role="dialog" aria-modal="true" aria-labelledby="create-user-title" style={{ width: 'min(100%, 760px)', maxHeight: '92vh', overflowY: 'auto', padding: '1.5rem', borderRadius: '16px', background: '#fff', boxShadow: '0 30px 90px rgba(10,22,40,.32)' }}>
+            <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem' }}>
+              <div><h2 id="create-user-title" style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.4rem' }}>Add Student</h2><p style={{ margin: '.35rem 0 0', color: '#526C88', fontSize: '.9rem', lineHeight: 1.5 }}>Create a student account and complete any details you already have. Required fields are marked <strong>*</strong>.</p></div>
+              <button type="button" aria-label="Close add student" disabled={userCreate.saving} onClick={() => setUserCreate(null)} style={{ width: '40px', height: '40px', border: '1px solid #CBD5E1', borderRadius: '10px', background: '#fff', color: '#334155', fontSize: '1.45rem', cursor: userCreate.saving ? 'wait' : 'pointer' }}>&times;</button>
+            </header>
+            <div role="note" style={{ margin: '0 0 1rem', padding: '.8rem .9rem', border: '1px solid #BFDBFE', borderRadius: '10px', background: '#F8FBFF', color: '#1E3A5F', fontSize: '.86rem', lineHeight: 1.5 }}><strong>Secure sign-in:</strong> no password is shown or saved here. After creating the account, the student receives a one-time link to set their own password.</div>
+            <div style={{ display: 'grid', gap: '1rem', maxHeight: '58vh', overflowY: 'auto', paddingRight: '.35rem' }}>{USER_EDIT_SECTIONS.map(section => <fieldset key={section.title} style={{ minWidth: 0, margin: 0, padding: '1rem', border: '1px solid #DCE7F3', borderRadius: '12px' }}><legend style={{ padding: '0 .35rem', color: DARK, fontWeight: 900 }}>{section.title}</legend><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: '.8rem' }}>{section.fields.map(([field, label, type]) => {
+              const required = ['firstName', 'lastName', 'email', 'phone'].includes(field)
+              return <label key={field} style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800, gridColumn: type === 'textarea' ? '1 / -1' : undefined }}>{label}{required && ' *'}{type === 'textarea' ? <textarea rows="3" maxLength={field === 'notes' || field === 'medications' ? 1000 : 500} value={userCreate.form[field]} onChange={event => setUserCreate(current => ({ ...current, form: { ...current.form, [field]: event.target.value } }))} style={{ ...inputStyle, resize: 'vertical' }} /> : <input autoFocus={field === 'firstName'} required={required} type={type} maxLength={field === 'email' || field === 'payerEmail' ? 320 : 160} value={userCreate.form[field]} onChange={event => setUserCreate(current => ({ ...current, form: { ...current.form, [field]: event.target.value } }))} style={inputStyle} />}</label>
+            })}</div></fieldset>)}</div>
+            {userCreate.error && <p role="alert" style={{ margin: '1rem 0 0', color: '#B91C1C', fontWeight: 700 }}>{userCreate.error}</p>}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.65rem', marginTop: '1rem', flexWrap: 'wrap' }}><button type="button" disabled={userCreate.saving} onClick={() => setUserCreate(null)} style={{ padding: '.65rem .9rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', color: '#334155', fontWeight: 800, cursor: 'pointer' }}>Cancel</button><button type="submit" disabled={userCreate.saving} style={{ padding: '.65rem .9rem', border: 0, borderRadius: '8px', background: SKY_BLUE, color: '#fff', fontWeight: 800, cursor: userCreate.saving ? 'wait' : 'pointer', opacity: userCreate.saving ? .7 : 1 }}>{userCreate.saving ? 'Creating account…' : 'Create student & send setup email'}</button></div>
           </form>
         </div>
       )}

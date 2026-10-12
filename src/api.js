@@ -115,6 +115,7 @@ export const api = {
   deleteBooking: (id) => request(`/api/bookings/${pathPart(id)}`, { method: 'DELETE' }),
   adminStats: () => request('/api/admin/stats'),
   adminUsers: () => request('/api/admin/users'),
+  adminCreateUser: (data) => request('/api/admin/users', { method: 'POST', body: JSON.stringify(data) }),
   adminLegacyStudents: (params = {}) => request(`/api/admin/legacy-students?${new URLSearchParams(params)}`),
   adminLegacyStudentRecords: (candidateId) => request(`/api/admin/legacy-students/${pathPart(candidateId)}/records`),
   adminInstructors: () => request('/api/admin/instructors'),

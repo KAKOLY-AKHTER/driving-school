@@ -273,6 +273,35 @@ async function deliverContactReplyEmail(contact, reply) {
   }
 }
 
+async function deliverStudentAccountSetupEmail(student, setupLink) {
+  const { apiKey, from, adminEmail } = resendConfiguration()
+  const email = normalizeEmail(student?.email)
+  if (!apiKey || !from) return { status: 'skipped', reason: 'Student-account email environment variables are incomplete.' }
+  if (!isEmail(email)) return { status: 'skipped', reason: 'The student does not have a valid email address.' }
+  if (!setupLink) return { status: 'skipped', reason: 'A secure password setup link could not be created.' }
+
+  const studentName = cleanText(student?.displayName || student?.name || [student?.firstName, student?.lastName].filter(Boolean).join(' '), 160) || 'Student'
+  const safe = escapeEmailHtml
+  const safeSetupLink = safe(setupLink)
+  const html = emailShell({
+    eyebrow: 'Your student account is ready',
+    title: `Welcome, ${safe(studentName)}.`,
+    body: `<p>A Precision Driving School created your student account. Use the secure button below to choose your password and sign in.</p><p style="margin:26px 0"><a href="${safeSetupLink}" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#0145a8;color:#fff;text-decoration:none;font-weight:700">Set your password</a></p><p style="color:#526c88;font-size:13px">For your security, this link can only be used once. If you did not expect this account, please contact the school.</p>`,
+    footer: 'A Precision Driving School - Please keep this email for your records.',
+  })
+  try {
+    const result = await sendResendEmail({
+      to: email,
+      subject: 'Set up your student account | A Precision Driving School',
+      html,
+      replyTo: adminEmail || undefined,
+    })
+    return result.skipped ? { status: 'skipped', reason: 'Student-account email environment variables are incomplete.' } : { status: 'sent', id: result.id }
+  } catch (error) {
+    return { status: 'failed', error: cleanText(error?.message, 240) || 'Student account email could not be sent.' }
+  }
+}
+
 async function deliverEnrollmentConfirmationEmail(student, course) {
   const { apiKey, from, adminEmail } = resendConfiguration()
   const email = cleanText(student?.email, 320).toLowerCase()
@@ -4925,6 +4954,70 @@ app.get('/api/admin/users', async (req, res) => {
     res.json(users)
   } catch (e) {
     sendServerError(res, e, 'Admin user lookup failed')
+  }
+})
+
+app.post('/api/admin/users', async (req, res) => {
+  let createdAccount = null
+  try {
+    const submitted = sanitizeUserProfile(req.body)
+    const firstName = cleanText(submitted.firstName, 80)
+    const lastName = cleanText(submitted.lastName, 80)
+    const displayName = cleanText(submitted.displayName || submitted.name || [firstName, submitted.middleName, lastName].filter(Boolean).join(' '), 160)
+    const email = normalizeEmail(submitted.email)
+    const phone = cleanText(submitted.phone, 30)
+    if (!firstName || !lastName) throw new HttpError(400, 'First name and last name are required.')
+    if (!displayName) throw new HttpError(400, 'Student name is required.')
+    if (!isEmail(email)) throw new HttpError(400, 'Enter a valid student email address.')
+    if (!phone) throw new HttpError(400, 'Student phone number is required.')
+
+    const existing = await usersCol.findOne({ email }, { projection: { _id: 1 } })
+    if (existing) throw new HttpError(409, 'A student account already uses this email address.')
+
+    const adminAuth = getFirebaseAdminAuth()
+    const temporaryPassword = `${randomBytes(30).toString('base64url')}Aa1!`
+    createdAccount = await adminAuth.createUser({ email, displayName, password: temporaryPassword, emailVerified: false, disabled: false })
+    const now = new Date().toISOString()
+    const profile = {
+      ...submitted,
+      uid: createdAccount.uid,
+      firstName,
+      lastName,
+      displayName,
+      name: displayName,
+      email,
+      phone,
+      isAdmin: false,
+      courses: [],
+      payments: [],
+      completedModules: [],
+      createdAt: now,
+      updatedAt: now,
+      createdByAdminAt: now,
+      createdByAdminUid: cleanText(req.auth?.uid, 160),
+    }
+    await usersCol.insertOne(profile)
+
+    let delivery = { status: 'skipped', reason: 'A secure password setup link could not be created.' }
+    try {
+      const setupLink = await adminAuth.generatePasswordResetLink(email)
+      delivery = await deliverStudentAccountSetupEmail(profile, setupLink)
+    } catch (error) {
+      delivery = { status: 'failed', error: cleanText(error?.message, 240) || 'The password setup email could not be sent.' }
+    }
+
+    return res.status(201).json({
+      ok: true,
+      user: pickAdminDetailFields(profile, ADMIN_USER_PROFILE_FIELDS),
+      emailDelivery: delivery,
+    })
+  } catch (error) {
+    if (createdAccount?.uid) {
+      try { await getFirebaseAdminAuth().deleteUser(createdAccount.uid) } catch (cleanupError) { console.error('Could not clean up incomplete student account:', cleanupError?.message || cleanupError) }
+    }
+    if (error?.code === 'auth/email-already-exists') return res.status(409).json({ error: 'A student account already uses this email address.' })
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Student account creation failed')
   }
 })
 
