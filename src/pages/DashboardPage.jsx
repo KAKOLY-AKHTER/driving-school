@@ -349,6 +349,9 @@ export default function DashboardPage() {
   const [refundReason, setRefundReason] = useState('')
   const [courseActionLoading, setCourseActionLoading] = useState('')
   const [courseActionError, setCourseActionError] = useState('')
+  const [bookingCancelConfirm, setBookingCancelConfirm] = useState(null)
+  const [bookingCancelLoading, setBookingCancelLoading] = useState(false)
+  const [bookingCancelError, setBookingCancelError] = useState('')
   const [logoutLoading, setLogoutLoading] = useState(false)
   const [quizSaving, setQuizSaving] = useState(false)
   const [chatMessages, setChatMessages] = useState([])
@@ -376,11 +379,12 @@ export default function DashboardPage() {
     : courseDetail ? 'course-detail'
     : cancelConfirm ? 'cancel-course'
       : refundConfirm ? 'refund-course'
-        : conversationDeleteConfirm ? 'delete-conversation'
-          : ''
+        : bookingCancelConfirm ? 'cancel-lesson'
+          : conversationDeleteConfirm ? 'delete-conversation'
+            : ''
 
   const closeActiveModal = useCallback(() => {
-    if (courseActionLoading || conversationActionId) return
+    if (courseActionLoading || bookingCancelLoading || conversationActionId) return
     setCourseDetail(null)
     setCancelConfirm(null)
     setRefundConfirm(null)
@@ -391,7 +395,7 @@ export default function DashboardPage() {
     setConversationDeleteConfirm(null)
     setUnsavedConfirm(null)
     setTextDetails(null)
-  }, [courseActionLoading, conversationActionId])
+  }, [courseActionLoading, bookingCancelLoading, conversationActionId])
 
   useEffect(() => {
     if (!openModalKey || !modalRef.current) return undefined
@@ -541,6 +545,24 @@ export default function DashboardPage() {
       setCourseActionError(error.message || 'The refund request could not be submitted. Please try again.')
     } finally {
       setCourseActionLoading('')
+    }
+  }
+
+  const handleCancelBooking = async (booking) => {
+    const bookingId = booking?._id
+    if (!bookingId || bookingCancelLoading) return
+    setBookingCancelLoading(true)
+    setBookingCancelError('')
+    try {
+      const result = await api.deleteBooking(bookingId)
+      const cancelledBooking = result?.booking || { ...booking, status: 'cancelled' }
+      setBookings(previous => previous.map(item => String(item?._id) === String(bookingId) ? cancelledBooking : item))
+      setBookingCancelConfirm(null)
+      showNotice('Lesson cancelled. Your available lesson slot has been restored.', 'success')
+    } catch (error) {
+      setBookingCancelError(error.message || 'The lesson could not be cancelled. Please try again.')
+    } finally {
+      setBookingCancelLoading(false)
     }
   }
 
@@ -1531,6 +1553,24 @@ export default function DashboardPage() {
                 </div>
               )}
 
+              {bookingCancelConfirm && (
+                <div className="dash-modal-backdrop" role="presentation" style={{ position:'fixed', inset:0, background:'rgba(10,22,40,.68)', backdropFilter:'blur(10px)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }} onClick={(event) => { if (event.target === event.currentTarget && !bookingCancelLoading) { setBookingCancelConfirm(null); setBookingCancelError('') } }}>
+                  <div ref={modalRef} role="alertdialog" aria-modal="true" aria-labelledby="cancel-lesson-title" aria-describedby="cancel-lesson-copy" style={{ background:'#fff', borderRadius:'var(--radius-xl)', width:'100%', maxWidth:'440px', boxShadow:'0 24px 80px rgba(0,0,0,0.25)', overflow:'hidden' }}>
+                    <div style={{ padding:'2rem 2rem 1rem' }}>
+                      <p style={{ margin:'0 0 .45rem', fontFamily:'var(--font-mono)', fontSize:'.72rem', letterSpacing:'.14em', textTransform:'uppercase', color:'#B91C1C', fontWeight:800 }}>Cancel lesson</p>
+                      <h3 id="cancel-lesson-title" style={{ fontFamily:'var(--font-display)', fontSize:'1.35rem', color:DARK, margin:'0 0 .6rem' }}>Cancel this lesson?</h3>
+                      <p id="cancel-lesson-copy" style={{ fontFamily:'var(--font-body)', fontSize:'1rem', color:'#475569', margin:0, lineHeight:1.6 }}>This will release the selected lesson time. Your available lesson slot will be restored so you can book another time.</p>
+                      <p style={{ margin:'.8rem 0 0', padding:'.7rem .8rem', borderRadius:'10px', background:'#FFF7ED', border:'1px solid #FED7AA', color:'#9A3412', fontFamily:'var(--font-body)', fontSize:'.9rem', lineHeight:1.45 }}>If you added this lesson to Google, Apple, Outlook, or your device calendar, remove that personal calendar event manually.</p>
+                      {bookingCancelError && <p role="alert" style={{ margin:'1rem 0 0', padding:'.7rem .8rem', borderRadius:'10px', background:'#FEF2F2', border:'1px solid #FECACA', color:'#B91C1C', fontFamily:'var(--font-body)', fontSize:'.92rem' }}>{bookingCancelError}</p>}
+                    </div>
+                    <div style={{ padding:'0 2rem 2rem', display:'flex', gap:'.75rem' }}>
+                      <button type="button" disabled={bookingCancelLoading} onClick={() => { setBookingCancelConfirm(null); setBookingCancelError('') }} style={{ flex:1, padding:'.75rem 1rem', border:'1px solid #CBD5E1', borderRadius:'10px', background:'#fff', color:'#334155', fontWeight:800, cursor:bookingCancelLoading ? 'wait' : 'pointer', opacity:bookingCancelLoading ? .65 : 1 }}>Keep lesson</button>
+                      <button type="button" disabled={bookingCancelLoading} onClick={() => handleCancelBooking(bookingCancelConfirm)} style={{ flex:1, padding:'.75rem 1rem', border:0, borderRadius:'10px', background:'linear-gradient(135deg,#DC2626,#B91C1C)', color:'#fff', fontWeight:900, cursor:bookingCancelLoading ? 'wait' : 'pointer', opacity:bookingCancelLoading ? .72 : 1 }}>{bookingCancelLoading ? 'Cancelling…' : 'Yes, cancel'}</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {activeTab === 'payments' && (
                 <div className="dash-content-width">
                   <div className="dash-anim dash-card-premium" style={{ padding:'clamp(1.25rem,2.5vw,2.5rem)' }}>
@@ -1854,6 +1894,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:'0.45rem', flexWrap:'wrap', flex:'1 1 260px' }}>
                                   <span title="Payment status" style={{ padding:'0.25rem 0.7rem', background:paymentColors.background, color:paymentColors.color, borderRadius:'999px', fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.08em', textTransform:'uppercase', fontWeight:700 }}>Payment: {paymentStatus}</span>
+                                  {b._id && <button type="button" onClick={() => { setBookingCancelConfirm(b); setBookingCancelError('') }} style={{ padding:'0.42rem 0.7rem', border:'1px solid #FCA5A5', borderRadius:'8px', background:'#fff', color:'#B91C1C', fontFamily:'var(--font-body)', fontSize:'0.84rem', fontWeight:800, cursor:'pointer' }}>Cancel lesson</button>}
                                 </div>
                               </div>
                             )

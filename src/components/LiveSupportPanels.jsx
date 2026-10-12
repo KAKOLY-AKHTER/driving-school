@@ -22,7 +22,7 @@ function SupportMessage({ message, adminView = false, studentName = 'Student' })
     <div className={`live-support-message ${mine ? 'is-mine' : ''}`}>
       <div className="live-support-bubble">
         <p>{message?.text}</p>
-        <span>{fromAdmin ? 'School team' : studentName} · {formatTimestamp(message?.timestamp)}</span>
+        <span>{fromAdmin ? 'School team' : studentName} {' - '} {formatTimestamp(message?.timestamp)}</span>
       </div>
     </div>
   )
@@ -177,10 +177,10 @@ export function UserLiveSupportPanel({ user, onUnreadChange }) {
             <button type="button" className="live-support-primary" style={{ width: '100%' }} onClick={() => { setNewRequest(true); setSelectedId(''); setDraft(''); setError('') }}>+ New support request</button>
           </div>
           <div className="live-support-list-scroll">
-            {loading ? <p role="status" style={{ color: '#334155', padding: '.6rem' }}>Loading conversations…</p> : threads.length === 0 ? <p style={{ color: '#334155', padding: '.6rem' }}>No support requests yet.</p> : threads.map(thread => (
+            {loading ? <p role="status" style={{ color: '#334155', padding: '.6rem' }}>Loading conversations...</p> : threads.length === 0 ? <p style={{ color: '#334155', padding: '.6rem' }}>No support requests yet.</p> : threads.map(thread => (
               <button type="button" key={thread.id} className={`live-support-thread ${selectedId === thread.id && !newRequest ? 'is-active' : ''}`} onClick={() => { setSelectedId(thread.id); setNewRequest(false); setDraft(''); setError('') }}>
                 <p className="live-support-thread-title"><span>{thread.subject || 'Support request'}</span>{thread.unreadByUser && <span className="live-support-unread">New</span>}</p>
-                <p className="live-support-thread-meta">{thread.status === 'closed' ? 'Closed' : 'Open'} · {formatTimestamp(threadTime(thread))}</p>
+                <p className="live-support-thread-meta">{thread.status === 'closed' ? 'Closed' : 'Open'} {' - '} {formatTimestamp(threadTime(thread))}</p>
               </button>
             ))}
           </div>
@@ -196,9 +196,9 @@ export function UserLiveSupportPanel({ user, onUnreadChange }) {
               <label htmlFor="live-support-subject" style={{ display: 'block', fontWeight: 800, color: '#334155', marginBottom: '.35rem' }}>Subject</label>
               <input id="live-support-subject" className="live-support-input" maxLength={200} value={subject} onChange={event => setSubject(event.target.value)} placeholder="Example: Help with my lesson booking" required />
               <label htmlFor="live-support-first-message" style={{ display: 'block', fontWeight: 800, color: '#334155', margin: '1rem 0 .35rem' }}>Message</label>
-              <textarea id="live-support-first-message" className="live-support-input" rows={6} maxLength={4000} value={draft} onChange={event => setDraft(event.target.value)} placeholder="Describe what you need help with…" required />
+              <textarea id="live-support-first-message" className="live-support-input" rows={6} maxLength={4000} value={draft} onChange={event => setDraft(event.target.value)} placeholder="Describe what you need help with..." required />
               <div style={{ display: 'flex', gap: '.65rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-                <button type="submit" className="live-support-primary" disabled={saving}>{saving ? 'Sending…' : 'Send request'}</button>
+                <button type="submit" className="live-support-primary" disabled={saving}>{saving ? 'Sending...' : 'Send request'}</button>
                 <button type="button" className="live-support-secondary" onClick={() => { setNewRequest(false); setSelectedId(threads[0]?.id || ''); setDraft('') }}>Cancel</button>
               </div>
             </form>
@@ -214,11 +214,11 @@ export function UserLiveSupportPanel({ user, onUnreadChange }) {
               </div>
               <form className="live-support-compose" onSubmit={sendReply}>
                 {selected.status === 'closed' && <p style={{ margin: '0 0 .55rem', color: '#334155', fontSize: '.85rem' }}>Replying will reopen this request.</p>}
-                <div className="live-support-compose-row"><textarea aria-label="Reply to school support" className="live-support-input" rows={2} maxLength={4000} value={draft} onChange={event => setDraft(event.target.value)} placeholder="Write a reply…" required /><button type="submit" className="live-support-primary" disabled={saving || !draft.trim()}>{saving ? 'Sending…' : 'Send reply'}</button></div>
+                <div className="live-support-compose-row"><textarea aria-label="Reply to school support" className="live-support-input" rows={2} maxLength={4000} value={draft} onChange={event => setDraft(event.target.value)} placeholder="Write a reply..." required /><button type="submit" className="live-support-primary" disabled={saving || !draft.trim()}>{saving ? 'Sending...' : 'Send reply'}</button></div>
               </form>
             </>
           ) : (
-            <div className="live-support-empty"><div><div style={{ width: 64, height: 64, borderRadius: 18, display: 'grid', placeItems: 'center', margin: '0 auto 1rem', background: '#EFF6FF', color: BLUE, fontSize: '1.7rem' }}>💬</div><h2 style={{ color: NAVY, margin: 0 }}>Live Support</h2><p style={{ maxWidth: 420, lineHeight: 1.6 }}>Create a support request to talk directly with the school team.</p><button type="button" className="live-support-primary" onClick={() => setNewRequest(true)}>Start a request</button></div></div>
+            <div className="live-support-empty"><div><div aria-hidden="true" style={{ width: 64, height: 64, borderRadius: 18, display: 'grid', placeItems: 'center', margin: '0 auto 1rem', background: '#EFF6FF', color: BLUE, fontSize: '1.7rem' }}>💬</div><h2 style={{ color: NAVY, margin: 0 }}>Live Support</h2><p style={{ maxWidth: 420, lineHeight: 1.6 }}>Create a support request to talk directly with the school team.</p><button type="button" className="live-support-primary" onClick={() => setNewRequest(true)}>Start a request</button></div></div>
           )}
         </div>
       </section>
@@ -326,7 +326,7 @@ export function AdminLiveSupportPanel({ onUnreadChange }) {
             </div>
           </div>
           <div className="live-support-list-scroll">
-            {loading ? <p role="status" style={{ color: '#334155', padding: '.6rem' }}>Loading inbox…</p> : filtered.length === 0 ? <p style={{ color: '#334155', padding: '.6rem' }}>{threads.length ? 'No requests match these filters.' : 'No student support requests yet.'}</p> : filtered.map(thread => (
+            {loading ? <p role="status" style={{ color: '#334155', padding: '.6rem' }}>Loading inbox...</p> : filtered.length === 0 ? <p style={{ color: '#334155', padding: '.6rem' }}>{threads.length ? 'No requests match these filters.' : 'No student support requests yet.'}</p> : filtered.map(thread => (
               <div key={supportKey(thread)} className={`live-support-thread live-support-admin-thread ${selectedKey === supportKey(thread) ? 'is-active' : ''}`}>
                 <button type="button" className="live-support-thread-open" onClick={() => { setSelectedKey(supportKey(thread)); setDraft(''); setError('') }}>
                 <span className="live-support-thread-avatar" aria-hidden="true">{(thread.student?.name || thread.student?.email || 'Student').trim().charAt(0).toUpperCase()}</span>
@@ -345,8 +345,8 @@ export function AdminLiveSupportPanel({ onUnreadChange }) {
           {selected ? <>
             <header className="live-support-chat-head"><div className="live-support-conversation-title"><span className="live-support-conversation-avatar" aria-hidden="true">{(selected.student?.name || selected.student?.email || 'S').trim().charAt(0).toUpperCase()}</span><div style={{ minWidth: 0 }}><p className="live-support-conversation-kicker">Active conversation</p><h2 style={{ color: NAVY, fontSize: '1.08rem', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.subject || 'Student support request'}</h2><p style={{ color: '#526780', margin: '.18rem 0 0', fontSize: '.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.student?.name || 'Student'}{selected.student?.email ? ` / ${selected.student.email}` : ''}</p></div></div><div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flex: '0 0 auto' }}><span className={`live-support-status ${selected.status === 'closed' ? 'is-closed' : ''}`}>{selected.status || 'open'}</span><button type="button" className="live-support-secondary" disabled={saving} onClick={() => changeStatus(selected.status === 'closed' ? 'open' : 'closed')}>{selected.status === 'closed' ? 'Reopen' : 'Close'}</button></div></header>
             <div className="live-support-chat-body" aria-live="polite">{(selected.messages || []).map((message, index) => <SupportMessage key={`${message.timestamp || 'message'}-${index}`} message={message} adminView studentName={selected.student?.name || 'Student'} />)}<div ref={endRef} /></div>
-            <form className="live-support-compose" onSubmit={sendReply}><div className="live-support-compose-row"><textarea aria-label="Reply to student" className="live-support-input" rows={2} maxLength={4000} value={draft} onChange={event => setDraft(event.target.value)} placeholder={selected.status === 'closed' ? 'Reply to reopen this request…' : 'Write a reply to the student…'} required /><button type="submit" className="live-support-primary" disabled={saving || !draft.trim()}>{saving ? 'Sending…' : 'Send reply'}</button></div></form>
-          </> : <div className="live-support-empty"><div><div style={{ fontSize: '2rem' }}>💬</div><h2 style={{ color: NAVY }}>Live Support Inbox</h2><p>Select a student request to view and reply.</p></div></div>}
+            <form className="live-support-compose" onSubmit={sendReply}><div className="live-support-compose-row"><textarea aria-label="Reply to student" className="live-support-input" rows={2} maxLength={4000} value={draft} onChange={event => setDraft(event.target.value)} placeholder={selected.status === 'closed' ? 'Reply to reopen this request...' : 'Write a reply to the student...'} required /><button type="submit" className="live-support-primary" disabled={saving || !draft.trim()}>{saving ? 'Sending...' : 'Send reply'}</button></div></form>
+          </> : <div className="live-support-empty"><div><div aria-hidden="true" style={{ fontSize: '2rem' }}>💬</div><h2 style={{ color: NAVY }}>Live Support Inbox</h2><p>Select a student request to view and reply.</p></div></div>}
         </div>
       </section>
     </SupportShell>
