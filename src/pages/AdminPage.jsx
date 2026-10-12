@@ -3278,7 +3278,14 @@ export default function AdminPage() {
                               const currentBookings = Number(instructor.activeCurrentBookings || 0)
                               return <><strong style={{ color: '#087443' }}>{(importedActive + currentBookings).toLocaleString()}</strong><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{currentBookings.toLocaleString()} current booking{currentBookings === 1 ? '' : 's'} · {importedActive.toLocaleString()} of {importedTotal.toLocaleString()} imported slots</p></>
                             })()}</td>
-                            <td style={tdStyle}><div>{formatDateDMY(instructor.firstSlotDate)}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>to {formatDateDMY(instructor.lastSlotDate)}</p></td>
+                            <td style={tdStyle}>{(() => {
+                              const hasImportedHistory = Boolean(instructor.firstSlotDate || instructor.lastSlotDate)
+                              const hasCurrentBookingHistory = Number(instructor.activeCurrentBookings || 0) > 0
+                              const firstDate = hasImportedHistory ? instructor.firstSlotDate : instructor.firstCurrentBookingDate
+                              const lastDate = hasImportedHistory ? instructor.lastSlotDate : instructor.lastCurrentBookingDate
+                              if (!firstDate && !lastDate) return <><div>Not recorded</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>to Not recorded</p></>
+                              return <><div>{formatDateDMY(firstDate)}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>to {formatDateDMY(lastDate)}{!hasImportedHistory && hasCurrentBookingHistory ? ' · current bookings' : ''}</p></>
+                            })()}</td>
                             <td style={tdStyle}>{(instructor.locationLabels || []).length ? instructor.locationLabels.join(', ') : 'Not recorded'}</td>
                             <td style={tdStyle}><div style={{ display: 'flex', gap: '.45rem', flexWrap: 'wrap' }}><button type="button" onClick={() => openInstructorDetails(instructor)} style={{ minHeight: '36px', padding: '.45rem .72rem', border: `1px solid ${SKY_BLUE}`, borderRadius: '9px', background: '#fff', color: SKY_BLUE, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap' }}>View schedule data</button><button type="button" onClick={() => openInstructorEdit(instructor)} style={{ minHeight: '36px', padding: '.45rem .72rem', border: `1px solid ${SKY_BLUE}`, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap' }}>Edit profile</button></div></td>
                           </tr>)}

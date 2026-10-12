@@ -4990,11 +4990,11 @@ app.get('/api/admin/instructors', async (_req, res) => {
         bookingFilters.push(enrollmentId ? { userId: uid, enrollmentId } : { userId: uid, courseId })
       })
     })
-    const currentBookingCounts = new Map()
+    const currentBookingSummaries = new Map()
     if (bookingFilters.length) {
       const currentBookings = await bookingsCol.find(
         { $or: bookingFilters },
-        { projection: { _id: 0, userId: 1, enrollmentId: 1, courseId: 1, status: 1 } },
+        { projection: { _id: 0, userId: 1, enrollmentId: 1, courseId: 1, date: 1, status: 1 } },
       ).toArray()
       currentBookings.forEach(booking => {
         const uid = cleanText(booking.userId, 160)
@@ -5005,7 +5005,12 @@ app.get('/api/admin/instructors', async (_req, res) => {
         const status = cleanText(booking.status, 60).toLowerCase()
         const active = !['cancelled', 'canceled', 'refunded', 'expired', 'completed', 'held'].includes(status)
         if (!instructorId || !active) return
-        currentBookingCounts.set(instructorId, (currentBookingCounts.get(instructorId) || 0) + 1)
+        const date = cleanText(booking.date, 20)
+        const summary = currentBookingSummaries.get(instructorId) || { count: 0, firstDate: '', lastDate: '' }
+        summary.count += 1
+        if (date && (!summary.firstDate || date < summary.firstDate)) summary.firstDate = date
+        if (date && (!summary.lastDate || date > summary.lastDate)) summary.lastDate = date
+        currentBookingSummaries.set(instructorId, summary)
       })
     }
     const instructorIds = [...new Set([...slotsByInstructorId.keys(), ...profilesByInstructorId.keys()])]
@@ -5029,7 +5034,9 @@ app.get('/api/admin/instructors', async (_req, res) => {
           isCurrentProfile: profile.source === 'admin-created',
           totalSlots: Number(item.totalSlots || 0),
           activeSlots: Number(item.activeSlots || 0),
-          activeCurrentBookings: Number(currentBookingCounts.get(legacyInstructorId) || 0),
+          activeCurrentBookings: Number(currentBookingSummaries.get(legacyInstructorId)?.count || 0),
+          firstCurrentBookingDate: cleanText(currentBookingSummaries.get(legacyInstructorId)?.firstDate, 20),
+          lastCurrentBookingDate: cleanText(currentBookingSummaries.get(legacyInstructorId)?.lastDate, 20),
           zoneIds: (item.zoneIds || []).filter(Boolean).map(value => cleanText(value, 80)).sort(),
           locationLabels: [...new Set([...scheduleLocations, ...profileLocations])],
           locationOptions: [...new Map((item.locationIds || []).map(value => {
