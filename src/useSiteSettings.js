@@ -8,6 +8,12 @@ export const SITE_DEFAULTS = {
   subaddress: 'San Ramon, CA 94583',
   scheduleLabel: 'aprecisiondrivingschool.com',
   scheduleLink: 'https://www.aprecisiondrivingschool.com/schedule/cart_home.html',
+  announcementEnabled: false,
+  announcementMessage: '',
+  announcementCtaLabel: '',
+  announcementCtaLink: '',
+  announcementStartsAt: '',
+  announcementEndsAt: '',
 }
 
 export function phoneHref(phone) {

@@ -5,6 +5,7 @@ import { AdminAuthProvider, useAdminAuth } from './contexts/AdminAuthContext'
 import { CartProvider } from './contexts/CartContext'
 import Nav from './components/Nav'
 import Footer from './components/Footer'
+import AnnouncementBar from './components/AnnouncementBar'
 import ErrorBoundary from './components/ErrorBoundary'
 import { usePageMeta } from './usePageMeta'
 const Home = lazy(() => import('./pages/Home'))
@@ -194,6 +195,7 @@ function AppRoutes() {
         </Suspense>
           </main>
           {!hideShell && <Footer />}
+          {!hideShell && <AnnouncementBar />}
         </>
   )
 }

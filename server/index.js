@@ -500,6 +500,26 @@ const cleanHttpUrl = (value, maxLength = 2000) => {
     return ''
   }
 }
+const cleanAnnouncementLink = (value) => {
+  const raw = cleanText(value, 2000)
+  if (!raw) return ''
+  // Announcement CTAs may point to a page inside this website or to a secure
+  // external URL. Reject protocol-relative and script-like URLs.
+  if (/^\/(?!\/)[A-Za-z0-9_./?=&%#-]*$/.test(raw)) return raw
+  return cleanHttpUrl(raw)
+}
+const cleanAnnouncementDate = (value, label) => {
+  const date = cleanText(value, 10)
+  if (!date) return ''
+  const match = date.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) {
+    throw new HttpError(400, `${label} must be a valid date.`)
+  }
+  const [year, month, day] = match.slice(1).map(Number)
+  const parsed = new Date(Date.UTC(year, month - 1, day))
+  if (parsed.getUTCFullYear() !== year || parsed.getUTCMonth() !== month - 1 || parsed.getUTCDate() !== day) throw new HttpError(400, `${label} must be a valid date.`)
+  return date
+}
 const safeRecord = (value, depth = 0) => {
   if (depth > 3) return undefined
   if (typeof value === 'string') return cleanText(value, 4000)
@@ -984,9 +1004,21 @@ function sanitizeSettings(value) {
     subaddress: cleanText(value.subaddress, 300),
     scheduleLabel: cleanText(value.scheduleLabel, 200),
     scheduleLink: cleanHttpUrl(value.scheduleLink),
+    announcementEnabled: value.announcementEnabled === true,
+    announcementMessage: cleanText(value.announcementMessage, 240),
+    announcementCtaLabel: cleanText(value.announcementCtaLabel, 40),
+    announcementCtaLink: cleanAnnouncementLink(value.announcementCtaLink),
+    announcementStartsAt: cleanAnnouncementDate(value.announcementStartsAt, 'Announcement start date'),
+    announcementEndsAt: cleanAnnouncementDate(value.announcementEndsAt, 'Announcement end date'),
   }
   if (output.email && !isEmail(output.email)) throw new HttpError(400, 'Please enter a valid settings email address.')
   if (value.scheduleLink && !output.scheduleLink) throw new HttpError(400, 'Schedule link must be a secure HTTPS URL.')
+  if (value.announcementCtaLink && !output.announcementCtaLink) throw new HttpError(400, 'Announcement button link must be a website path or secure HTTPS URL.')
+  if (output.announcementCtaLink && !output.announcementCtaLabel) output.announcementCtaLabel = 'Learn more'
+  if (output.announcementStartsAt && output.announcementEndsAt && output.announcementEndsAt < output.announcementStartsAt) {
+    throw new HttpError(400, 'Announcement end date cannot be before its start date.')
+  }
+  if (output.announcementEnabled && !output.announcementMessage) throw new HttpError(400, 'Enter an announcement message before turning it on.')
   return output
 }
 function sanitizeRefundRecord(value, { partial = false } = {}) {
@@ -7363,17 +7395,21 @@ app.delete('/api/admin/socials/:id', async (req, res) => {
 app.get('/api/settings', async (req, res) => {
   try {
     const settings = await settingsCol.findOne({ _id: 'site' })
-    if (!settings) {
-      return res.json({
-        phone: '+1 925 329 1736',
-        email: 'aprecisiondrivingschool@gmail.com',
-        address: '2001 Omega Rd, Ste 205',
-        subaddress: 'San Ramon, CA 94583',
-        scheduleLabel: 'aprecisiondrivingschool.com',
-        scheduleLink: 'https://www.aprecisiondrivingschool.com/schedule/cart_home.html',
-      })
-    }
-    res.json(settings)
+    res.json({
+      phone: '+1 925 329 1736',
+      email: 'aprecisiondrivingschool@gmail.com',
+      address: '2001 Omega Rd, Ste 205',
+      subaddress: 'San Ramon, CA 94583',
+      scheduleLabel: 'aprecisiondrivingschool.com',
+      scheduleLink: 'https://www.aprecisiondrivingschool.com/schedule/cart_home.html',
+      announcementEnabled: false,
+      announcementMessage: '',
+      announcementCtaLabel: '',
+      announcementCtaLink: '',
+      announcementStartsAt: '',
+      announcementEndsAt: '',
+      ...(settings || {}),
+    })
   } catch (e) {
     sendServerError(res, e, 'Site settings lookup failed')
   }

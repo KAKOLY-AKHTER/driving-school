@@ -362,6 +362,74 @@ select:focus-visible {
   color: var(--color-gold);
 }
 
+/* Admin-controlled offer / notice bar. It stays visible without covering the
+   call-to-action content above it and respects visitors who reduce motion. */
+.announcement-bar {
+  position: fixed;
+  z-index: 9000;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  overflow: hidden;
+  padding: .38rem clamp(.7rem, 2vw, 1.25rem);
+  background: linear-gradient(90deg, #06285f, #0145a8 52%, #06285f);
+  border-top: 1px solid rgba(253, 188, 1, .7);
+  box-shadow: 0 -8px 24px rgba(3, 22, 52, .22);
+  color: #fff;
+}
+.announcement-bar__ticker {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+.announcement-bar__track {
+  display: flex;
+  width: max-content;
+  animation: announcementTicker 26s linear infinite;
+}
+.announcement-bar:hover .announcement-bar__track { animation-play-state: paused; }
+.announcement-bar__message {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  padding-right: 4rem;
+  white-space: nowrap;
+  font-size: .88rem;
+  font-weight: 800;
+  letter-spacing: .01em;
+}
+.announcement-bar__spark { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #FDBC01; box-shadow: 0 0 0 3px rgba(253,188,1,.18); }
+.announcement-bar__cta {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .4rem .65rem;
+  border-radius: 6px;
+  background: #FDBC01;
+  color: #082048;
+  font-size: .78rem;
+  font-weight: 900;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform .2s ease, background .2s ease;
+}
+.announcement-bar__cta:hover { background: #ffcf3d; transform: translateY(-1px); }
+.announcement-bar__cta:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+@keyframes announcementTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (max-width: 600px) {
+  .announcement-bar { min-height: 48px; padding: .35rem .6rem; }
+  .announcement-bar__message { font-size: .78rem; padding-right: 2.25rem; }
+  .announcement-bar__cta { font-size: .72rem; padding: .38rem .5rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .announcement-bar__track { animation: none; }
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    HERO BACKGROUND GRID
 ═══════════════════════════════════════════════════════════════════ */

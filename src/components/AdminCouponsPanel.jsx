@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import AdminDeleteIconButton from './AdminDeleteIconButton'
+import AdminAnnouncementPanel from './AdminAnnouncementPanel'
 
 const BLUE = '#0145A8'
 const DARK = '#0A1628'
@@ -137,6 +138,7 @@ export default function AdminCouponsPanel({ cardStyle, inputStyle, labelStyle, t
   )
 
   return <>
+    <AdminAnnouncementPanel cardStyle={cardStyle} inputStyle={inputStyle} />
     <div className="admin-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1rem', marginBottom: '1.25rem' }}>
       {[{ label: 'All Coupon Codes', value: coupons.length, color: BLUE }, { label: 'Active Now', value: activeCount, color: '#16A34A' }, { label: 'Total Times Used', value: totalUses, color: '#C8960C' }].map(item => <div key={item.label} style={{ ...cardStyle, textAlign: 'center', padding: '1.2rem' }}><div style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: item.color, fontWeight: 900 }}>{item.value}</div><div style={{ fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.1em', textTransform: 'uppercase', color: '#475569', fontWeight: 800 }}>{item.label}</div></div>)}
     </div>
