@@ -4941,7 +4941,7 @@ app.get('/api/admin/legacy-students/:candidateId/records', async (req, res) => {
 // It is kept in its own collection so it cannot be mistaken for student data.
 app.get('/api/admin/instructors', async (_req, res) => {
   try {
-    const [slotSummaries, profiles, totalSlots] = await Promise.all([
+    const [slotSummaries, profiles, totalSlots, assignedAccounts] = await Promise.all([
       legacyInstructorSlotsCol.aggregate([
         {
           $group: {
@@ -4958,6 +4958,13 @@ app.get('/api/admin/instructors', async (_req, res) => {
       ]).toArray(),
       legacyInstructorsCol.find({}, { projection: { _id: 0, legacyInstructorId: 1, displayName: 1, username: 1, email: 1, phone: 1, address: 1, active: 1, addedAt: 1, color: 1, locationLabels: 1, source: 1 } }).toArray(),
       legacyInstructorSlotsCol.countDocuments(),
+      // Website bookings are stored with the student course assignment, not in
+      // the old imported-slot collection. Fetch those assignments separately
+      // so newly-created instructors receive a real active-schedule count.
+      usersCol.find(
+        { courses: { $elemMatch: { instructorId: { $exists: true, $ne: '' } } } },
+        { projection: { _id: 0, uid: 1, courses: 1 } },
+      ).toArray(),
     ])
     const slotsByInstructorId = new Map(slotSummaries.map(item => [cleanText(item._id, 80), item]))
     const profilesByInstructorId = new Map(profiles.map(profile => [cleanText(profile.legacyInstructorId, 80), profile]))
@@ -4969,6 +4976,38 @@ app.get('/api/admin/instructors', async (_req, res) => {
       cleanText(location.legacyCityId, 80),
       [cleanText(location.cityName, 120), cleanText(location.zipCode, 20)].filter(Boolean).join(' · '),
     ]))
+    const assignedCourseKeys = new Map()
+    const bookingFilters = []
+    assignedAccounts.forEach(account => {
+      const uid = cleanText(account.uid, 160)
+      ;(Array.isArray(account.courses) ? account.courses : []).forEach(course => {
+        const instructorId = cleanText(course?.instructorId, 80)
+        const enrollmentId = cleanText(course?.enrollmentId, 160)
+        const courseId = cleanText(course?.id, 120)
+        if (!uid || !instructorId || (!enrollmentId && !courseId)) return
+        const key = enrollmentId ? `${uid}:enrollment:${enrollmentId}` : `${uid}:course:${courseId}`
+        assignedCourseKeys.set(key, instructorId)
+        bookingFilters.push(enrollmentId ? { userId: uid, enrollmentId } : { userId: uid, courseId })
+      })
+    })
+    const currentBookingCounts = new Map()
+    if (bookingFilters.length) {
+      const currentBookings = await bookingsCol.find(
+        { $or: bookingFilters },
+        { projection: { _id: 0, userId: 1, enrollmentId: 1, courseId: 1, status: 1 } },
+      ).toArray()
+      currentBookings.forEach(booking => {
+        const uid = cleanText(booking.userId, 160)
+        const enrollmentId = cleanText(booking.enrollmentId, 160)
+        const courseId = cleanText(booking.courseId, 120)
+        const key = enrollmentId ? `${uid}:enrollment:${enrollmentId}` : `${uid}:course:${courseId}`
+        const instructorId = assignedCourseKeys.get(key)
+        const status = cleanText(booking.status, 60).toLowerCase()
+        const active = !['cancelled', 'canceled', 'refunded', 'expired', 'completed', 'held'].includes(status)
+        if (!instructorId || !active) return
+        currentBookingCounts.set(instructorId, (currentBookingCounts.get(instructorId) || 0) + 1)
+      })
+    }
     const instructorIds = [...new Set([...slotsByInstructorId.keys(), ...profilesByInstructorId.keys()])]
       .sort((left, right) => Number(left) - Number(right) || left.localeCompare(right))
     res.json({
@@ -4990,6 +5029,7 @@ app.get('/api/admin/instructors', async (_req, res) => {
           isCurrentProfile: profile.source === 'admin-created',
           totalSlots: Number(item.totalSlots || 0),
           activeSlots: Number(item.activeSlots || 0),
+          activeCurrentBookings: Number(currentBookingCounts.get(legacyInstructorId) || 0),
           zoneIds: (item.zoneIds || []).filter(Boolean).map(value => cleanText(value, 80)).sort(),
           locationLabels: [...new Set([...scheduleLocations, ...profileLocations])],
           locationOptions: [...new Map((item.locationIds || []).map(value => {

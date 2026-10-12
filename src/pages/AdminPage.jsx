@@ -2598,9 +2598,10 @@ export default function AdminPage() {
       ...(instructor.locationLabels || []),
     ].some(value => String(value || '').toLowerCase().includes(query))
     const totalSlots = Number(instructor.totalSlots || 0)
+    const currentBookings = Number(instructor.activeCurrentBookings || 0)
     const matchesScheduleFilter = instructorScheduleFilter === 'all'
-      || (instructorScheduleFilter === 'with-schedules' && totalSlots > 0)
-      || (instructorScheduleFilter === 'without-schedules' && totalSlots === 0)
+      || (instructorScheduleFilter === 'with-schedules' && (totalSlots + currentBookings) > 0)
+      || (instructorScheduleFilter === 'without-schedules' && (totalSlots + currentBookings) === 0)
     return matchesSearch && matchesScheduleFilter
   })
   const assignableInstructors = instructors
@@ -3271,7 +3272,12 @@ export default function AdminPage() {
                               </div>
                               <p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{instructor.displayName ? `ID ${instructor.legacyInstructorId}${instructor.username ? ` · @${instructor.username}` : ''}` : 'No matching profile in old instructor table'}</p>
                             </td>
-                            <td style={tdStyle}><strong style={{ color: '#087443' }}>{Number(instructor.activeSlots || 0).toLocaleString()}</strong><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>of {Number(instructor.totalSlots || 0).toLocaleString()} imported slots</p></td>
+                            <td style={tdStyle}>{(() => {
+                              const importedActive = Number(instructor.activeSlots || 0)
+                              const importedTotal = Number(instructor.totalSlots || 0)
+                              const currentBookings = Number(instructor.activeCurrentBookings || 0)
+                              return <><strong style={{ color: '#087443' }}>{(importedActive + currentBookings).toLocaleString()}</strong><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>{currentBookings.toLocaleString()} current booking{currentBookings === 1 ? '' : 's'} · {importedActive.toLocaleString()} of {importedTotal.toLocaleString()} imported slots</p></>
+                            })()}</td>
                             <td style={tdStyle}><div>{formatDateDMY(instructor.firstSlotDate)}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>to {formatDateDMY(instructor.lastSlotDate)}</p></td>
                             <td style={tdStyle}>{(instructor.locationLabels || []).length ? instructor.locationLabels.join(', ') : 'Not recorded'}</td>
                             <td style={tdStyle}><div style={{ display: 'flex', gap: '.45rem', flexWrap: 'wrap' }}><button type="button" onClick={() => openInstructorDetails(instructor)} style={{ minHeight: '36px', padding: '.45rem .72rem', border: `1px solid ${SKY_BLUE}`, borderRadius: '9px', background: '#fff', color: SKY_BLUE, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap' }}>View schedule data</button><button type="button" onClick={() => openInstructorEdit(instructor)} style={{ minHeight: '36px', padding: '.45rem .72rem', border: `1px solid ${SKY_BLUE}`, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap' }}>Edit profile</button></div></td>
