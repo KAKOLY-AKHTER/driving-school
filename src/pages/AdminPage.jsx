@@ -1442,6 +1442,21 @@ export default function AdminPage() {
     }
   }
 
+  const handleDeleteInstructor = (instructor) => {
+    if (!instructor?.isCurrentProfile || !instructor?.legacyInstructorId) return
+    const name = instructor.displayName || 'this instructor'
+    requestConfirmation(
+      'Delete instructor profile?',
+      `Remove ${name}? This can only be done when the instructor has no student course assignments. Imported schedule history is kept safe.`,
+      async () => {
+        await api.adminDeleteInstructor(instructor.legacyInstructorId)
+        setInstructors(current => current.filter(item => item.legacyInstructorId !== instructor.legacyInstructorId))
+        setMsg('Instructor profile deleted.')
+        window.setTimeout(() => setMsg(''), 2200)
+      },
+    )
+  }
+
   const openUserEdit = async (account) => {
     if (!account?.uid) return
     setUserEdit({
@@ -3287,7 +3302,7 @@ export default function AdminPage() {
                               return <><div>{formatDateDMY(firstDate)}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>to {formatDateDMY(lastDate)}{!hasImportedHistory && hasCurrentBookingHistory ? ' · current bookings' : ''}</p></>
                             })()}</td>
                             <td style={tdStyle}>{(instructor.locationLabels || []).length ? instructor.locationLabels.join(', ') : 'Not recorded'}</td>
-                            <td style={tdStyle}><div style={{ display: 'flex', gap: '.4rem', flexWrap: 'nowrap', alignItems: 'center' }}><button type="button" onClick={() => openInstructorDetails(instructor)} style={{ minHeight: '36px', padding: '.45rem .58rem', border: `1px solid ${SKY_BLUE}`, borderRadius: '9px', background: '#fff', color: SKY_BLUE, fontWeight: 900, fontSize: '.84rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>View schedule</button><button type="button" onClick={() => openInstructorEdit(instructor)} style={{ minHeight: '36px', padding: '.45rem .58rem', border: `1px solid ${SKY_BLUE}`, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 900, fontSize: '.84rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>Edit profile</button></div></td>
+                            <td style={tdStyle}><div style={{ display: 'flex', gap: '.4rem', flexWrap: 'nowrap', alignItems: 'center' }}><button type="button" onClick={() => openInstructorDetails(instructor)} style={{ minHeight: '36px', padding: '.45rem .58rem', border: `1px solid ${SKY_BLUE}`, borderRadius: '9px', background: '#fff', color: SKY_BLUE, fontWeight: 900, fontSize: '.84rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>View schedule</button><button type="button" onClick={() => openInstructorEdit(instructor)} style={{ minHeight: '36px', padding: '.45rem .58rem', border: `1px solid ${SKY_BLUE}`, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 900, fontSize: '.84rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>Edit profile</button><AdminDeleteIconButton disabled={!instructor.isCurrentProfile} label={`Delete instructor ${instructor.displayName || instructor.legacyInstructorId}`} title={instructor.isCurrentProfile ? 'Delete current instructor profile' : 'Imported instructor history is retained'} onClick={() => handleDeleteInstructor(instructor)} style={{ width: '36px', height: '36px', minWidth: '36px', borderRadius: '9px' }} /></div></td>
                           </tr>)}
                           {!instructorsLoading && instructors.length === 0 && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>No instructor schedule data has been imported yet.</td></tr>}
                           {!instructorsLoading && instructors.length > 0 && filteredInstructors.length === 0 && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>No instructors match the current search and filter.</td></tr>}

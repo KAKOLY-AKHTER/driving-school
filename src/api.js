@@ -120,6 +120,7 @@ export const api = {
   adminInstructors: () => request('/api/admin/instructors'),
   adminCreateInstructor: (data) => request('/api/admin/instructors', { method: 'POST', body: JSON.stringify(data) }),
   adminUpdateInstructor: (instructorId, data) => request(`/api/admin/instructors/${pathPart(instructorId)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  adminDeleteInstructor: (instructorId) => request(`/api/admin/instructors/${pathPart(instructorId)}`, { method: 'DELETE' }),
   adminInstructorSlots: (instructorId, params = {}) => request(`/api/admin/instructors/${pathPart(instructorId)}/slots?${new URLSearchParams(params)}`),
   adminInstructorSlotsReport: (instructorId, params = {}) => request(`/api/admin/instructors/${pathPart(instructorId)}/slots-report?${new URLSearchParams(params)}`),
   adminUpdateUser: (uid, data) => request(`/api/admin/users/${pathPart(uid)}`, { method: 'PUT', body: JSON.stringify(data) }),

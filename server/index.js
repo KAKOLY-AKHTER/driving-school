@@ -5125,6 +5125,35 @@ app.put('/api/admin/instructors/:instructorId', async (req, res) => {
   }
 })
 
+// Imported instructor rows are historical records and must remain available for
+// legacy schedules. Only profiles created in this admin can be deleted.
+app.delete('/api/admin/instructors/:instructorId', async (req, res) => {
+  try {
+    const legacyInstructorId = cleanText(req.params.instructorId, 80)
+    if (!legacyInstructorId) throw new HttpError(400, 'Instructor ID is required.')
+    const profile = await legacyInstructorsCol.findOne(
+      { legacyInstructorId },
+      { projection: { _id: 1, displayName: 1, source: 1 } },
+    )
+    if (!profile) throw new HttpError(404, 'Instructor profile not found.')
+    if (profile.source !== 'admin-created') {
+      throw new HttpError(409, 'Imported instructor history is retained and cannot be deleted.')
+    }
+    const assignedCourse = await usersCol.findOne(
+      { 'courses.instructorId': legacyInstructorId },
+      { projection: { _id: 1 } },
+    )
+    if (assignedCourse) {
+      throw new HttpError(409, 'This instructor is assigned to one or more student courses. Reassign or unassign those courses before deleting the profile.')
+    }
+    await legacyInstructorsCol.deleteOne({ _id: profile._id })
+    res.json({ ok: true, legacyInstructorId, displayName: cleanText(profile.displayName, 160) })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Instructor profile could not be deleted')
+  }
+})
+
 app.get('/api/admin/instructors/:instructorId/slots-report', async (req, res) => {
   try {
     const instructorId = cleanText(req.params.instructorId, 80)
