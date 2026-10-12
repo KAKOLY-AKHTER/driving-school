@@ -331,6 +331,106 @@ async function deliverBookingConfirmationEmail(student, checkout, bookings = [])
     return { status: 'failed', error: cleanText(error?.message, 240) || 'Email delivery failed.' }
   }
 }
+
+async function deliverAdminBookingNotificationEmail(student, bookings = []) {
+  const { apiKey, from, adminEmail } = resendConfiguration()
+  const bookingList = Array.isArray(bookings) ? bookings.filter(Boolean) : []
+  if (!apiKey || !from || !isEmail(adminEmail)) {
+    return { status: 'skipped', reason: 'Admin booking email environment variables are incomplete.' }
+  }
+  if (!bookingList.length) return { status: 'skipped', reason: 'There are no new bookings to notify the admin about.' }
+
+  const firstBooking = bookingList[0]
+  const studentName = cleanText(
+    student?.displayName || student?.name || [student?.firstName, student?.lastName].filter(Boolean).join(' ') || firstBooking?.callerName || firstBooking?.studentName,
+    160,
+  ) || 'Student'
+  const studentEmail = normalizeEmail(student?.email || firstBooking?.callerEmail || firstBooking?.email)
+  const studentPhone = cleanText(student?.phone || firstBooking?.callerPhone || firstBooking?.phone, 40) || 'Not provided'
+  const safe = escapeEmailHtml
+  const bookingRows = bookingList.map(booking => `<tr><td style="padding:11px">${safe(cleanText(booking?.courseTitle || booking?.courseName || booking?.planName, 180) || 'Driving lesson')}</td><td style="padding:11px">${safe(cleanText(booking?.date, 32))}</td><td style="padding:11px">${safe(cleanText(booking?.timeSlot || booking?.time, 80))}</td><td style="padding:11px">${booking?.paymentStatus === 'pending' ? 'Pending payment' : safe(cleanText(booking?.status, 60) || 'Confirmed')}</td></tr>`).join('')
+  const html = emailShell({
+    eyebrow: 'New booking notification',
+    title: `${safe(studentName)} has a new booking.`,
+    body: `<p>A new lesson booking was created.</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;background:#f7faff"><tr><td style="padding:11px;font-weight:700">Student</td><td style="padding:11px">${safe(studentName)}</td></tr><tr><td style="padding:11px;font-weight:700">Email</td><td style="padding:11px">${studentEmail ? `<a href="mailto:${safe(studentEmail)}" style="color:#0145a8">${safe(studentEmail)}</a>` : 'Not provided'}</td></tr><tr><td style="padding:11px;font-weight:700">Phone</td><td style="padding:11px">${safe(studentPhone)}</td></tr></table><h3 style="margin:22px 0 8px;color:#0145a8">Lesson details</h3><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;background:#f7faff"><tr><th style="padding:11px;text-align:left">Course / service</th><th style="padding:11px;text-align:left">Date</th><th style="padding:11px;text-align:left">Time</th><th style="padding:11px;text-align:left">Status</th></tr>${bookingRows}</table><p>Review this booking in the Admin Panel.</p>`,
+    footer: 'A Precision Driving School - Admin booking notification',
+  })
+  try {
+    const result = await sendResendEmail({
+      to: adminEmail,
+      subject: `New booking: ${studentName}`,
+      html,
+      replyTo: studentEmail || undefined,
+    })
+    return result.skipped ? { status: 'skipped', reason: 'Admin booking email environment variables are incomplete.' } : { status: 'sent', id: result.id }
+  } catch (error) {
+    return { status: 'failed', error: cleanText(error?.message, 240) || 'Admin booking email could not be sent.' }
+  }
+}
+
+async function deliverAdminPaymentNotificationEmail(student, checkout, bookings = []) {
+  const { apiKey, from, adminEmail } = resendConfiguration()
+  if (!apiKey || !from || !isEmail(adminEmail)) {
+    return { status: 'skipped', reason: 'Admin payment email environment variables are incomplete.' }
+  }
+  const payment = checkout?.payment || {}
+  const studentName = cleanText(student?.displayName || student?.name || [student?.firstName, student?.lastName].filter(Boolean).join(' '), 160) || 'Student'
+  const studentEmail = normalizeEmail(student?.email)
+  const safe = escapeEmailHtml
+  const courseNames = (Array.isArray(checkout?.courses) ? checkout.courses : [])
+    .map(course => cleanText(course?.title || course?.planName || course?.id, 180))
+    .filter(Boolean)
+  const bookingSummary = (Array.isArray(bookings) ? bookings : [])
+    .map(booking => `${cleanText(booking?.date, 32)} ${cleanText(booking?.timeSlot || booking?.time, 80)}`.trim())
+    .filter(Boolean)
+    .join('<br>') || 'No lesson time was selected during checkout.'
+  const html = emailShell({
+    eyebrow: 'Payment received',
+    title: `Payment successful from ${safe(studentName)}.`,
+    body: `<p>A PayPal payment was captured successfully.</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;background:#f7faff"><tr><td style="padding:11px;font-weight:700">Student</td><td style="padding:11px">${safe(studentName)}</td></tr><tr><td style="padding:11px;font-weight:700">Email</td><td style="padding:11px">${safe(studentEmail || 'Not recorded')}</td></tr><tr><td style="padding:11px;font-weight:700">Amount</td><td style="padding:11px">$${safe(moneyString(payment?.amount || 0))}</td></tr><tr><td style="padding:11px;font-weight:700">Payment reference</td><td style="padding:11px">${safe(cleanText(payment?.ref, 160) || 'Available in Admin Panel')}</td></tr><tr><td style="padding:11px;font-weight:700">Courses</td><td style="padding:11px">${safe(courseNames.join(', ') || cleanText(payment?.item, 300) || 'Driving course')}</td></tr><tr><td style="padding:11px;font-weight:700;vertical-align:top">Lesson times</td><td style="padding:11px">${bookingSummary}</td></tr></table><p>Review the payment and booking in the Admin Panel.</p>`,
+    footer: 'A Precision Driving School - Admin payment notification',
+  })
+  try {
+    const result = await sendResendEmail({
+      to: adminEmail,
+      subject: `Payment received: $${moneyString(payment?.amount || 0)} from ${studentName}`,
+      html,
+      replyTo: studentEmail || undefined,
+    })
+    return result.skipped ? { status: 'skipped', reason: 'Admin payment email environment variables are incomplete.' } : { status: 'sent', id: result.id }
+  } catch (error) {
+    return { status: 'failed', error: cleanText(error?.message, 240) || 'Admin payment email could not be sent.' }
+  }
+}
+
+async function deliverPhoneBookingConfirmationEmail(student, booking) {
+  const { apiKey, from, adminEmail } = resendConfiguration()
+  const email = normalizeEmail(student?.email || booking?.callerEmail || booking?.email)
+  if (!apiKey || !from) return { status: 'skipped', reason: 'Phone booking email environment variables are incomplete.' }
+  if (!isEmail(email)) return { status: 'skipped', reason: 'The caller does not have a valid email address.' }
+
+  const studentName = cleanText(student?.displayName || student?.name || [student?.firstName, student?.lastName].filter(Boolean).join(' ') || booking?.callerName || booking?.studentName, 160) || 'Student'
+  const pending = booking?.paymentStatus === 'pending' || booking?.bookingSource === 'admin_phone_new_caller'
+  const safe = escapeEmailHtml
+  const html = emailShell({
+    eyebrow: pending ? 'Phone booking received' : 'Lesson booked by phone',
+    title: pending ? `We reserved your requested time, ${safe(studentName)}.` : `Your lesson is booked, ${safe(studentName)}.`,
+    body: `${pending ? '<p>Your requested lesson time is reserved as a pending phone booking. A school team member will confirm payment or registration before it becomes an upcoming lesson.</p>' : '<p>A school team member booked this lesson for you by phone. Please keep these details for your records.</p>'}<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;background:#f7faff"><tr><td style="padding:11px;font-weight:700">Course / service</td><td style="padding:11px">${safe(cleanText(booking?.courseTitle || booking?.courseName || booking?.planName, 180) || 'Driving lesson')}</td></tr><tr><td style="padding:11px;font-weight:700">Date</td><td style="padding:11px">${safe(cleanText(booking?.date, 32))}</td></tr><tr><td style="padding:11px;font-weight:700">Time</td><td style="padding:11px">${safe(cleanText(booking?.timeSlot || booking?.time, 80))}</td></tr><tr><td style="padding:11px;font-weight:700">Status</td><td style="padding:11px">${pending ? 'Pending payment / registration' : 'Confirmed'}</td></tr></table>${pending ? '<p>Please contact the school if you have questions about payment or registration.</p>' : '<p>You can sign in to your dashboard to review your lesson schedule.</p>'}`,
+    footer: 'A Precision Driving School - Please keep this confirmation for your records.',
+  })
+  try {
+    const result = await sendResendEmail({
+      to: email,
+      subject: pending ? 'Phone booking received | A Precision Driving School' : 'Lesson booked | A Precision Driving School',
+      html,
+      replyTo: adminEmail || undefined,
+    })
+    return result.skipped ? { status: 'skipped', reason: 'Phone booking email environment variables are incomplete.' } : { status: 'sent', id: result.id }
+  } catch (error) {
+    return { status: 'failed', error: cleanText(error?.message, 240) || 'Phone booking email could not be sent.' }
+  }
+}
+
 const isDateKey = (value) => {
   const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (!match) return false
@@ -4245,10 +4345,16 @@ app.post('/api/users/:uid/paypal/orders/:orderId/capture', rateLimit({ windowMs:
     const confirmedBookings = checkout.bookingIds.length
       ? await bookingsCol.find({ _id: { $in: checkout.bookingIds }, userId: req.auth.uid }).toArray()
       : []
-    const emailDelivery = checkout.payment?.status === 'Paid'
-      ? await deliverBookingConfirmationEmail(student, checkout, confirmedBookings)
-      : null
+    const [emailDelivery, adminBookingEmailDelivery, adminPaymentEmailDelivery] = checkout.payment?.status === 'Paid'
+      ? await Promise.all([
+        deliverBookingConfirmationEmail(student, checkout, confirmedBookings),
+        deliverAdminBookingNotificationEmail(student, confirmedBookings),
+        deliverAdminPaymentNotificationEmail(student, checkout, confirmedBookings),
+      ])
+      : [null, null, null]
     if (emailDelivery?.status === 'failed') console.warn('Booking confirmation email failed:', emailDelivery.error)
+    if (adminBookingEmailDelivery?.status === 'failed') console.warn('Admin booking email failed:', adminBookingEmailDelivery.error)
+    if (adminPaymentEmailDelivery?.status === 'failed') console.warn('Admin payment email failed:', adminPaymentEmailDelivery.error)
     return res.json({
       ok: true,
       orderId,
@@ -4256,6 +4362,7 @@ app.post('/api/users/:uid/paypal/orders/:orderId/capture', rateLimit({ windowMs:
       status: 'COMPLETED',
       ...checkoutResult,
       ...(emailDelivery ? { emailDelivery } : {}),
+      ...(adminBookingEmailDelivery || adminPaymentEmailDelivery ? { adminEmailDelivery: { booking: adminBookingEmailDelivery, payment: adminPaymentEmailDelivery } } : {}),
     })
   } catch (error) {
     const issue = error.paypalIssue || ''
@@ -5764,7 +5871,18 @@ app.post('/api/admin/bookings', rateLimit({ windowMs: 60_000, max: 30 }), async 
         return bookingDoc
       })
       await safelySyncBookingIdsWithGoogleCalendar([booking._id])
-      return res.status(201).json({ ...booking, status: canonicalAdminBookingStatus(booking) })
+      const [callerEmailDelivery, adminBookingEmailDelivery] = await Promise.all([
+        deliverPhoneBookingConfirmationEmail(null, booking),
+        deliverAdminBookingNotificationEmail(null, [booking]),
+      ])
+      if (callerEmailDelivery?.status === 'failed') console.warn('Phone booking caller email failed:', callerEmailDelivery.error)
+      if (adminBookingEmailDelivery?.status === 'failed') console.warn('Phone booking admin email failed:', adminBookingEmailDelivery.error)
+      return res.status(201).json({
+        ...booking,
+        status: canonicalAdminBookingStatus(booking),
+        emailDelivery: callerEmailDelivery,
+        adminEmailDelivery: adminBookingEmailDelivery,
+      })
     }
 
     if (!userId || !courseId) throw new HttpError(400, 'Choose a registered student and an active course.')
@@ -5858,7 +5976,22 @@ app.post('/api/admin/bookings', rateLimit({ windowMs: 60_000, max: 30 }), async 
     })
 
     await safelySyncBookingIdsWithGoogleCalendar([booking._id])
-    res.status(201).json({ ...booking, status: canonicalAdminBookingStatus(booking) })
+    const student = await usersCol.findOne(
+      { uid: booking.userId },
+      { projection: { displayName: 1, name: 1, firstName: 1, lastName: 1, email: 1, phone: 1 } },
+    )
+    const [studentEmailDelivery, adminBookingEmailDelivery] = await Promise.all([
+      deliverPhoneBookingConfirmationEmail(student, booking),
+      deliverAdminBookingNotificationEmail(student, [booking]),
+    ])
+    if (studentEmailDelivery?.status === 'failed') console.warn('Phone booking student email failed:', studentEmailDelivery.error)
+    if (adminBookingEmailDelivery?.status === 'failed') console.warn('Phone booking admin email failed:', adminBookingEmailDelivery.error)
+    res.status(201).json({
+      ...booking,
+      status: canonicalAdminBookingStatus(booking),
+      emailDelivery: studentEmailDelivery,
+      adminEmailDelivery: adminBookingEmailDelivery,
+    })
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message })
     return sendServerError(res, error, 'Phone booking could not be created')
