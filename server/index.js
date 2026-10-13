@@ -2825,7 +2825,11 @@ async function claimInitialAdmin(decodedToken) {
   if (!uidAuthorized && !verifiedEmailAuthorized) return false
 
   const currentAdmin = await usersCol.findOne({ isAdmin: true }, { projection: { uid: 1 } })
-  if (currentAdmin) return currentAdmin.uid === decodedToken.uid
+  // A project owner can safely add a replacement/backup administrator by
+  // explicitly setting that Firebase user's UID in ADMIN_UID. Keep any
+  // existing administrator intact so an account handover cannot lock the
+  // school out of the dashboard.
+  if (currentAdmin) return currentAdmin.uid === decodedToken.uid || Boolean(uidAuthorized)
 
   try {
     await settingsCol.insertOne({
