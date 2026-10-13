@@ -3063,6 +3063,8 @@ export default function AdminPage() {
         .admin-table-wrap tbody tr:hover { background:#F8FBFF; }
         .admin-table-wrap tbody tr:last-child td { border-bottom:0 !important; }
         .admin-table-wrap button { min-height:34px; }
+        .enrollment-table td > div > div { display:flex !important; align-items:center; gap:.42rem !important; flex-wrap:nowrap !important; }
+        .enrollment-table td > div > div > button { min-height:36px; padding:.34rem .52rem !important; font-size:.68rem !important; letter-spacing:.035em !important; }
         .admin-actions-cell { position:sticky !important; right:0; z-index:2; background:#fff; box-shadow:-8px 0 14px rgba(15,23,42,.06); }
         thead .admin-actions-cell { z-index:5; background:#F7FAFE; }
         .admin-table-wrap tbody tr:hover .admin-actions-cell { background:#F8FBFF; }
@@ -3846,8 +3848,9 @@ export default function AdminPage() {
                           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.book} Enrolled Users ({enrollTotal})</h3>
                           <p style={{ margin: '.35rem 0 0', color: '#334155', fontSize: '.9rem' }}>Students appear here automatically after completing a course enrollment.</p>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <button type="button" onClick={() => setEnrollmentCreate(newEnrollmentForm())} style={{ padding: '.62rem .9rem', border: 0, borderRadius: '9px', background: `linear-gradient(135deg, ${SKY_BLUE}, #0A2A5E)`, color: '#fff', fontWeight: 900, cursor: 'pointer', boxShadow: '0 4px 14px rgba(1,69,168,.2)' }}>+ Enroll Student</button>
+                        <button type="button" onClick={() => setEnrollmentCreate(newEnrollmentForm())} style={{ padding: '.7rem 1.05rem', border: 0, borderRadius: '9px', background: `linear-gradient(135deg, ${SKY_BLUE}, #0A2A5E)`, color: '#fff', fontSize: '1rem', fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 14px rgba(1,69,168,.2)' }}>+ Enroll Student</button>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
                           <input aria-label="Search enrolled users" type="search" placeholder="Search student, email, plan, city…" value={enrollSearch} onChange={e => { setEnrollSearch(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '280px' }} />
                           <select aria-label="Filter enrollments by status" value={enrollStatusFilter} onChange={e => { setEnrollStatusFilter(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '170px', fontSize: '1.05rem' }}>
                             <option value="all">All statuses</option>
@@ -3862,10 +3865,8 @@ export default function AdminPage() {
                           </select>
                           {(enrollSearch || enrollStatusFilter !== 'all' || enrollInstructorFilter !== 'all') && <button type="button" onClick={() => { setEnrollSearch(''); setEnrollStatusFilter('all'); setEnrollInstructorFilter('all'); setEnrollPage(1) }} style={{ padding: '.58rem .75rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Clear</button>}
                         </div>
-                      </div>
-
                       <TablePager page={safeEnrollPage} pages={enrollPages} total={enrollTotal} label="enrollments" onChange={setEnrollPage}><select aria-label="Enrollments per page" value={enrollLimit} onChange={e => { setEnrollLimit(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="20">20 / page</option><option value="50">50 / page</option></select></TablePager>
-                      <div className="admin-table-wrap" style={{ overflowX: 'auto' }}>
+                      <div className="admin-table-wrap enrollment-table" style={{ overflowX: 'auto' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem', minWidth: '1280px' }}>
                           <thead>
                             <tr>
