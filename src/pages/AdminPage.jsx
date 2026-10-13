@@ -1928,6 +1928,24 @@ export default function AdminPage() {
     })
   }
 
+  const updateEnrollmentCity = (city) => {
+    setEnrollmentCreate(current => {
+      if (!current) return current
+      const normalizedCity = String(city || '').trim().toLowerCase()
+      const location = locations.find(item => String(item?.name || '').trim().toLowerCase() === normalizedCity)
+      if (!location) return { ...current, city }
+      const cityDistance = locationDistanceLabel(location.distance)
+      const plan = pricing.find(item => String(item.id) === String(current.planId))
+      return {
+        ...current,
+        city,
+        cityZip: location.zipCode || current.cityZip,
+        cityDistance,
+        price: plan ? enrollmentPlanPrice(plan, cityDistance) : current.price,
+      }
+    })
+  }
+
   const saveEnrollmentCreate = async (event) => {
     event.preventDefault()
     if (!enrollmentCreate || enrollmentCreate.saving) return
@@ -2926,6 +2944,12 @@ export default function AdminPage() {
   const locationPages = Math.max(1, Math.ceil(filteredLocations.length / Number(locationLimit)))
   const safeLocationPage = Math.min(locationPage, locationPages)
   const visibleLocations = filteredLocations.slice((safeLocationPage - 1) * Number(locationLimit), safeLocationPage * Number(locationLimit))
+  const enrollmentCitySuggestions = [...new Map(
+    locations
+      .filter(location => String(location?.name || '').trim())
+      .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
+      .map(location => [String(location.name).trim().toLowerCase(), location]),
+  ).values()]
   const filteredAreas = [...areas].filter(area => !areaSearch.trim() || [area.name, area.map].some(value => String(value || '').toLowerCase().includes(areaSearch.trim().toLowerCase())))
   const areaPages = Math.max(1, Math.ceil(filteredAreas.length / Number(areaLimit)))
   const safeAreaPage = Math.min(areaPage, areaPages)
@@ -4800,7 +4824,7 @@ export default function AdminPage() {
                         <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Paid price *<input required value={enrollmentCreate.price} onChange={event => setEnrollmentCreate(current => ({ ...current, price: event.target.value }))} placeholder="$0.00" style={inputStyle} /></label>
                         <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Enrollment date *<input required type="date" value={enrollmentCreate.enrolledAt} onChange={event => setEnrollmentCreate(current => ({ ...current, enrolledAt: event.target.value }))} style={inputStyle} /></label>
                         <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Payment status<select value={enrollmentCreate.paymentStatus} onChange={event => setEnrollmentCreate(current => ({ ...current, paymentStatus: event.target.value }))} style={inputStyle}><option>Paid</option><option>Pending</option><option>No charge</option></select></label>
-                        <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Pickup city<input value={enrollmentCreate.city} onChange={event => setEnrollmentCreate(current => ({ ...current, city: event.target.value }))} style={inputStyle} /></label>
+                        <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Pickup city<input list="enrollment-city-suggestions" autoComplete="off" value={enrollmentCreate.city} onChange={event => updateEnrollmentCity(event.target.value)} placeholder="Start typing a service city" style={inputStyle} /><datalist id="enrollment-city-suggestions">{enrollmentCitySuggestions.map(location => <option key={`${location.name}-${location.zipCode}`} value={location.name}>{location.zipCode ? `${location.name}, CA ${location.zipCode}` : location.name}</option>)}</datalist><small style={{ color: '#64748B', fontWeight: 600 }}>Choose a suggested city to fill ZIP code and distance automatically.</small></label>
                         <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>ZIP code<input value={enrollmentCreate.cityZip} onChange={event => setEnrollmentCreate(current => ({ ...current, cityZip: event.target.value }))} style={inputStyle} /></label>
                         <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Location distance<select value={enrollmentCreate.cityDistance} onChange={event => updateEnrollmentDistance(event.target.value)} style={inputStyle}><option value="Near">Near</option><option value="Long">Long</option></select></label>
                         <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Instructor<select value={enrollmentCreate.instructorId} onChange={event => setEnrollmentCreate(current => ({ ...current, instructorId: event.target.value }))} style={inputStyle}><option value="">Assign later</option>{assignableInstructors.map(instructor => <option key={instructor.legacyInstructorId} value={instructor.legacyInstructorId}>{instructor.displayName}</option>)}</select></label>
