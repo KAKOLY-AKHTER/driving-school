@@ -420,11 +420,14 @@ select:focus-visible {
 }
 .announcement-bar__cta:hover { background: #ffcf3d; transform: translateY(-1px); }
 .announcement-bar__cta:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+/* Keep the footer's final copyright row above the fixed announcement bar. */
+body:has(.announcement-bar) footer { padding-bottom: 64px; }
 @keyframes announcementTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @media (max-width: 600px) {
   .announcement-bar { min-height: 48px; padding: .35rem .6rem; }
   .announcement-bar__message { font-size: .78rem; padding-right: 2.25rem; }
   .announcement-bar__cta { font-size: .72rem; padding: .38rem .5rem; }
+  body:has(.announcement-bar) footer { padding-bottom: 72px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .announcement-bar__track { animation: none; }
