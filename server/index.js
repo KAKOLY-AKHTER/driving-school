@@ -6410,6 +6410,80 @@ const sanitizeAdminCourseUpdate = value => {
   return output
 }
 
+app.post('/api/admin/users/:uid/courses', async (req, res) => {
+  try {
+    const uid = cleanText(req.params.uid, 160)
+    if (!uid) throw new HttpError(400, 'User id is required.')
+    const student = await usersCol.findOne({ uid }, { projection: { courses: 1, displayName: 1, name: 1, firstName: 1, lastName: 1, email: 1, phone: 1 } })
+    if (!student) throw new HttpError(404, 'Student account was not found.')
+
+    const courseId = cleanText(req.body?.courseId, 120)
+    const title = cleanText(req.body?.title, 200)
+    const price = cleanText(req.body?.price, 40)
+    const enrollmentDate = cleanText(req.body?.enrolledAt, 10) || californiaDateKey()
+    if (!courseId || !title) throw new HttpError(400, 'Choose a course before creating the enrollment.')
+    if (!price) throw new HttpError(400, 'Enter the paid price for this enrollment.')
+    if (!isDateKey(enrollmentDate)) throw new HttpError(400, 'Choose a valid enrollment date.')
+
+    const locationInput = {}
+    if (req.body?.city !== undefined) locationInput.city = req.body.city
+    if (req.body?.cityZip !== undefined) locationInput.cityZip = req.body.cityZip
+    if (req.body?.cityDistance !== undefined) locationInput.cityDistance = req.body.cityDistance
+    const location = Object.keys(locationInput).length ? sanitizeAdminCourseUpdate(locationInput) : {}
+    const instructorId = cleanText(req.body?.instructorId, 80)
+    let instructorName = ''
+    if (instructorId) {
+      const instructor = await legacyInstructorsCol.findOne(
+        { legacyInstructorId: instructorId },
+        { projection: { displayName: 1, active: 1, source: 1 } },
+      )
+      if (!instructor || !cleanText(instructor.displayName, 160)) throw new HttpError(400, 'Choose an instructor from the instructor list.')
+      if (instructor.source === 'admin-created' && instructor.active === false) throw new HttpError(400, 'That instructor is inactive and cannot be assigned.')
+      instructorName = cleanText(instructor.displayName, 160)
+    }
+
+    const paymentStatuses = new Map([['paid', 'Paid'], ['pending', 'Pending'], ['no charge', 'No charge']])
+    const paymentStatus = paymentStatuses.get(cleanText(req.body?.paymentStatus || 'Paid', 20).toLowerCase())
+    if (!paymentStatus) throw new HttpError(400, 'Choose a valid payment status.')
+    const now = new Date().toISOString()
+    const slotMaximum = slotLimitForTier({ id: courseId, planName: title })
+    const course = {
+      id: courseId,
+      enrollmentId: randomUUID(),
+      title,
+      planName: title,
+      status: 'Enrolled',
+      paymentStatus,
+      price,
+      paidAmount: price,
+      city: location.city || '',
+      cityZip: location.cityZip || '',
+      cityDistance: location.cityDistance || '',
+      instructorId,
+      instructorName,
+      slotAllowance: { used: 0, maximum: slotMaximum },
+      slotUsage: { used: 0, maximum: slotMaximum },
+      slotUsed: 0,
+      slotMaximum,
+      pickupSlots: [],
+      enrolledAt: `${enrollmentDate}T12:00:00`,
+      createdAt: now,
+      updatedAt: now,
+      paymentRef: `admin-${randomUUID()}`,
+      createdByAdminUid: cleanText(req.auth?.uid, 160),
+    }
+    await usersCol.updateOne({ uid }, { $push: { courses: course }, $set: { updatedAt: now } })
+    const emailDelivery = req.body?.sendConfirmation === true
+      ? await deliverEnrollmentConfirmationEmail(student, course)
+      : null
+    if (emailDelivery?.status === 'failed') console.warn('Manual enrollment confirmation email failed:', emailDelivery.error)
+    res.status(201).json({ ok: true, course, ...(emailDelivery ? { emailDelivery } : {}) })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Manual enrollment creation failed')
+  }
+})
+
 app.put('/api/admin/users/:uid/courses', async (req, res) => {
   try {
     const uid = cleanText(req.params.uid, 160)

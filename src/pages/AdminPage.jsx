@@ -101,6 +101,15 @@ const localDateKey = (date = new Date()) => new Intl.DateTimeFormat('en-CA', {
   day: '2-digit',
 }).format(date)
 
+const enrollmentPlanPrice = (plan, distance = 'Near') => String(
+  distance === 'Long' ? (plan?.planPriceTwo || plan?.planPrice || '') : (plan?.planPrice || plan?.planPriceTwo || '')
+)
+
+const newEnrollmentForm = () => ({
+  search: '', selected: null, selecting: false, planId: '', price: '', city: '', cityZip: '', cityDistance: 'Near',
+  instructorId: '', paymentStatus: 'Paid', enrolledAt: localDateKey(), sendConfirmation: true, saving: false, error: '',
+})
+
 const formatDateDMY = (value) => {
   const raw = String(value || '').trim()
   if (!raw) return 'Not recorded'
@@ -1271,6 +1280,7 @@ export default function AdminPage() {
   const [enrollmentInstructorUpdating, setEnrollmentInstructorUpdating] = useState('')
   const [enrollmentCalendarSyncing, setEnrollmentCalendarSyncing] = useState('')
   const [enrollmentEdit, setEnrollmentEdit] = useState(null)
+  const [enrollmentCreate, setEnrollmentCreate] = useState(null)
   const [enrollmentForm, setEnrollmentForm] = useState({ title: '', status: 'Enrolled', city: '', cityZip: '', cityDistance: '', price: '', slotUsed: 0, slotMaximum: 0, enrolledAt: '' })
   const [refunds, setRefunds] = useState([])
   const [refundTotal, setRefundTotal] = useState(0)
@@ -1887,6 +1897,73 @@ export default function AdminPage() {
     } catch (error) {
       setMsg(error?.message || 'Enrollment could not be updated.')
       setTimeout(() => setMsg(''), 2500)
+    }
+  }
+
+  const selectEnrollmentStudent = async (account) => {
+    if (!account?.uid) return
+    setEnrollmentCreate(current => current ? { ...current, selected: account, search: adminUserName(account), selecting: true, error: '' } : current)
+    try {
+      const details = await api.adminUserDetails(account.uid)
+      const profile = details?.profile || account
+      setEnrollmentCreate(current => current?.selected?.uid === account.uid ? { ...current, selected: { ...account, ...profile }, selecting: false } : current)
+    } catch {
+      setEnrollmentCreate(current => current?.selected?.uid === account.uid ? { ...current, selecting: false } : current)
+    }
+  }
+
+  const updateEnrollmentPlan = (planId) => {
+    setEnrollmentCreate(current => {
+      if (!current) return current
+      const plan = pricing.find(item => String(item.id) === String(planId))
+      return { ...current, planId, price: enrollmentPlanPrice(plan, current.cityDistance) }
+    })
+  }
+
+  const updateEnrollmentDistance = (cityDistance) => {
+    setEnrollmentCreate(current => {
+      if (!current) return current
+      const plan = pricing.find(item => String(item.id) === String(current.planId))
+      return { ...current, cityDistance, price: plan ? enrollmentPlanPrice(plan, cityDistance) : current.price }
+    })
+  }
+
+  const saveEnrollmentCreate = async (event) => {
+    event.preventDefault()
+    if (!enrollmentCreate || enrollmentCreate.saving) return
+    const selected = enrollmentCreate.selected
+    const plan = pricing.find(item => String(item.id) === String(enrollmentCreate.planId))
+    if (!selected?.uid) {
+      setEnrollmentCreate(current => ({ ...current, error: 'Search for and select a registered student first.' }))
+      return
+    }
+    if (!plan) {
+      setEnrollmentCreate(current => ({ ...current, error: 'Choose a course plan.' }))
+      return
+    }
+    if (!enrollmentCreate.price.trim()) {
+      setEnrollmentCreate(current => ({ ...current, error: 'Enter the paid price.' }))
+      return
+    }
+    setEnrollmentCreate(current => ({ ...current, saving: true, error: '' }))
+    try {
+      const result = await api.adminAddUserCourse(selected.uid, {
+        courseId: String(plan.id), title: plan.planName, price: enrollmentCreate.price.trim(), city: enrollmentCreate.city,
+        cityZip: enrollmentCreate.cityZip, cityDistance: enrollmentCreate.cityDistance, instructorId: enrollmentCreate.instructorId,
+        paymentStatus: enrollmentCreate.paymentStatus, enrolledAt: enrollmentCreate.enrolledAt, sendConfirmation: enrollmentCreate.sendConfirmation,
+      })
+      const course = result?.course
+      if (!course?.enrollmentId) throw new Error('The enrollment could not be created.')
+      setUsers(current => current.map(account => account.uid === selected.uid ? { ...account, courses: [...(account.courses || []), course] } : account))
+      setStats(current => ({ ...current, activeEnrollments: Number(current.activeEnrollments || 0) + 1 }))
+      setEnrollmentCreate(null)
+      const delivery = result?.emailDelivery
+      setMsg(delivery?.status === 'sent'
+        ? `${adminUserName(selected)} was enrolled and received a confirmation email.`
+        : `${adminUserName(selected)} was enrolled successfully.`)
+      setTimeout(() => setMsg(''), 3500)
+    } catch (error) {
+      setEnrollmentCreate(current => current ? { ...current, saving: false, error: error?.message || 'The enrollment could not be created.' } : current)
     }
   }
 
@@ -3770,6 +3847,7 @@ export default function AdminPage() {
                           <p style={{ margin: '.35rem 0 0', color: '#334155', fontSize: '.9rem' }}>Students appear here automatically after completing a course enrollment.</p>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button type="button" onClick={() => setEnrollmentCreate(newEnrollmentForm())} style={{ padding: '.62rem .9rem', border: 0, borderRadius: '9px', background: `linear-gradient(135deg, ${SKY_BLUE}, #0A2A5E)`, color: '#fff', fontWeight: 900, cursor: 'pointer', boxShadow: '0 4px 14px rgba(1,69,168,.2)' }}>+ Enroll Student</button>
                           <input aria-label="Search enrolled users" type="search" placeholder="Search student, email, plan, city…" value={enrollSearch} onChange={e => { setEnrollSearch(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '280px' }} />
                           <select aria-label="Filter enrollments by status" value={enrollStatusFilter} onChange={e => { setEnrollStatusFilter(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '170px', fontSize: '1.05rem' }}>
                             <option value="all">All statuses</option>
@@ -4691,6 +4769,46 @@ export default function AdminPage() {
                     </div>
                   </div>
                 )}
+
+                {enrollmentCreate && (() => {
+                  const query = enrollmentCreate.search.trim().toLowerCase()
+                  const matches = query.length >= 2
+                    ? websiteUsers.filter(account => [adminUserName(account), account.email, account.phone, account.permit, account.username].some(value => String(value || '').toLowerCase().includes(query))).slice(0, 8)
+                    : []
+                  const student = enrollmentCreate.selected
+                  return <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 15000, display: 'grid', placeItems: 'center', padding: '1rem', background: 'rgba(10,22,40,.68)', backdropFilter: 'blur(8px)' }} onClick={event => { if (event.target === event.currentTarget && !enrollmentCreate.saving) setEnrollmentCreate(null) }}>
+                    <form onSubmit={saveEnrollmentCreate} role="dialog" aria-modal="true" aria-labelledby="create-enrollment-title" style={{ width: 'min(100%, 860px)', maxHeight: '92vh', overflowY: 'auto', padding: '1.5rem', borderRadius: '16px', background: '#fff', boxShadow: '0 30px 90px rgba(10,22,40,.32)' }}>
+                      <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem' }}>
+                        <div><h2 id="create-enrollment-title" style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.4rem' }}>Enroll Student in a Course</h2><p style={{ margin: '.35rem 0 0', color: '#526C88', fontSize: '.9rem', lineHeight: 1.5 }}>Search a registered student first. Their saved profile details fill in automatically.</p></div>
+                        <button type="button" aria-label="Close enrollment form" disabled={enrollmentCreate.saving} onClick={() => setEnrollmentCreate(null)} style={{ width: '40px', height: '40px', border: '1px solid #CBD5E1', borderRadius: '10px', background: '#fff', color: '#334155', fontSize: '1.45rem', cursor: enrollmentCreate.saving ? 'wait' : 'pointer' }}>&times;</button>
+                      </header>
+
+                      <section style={{ padding: '1rem', border: '1px solid #BFDBFE', borderRadius: '12px', background: '#F8FBFF', marginBottom: '1rem' }}>
+                        <label style={{ display: 'grid', gap: '.38rem', color: DARK, fontWeight: 900 }}>Search registered student *<input autoFocus type="search" value={enrollmentCreate.search} onChange={event => setEnrollmentCreate(current => ({ ...current, search: event.target.value, selected: null, error: '' }))} placeholder="Name, email, phone, permit or username" style={inputStyle} /></label>
+                        <p style={{ margin: '.5rem 0 0', color: '#526C88', fontSize: '.8rem' }}>Type at least 2 characters, then choose the correct student.</p>
+                        {matches.length > 0 && !student && <div role="listbox" aria-label="Matching registered students" style={{ display: 'grid', gap: '.35rem', marginTop: '.75rem', maxHeight: '210px', overflowY: 'auto' }}>{matches.map(account => <button key={account.uid} type="button" role="option" onClick={() => selectEnrollmentStudent(account)} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: '.45rem', textAlign: 'left', padding: '.7rem .8rem', border: '1px solid #D7E5F4', borderRadius: '9px', background: '#fff', color: DARK, cursor: 'pointer' }}><span><strong>{adminUserName(account)}</strong><small style={{ display: 'block', color: '#526C88', marginTop: '.14rem' }}>{account.email || 'No email'} {account.phone ? `· ${account.phone}` : ''}</small></span><span style={{ color: SKY_BLUE, fontSize: '.8rem', fontWeight: 900 }}>SELECT</span></button>)}</div>}
+                        {query.length >= 2 && !matches.length && !student && <p style={{ margin: '.75rem 0 0', color: '#8A6500', fontWeight: 700 }}>No registered student was found. Create the student first from the Users page.</p>}
+                      </section>
+
+                      {student && <><section style={{ marginBottom: '1rem' }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.75rem', marginBottom: '.7rem' }}><h3 style={{ margin: 0, color: DARK, fontSize: '1rem' }}>Student information {enrollmentCreate.selecting ? <small style={{ color: SKY_BLUE }}>Loading saved profile…</small> : null}</h3><button type="button" onClick={() => setEnrollmentCreate(current => ({ ...current, selected: null, search: '', error: '' }))} style={{ border: 0, background: 'transparent', color: SKY_BLUE, fontWeight: 800, cursor: 'pointer' }}>Change student</button></div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: '.75rem' }}>{[
+                        ['First name', student.firstName || ''], ['Middle name', student.middleName || ''], ['Last name', student.lastName || ''], ['Email', student.email || ''], ['Phone', student.phone || ''], ['Permit / license', student.permit || ''], ['Date of birth', student.dob || student.dateOfBirth || ''], ['Address', [student.address, student.city, student.state, student.zipCode].filter(Boolean).join(', ')],
+                      ].map(([label, value]) => <label key={label} style={{ display: 'grid', gap: '.32rem', color: '#526C88', fontSize: '.8rem', fontWeight: 800 }}>{label}<input readOnly value={value || 'Not recorded'} style={{ ...inputStyle, background: '#F8FAFC', color: '#334155', fontWeight: 650 }} /></label>)}</div></section>
+
+                      <fieldset style={{ minWidth: 0, margin: 0, padding: '1rem', border: '1px solid #DCE7F3', borderRadius: '12px' }}><legend style={{ padding: '0 .35rem', color: DARK, fontWeight: 900 }}>Course & enrollment</legend><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: '.8rem' }}>
+                        <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800, gridColumn: '1 / -1' }}>Course plan *<select required value={enrollmentCreate.planId} onChange={event => updateEnrollmentPlan(event.target.value)} style={inputStyle}><option value="">Select a current pricing plan</option>{pricing.map(plan => <option key={plan.id} value={plan.id}>{plan.planName} — {plan.planPrice}{plan.planPriceTwo && plan.planPriceTwo !== plan.planPrice ? ` / ${plan.planPriceTwo}` : ''}</option>)}</select></label>
+                        <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Paid price *<input required value={enrollmentCreate.price} onChange={event => setEnrollmentCreate(current => ({ ...current, price: event.target.value }))} placeholder="$0.00" style={inputStyle} /></label>
+                        <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Enrollment date *<input required type="date" value={enrollmentCreate.enrolledAt} onChange={event => setEnrollmentCreate(current => ({ ...current, enrolledAt: event.target.value }))} style={inputStyle} /></label>
+                        <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Payment status<select value={enrollmentCreate.paymentStatus} onChange={event => setEnrollmentCreate(current => ({ ...current, paymentStatus: event.target.value }))} style={inputStyle}><option>Paid</option><option>Pending</option><option>No charge</option></select></label>
+                        <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Pickup city<input value={enrollmentCreate.city} onChange={event => setEnrollmentCreate(current => ({ ...current, city: event.target.value }))} style={inputStyle} /></label>
+                        <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>ZIP code<input value={enrollmentCreate.cityZip} onChange={event => setEnrollmentCreate(current => ({ ...current, cityZip: event.target.value }))} style={inputStyle} /></label>
+                        <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Location distance<select value={enrollmentCreate.cityDistance} onChange={event => updateEnrollmentDistance(event.target.value)} style={inputStyle}><option value="Near">Near</option><option value="Long">Long</option></select></label>
+                        <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Instructor<select value={enrollmentCreate.instructorId} onChange={event => setEnrollmentCreate(current => ({ ...current, instructorId: event.target.value }))} style={inputStyle}><option value="">Assign later</option>{assignableInstructors.map(instructor => <option key={instructor.legacyInstructorId} value={instructor.legacyInstructorId}>{instructor.displayName}</option>)}</select></label>
+                      </div><label style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', marginTop: '1rem', color: '#334155', fontWeight: 800, cursor: 'pointer' }}><input type="checkbox" checked={enrollmentCreate.sendConfirmation} onChange={event => setEnrollmentCreate(current => ({ ...current, sendConfirmation: event.target.checked }))} /> Send enrollment confirmation email to student</label><p style={{ margin: '.65rem 0 0', color: '#64748B', fontSize: '.8rem' }}>Lesson-slot allowance is set automatically from the selected plan. This manual enrollment does not charge PayPal.</p></fieldset></>}
+                      {enrollmentCreate.error && <p role="alert" style={{ margin: '1rem 0 0', color: '#B91C1C', fontWeight: 700 }}>{enrollmentCreate.error}</p>}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.65rem', marginTop: '1rem', flexWrap: 'wrap' }}><button type="button" disabled={enrollmentCreate.saving} onClick={() => setEnrollmentCreate(null)} style={{ padding: '.65rem .9rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', color: '#334155', fontWeight: 800, cursor: 'pointer' }}>Cancel</button><button type="submit" disabled={!student || enrollmentCreate.saving} style={{ padding: '.65rem .9rem', border: 0, borderRadius: '8px', background: SKY_BLUE, color: '#fff', fontWeight: 800, cursor: enrollmentCreate.saving ? 'wait' : 'pointer', opacity: !student || enrollmentCreate.saving ? .7 : 1 }}>{enrollmentCreate.saving ? 'Enrolling…' : 'Enroll student'}</button></div>
+                    </form>
+                  </div>
+                })()}
 
                 {enrollmentEdit && (
                   <div role="presentation" className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'grid', placeItems: 'center', padding: '1rem', background: 'rgba(10,22,40,.62)' }} onClick={event => { if (event.target === event.currentTarget) setEnrollmentEdit(null) }}>
