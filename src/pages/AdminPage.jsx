@@ -646,7 +646,7 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
         <div className="admin-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}><h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>Customer Reviews ({filtered.length} of {reviews.length})</h2><div style={{ display: 'flex', gap: '.5rem', flexWrap: 'nowrap', alignItems: 'center' }}><input className="admin-toolbar-input" type="search" aria-label="Search reviews" placeholder="Search reviewer or text…" value={search} onChange={event => { setSearch(event.target.value); setReviewPage(1) }} style={{ ...inputStyle, width: '240px', minWidth: 0 }} /></div></div>
         {error && <div role="alert" style={{ padding: '.85rem 1rem', marginBottom: '1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{error} <button type="button" onClick={() => setLoadVersion(value => value + 1)} style={{ marginLeft: '.6rem', border: 0, background: 'transparent', color: '#0755AE', fontWeight: 850, cursor: 'pointer' }}>Retry</button></div>}
         <TablePager page={safeReviewPage} pages={reviewPages} total={matchedReviews.length} label="reviews" onChange={setReviewPage}><select aria-label="Review rows per page" value={reviewLimit} onChange={event => { setReviewLimit(Number(event.target.value)); setReviewPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></TablePager>
-        <div className="admin-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr><th scope="col" style={thStyle}>Reviewer</th><th scope="col" style={thStyle}>Review Message</th><th scope="col" style={thStyle}>Star Rating</th><th scope="col" style={thStyle}>Website Visibility</th><th scope="col" className="admin-actions-cell" style={thStyle}>Manage Review</th></tr></thead><tbody>
+        <div className="admin-table-wrap"><table className="admin-mobile-cards admin-review-table" style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr><th scope="col" style={thStyle}>Reviewer</th><th scope="col" style={thStyle}>Review Message</th><th scope="col" style={thStyle}>Star Rating</th><th scope="col" style={thStyle}>Website Visibility</th><th scope="col" className="admin-actions-cell" style={thStyle}>Manage Review</th></tr></thead><tbody>
           {filtered.map(review => <tr key={review._id}><td style={{ ...tdStyle, fontWeight: 800, whiteSpace: 'nowrap' }}><div style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>{review.imageUrl ? <img src={review.imageUrl} alt={`${review.name} reviewer`} loading="lazy" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #D9E4F2', boxShadow: '0 5px 14px rgba(15,45,87,.1)' }} /> : <span aria-hidden="true" style={{ width: '48px', height: '48px', borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg,#0755AE,#0A2A5E)', color: '#fff', border: `2px solid ${GOLD}`, fontWeight: 900 }}>{String(review.name || '?').trim().split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase()}</span>}<span>{review.name}</span></div></td><td style={{ ...tdStyle, minWidth: '280px', maxWidth: '520px', lineHeight: 1.5 }}>{review.text}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap', color: GOLD_DEEP, fontWeight: 900 }}>{'★'.repeat(Number(review.rating) || 5)}<span style={{ color: '#CBD5E1' }}>{'★'.repeat(5 - (Number(review.rating) || 5))}</span></td><td style={tdStyle}><button type="button" onClick={() => togglePublished(review)} style={{ padding: '.3rem .6rem', border: `1px solid ${review.published !== false ? '#BBF7D0' : '#CBD5E1'}`, borderRadius: '999px', background: review.published !== false ? '#F0FDF4' : '#F8FAFC', color: review.published !== false ? '#15803D' : '#64748B', fontWeight: 800, cursor: 'pointer' }}>{review.published !== false ? 'Published' : 'Draft'}</button></td><td className="admin-actions-cell" style={tdStyle}><div style={{ display: 'flex', gap: '.4rem' }}><button type="button" onClick={() => startEdit(review)} style={{ padding: '.4rem .65rem', border: `1.5px solid ${SKY_BLUE}`, borderRadius: '8px', background: '#fff', color: SKY_BLUE, fontWeight: 800, cursor: 'pointer' }}>Edit</button><AdminDeleteIconButton label={`Delete customer review from ${review.name || 'customer'}`} title="Delete customer review" onClick={() => requestConfirmation('Delete customer review?', `${review.name}'s testimonial will be permanently removed.`, () => deleteReview(review))} /></div></td></tr>)}
           {!loading && !filtered.length && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>{search ? 'No reviews match your search.' : 'No customer reviews yet.'}</td></tr>}
           {loading && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#334155' }}>Loading reviews…</td></tr>}
@@ -1055,7 +1055,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
           </div>
           <span style={{ padding: '.35rem .65rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontWeight: 800, fontSize: '.8rem' }}>Pacific Time (California)</span>
         </div>
-        <div className="admin-grid-responsive" style={{ display: 'grid', gridTemplateColumns: 'minmax(240px,.8fr) minmax(320px,1.2fr)', gap: '1.25rem' }}>
+        <div className="admin-grid-responsive admin-availability-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(240px,.8fr) minmax(320px,1.2fr)', gap: '1.25rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.6rem', marginBottom: '.55rem' }}>
               <span id="availability-calendar-label" style={{ fontWeight: 800, color: '#334155' }}>Select future dates</span>
@@ -3157,6 +3157,38 @@ export default function AdminPage() {
           .admin-table-wrap .legacy-mobile-cards td::before { content:attr(data-label); color:#64748B; font-family:var(--font-mono); font-size:.63rem; font-weight:800; letter-spacing:.055em; text-transform:uppercase; }
           .admin-table-wrap .legacy-mobile-cards td[colspan] { display:block; text-align:center; }
           .admin-table-wrap .legacy-mobile-cards td[colspan]::before { content:none; }
+          /* Keep the management screens usable without a sideways table scroll. */
+          .admin-content-width,.admin-content-width > *,.admin-availability-layout > * { min-width:0; }
+          .admin-availability-layout { grid-template-columns:minmax(0,1fr) !important; }
+          .admin-mobile-cards { min-width:0 !important; }
+          .admin-table-wrap .admin-mobile-cards thead { display:none; }
+          .admin-table-wrap .admin-mobile-cards,.admin-table-wrap .admin-mobile-cards tbody,.admin-table-wrap .admin-mobile-cards tr,.admin-table-wrap .admin-mobile-cards td { display:block; width:100%; box-sizing:border-box; }
+          .admin-table-wrap .admin-mobile-cards tbody tr { margin:.65rem; width:calc(100% - 1.3rem); border:1px solid #DCE7F3; border-radius:12px; overflow:hidden; background:#fff; }
+          .admin-table-wrap .admin-mobile-cards tbody tr:hover { background:#fff; transform:none; }
+          .admin-table-wrap .admin-mobile-cards td { display:grid; grid-template-columns:minmax(100px,.75fr) minmax(0,1.25fr); gap:.65rem; align-items:start; min-width:0 !important; max-width:none !important; padding:.62rem .75rem !important; border:0 !important; border-bottom:1px solid #EEF2F7 !important; white-space:normal !important; overflow-wrap:anywhere; }
+          .admin-table-wrap .admin-mobile-cards td:last-child { border-bottom:0 !important; }
+          .admin-table-wrap .admin-mobile-cards td::before { color:#64748B; font-family:var(--font-mono); font-size:.63rem; font-weight:800; letter-spacing:.055em; text-transform:uppercase; }
+          .admin-table-wrap .admin-mobile-cards td[colspan] { display:block; text-align:center; }
+          .admin-table-wrap .admin-mobile-cards td[colspan]::before { content:none; }
+          .admin-mobile-cards .admin-actions-cell { position:static !important; box-shadow:none !important; background:transparent !important; }
+          .admin-mobile-cards .admin-actions-cell > div { flex-wrap:wrap !important; }
+          .admin-review-table td:nth-child(1)::before { content:'Reviewer'; }
+          .admin-review-table td:nth-child(2)::before { content:'Review message'; }
+          .admin-review-table td:nth-child(3)::before { content:'Rating'; }
+          .admin-review-table td:nth-child(4)::before { content:'Visibility'; }
+          .admin-review-table td:nth-child(5)::before { content:'Actions'; }
+          .admin-blog-table td:nth-child(1)::before { content:'Blog post'; }
+          .admin-blog-table td:nth-child(2)::before { content:'Category'; }
+          .admin-blog-table td:nth-child(3)::before { content:'Author'; }
+          .admin-blog-table td:nth-child(4)::before { content:'Status'; }
+          .admin-blog-table td:nth-child(5)::before { content:'Publish date'; }
+          .admin-blog-table td:nth-child(6)::before { content:'Actions'; }
+          .admin-location-table td:nth-child(1)::before { content:'Order'; }
+          .admin-location-table td:nth-child(2)::before { content:'Service city'; }
+          .admin-location-table td:nth-child(3)::before { content:'ZIP code'; }
+          .admin-location-table td:nth-child(4)::before { content:'Distance'; }
+          .admin-location-table td:nth-child(5)::before { content:'Pricing'; }
+          .admin-location-table td:nth-child(6)::before { content:'Actions'; }
         }
         @media (prefers-reduced-motion: reduce) {
           .admin-stat,.admin-nav-item,.admin-modal-backdrop,.admin-modal-backdrop > div,.admin-toast,.admin-skeleton { animation:none !important; transition:none !important; }
@@ -4087,7 +4119,7 @@ export default function AdminPage() {
 
                       <TablePager page={safeLocationPage} pages={locationPages} total={filteredLocations.length} label="locations" onChange={setLocationPage}><select aria-label="Location rows per page" value={locationLimit} onChange={event => { setLocationLimit(event.target.value); setLocationPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></TablePager>
                       <div className="admin-table-wrap">
-                        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '680px' }}>
+                        <table className="admin-mobile-cards admin-location-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '680px' }}>
                           <thead>
                             <tr>
                               <th scope="col" style={thStyle}>Display Order</th>
