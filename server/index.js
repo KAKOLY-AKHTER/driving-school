@@ -1395,7 +1395,7 @@ function googleCalendarEventTimes(booking) {
 
 async function googleCalendarEventBody(booking) {
   const profile = booking?.userId
-    ? await usersCol.findOne({ uid: booking.userId }, { projection: { displayName: 1, name: 1, firstName: 1, lastName: 1, email: 1, phone: 1, courses: 1 } })
+    ? await usersCol.findOne({ uid: booking.userId }, { projection: { displayName: 1, name: 1, firstName: 1, lastName: 1, email: 1, phone: 1, address: 1, city: 1, state: 1, zipCode: 1, pickupAddress: 1, courses: 1 } })
     : null
   const course = (Array.isArray(profile?.courses) ? profile.courses : []).find(item =>
     (booking.enrollmentId && String(item?.enrollmentId || '') === String(booking.enrollmentId))
@@ -1419,9 +1419,19 @@ async function googleCalendarEventBody(booking) {
   const studentEmail = normalizeEmail(booking?.email || booking?.callerEmail || profile?.email)
   const studentPhone = cleanText(profile?.phone || booking?.callerPhone || booking?.phone, 40)
   const plan = cleanText(course?.title || course?.planName || booking?.courseTitle || booking?.courseName || booking?.planName, 180) || 'Legacy / Unassigned'
+  const pickupLocation = cleanText(profile?.pickupAddress || booking?.pickupAddress, 500)
+  const savedAddress = [
+    cleanText(profile?.address, 500),
+    cleanText(profile?.city, 100),
+    cleanText(profile?.state, 80),
+    cleanText(profile?.zipCode, 20),
+  ].filter(Boolean).join(', ')
   const city = cleanText(course?.city || course?.location || booking?.location, 200)
   const cityZip = cleanText(course?.cityZip || booking?.cityZip, 10)
-  const location = city ? `${city}${cityZip ? `, ${cityZip}` : ''}` : ''
+  // Calendar Location must use the student's requested pickup point first.
+  // If no pickup point was saved, their full home address is the fallback.
+  // Course city remains only as a safe fallback for older student records.
+  const location = pickupLocation || savedAddress || (city ? `${city}${cityZip ? `, ${cityZip}` : ''}` : '')
   const status = canonicalAdminBookingStatus(booking)
   const statusMeta = {
     scheduled: { label: 'Pending', title: '⏳ Pending Lesson', colorId: '5' },
@@ -5658,6 +5668,13 @@ app.put('/api/admin/users/:uid', async (req, res) => {
     if (Object.keys(authUpdate).length) await getFirebaseAdminAuth().updateUser(uid, authUpdate)
     const result = await usersCol.updateOne({ uid }, { $set: { ...update, updatedAt: new Date().toISOString() } })
     if (!result.matchedCount) throw new HttpError(404, 'Student account was not found.')
+    if (['pickupAddress', 'address', 'city', 'state', 'zipCode'].some(field => Object.prototype.hasOwnProperty.call(update, field))) {
+      const upcomingBookingIds = await bookingsCol.find(
+        { userId: uid, status: { $in: ['scheduled', 'confirmed', 'booked'] }, date: { $gte: californiaDateKey() } },
+        { projection: { _id: 1 } },
+      ).toArray()
+      await safelySyncBookingIdsWithGoogleCalendar(upcomingBookingIds.map(booking => booking._id))
+    }
     const user = await usersCol.findOne({ uid }, { projection: Object.fromEntries(ADMIN_USER_PROFILE_FIELDS.map(field => [field, 1])) })
     res.json({ ok: true, user })
   } catch (error) {
