@@ -6523,6 +6523,159 @@ app.put('/api/admin/users/:uid/courses', async (req, res) => {
   }
 })
 
+// Reserve the first lesson while an administrator is creating or editing an
+// enrollment.  The public booking flow and this workflow both use the same
+// availability records and slot locks, so an admin can only choose a date and
+// time that the calendar currently exposes as open.
+app.put('/api/admin/users/:uid/courses/schedule', async (req, res) => {
+  try {
+    const uid = cleanText(req.params.uid, 160)
+    if (!uid) throw new HttpError(400, 'User id is required.')
+    const { date, timeSlot } = validateBookingSlot(req.body?.date, req.body?.timeSlot)
+    await cleanupExpiredHolds()
+
+    const result = await withMongoTransaction(async (session) => {
+      const student = await usersCol.findOne(
+        { uid, isAdmin: { $ne: true } },
+        { session, projection: { uid: 1, email: 1, courses: 1 } },
+      )
+      if (!student) throw new HttpError(404, 'Student account was not found.')
+
+      const courses = Array.isArray(student.courses) ? student.courses : []
+      const courseIndex = findAdminCourseIndex(courses, req.body)
+      if (courseIndex < 0) throw new HttpError(404, 'Enrollment was not found.')
+      const course = courses[courseIndex]
+      if (!courseCanAcceptMoreBookings(course)) {
+        throw new HttpError(409, 'Cancelled or refunded enrollments cannot be scheduled.')
+      }
+
+      const courseId = cleanText(course?.id, 120)
+      const enrollmentId = cleanText(course?.enrollmentId, 160)
+      const linkedFilter = { userId: uid, courseId, status: { $ne: 'held' } }
+      if (enrollmentId) linkedFilter.enrollmentId = enrollmentId
+      const linkedBookings = await bookingsCol.find(linkedFilter, { session }).sort({ date: 1, createdAt: 1 }).toArray()
+      const activeBooking = linkedBookings.find(booking => {
+        const status = normalizedBookingStatus(booking?.status)
+        return status !== 'cancelled' && status !== 'completed'
+      })
+      const requestedKey = bookingSlotKey(date, timeSlot)
+
+      if (activeBooking && bookingSlotKey(activeBooking.date, activeBooking.timeSlot) === requestedKey) {
+        return { course, booking: activeBooking, unchanged: true }
+      }
+
+      if (!activeBooking) {
+        const allowance = packageSlotAllowance(course, course, linkedBookings)
+        if (allowance.remaining < 1) {
+          const label = cleanText(course?.title || course?.planName || courseId, 160) || 'This course'
+          throw new HttpError(409, `${label} has already used all ${allowance.maximum} included lesson slots.`)
+        }
+      }
+
+      await assertSlotsOpenForBooking([{ date, timeSlot }], session)
+      await bookingSlotsCol.deleteOne({ _id: requestedKey, status: 'held', expiresAt: { $lte: new Date() } }, { session })
+      if (await bookingSlotsCol.findOne({ _id: requestedKey }, { session })) {
+        throw new HttpError(409, 'This lesson time is no longer available. Choose another open slot.')
+      }
+
+      const now = new Date()
+      const timestamp = now.toISOString()
+      let booking
+      if (activeBooking) {
+        const oldKey = bookingSlotKey(activeBooking.date, activeBooking.timeSlot)
+        const nextStatus = normalizedBookingStatus(activeBooking.status) === 'scheduled' ? 'scheduled' : 'confirmed'
+        try {
+          await bookingSlotsCol.insertOne({
+            _id: requestedKey,
+            date,
+            timeSlot,
+            userId: uid,
+            courseId,
+            ...(enrollmentId ? { enrollmentId } : {}),
+            bookingId: activeBooking._id,
+            status: nextStatus,
+            createdAt: now,
+            createdByAdmin: req.auth.uid,
+          }, { session })
+        } catch (error) {
+          if (isDuplicateKey(error)) throw new HttpError(409, 'This lesson time is no longer available. Choose another open slot.')
+          throw error
+        }
+        await bookingSlotsCol.deleteMany({ bookingId: activeBooking._id, _id: { $ne: requestedKey } }, { session })
+        await bookingsCol.updateOne(
+          { _id: activeBooking._id },
+          { $set: { date, timeSlot, status: nextStatus, updatedAt: timestamp, rescheduledByAdmin: req.auth.uid } },
+          { session },
+        )
+        booking = { ...activeBooking, date, timeSlot, status: nextStatus, updatedAt: timestamp }
+      } else {
+        const bookingId = new ObjectId()
+        booking = {
+          _id: bookingId,
+          userId: uid,
+          email: normalizeEmail(student.email),
+          date,
+          timeSlot,
+          courseId,
+          ...(enrollmentId ? { enrollmentId } : {}),
+          courseTitle: cleanText(course?.title || course?.planName || '', 160),
+          hours: 2,
+          status: 'confirmed',
+          bookingSource: 'admin_enrollment',
+          createdByAdmin: req.auth.uid,
+          createdAt: timestamp,
+          confirmedAt: timestamp,
+        }
+        try {
+          await bookingSlotsCol.insertOne({
+            _id: requestedKey,
+            date,
+            timeSlot,
+            userId: uid,
+            courseId,
+            ...(enrollmentId ? { enrollmentId } : {}),
+            bookingId,
+            status: 'confirmed',
+            createdAt: now,
+            createdByAdmin: req.auth.uid,
+          }, { session })
+        } catch (error) {
+          if (isDuplicateKey(error)) throw new HttpError(409, 'This lesson time is no longer available. Choose another open slot.')
+          throw error
+        }
+        await bookingsCol.insertOne(booking, { session })
+      }
+
+      const oldKey = activeBooking ? bookingSlotKey(activeBooking.date, activeBooking.timeSlot) : ''
+      const slotsByKey = new Map()
+      for (const rawSlot of Array.isArray(course.pickupSlots) ? course.pickupSlots : []) {
+        const slot = safeStoredPickupSlot(rawSlot)
+        if (slot && bookingSlotKey(slot.date, slot.time) !== oldKey) slotsByKey.set(bookingSlotKey(slot.date, slot.time), slot)
+      }
+      slotsByKey.set(requestedKey, { date, time: timeSlot })
+      const pickupSlots = [...slotsByKey.values()].sort((left, right) => left.date.localeCompare(right.date) || left.time.localeCompare(right.time))
+      const updatedCourse = {
+        ...course,
+        pickupSlots,
+        slotUsed: pickupSlots.length,
+        slotMaximum: slotLimitForTier(course),
+        slotAllowance: { used: pickupSlots.length, maximum: slotLimitForTier(course) },
+        slotUsage: { used: pickupSlots.length, maximum: slotLimitForTier(course) },
+        updatedAt: timestamp,
+      }
+      const nextCourses = courses.map((item, index) => index === courseIndex ? updatedCourse : item)
+      await usersCol.updateOne({ uid }, { $set: { courses: nextCourses, updatedAt: timestamp } }, { session })
+      return { course: updatedCourse, booking, unchanged: false }
+    })
+
+    if (!result.unchanged) await safelySyncBookingIdsWithGoogleCalendar([result.booking._id])
+    res.json({ ok: true, course: result.course, booking: { ...result.booking, status: canonicalAdminBookingStatus(result.booking) } })
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message })
+    sendServerError(res, error, 'Enrollment lesson schedule could not be saved')
+  }
+})
+
 // Explicitly re-sync a student's existing booked lessons after an instructor
 // is assigned.  The existing Google event ID is patched where present, so a
 // click never creates duplicate calendar events or changes the booking itself.

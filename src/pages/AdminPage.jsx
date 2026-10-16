@@ -108,7 +108,7 @@ const enrollmentPlanPrice = (plan, distance = 'Near') => String(
 
 const newEnrollmentForm = () => ({
   search: '', selected: null, selecting: false, planId: '', price: '', city: '', cityZip: '', cityDistance: 'Near',
-  instructorId: '', paymentStatus: 'Paid', enrolledAt: localDateKey(), sendConfirmation: true, saving: false, error: '',
+  instructorId: '', paymentStatus: 'Paid', enrolledAt: localDateKey(), scheduleDate: '', scheduleTime: '', sendConfirmation: true, saving: false, error: '',
 })
 
 const formatDateDMY = (value) => {
@@ -491,6 +491,130 @@ function AdminPhoneBookingModal({ users, pricing = [], onClose, onCreated }) {
       </form>
     </div>
   )
+}
+
+// The enrollment screens use the same availability source as the public
+// booking page. Dates without an admin-open slot cannot be selected here.
+function EnrollmentSchedulePicker({ value, onChange, idPrefix = 'enrollment-schedule' }) {
+  const [availableDateKeys, setAvailableDateKeys] = useState([])
+  const [availableTimes, setAvailableTimes] = useState([])
+  const [month, setMonth] = useState(() => new Date(`${value?.date || localDateKey()}T12:00:00`))
+  const [datesLoading, setDatesLoading] = useState(true)
+  const [timesLoading, setTimesLoading] = useState(false)
+  const [error, setError] = useState('')
+  const selectedDate = String(value?.date || '')
+  const selectedTime = String(value?.time || '')
+  const today = localDateKey()
+  const dateSet = new Set(availableDateKeys)
+  const year = month.getFullYear()
+  const monthIndex = month.getMonth()
+  const monthStart = new Date(year, monthIndex, 1)
+  const monthEnd = new Date(year, monthIndex + 1, 0)
+  const currentMonthStart = new Date(`${today}T12:00:00`)
+  currentMonthStart.setDate(1)
+
+  useEffect(() => {
+    let cancelled = false
+    const from = localDateKey()
+    const end = new Date(`${from}T12:00:00`)
+    end.setMonth(end.getMonth() + 3)
+    const to = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`
+    setDatesLoading(true)
+    setError('')
+    api.getAvailability({ from, to })
+      .then(result => {
+        if (cancelled) return
+        const openDates = Object.entries(result?.dates || {})
+          .filter(([date, slots]) => date >= from && Array.isArray(slots) && slots.some(slot => slot?.status === 'available'))
+          .map(([date]) => date)
+          .sort()
+        setAvailableDateKeys(openDates)
+        if (!selectedDate && openDates[0]) {
+          onChange({ date: openDates[0], time: '' })
+          setMonth(new Date(`${openDates[0]}T12:00:00`))
+        } else if (selectedDate) {
+          setMonth(new Date(`${selectedDate}T12:00:00`))
+        }
+      })
+      .catch(loadError => {
+        if (!cancelled) {
+          setAvailableDateKeys([])
+          setError(loadError?.message || 'Available lesson dates could not be loaded.')
+        }
+      })
+      .finally(() => { if (!cancelled) setDatesLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    if (!selectedDate) {
+      setAvailableTimes([])
+      setTimesLoading(false)
+      return undefined
+    }
+    let cancelled = false
+    setTimesLoading(true)
+    setError('')
+    api.getBookingAvailability(selectedDate)
+      .then(result => {
+        if (cancelled) return
+        const openTimes = Array.isArray(result?.availableTimes) ? result.availableTimes : []
+        // While editing, retain the already-reserved time in the control. The
+        // server treats an unchanged selection as a safe no-op.
+        setAvailableTimes(selectedTime && !openTimes.includes(selectedTime) ? [selectedTime, ...openTimes] : openTimes)
+      })
+      .catch(loadError => {
+        if (!cancelled) {
+          setAvailableTimes(selectedTime ? [selectedTime] : [])
+          setError(loadError?.message || 'Open lesson times could not be loaded.')
+        }
+      })
+      .finally(() => { if (!cancelled) setTimesLoading(false) })
+    return () => { cancelled = true }
+  }, [selectedDate])
+
+  const chooseDate = date => {
+    setMonth(new Date(`${date}T12:00:00`))
+    onChange({ date, time: '' })
+  }
+  const labelStyle = { display: 'block', marginBottom: '.42rem', color: '#334155', fontWeight: 800 }
+  const selectStyle = { width: '100%', minHeight: '43px', boxSizing: 'border-box', padding: '.58rem .7rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#0F2747', fontSize: '.95rem' }
+  return <section style={{ gridColumn: '1 / -1', padding: '.9rem', border: '1px solid #BFDBFE', borderRadius: '11px', background: '#F8FBFF' }}>
+    <strong style={{ display: 'block', color: DARK, marginBottom: '.25rem' }}>First lesson schedule <span style={{ color: '#64748B', fontWeight: 650 }}>(optional)</span></strong>
+    <p style={{ margin: '0 0 .75rem', color: '#526C88', fontSize: '.82rem', lineHeight: 1.45 }}>Choose only a date opened in the Admin Calendar, then choose its currently available time.</p>
+    <div role="group" aria-label="Available lesson dates" style={{ padding: '.72rem', border: '1px solid #D7E4F2', borderRadius: '10px', background: '#fff' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.6rem', marginBottom: '.65rem' }}>
+        <button type="button" aria-label="Previous availability month" disabled={monthStart <= currentMonthStart} onClick={() => setMonth(new Date(year, monthIndex - 1, 1))} style={{ width: '34px', height: '34px', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', color: DARK, cursor: monthStart <= currentMonthStart ? 'not-allowed' : 'pointer', opacity: monthStart <= currentMonthStart ? .45 : 1 }}>&lsaquo;</button>
+        <strong style={{ color: DARK }}>{month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</strong>
+        <button type="button" aria-label="Next availability month" onClick={() => setMonth(new Date(year, monthIndex + 1, 1))} style={{ width: '34px', height: '34px', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', color: DARK, cursor: 'pointer' }}>&rsaquo;</button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,minmax(0,1fr))', gap: '.28rem', textAlign: 'center' }}>
+        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => <span key={`${day}-${index}`} aria-hidden="true" style={{ color: '#64748B', fontSize: '.68rem', fontWeight: 800 }}>{day}</span>)}
+        {Array.from({ length: monthStart.getDay() }, (_, index) => <span key={`blank-${index}`} />)}
+        {Array.from({ length: monthEnd.getDate() }, (_, index) => {
+          const day = index + 1
+          const date = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+          const isOpen = dateSet.has(date)
+          const isSelected = selectedDate === date
+          // A pre-existing booking is deliberately visible while editing, even
+          // though it is not an open slot for a new booking.
+          const canChoose = isOpen || isSelected
+          return <button type="button" key={date} aria-label={`${date}${isOpen ? ', available' : isSelected ? ', current schedule' : ', unavailable'}`} disabled={!canChoose || datesLoading} onClick={() => chooseDate(date)} style={{ minHeight: '34px', border: `1px solid ${isSelected ? SKY_BLUE : isOpen ? '#86EFAC' : '#E2E8F0'}`, borderRadius: '8px', background: isSelected ? SKY_BLUE : isOpen ? '#F0FDF4' : '#F8FAFC', color: isSelected ? '#fff' : isOpen ? '#15803D' : '#CBD5E1', fontWeight: isSelected || isOpen ? 800 : 600, cursor: canChoose && !datesLoading ? 'pointer' : 'not-allowed' }}>{day}</button>
+        })}
+      </div>
+    </div>
+    {datesLoading && <p style={{ margin: '.45rem 0 0', color: '#475569', fontSize: '.82rem' }}>Loading available calendar dates…</p>}
+    {!datesLoading && !error && !availableDateKeys.length && <p style={{ margin: '.45rem 0 0', color: '#B45309', fontSize: '.82rem' }}>No available lesson dates have been opened in the next three months.</p>}
+    <div style={{ marginTop: '.8rem' }}>
+      <label htmlFor={`${idPrefix}-time`} style={labelStyle}>Available lesson time</label>
+      <select id={`${idPrefix}-time`} disabled={timesLoading || !selectedDate || !availableTimes.length} value={selectedTime} onChange={event => onChange({ date: selectedDate, time: event.target.value })} style={{ ...selectStyle, background: timesLoading ? '#F8FAFC' : '#fff' }}>
+        <option value="">{timesLoading ? 'Checking open times…' : !selectedDate ? 'Choose an available date first' : availableTimes.length ? 'Choose an open time' : 'No open times'}</option>
+        {availableTimes.map(time => <option key={time} value={time}>{time}{time === selectedTime && !dateSet.has(selectedDate) ? ' (current)' : ''}</option>)}
+      </select>
+    </div>
+    {selectedDate && <p style={{ margin: '.5rem 0 0', color: '#15803D', fontSize: '.82rem', fontWeight: 750 }}>Selected: {new Date(`${selectedDate}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}{selectedTime ? ` · ${selectedTime}` : ''}</p>}
+    {error && <p role="alert" style={{ margin: '.45rem 0 0', color: '#B91C1C', fontSize: '.82rem' }}>{error}</p>}
+  </section>
 }
 
 function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle, requestConfirmation, setMessage }) {
@@ -1881,7 +2005,8 @@ export default function AdminPage() {
     const used = Number(course.slotAllowance?.used ?? course.slotUsage?.used ?? course.slotUsed ?? (Array.isArray(course.pickupSlots) ? course.pickupSlots.length : 0))
     const maximum = Number(course.slotAllowance?.maximum ?? course.slotUsage?.maximum ?? course.slotMaximum ?? 0)
     const status = enrollmentStatusValue(course)
-    setEnrollmentForm({ title: course.title || COURSE_MAP[course.id] || '', status: status === 'completed' ? 'Completed' : status === 'cancelled' ? 'Cancelled' : 'Enrolled', city: course.city || '', cityZip: course.cityZip || '', cityDistance: course.cityDistance || '', price: course.price || '', slotUsed: Number.isFinite(used) ? used : 0, slotMaximum: Number.isFinite(maximum) ? maximum : 0, enrolledAt: String(course.enrolledAt || '').slice(0, 10) })
+    const firstLesson = (Array.isArray(course.pickupSlots) ? course.pickupSlots : []).find(slot => String(slot?.date || '') >= localDateKey()) || {}
+    setEnrollmentForm({ title: course.title || COURSE_MAP[course.id] || '', status: status === 'completed' ? 'Completed' : status === 'cancelled' ? 'Cancelled' : 'Enrolled', city: course.city || '', cityZip: course.cityZip || '', cityDistance: course.cityDistance || '', price: course.price || '', slotUsed: Number.isFinite(used) ? used : 0, slotMaximum: Number.isFinite(maximum) ? maximum : 0, enrolledAt: String(course.enrolledAt || '').slice(0, 10), scheduleDate: firstLesson.date || '', scheduleTime: firstLesson.time || firstLesson.timeSlot || '' })
     setEnrollmentEdit({ account, course })
   }
 
@@ -1890,8 +2015,13 @@ export default function AdminPage() {
     const { account, course } = enrollmentEdit
     if (!enrollmentForm.title.trim()) { setMsg('Course title is required.'); setTimeout(() => setMsg(''), 2200); return }
     try {
-      const result = await api.adminUpdateUserCourse(account.uid, { enrollmentId: course.enrollmentId || '', courseId: course.id || '', enrolledAt: course.enrolledAt || '', course: enrollmentForm })
-      setUsers(previous => previous.map(item => item.uid !== account.uid ? item : { ...item, courses: (item.courses || []).map(entry => (entry.enrollmentId === course.enrollmentId || (entry.id === course.id && entry.enrolledAt === course.enrolledAt)) ? { ...entry, ...(result?.course || enrollmentForm) } : entry) }))
+      const { scheduleDate, scheduleTime, ...courseForm } = enrollmentForm
+      let updatedCourse = (await api.adminUpdateUserCourse(account.uid, { enrollmentId: course.enrollmentId || '', courseId: course.id || '', enrolledAt: course.enrolledAt || '', course: courseForm }))?.course || courseForm
+      if (scheduleDate && scheduleTime) {
+        const scheduled = await api.adminScheduleUserCourse(account.uid, { enrollmentId: course.enrollmentId || '', courseId: course.id || '', enrolledAt: course.enrolledAt || '', date: scheduleDate, timeSlot: scheduleTime })
+        updatedCourse = scheduled?.course || updatedCourse
+      }
+      setUsers(previous => previous.map(item => item.uid !== account.uid ? item : { ...item, courses: (item.courses || []).map(entry => (entry.enrollmentId === course.enrollmentId || (entry.id === course.id && entry.enrolledAt === course.enrolledAt)) ? { ...entry, ...updatedCourse } : entry) }))
       setEnrollmentEdit(null)
       setMsg('Enrollment updated.')
       setTimeout(() => setMsg(''), 2200)
@@ -1964,6 +2094,10 @@ export default function AdminPage() {
       setEnrollmentCreate(current => ({ ...current, error: 'Enter the paid price.' }))
       return
     }
+    if (enrollmentCreate.scheduleTime && !enrollmentCreate.scheduleDate) {
+      setEnrollmentCreate(current => ({ ...current, error: 'Choose an available lesson date before choosing a time.' }))
+      return
+    }
     setEnrollmentCreate(current => ({ ...current, saving: true, error: '' }))
     try {
       const result = await api.adminAddUserCourse(selected.uid, {
@@ -1971,8 +2105,15 @@ export default function AdminPage() {
         cityZip: enrollmentCreate.cityZip, cityDistance: enrollmentCreate.cityDistance, instructorId: enrollmentCreate.instructorId,
         paymentStatus: enrollmentCreate.paymentStatus, enrolledAt: enrollmentCreate.enrolledAt, sendConfirmation: enrollmentCreate.sendConfirmation,
       })
-      const course = result?.course
+      let course = result?.course
       if (!course?.enrollmentId) throw new Error('The enrollment could not be created.')
+      if (enrollmentCreate.scheduleDate && enrollmentCreate.scheduleTime) {
+        const scheduled = await api.adminScheduleUserCourse(selected.uid, {
+          enrollmentId: course.enrollmentId, courseId: course.id, enrolledAt: course.enrolledAt,
+          date: enrollmentCreate.scheduleDate, timeSlot: enrollmentCreate.scheduleTime,
+        })
+        course = scheduled?.course || course
+      }
       setUsers(current => current.map(account => account.uid === selected.uid ? { ...account, courses: [...(account.courses || []), course] } : account))
       setStats(current => ({ ...current, activeEnrollments: Number(current.activeEnrollments || 0) + 1 }))
       setEnrollmentCreate(null)
@@ -4861,6 +5002,7 @@ export default function AdminPage() {
                         <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>ZIP code<input value={enrollmentCreate.cityZip} onChange={event => setEnrollmentCreate(current => ({ ...current, cityZip: event.target.value }))} style={inputStyle} /></label>
                         <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Location distance<select value={enrollmentCreate.cityDistance} onChange={event => updateEnrollmentDistance(event.target.value)} style={inputStyle}><option value="Near">Near</option><option value="Long">Long</option></select></label>
                         <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontWeight: 800 }}>Instructor<select value={enrollmentCreate.instructorId} onChange={event => setEnrollmentCreate(current => ({ ...current, instructorId: event.target.value }))} style={inputStyle}><option value="">Assign later</option>{assignableInstructors.map(instructor => <option key={instructor.legacyInstructorId} value={instructor.legacyInstructorId}>{instructor.displayName}</option>)}</select></label>
+                        <EnrollmentSchedulePicker value={{ date: enrollmentCreate.scheduleDate, time: enrollmentCreate.scheduleTime }} onChange={({ date, time }) => setEnrollmentCreate(current => ({ ...current, scheduleDate: date, scheduleTime: time, error: '' }))} idPrefix="create-enrollment-schedule" />
                       </div><label style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem', marginTop: '1rem', color: '#334155', fontWeight: 800, cursor: 'pointer' }}><input type="checkbox" checked={enrollmentCreate.sendConfirmation} onChange={event => setEnrollmentCreate(current => ({ ...current, sendConfirmation: event.target.checked }))} /> Send enrollment confirmation email to student</label><p style={{ margin: '.65rem 0 0', color: '#64748B', fontSize: '.8rem' }}>Lesson-slot allowance is set automatically from the selected plan. This manual enrollment does not charge PayPal.</p></fieldset></>}
                       {enrollmentCreate.error && <p role="alert" style={{ margin: '1rem 0 0', color: '#B91C1C', fontWeight: 700 }}>{enrollmentCreate.error}</p>}
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.65rem', marginTop: '1rem', flexWrap: 'wrap' }}><button type="button" disabled={enrollmentCreate.saving} onClick={() => setEnrollmentCreate(null)} style={{ padding: '.65rem .9rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', color: '#334155', fontWeight: 800, cursor: 'pointer' }}>Cancel</button><button type="submit" disabled={!student || enrollmentCreate.saving} style={{ padding: '.65rem .9rem', border: 0, borderRadius: '8px', background: SKY_BLUE, color: '#fff', fontWeight: 800, cursor: enrollmentCreate.saving ? 'wait' : 'pointer', opacity: !student || enrollmentCreate.saving ? .7 : 1 }}>{enrollmentCreate.saving ? 'Enrolling…' : 'Enroll student'}</button></div>
@@ -4876,6 +5018,7 @@ export default function AdminPage() {
                         {[['title', 'Course title', 'text'], ['city', 'Pickup city', 'text'], ['cityZip', 'ZIP code', 'text'], ['price', 'Paid price', 'text'], ['slotUsed', 'Lesson slots used', 'number'], ['slotMaximum', 'Lesson slots allowed', 'number'], ['enrolledAt', 'Enrollment date', 'date']].map(([key, label, type]) => <label key={key} style={{ color: '#334155', fontWeight: 700 }}>{label}<input type={type} min={type === 'number' ? '0' : undefined} value={enrollmentForm[key]} onChange={event => setEnrollmentForm(previous => ({ ...previous, [key]: type === 'number' ? Number(event.target.value) : event.target.value }))} style={{ ...inputStyle, marginTop: '.35rem' }} /></label>)}
                         <label style={{ color: '#334155', fontWeight: 700 }}>Location distance<select value={enrollmentForm.cityDistance} onChange={event => setEnrollmentForm(previous => ({ ...previous, cityDistance: event.target.value }))} style={{ ...inputStyle, marginTop: '.35rem' }}><option value="">Not recorded</option><option value="Near">Near</option><option value="Long">Long</option></select></label>
                         <label style={{ color: '#334155', fontWeight: 700 }}>Enrollment status<select value={enrollmentForm.status} onChange={event => setEnrollmentForm(previous => ({ ...previous, status: event.target.value }))} style={{ ...inputStyle, marginTop: '.35rem' }}><option>Enrolled</option><option>Completed</option><option>Cancelled</option></select></label>
+                        <EnrollmentSchedulePicker value={{ date: enrollmentForm.scheduleDate, time: enrollmentForm.scheduleTime }} onChange={({ date, time }) => setEnrollmentForm(previous => ({ ...previous, scheduleDate: date, scheduleTime: time }))} idPrefix="edit-enrollment-schedule" />
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.75rem', marginTop: '1.5rem' }}><button type="button" onClick={() => setEnrollmentEdit(null)} style={{ padding: '.7rem 1rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', fontWeight: 800 }}>Cancel</button><button type="button" onClick={saveEnrollment} style={{ padding: '.7rem 1rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 800 }}>Save changes</button></div>
                     </div>

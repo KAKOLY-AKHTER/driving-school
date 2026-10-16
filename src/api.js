@@ -132,6 +132,7 @@ export const api = {
   adminDeleteUser: (uid) => request(`/api/admin/users/${pathPart(uid)}`, { method: 'DELETE' }),
   adminUpdateUserCourse: (uid, data) => request(`/api/admin/users/${pathPart(uid)}/courses`, { method: 'PUT', body: JSON.stringify(data) }),
   adminAddUserCourse: (uid, data) => request(`/api/admin/users/${pathPart(uid)}/courses`, { method: 'POST', body: JSON.stringify(data) }),
+  adminScheduleUserCourse: (uid, data) => request(`/api/admin/users/${pathPart(uid)}/courses/schedule`, { method: 'PUT', body: JSON.stringify(data) }),
   adminSyncInstructorCalendar: (uid, data) => request(`/api/admin/users/${pathPart(uid)}/courses/sync-instructor-calendar`, { method: 'POST', body: JSON.stringify(data), timeoutMs: 60_000 }),
   adminDeleteUserCourse: (uid, data) => request(`/api/admin/users/${pathPart(uid)}/courses`, { method: 'DELETE', body: JSON.stringify(data) }),
   adminBookings: () => request('/api/admin/bookings'),
