@@ -191,6 +191,9 @@ function rateLimit({ windowMs = 60_000, max = 20 } = {}) {
 }
 
 const cleanText = (value, maxLength = 500) => String(value || '').trim().slice(0, maxLength)
+// Address records can differ only by commas, whitespace, or capitalization.
+// Normalize them before deciding whether a pickup point is actually the home address.
+const comparableAddress = (value) => cleanText(value, 500).toLowerCase().replace(/[^a-z0-9]/g, '')
 const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 const escapeEmailHtml = (value) => String(value || '')
   .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
@@ -1428,10 +1431,18 @@ async function googleCalendarEventBody(booking) {
   ].filter(Boolean).join(', ')
   const city = cleanText(course?.city || course?.location || booking?.location, 200)
   const cityZip = cleanText(course?.cityZip || booking?.cityZip, 10)
-  // Calendar Location must use the student's requested pickup point first.
-  // If no pickup point was saved, their full home address is the fallback.
+  // A pickup address that matches the home address should display the complete
+  // address. A genuinely different pickup address remains the calendar location.
+  const homeStreetAddress = cleanText(profile?.address, 500)
+  const pickupMatchesHome = Boolean(
+    pickupLocation
+    && (comparableAddress(pickupLocation) === comparableAddress(savedAddress)
+      || comparableAddress(pickupLocation) === comparableAddress(homeStreetAddress))
+  )
   // Course city remains only as a safe fallback for older student records.
-  const location = pickupLocation || savedAddress || (city ? `${city}${cityZip ? `, ${cityZip}` : ''}` : '')
+  const location = pickupLocation && !pickupMatchesHome
+    ? pickupLocation
+    : savedAddress || pickupLocation || (city ? `${city}${cityZip ? `, ${cityZip}` : ''}` : '')
   const status = canonicalAdminBookingStatus(booking)
   const statusMeta = {
     scheduled: { label: 'Pending', title: '⏳ Pending Lesson', colorId: '5' },
