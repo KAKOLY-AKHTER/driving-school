@@ -1111,12 +1111,15 @@ const formatLessonClockTime = minutes => {
   const meridiem = hour24 >= 12 ? 'PM' : 'AM'
   return `${String(hour24 % 12 || 12).padStart(2, '0')}:${String(minute).padStart(2, '0')} ${meridiem}`
 }
-const canonicalLessonTimeRange = value => {
+// Availability is defined by an explicit start and end time.  Ranges must use
+// 15-minute increments, stay within the same day, and cannot have zero or
+// negative duration.  The length is intentionally not fixed.
+const canonicalBookingTimeRange = value => {
   const match = cleanText(value, 80).replace(/\s+/g, ' ').match(/^(\d{1,2}):(\d{2}) (AM|PM)\s*-\s*(\d{1,2}):(\d{2}) (AM|PM)$/i)
   if (!match) return ''
   const start = clockTimeToMinutes(match[1], match[2], match[3])
   const end = clockTimeToMinutes(match[4], match[5], match[6])
-  if (start === null || end === null || end - start !== 120 || start % 15 || end >= 24 * 60) return ''
+  if (start === null || end === null || end <= start || start % 15 || end % 15) return ''
   return `${formatLessonClockTime(start)} - ${formatLessonClockTime(end)}`
 }
 const normalizeBookingTime = (value) => {
@@ -1130,13 +1133,13 @@ const normalizeBookingTime = (value) => {
     '4:00 PM - 6:00 PM': '04:00 PM - 06:00 PM',
     '5:00 PM - 7:00 PM': '05:00 PM - 07:00 PM',
   }
-  return aliases[compact] || canonicalLessonTimeRange(compact) || compact
+  return aliases[compact] || canonicalBookingTimeRange(compact) || compact
 }
 const isCustomAppointmentTime = value => CUSTOM_APPOINTMENT_TIME_PATTERN.test(normalizeBookingTime(value))
-const isLessonTimeRange = value => Boolean(canonicalLessonTimeRange(value))
+const isBookingTimeRange = value => Boolean(canonicalBookingTimeRange(value))
 const isSupportedStoredBookingTime = value => {
   const normalized = normalizeBookingTime(value)
-  return BOOKING_TIMES.has(normalized) || isLessonTimeRange(normalized) || isCustomAppointmentTime(normalized)
+  return BOOKING_TIMES.has(normalized) || isBookingTimeRange(normalized) || isCustomAppointmentTime(normalized)
 }
 const isDmvRentalTier = tier => {
   const id = String(tier?.id || '')
@@ -1757,7 +1760,7 @@ const activeHoldExpiry = () => new Date(Date.now() + BOOKING_HOLD_MINUTES * 60_0
 function validateBookingSlot(date, timeSlot, { allowCustomAppointment = false } = {}) {
   const cleanDate = cleanText(date, 10)
   const cleanTime = normalizeBookingTime(timeSlot)
-  const validTime = BOOKING_TIMES.has(cleanTime) || isLessonTimeRange(cleanTime) || (allowCustomAppointment && isCustomAppointmentTime(cleanTime))
+  const validTime = BOOKING_TIMES.has(cleanTime) || isBookingTimeRange(cleanTime) || (allowCustomAppointment && isCustomAppointmentTime(cleanTime))
   if (!isDateKey(cleanDate) || !validTime) {
     throw new HttpError(400, 'Please choose a valid booking date and time.')
   }
@@ -1769,8 +1772,8 @@ function validateBookingSlot(date, timeSlot, { allowCustomAppointment = false } 
 
 function validateAvailabilitySlot(date, timeSlot, { allowToday = true } = {}) {
   const normalizedTime = normalizeBookingTime(timeSlot)
-  if (!isLessonTimeRange(normalizedTime)) {
-    throw new HttpError(400, 'Lesson times must be two-hour ranges that start on a 15-minute interval.')
+  if (!isBookingTimeRange(normalizedTime)) {
+    throw new HttpError(400, 'Lesson start and end times must use 15-minute intervals, with an end time after the start time.')
   }
   const slot = validateBookingSlot(date, timeSlot)
   if (!allowToday && slot.date <= californiaDateKey()) {
@@ -1780,7 +1783,7 @@ function validateAvailabilitySlot(date, timeSlot, { allowToday = true } = {}) {
 }
 
 function lessonTimeRangeBounds(value) {
-  const range = canonicalLessonTimeRange(value)
+  const range = canonicalBookingTimeRange(value)
   const match = range.match(/^(\d{2}):(\d{2}) (AM|PM) - (\d{2}):(\d{2}) (AM|PM)$/)
   if (!match) return null
   return {
@@ -1789,12 +1792,12 @@ function lessonTimeRangeBounds(value) {
   }
 }
 
-function lessonTimesKeepRequiredBreak(first, second) {
+function lessonTimesDoNotOverlap(first, second) {
   if (normalizeBookingTime(first) === normalizeBookingTime(second)) return true
   const firstRange = lessonTimeRangeBounds(first)
   const secondRange = lessonTimeRangeBounds(second)
   if (!firstRange || !secondRange) return false
-  return firstRange.end + 30 <= secondRange.start || secondRange.end + 30 <= firstRange.start
+  return firstRange.end <= secondRange.start || secondRange.end <= firstRange.start
 }
 
 function validateClosedAvailabilityDates(dates, today = californiaDateKey()) {
@@ -1809,7 +1812,7 @@ function validateClosedAvailabilityDates(dates, today = californiaDateKey()) {
 function adminAvailabilityStatus(slot, today = californiaDateKey()) {
   if (slot?.status === 'held' || slot?.status === 'booked') return slot.status
   if (slot?.status === 'available' && slot?.date <= today) return 'expired'
-  if (slot?.time && !isLessonTimeRange(slot.time)) return 'legacy'
+  if (slot?.time && !isBookingTimeRange(slot.time)) return 'legacy'
   return slot?.status
 }
 
@@ -6222,8 +6225,8 @@ app.post('/api/admin/availability', rateLimit({ windowMs: 60_000, max: 30 }), as
     if (!times.length || times.length > 48) throw new HttpError(400, 'Choose between 1 and 48 lesson times.')
     const slots = dates.flatMap(date => times.map(time => validateAvailabilitySlot(date, time, { allowToday: false })))
     for (let index = 0; index < times.length; index += 1) {
-      if (times.slice(index + 1).some(time => !lessonTimesKeepRequiredBreak(times[index], time))) {
-        throw new HttpError(400, 'Lesson times must not overlap and need a 30-minute break between lessons.')
+      if (times.slice(index + 1).some(time => !lessonTimesDoNotOverlap(times[index], time))) {
+        throw new HttpError(400, 'Lesson time ranges must not overlap.')
       }
     }
     const existingSlots = await availabilityCol.find({ date: { $in: dates } }, { projection: { date: 1, time: 1 } }).toArray()
@@ -6231,10 +6234,10 @@ app.post('/api/admin/availability', rateLimit({ windowMs: 60_000, max: 30 }), as
       const conflicting = existingSlots.find(existing =>
         existing.date === slot.date
         && normalizeBookingTime(existing.time) !== slot.timeSlot
-        && !lessonTimesKeepRequiredBreak(existing.time, slot.timeSlot)
+        && !lessonTimesDoNotOverlap(existing.time, slot.timeSlot)
       )
       if (conflicting) {
-        throw new HttpError(409, `${slot.date} already has ${conflicting.time}. Keep a 30-minute break between lessons.`)
+        throw new HttpError(409, `${slot.date} already has ${conflicting.time}. Lesson time ranges cannot overlap.`)
       }
     }
     const now = new Date().toISOString()

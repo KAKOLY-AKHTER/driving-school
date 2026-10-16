@@ -314,11 +314,11 @@ test('blog image uploads accept real JPG, PNG, and WebP signatures only', () => 
   assert.equal(detectBlogImageType(Buffer.from('<script>alert(1)</script>')), '')
 })
 
-test('admin availability accepts custom two-hour lesson times on 15-minute intervals', () => {
+test('admin availability accepts custom start and end times on 15-minute intervals', () => {
   const expectedTimes = [
     '07:00 AM - 09:00 AM',
-    '08:15 AM - 10:15 AM',
-    '01:45 PM - 03:45 PM',
+    '08:15 AM - 09:30 AM',
+    '01:45 PM - 04:45 PM',
   ]
   for (const timeSlot of expectedTimes) {
     assert.deepEqual(validateAvailabilitySlot('2099-12-20', timeSlot, { allowToday: false }), {
@@ -331,12 +331,12 @@ test('admin availability accepts custom two-hour lesson times on 15-minute inter
     error => error.status === 400 && /valid booking date and time/i.test(error.message)
   )
   assert.throws(
-    () => validateAvailabilitySlot('2099-12-20', '09:00 AM - 11:15 AM'),
-    error => error.status === 400 && /two-hour ranges/i.test(error.message)
+    () => validateAvailabilitySlot('2099-12-20', '09:00 AM - 11:10 AM'),
+    error => error.status === 400 && /start and end times/i.test(error.message)
   )
   assert.throws(
     () => validateAvailabilitySlot('2099-12-20', '10:00 PM - 12:00 AM'),
-    error => error.status === 400 && /two-hour ranges/i.test(error.message)
+    error => error.status === 400 && /start and end times/i.test(error.message)
   )
 })
 

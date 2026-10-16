@@ -264,12 +264,13 @@ const TIME_SLOT_MAP = {
   slot4: 'Afternoon 2 (4-6 PM)',
 }
 
-const lessonTimeFromStart = value => {
-  const match = String(value || '').match(/^(\d{2}):(\d{2})$/)
-  if (!match) return ''
-  const start = Number(match[1]) * 60 + Number(match[2])
-  const end = start + 120
-  if (Number(match[2]) % 15 || start < 0 || end >= 24 * 60) return ''
+const lessonTimeFromRange = (startValue, endValue) => {
+  const startMatch = String(startValue || '').match(/^(\d{2}):(\d{2})$/)
+  const endMatch = String(endValue || '').match(/^(\d{2}):(\d{2})$/)
+  if (!startMatch || !endMatch) return ''
+  const start = Number(startMatch[1]) * 60 + Number(startMatch[2])
+  const end = Number(endMatch[1]) * 60 + Number(endMatch[2])
+  if (Number(startMatch[2]) % 15 || Number(endMatch[2]) % 15 || start < 0 || end <= start || end > 24 * 60) return ''
   const format = minutes => {
     const hour24 = Math.floor(minutes / 60)
     const minute = minutes % 60
@@ -962,7 +963,8 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
     return new Date(year, month - 1, 1)
   })
   const [times, setTimes] = useState([])
-  const [timeInput, setTimeInput] = useState('')
+  const [startTimeInput, setStartTimeInput] = useState('')
+  const [endTimeInput, setEndTimeInput] = useState('')
   const [rows, setRows] = useState([])
   const [openDates, setOpenDates] = useState([])
   const [selected, setSelected] = useState([])
@@ -1049,9 +1051,9 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
   }
 
   const addLessonTime = () => {
-    const lessonTime = lessonTimeFromStart(timeInput)
+    const lessonTime = lessonTimeFromRange(startTimeInput, endTimeInput)
     if (!lessonTime) {
-      setMessage('Choose a 15-minute start time that allows the two-hour lesson to finish before midnight.')
+      setMessage('Choose a valid start and end time. Both must use 15-minute intervals and the end time must be later.')
       return
     }
     if (times.includes(lessonTime)) {
@@ -1059,7 +1061,8 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
       return
     }
     setTimes(current => [...current, lessonTime])
-    setTimeInput('')
+    setStartTimeInput('')
+    setEndTimeInput('')
   }
 
   const saveAvailability = async () => {
@@ -1176,7 +1179,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
           <div>
             <h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>Open Lesson Availability</h2>
-            <p style={{ margin: '.35rem 0 0', color: '#334155', lineHeight: 1.55 }}>Choose one or more future dates, select the lesson times, then save. Every lesson is 2 hours, followed by a protected 30-minute break.</p>
+            <p style={{ margin: '.35rem 0 0', color: '#334155', lineHeight: 1.55 }}>Choose one or more future dates, set a lesson start and end time, then save. Lesson times may be any length and can touch, but they cannot overlap.</p>
           </div>
           <span style={{ padding: '.35rem .65rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontWeight: 800, fontSize: '.8rem' }}>Pacific Time (California)</span>
         </div>
@@ -1220,14 +1223,17 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
             </div>
           </div>
           <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
-            <legend style={{ fontWeight: 800, color: '#334155', marginBottom: '.4rem' }}>Lesson times · 2-hour lesson and a 30-minute break</legend>
+            <legend style={{ fontWeight: 800, color: '#334155', marginBottom: '.4rem' }}>Lesson time range</legend>
             <div style={{ display: 'flex', gap: '.55rem', alignItems: 'end', flexWrap: 'wrap' }}>
-              <label htmlFor="availability-time-input" style={{ display: 'grid', gap: '.35rem', color: '#475569', fontWeight: 750, fontSize: '.82rem' }}>Lesson start time
-                <input id="availability-time-input" type="time" step="900" value={timeInput} onChange={event => setTimeInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addLessonTime() } }} style={{ ...inputStyle, width: '175px' }} />
+              <label htmlFor="availability-start-time-input" style={{ display: 'grid', gap: '.35rem', color: '#475569', fontWeight: 750, fontSize: '.82rem' }}>Start time
+                <input id="availability-start-time-input" type="time" step="900" value={startTimeInput} onChange={event => setStartTimeInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addLessonTime() } }} style={{ ...inputStyle, width: '175px' }} />
               </label>
-              <button type="button" onClick={addLessonTime} style={{ minHeight: '44px', padding: '.7rem 1rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 850, cursor: 'pointer' }}>Add Time</button>
+              <label htmlFor="availability-end-time-input" style={{ display: 'grid', gap: '.35rem', color: '#475569', fontWeight: 750, fontSize: '.82rem' }}>End time
+                <input id="availability-end-time-input" type="time" step="900" value={endTimeInput} onChange={event => setEndTimeInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addLessonTime() } }} style={{ ...inputStyle, width: '175px' }} />
+              </label>
+              <button type="button" onClick={addLessonTime} style={{ minHeight: '44px', padding: '.7rem 1rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 850, cursor: 'pointer' }}>Add time range</button>
             </div>
-            <p style={{ margin: '.5rem 0 0', color: '#64748B', fontSize: '.82rem' }}>Each start time creates a two-hour lesson. The server prevents overlapping times and protects a 30-minute break.</p>
+            <p style={{ margin: '.5rem 0 0', color: '#64748B', fontSize: '.82rem' }}>Use 15-minute intervals. There is no fixed two-hour duration or automatic break; the server only prevents overlapping time ranges.</p>
             <div aria-live="polite" style={{ display: 'flex', flexWrap: 'wrap', gap: '.45rem', marginTop: '.7rem', minHeight: '32px' }}>
               {times.map(time => <button type="button" key={time} onClick={() => setTimes(current => current.filter(item => item !== time))} title="Remove lesson time" style={{ border: '1px solid #BFDBFE', borderRadius: '999px', padding: '.35rem .6rem', background: '#EFF6FF', color: '#0755AE', fontWeight: 750, cursor: 'pointer' }}>{time} ×</button>)}
               {!times.length && <span style={{ color: '#475569', fontSize: '.9rem' }}>No lesson times added yet.</span>}
