@@ -963,9 +963,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
     const [year, month] = localDateKey().split('-').map(Number)
     return new Date(year, month - 1, 1)
   })
-  const [times, setTimes] = useState([])
-  const [startTimeInput, setStartTimeInput] = useState('')
-  const [endTimeInput, setEndTimeInput] = useState('')
+  const [timeInputs, setTimeInputs] = useState(() => Array.from({ length: 5 }, () => ({ start: '', end: '' })))
   const [rows, setRows] = useState([])
   const [openDates, setOpenDates] = useState([])
   const [selected, setSelected] = useState([])
@@ -1051,26 +1049,31 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
     })
   }
 
-  const addLessonTime = () => {
-    const lessonTime = lessonTimeFromRange(startTimeInput, endTimeInput)
-    if (!lessonTime) {
-      setMessage('Choose a valid start and end time. Both must use 15-minute intervals and the end time must be later.')
-      return
+  const updateTimeInput = (index, field, value) => {
+    setTimeInputs(current => current.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item))
+  }
+
+  const selectedLessonTimes = () => {
+    const result = []
+    for (const [index, item] of timeInputs.entries()) {
+      if (!item.start && !item.end) continue
+      const lessonTime = lessonTimeFromRange(item.start, item.end)
+      if (!lessonTime) {
+        setMessage(`Time option ${index + 1}: enter both a valid start and end time in 15-minute intervals.`)
+        return null
+      }
+      if (result.includes(lessonTime)) {
+        setMessage(`Time option ${index + 1} duplicates another lesson time.`)
+        return null
+      }
+      result.push(lessonTime)
     }
-    if (times.includes(lessonTime)) {
-      setMessage('That lesson time has already been added.')
-      return
-    }
-    if (times.length >= 5) {
-      setMessage('You can add up to 5 lesson time ranges at once.')
-      return
-    }
-    setTimes(current => [...current, lessonTime])
-    setStartTimeInput('')
-    setEndTimeInput('')
+    return result
   }
 
   const saveAvailability = async () => {
+    const times = selectedLessonTimes()
+    if (!times) return
     if (!instructorId || !dates.length || !times.length) {
       setMessage('Choose an instructor, at least one future date, and at least one lesson time.')
       return
@@ -1080,7 +1083,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
       const result = await api.adminAddAvailability(instructorId, dates, times)
       setMessage(`${result?.saved || dates.length * times.length} lesson slot${result?.saved === 1 ? '' : 's'} opened for ${result?.instructor?.displayName || 'the selected instructor'} and student booking.`)
       setDates([])
-      setTimes([])
+      setTimeInputs(Array.from({ length: 5 }, () => ({ start: '', end: '' })))
       setPage(1)
       setLoadVersion(value => value + 1)
     } catch (saveError) {
@@ -1239,21 +1242,20 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
             </div>
           </div>
           <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
-            <legend style={{ fontWeight: 800, color: '#334155', marginBottom: '.4rem' }}>Lesson time range</legend>
-            <div style={{ display: 'flex', gap: '.55rem', alignItems: 'end', flexWrap: 'wrap' }}>
-              <label htmlFor="availability-start-time-input" style={{ display: 'grid', gap: '.35rem', color: '#475569', fontWeight: 750, fontSize: '.82rem' }}>Start time
-                <input id="availability-start-time-input" type="time" step="900" value={startTimeInput} onChange={event => setStartTimeInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addLessonTime() } }} style={{ ...inputStyle, width: '175px' }} />
-              </label>
-              <label htmlFor="availability-end-time-input" style={{ display: 'grid', gap: '.35rem', color: '#475569', fontWeight: 750, fontSize: '.82rem' }}>End time
-                <input id="availability-end-time-input" type="time" step="900" value={endTimeInput} onChange={event => setEndTimeInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addLessonTime() } }} style={{ ...inputStyle, width: '175px' }} />
-              </label>
-              <button type="button" onClick={addLessonTime} style={{ minHeight: '44px', padding: '.7rem 1rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 850, cursor: 'pointer' }}>Add time range</button>
+            <legend style={{ fontWeight: 800, color: '#334155', marginBottom: '.4rem' }}>Lesson time options <span style={{ color: '#64748B', fontSize: '.8rem', fontWeight: 650 }}>(choose any 1–5)</span></legend>
+            <p style={{ margin: '0 0 .7rem', color: '#64748B', fontSize: '.82rem' }}>Enter a manual start and end time in whichever rows you need. Empty rows are ignored.</p>
+            <div style={{ display: 'grid', gap: '.55rem' }}>
+              {timeInputs.map((item, index) => <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(68px, auto) minmax(130px, 1fr) minmax(130px, 1fr)', gap: '.55rem', alignItems: 'end', padding: '.55rem', border: '1px solid #D7E4F2', borderRadius: '10px', background: item.start || item.end ? '#F8FBFF' : '#fff' }}>
+                <strong style={{ color: '#0755AE', fontFamily: 'var(--font-mono)', fontSize: '.72rem', paddingBottom: '.68rem' }}>TIME {index + 1}</strong>
+                <label htmlFor={`availability-start-time-${index}`} style={{ display: 'grid', gap: '.3rem', color: '#475569', fontWeight: 750, fontSize: '.78rem' }}>Start time
+                  <input id={`availability-start-time-${index}`} type="time" step="900" value={item.start} onChange={event => updateTimeInput(index, 'start', event.target.value)} style={inputStyle} />
+                </label>
+                <label htmlFor={`availability-end-time-${index}`} style={{ display: 'grid', gap: '.3rem', color: '#475569', fontWeight: 750, fontSize: '.78rem' }}>End time
+                  <input id={`availability-end-time-${index}`} type="time" step="900" value={item.end} onChange={event => updateTimeInput(index, 'end', event.target.value)} style={inputStyle} />
+                </label>
+              </div>)}
             </div>
-            <p style={{ margin: '.5rem 0 0', color: '#64748B', fontSize: '.82rem' }}>Use 15-minute intervals. Add up to 5 manual start/end ranges. There is no fixed two-hour duration or automatic break; overlapping ranges for the same instructor are prevented.</p>
-            <div aria-live="polite" style={{ display: 'flex', flexWrap: 'wrap', gap: '.45rem', marginTop: '.7rem', minHeight: '32px' }}>
-              {times.map(time => <button type="button" key={time} onClick={() => setTimes(current => current.filter(item => item !== time))} title="Remove lesson time" style={{ border: '1px solid #BFDBFE', borderRadius: '999px', padding: '.35rem .6rem', background: '#EFF6FF', color: '#0755AE', fontWeight: 750, cursor: 'pointer' }}>{time} ×</button>)}
-              {!times.length && <span style={{ color: '#475569', fontSize: '.9rem' }}>No lesson times added yet.</span>}
-            </div>
+            <p style={{ margin: '.6rem 0 0', color: '#64748B', fontSize: '.82rem' }}>Use 15-minute intervals. The same instructor cannot have overlapping time ranges; different instructors may use the same time.</p>
           </fieldset>
         </div>
         <section aria-labelledby="advance-booking-notice-heading" style={{ display: 'flex', alignItems: 'end', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginTop: '1.25rem', padding: '1rem', border: '1px solid #FCD34D', borderRadius: '12px', background: 'linear-gradient(135deg,#FFFBEB,#FFF7ED)' }}>
