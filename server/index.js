@@ -1149,7 +1149,14 @@ const isDmvRentalTier = tier => {
   const name = cleanText(tier?.planName || tier?.title, 180).toUpperCase()
   return id === '6' || id === '7' || name.includes('DMV DRIVE TEST CAR RENTAL')
 }
-const bookingSlotKey = (date, timeSlot) => `${date}|${normalizeBookingTime(timeSlot)}`
+// Legacy slots use date + time as their key. New instructor availability adds
+// the instructor id, allowing more than one instructor to offer the same
+// lesson time without changing or invalidating old bookings.
+const bookingSlotKey = (date, timeSlot, instructorId = '') => {
+  const base = `${date}|${normalizeBookingTime(timeSlot)}`
+  const instructor = cleanText(instructorId, 80)
+  return instructor ? `${base}|instructor:${instructor}` : base
+}
 const courseIdCandidates = (courseId) => {
   const normalized = cleanText(courseId, 120)
   const candidates = [normalized]
@@ -1409,7 +1416,9 @@ async function googleCalendarEventBody(booking) {
   // Google send the instructor an invite without ever needing their password.
   // Supplying an empty array on an unassigned lesson also removes a previous
   // instructor invite when the event is later updated.
-  const instructorId = cleanText(course?.instructorId, 80)
+  // Availability can assign a specific instructor even before the course row
+  // is manually updated. Prefer that assignment for the calendar invitation.
+  const instructorId = cleanText(booking?.instructorId || course?.instructorId, 80)
   const instructor = instructorId
     ? await legacyInstructorsCol.findOne(
       { legacyInstructorId: instructorId },
@@ -1853,15 +1862,57 @@ async function assertSlotsOpenForBooking(slots, session, status = 409, { dateAva
     }
     return
   }
-  const keys = [...new Set(slots.map(slot => bookingSlotKey(slot.date, slot.timeSlot)))]
-  if (!keys.length) throw new HttpError(status, 'Please choose at least one available time slot.')
-  const openCount = await availabilityCol.countDocuments(
-    { slotKey: { $in: keys }, status: 'available' },
-    session ? { session } : undefined
-  )
-  if (openCount !== keys.length) {
-    throw new HttpError(status, 'One or more selected time slots are no longer available. Please choose again.')
+  if (!slots.length) throw new HttpError(status, 'Please choose at least one available time slot.')
+  // A time is bookable when at least one instructor (or one legacy shared
+  // slot) is free. This is intentionally based on the effective slot list so
+  // active holds and confirmed bookings reduce capacity immediately.
+  for (const requested of slots) {
+    const openSlots = await effectiveAvailabilitySlots({
+      date: requested.date,
+      time: normalizeBookingTime(requested.timeSlot),
+      status: 'available',
+    }, session)
+    if (!openSlots.some(slot => slot.status === 'available')) {
+      throw new HttpError(status, 'One or more selected time slots are no longer available. Please choose again.')
+    }
   }
+}
+
+async function reserveAvailableAvailabilitySlot({ date, timeSlot, userId, courseId, enrollmentId, bookingId, status, session, expiresAt, extra = {} }) {
+  const time = normalizeBookingTime(timeSlot)
+  const candidates = (await effectiveAvailabilitySlots({ date, time, status: 'available' }, session))
+    .filter(slot => slot.status === 'available')
+    .sort((left, right) => String(left.instructorId || '').localeCompare(String(right.instructorId || '')))
+
+  for (const candidate of candidates) {
+    const slotKey = cleanText(candidate.slotKey, 240)
+    if (!slotKey) continue
+    await bookingSlotsCol.deleteOne({ _id: slotKey, status: 'held', expiresAt: { $lte: new Date() } }, { session })
+    try {
+      await bookingSlotsCol.insertOne({
+        _id: slotKey,
+        availabilitySlotKey: slotKey,
+        date,
+        timeSlot: time,
+        instructorId: cleanText(candidate.instructorId, 80),
+        userId,
+        courseId: String(courseId),
+        enrollmentId: cleanText(enrollmentId, 160),
+        bookingId,
+        status,
+        ...(expiresAt ? { expiresAt } : {}),
+        createdAt: new Date(),
+        ...extra,
+      }, { session })
+      return { slotKey, instructorId: cleanText(candidate.instructorId, 80) }
+    } catch (error) {
+      // Another checkout can take this instructor between the availability
+      // lookup and insert. Try the next available instructor before failing.
+      if (isDuplicateKey(error)) continue
+      throw error
+    }
+  }
+  throw new HttpError(409, 'This lesson time is no longer available. Choose another open slot.')
 }
 
 async function effectiveAvailabilitySlots(filter, session) {
@@ -1890,6 +1941,35 @@ async function effectiveAvailabilitySlots(filter, session) {
           : 'available'
     return { ...item, status }
   })
+}
+
+function publicAvailabilitySummary(slots) {
+  const grouped = new Map()
+  for (const slot of slots) {
+    const key = `${slot.date}|${normalizeBookingTime(slot.time)}`
+    const entry = grouped.get(key) || {
+      date: slot.date,
+      time: normalizeBookingTime(slot.time),
+      availableCount: 0,
+      totalCount: 0,
+      heldCount: 0,
+      bookedCount: 0,
+      blockedCount: 0,
+    }
+    entry.totalCount += 1
+    if (slot.status === 'available') entry.availableCount += 1
+    else if (slot.status === 'held') entry.heldCount += 1
+    else if (slot.status === 'booked') entry.bookedCount += 1
+    else if (slot.status === 'blocked') entry.blockedCount += 1
+    grouped.set(key, entry)
+  }
+  return [...grouped.values()]
+    .sort((left, right) => left.date.localeCompare(right.date) || (lessonTimeRangeBounds(left.time)?.start || 0) - (lessonTimeRangeBounds(right.time)?.start || 0))
+    .map(entry => ({
+      ...entry,
+      // A time remains bookable while at least one instructor is free.
+      status: entry.availableCount > 0 ? 'available' : entry.heldCount > 0 ? 'held' : entry.bookedCount > 0 ? 'booked' : 'blocked',
+    }))
 }
 
 function pickupSlotsFromCourse(course, tier = course) {
@@ -2203,9 +2283,11 @@ async function backfillBookingSlotLocks() {
     const timeSlot = normalizeBookingTime(booking.timeSlot)
     const held = booking.status === 'held'
     const lock = {
-      _id: bookingSlotKey(booking.date, timeSlot),
+      _id: cleanText(booking.availabilitySlotKey, 240) || bookingSlotKey(booking.date, timeSlot, booking.instructorId),
       date: booking.date,
       timeSlot,
+      instructorId: cleanText(booking.instructorId, 80),
+      availabilitySlotKey: cleanText(booking.availabilitySlotKey, 240),
       userId: booking.userId,
       courseId: String(booking.courseId || ''),
       enrollmentId: cleanText(booking.enrollmentId, 160),
@@ -2356,33 +2438,21 @@ async function applyRefundDecisionToCourse(refund, status, session) {
 }
 
 async function createSlotHold({ uid, courseId, enrollmentId, date, timeSlot, session, expiresAt }) {
-  const key = bookingSlotKey(date, timeSlot)
-  await bookingSlotsCol.deleteOne(
-    { _id: key, status: 'held', expiresAt: { $lte: new Date() } },
-    { session }
-  )
-
   const bookingId = new ObjectId()
   const holdToken = randomUUID()
   const now = new Date()
-  try {
-    await bookingSlotsCol.insertOne({
-      _id: key,
-      date,
-      timeSlot,
-      userId: uid,
-      courseId: String(courseId),
-      enrollmentId: cleanText(enrollmentId, 160),
-      bookingId,
-      holdToken,
-      status: 'held',
-      expiresAt,
-      createdAt: now,
-    }, { session })
-  } catch (error) {
-    if (isDuplicateKey(error)) throw new HttpError(409, 'This time slot has already been booked. Please choose another slot.')
-    throw error
-  }
+  const assignment = await reserveAvailableAvailabilitySlot({
+    date,
+    timeSlot,
+    userId: uid,
+    courseId,
+    enrollmentId,
+    bookingId,
+    status: 'held',
+    session,
+    expiresAt,
+    extra: { holdToken, createdAt: now },
+  })
 
   await bookingsCol.insertOne({
     _id: bookingId,
@@ -2391,6 +2461,8 @@ async function createSlotHold({ uid, courseId, enrollmentId, date, timeSlot, ses
     timeSlot,
     courseId: String(courseId),
     enrollmentId: cleanText(enrollmentId, 160),
+    instructorId: assignment.instructorId,
+    availabilitySlotKey: assignment.slotKey,
     hours: 2,
     status: 'held',
     holdToken,
@@ -2974,7 +3046,7 @@ app.get('/api/bookings/availability', async (req, res) => {
         customBookedTimes: [],
       })
     }
-    const slots = await effectiveAvailabilitySlots({ date })
+    const slots = publicAvailabilitySummary(await effectiveAvailabilitySlots({ date }))
     const availableTimes = slots.filter(slot => slot.status === 'available').map(slot => slot.time)
     const bookedTimes = slots.filter(slot => slot.status !== 'available').map(slot => slot.time)
     const customLocks = await bookingSlotsCol.find({
@@ -2989,7 +3061,7 @@ app.get('/api/bookings/availability', async (req, res) => {
       advanceNoticeBlocked: false,
       bookingLeadTimeDays: leadTime.days,
       bookingBlockedThrough: leadTime.bookingBlockedThrough,
-      slots: slots.map(slot => ({ time: slot.time, status: slot.status })),
+      slots: slots.map(slot => ({ time: slot.time, status: slot.status, availableCount: slot.availableCount, totalCount: slot.totalCount })),
       availableTimes,
       bookedTimes,
       customBookedTimes: [...new Set(customLocks.map(lock => normalizeBookingTime(lock.timeSlot)))],
@@ -3013,7 +3085,7 @@ app.get('/api/availability', async (req, res) => {
       effectiveAvailabilitySlots({ date: { $gte: from, $lte: to } }),
       bookingLeadTimeSetting(),
     ])
-    const slots = allSlots
+    const slots = publicAvailabilitySummary(allSlots)
     const dates = {}
     for (const slot of slots) {
       if (!dates[slot.date]) dates[slot.date] = []
@@ -3023,7 +3095,7 @@ app.get('/api/availability', async (req, res) => {
       from,
       to,
       dates,
-      slots: slots.map(({ _id, slotKey, date, time, status }) => ({ _id, slotKey, date, time, status })),
+      slots: slots.map(({ date, time, status, availableCount, totalCount }) => ({ date, time, status, availableCount, totalCount })),
       bookingLeadTimeDays: leadTime.days,
       bookingBlockedThrough: leadTime.bookingBlockedThrough,
     })
@@ -3920,7 +3992,8 @@ async function processCartCheckout(req, { quoteOnly = false, couponCode = '', co
         for (const slot of slots) {
           const enrollmentScope = requestedEnrollmentId || cleanText(activeCourse?.enrollmentId, 160)
           const lock = await bookingSlotsCol.findOne({
-            _id: bookingSlotKey(slot.date, slot.timeSlot),
+            date: slot.date,
+            timeSlot: normalizeBookingTime(slot.timeSlot),
             userId: uid,
             courseId,
             ...(enrollmentScope ? { enrollmentId: enrollmentScope } : {}),
@@ -6226,7 +6299,7 @@ app.get('/api/admin/availability', async (req, res) => {
         expired: 'past expired',
         legacy: 'old schedule remove',
       }[slot.status] || slot.status
-      return [slot.date, slot.time, shortTime, compactTime, friendlyDate, numericDate, slot.status, statusLabel]
+      return [slot.date, slot.time, slot.instructorName, slot.instructorId, shortTime, compactTime, friendlyDate, numericDate, slot.status, statusLabel]
         .some(value => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes(normalizedSearch))
     })
     const filtered = statusFilter === 'manageable'
@@ -6238,7 +6311,7 @@ app.get('/api/admin/availability', async (req, res) => {
     const pages = Math.max(1, Math.ceil(total / limit))
     const safePage = Math.min(page, pages)
     const items = filtered.slice((safePage - 1) * limit, safePage * limit)
-      .map(({ _id, slotKey, date, time, status, createdAt, updatedAt }) => ({ _id, slotKey, date, time, status, createdAt, updatedAt }))
+      .map(({ _id, slotKey, date, time, status, instructorId, instructorName, createdAt, updatedAt }) => ({ _id, slotKey, date, time, status, instructorId, instructorName, createdAt, updatedAt }))
     res.json({ items, total, page: safePage, pages, limit })
   } catch (error) {
     sendServerError(res, error, 'Admin availability lookup failed')
@@ -6247,17 +6320,25 @@ app.get('/api/admin/availability', async (req, res) => {
 
 app.post('/api/admin/availability', rateLimit({ windowMs: 60_000, max: 30 }), async (req, res) => {
   try {
+    const instructorId = cleanText(req.body?.instructorId, 80)
     const dates = [...new Set((Array.isArray(req.body?.dates) ? req.body.dates : []).map(date => cleanText(date, 10)))]
     const times = [...new Set((Array.isArray(req.body?.times) ? req.body.times : []).map(time => normalizeBookingTime(time)))]
+    if (!instructorId) throw new HttpError(400, 'Choose an instructor before opening lesson availability.')
     if (!dates.length || dates.length > 90) throw new HttpError(400, 'Choose between 1 and 90 future dates.')
-    if (!times.length || times.length > 48) throw new HttpError(400, 'Choose between 1 and 48 lesson times.')
+    if (!times.length || times.length > 5) throw new HttpError(400, 'Choose between 1 and 5 lesson time ranges.')
+    const instructor = await legacyInstructorsCol.findOne(
+      { legacyInstructorId: instructorId },
+      { projection: { displayName: 1, active: 1, source: 1 } },
+    )
+    if (!instructor || !cleanText(instructor.displayName, 160)) throw new HttpError(400, 'Choose an instructor from the instructor list.')
+    if (instructor.source === 'admin-created' && instructor.active === false) throw new HttpError(400, 'That instructor is inactive and cannot receive lesson availability.')
     const slots = dates.flatMap(date => times.map(time => validateAvailabilitySlot(date, time, { allowToday: false })))
     for (let index = 0; index < times.length; index += 1) {
       if (times.slice(index + 1).some(time => !lessonTimesDoNotOverlap(times[index], time))) {
         throw new HttpError(400, 'Lesson time ranges must not overlap.')
       }
     }
-    const existingSlots = await availabilityCol.find({ date: { $in: dates } }, { projection: { date: 1, time: 1 } }).toArray()
+    const existingSlots = await availabilityCol.find({ date: { $in: dates }, instructorId }, { projection: { date: 1, time: 1 } }).toArray()
     for (const slot of slots) {
       const conflicting = existingSlots.find(existing =>
         existing.date === slot.date
@@ -6270,7 +6351,7 @@ app.post('/api/admin/availability', rateLimit({ windowMs: 60_000, max: 30 }), as
     }
     const now = new Date().toISOString()
     const operations = slots.map(slot => {
-      const slotKey = bookingSlotKey(slot.date, slot.timeSlot)
+      const slotKey = bookingSlotKey(slot.date, slot.timeSlot, instructorId)
       return {
         updateOne: {
           filter: { slotKey },
@@ -6280,6 +6361,8 @@ app.post('/api/admin/availability', rateLimit({ windowMs: 60_000, max: 30 }), as
               date: slot.date,
               time: slot.timeSlot,
               timeOrder: lessonTimeRangeBounds(slot.timeSlot).start,
+              instructorId,
+              instructorName: cleanText(instructor.displayName, 160),
               status: 'available',
               updatedAt: now,
               updatedBy: req.auth.uid,
@@ -6291,7 +6374,7 @@ app.post('/api/admin/availability', rateLimit({ windowMs: 60_000, max: 30 }), as
       }
     })
     await availabilityCol.bulkWrite(operations, { ordered: false })
-    res.status(201).json({ ok: true, saved: slots.length })
+    res.status(201).json({ ok: true, saved: slots.length, instructor: { legacyInstructorId: instructorId, displayName: cleanText(instructor.displayName, 160) } })
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message })
     sendServerError(res, error, 'Availability creation failed')
@@ -8371,6 +8454,8 @@ export {
   validateAvailabilitySlot,
   validateClosedAvailabilityDates,
   validateAdminBookingStatusChange,
+  bookingSlotKey,
+  publicAvailabilitySummary,
   slotLimitForTier,
 }
 export default app

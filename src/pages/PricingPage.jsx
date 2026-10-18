@@ -682,12 +682,13 @@ export default function PricingPage() {
                   const key = dateKey(day)
                   const dateSlots = Array.isArray(monthAvailability[key]) ? monthAvailability[key] : []
                   const hasAvailableTime = dateSlots.some(slot => slot.status === 'available')
+                  const availableInstructorCount = dateSlots.reduce((count, slot) => count + (slot.status === 'available' ? Number(slot.availableCount || 1) : 0), 0)
                   const advanceNoticeBlocked = Boolean(bookingBlockedThrough && key <= bookingBlockedThrough)
                   const disabled = dayDate < today || monthAvailabilityLoading || advanceNoticeBlocked || !hasAvailableTime
                   const selected = selectedSlots.some(slot => slot.date === key)
                   const bookingOpensAfter = bookingBlockedThrough ? new Date(`${bookingBlockedThrough}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
                   return (
-                    <button key={key} disabled={disabled} title={advanceNoticeBlocked ? `Advance booking notice: choose a date after ${bookingOpensAfter}` : hasAvailableTime ? `${dateSlots.filter(slot => slot.status === 'available').length} time slots available` : 'No lesson times opened by the school'} onClick={() => { setPendingDate(key); setError('') }} style={{ minHeight: '42px', border: selected ? '2px solid #0755ae' : `1px solid ${advanceNoticeBlocked ? '#FCD34D' : disabled ? '#fee2e2' : '#cde7d2'}`, borderRadius: '3px', background: selected ? '#dbeafe' : advanceNoticeBlocked ? '#fff7ed' : disabled ? '#fff1f2' : '#edf7ef', color: selected ? '#0755ae' : advanceNoticeBlocked ? '#B45309' : disabled ? '#ff3b45' : '#19963b', fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: selected || advanceNoticeBlocked ? 800 : 500, cursor: disabled ? 'not-allowed' : 'pointer' }}>{day}</button>
+                    <button key={key} disabled={disabled} title={advanceNoticeBlocked ? `Advance booking notice: choose a date after ${bookingOpensAfter}` : hasAvailableTime ? `${availableInstructorCount} instructor opening${availableInstructorCount === 1 ? '' : 's'} available` : 'No lesson times opened by the school'} onClick={() => { setPendingDate(key); setError('') }} style={{ minHeight: '42px', border: selected ? '2px solid #0755ae' : `1px solid ${advanceNoticeBlocked ? '#FCD34D' : disabled ? '#fee2e2' : '#cde7d2'}`, borderRadius: '3px', background: selected ? '#dbeafe' : advanceNoticeBlocked ? '#fff7ed' : disabled ? '#fff1f2' : '#edf7ef', color: selected ? '#0755ae' : advanceNoticeBlocked ? '#B45309' : disabled ? '#ff3b45' : '#19963b', fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: selected || advanceNoticeBlocked ? 800 : 500, cursor: disabled ? 'not-allowed' : 'pointer' }}><span style={{ display: 'block' }}>{day}</span>{hasAvailableTime && <small style={{ display: 'block', marginTop: '1px', fontSize: '.56rem', lineHeight: 1, opacity: .8 }}>{availableInstructorCount}</small>}</button>
                   )
                 })}
               </div>
@@ -792,7 +793,7 @@ export default function PricingPage() {
                     </div>
                   ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
-                    {timeSlots.map(({ time }) => {
+                    {timeSlots.map(({ time, availableCount = 0 }) => {
                       const effectiveStatus = timeAvailability[time] || (availabilityLoading ? 'loading' : 'unavailable')
                       const booked = bookedTimes.includes(time)
                         || selectedSlots.some(slot => slot.date === pendingDate && slot.time === time)
@@ -812,7 +813,7 @@ export default function PricingPage() {
                             : 'Unavailable'
                       return (
                       <div key={time} style={{ minHeight: '56px', padding: '0.7rem 0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', borderRadius: '11px', background: booked ? '#ffe5e5' : '#fff', boxShadow: booked ? 'none' : '0 8px 24px rgba(15,23,42,0.09)' }}>
-                        <strong style={{ color: '#08284a', fontFamily: 'var(--font-body)', fontSize: '1rem' }}>{time}</strong>
+                        <div><strong style={{ color: '#08284a', fontFamily: 'var(--font-body)', fontSize: '1rem' }}>{time}</strong>{effectiveStatus === 'available' && <span style={{ display: 'block', marginTop: '.16rem', color: '#15803D', fontSize: '.75rem', fontWeight: 750 }}>{availableCount} instructor{availableCount === 1 ? '' : 's'} available</span>}</div>
                         {booked ? (
                           <button disabled style={{ padding: '0.55rem 0.75rem', border: 0, borderRadius: '5px', background: effectiveStatus === 'held' ? '#D97706' : '#e93647', color: '#fff', fontFamily: 'var(--font-body)', fontSize: '0.9rem', fontWeight: 800, cursor: 'not-allowed' }}>{availabilityLoading ? 'Checking…' : unavailableLabel}</button>
                         ) : (

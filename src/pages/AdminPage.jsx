@@ -957,6 +957,7 @@ function InstructorSlotsReport({ cardStyle, inputStyle, instructors, loadingInst
 }
 
 function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, requestConfirmation, setMessage, instructors, instructorsLoading, instructorsError }) {
+  const [instructorId, setInstructorId] = useState('')
   const [dates, setDates] = useState([])
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const [year, month] = localDateKey().split('-').map(Number)
@@ -1060,20 +1061,24 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
       setMessage('That lesson time has already been added.')
       return
     }
+    if (times.length >= 5) {
+      setMessage('You can add up to 5 lesson time ranges at once.')
+      return
+    }
     setTimes(current => [...current, lessonTime])
     setStartTimeInput('')
     setEndTimeInput('')
   }
 
   const saveAvailability = async () => {
-    if (!dates.length || !times.length) {
-      setMessage('Select at least one future date and one lesson time.')
+    if (!instructorId || !dates.length || !times.length) {
+      setMessage('Choose an instructor, at least one future date, and at least one lesson time.')
       return
     }
     setSaving(true)
     try {
-      const result = await api.adminAddAvailability(dates, times)
-      setMessage(`${result?.saved || dates.length * times.length} lesson slot${result?.saved === 1 ? '' : 's'} opened for student booking.`)
+      const result = await api.adminAddAvailability(instructorId, dates, times)
+      setMessage(`${result?.saved || dates.length * times.length} lesson slot${result?.saved === 1 ? '' : 's'} opened for ${result?.instructor?.displayName || 'the selected instructor'} and student booking.`)
       setDates([])
       setTimes([])
       setPage(1)
@@ -1183,6 +1188,17 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
           </div>
           <span style={{ padding: '.35rem .65rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontWeight: 800, fontSize: '.8rem' }}>Pacific Time (California)</span>
         </div>
+        <div style={{ marginBottom: '1.1rem', padding: '.9rem', border: '1px solid #D7E4F2', borderRadius: '12px', background: '#F8FBFF' }}>
+          <label htmlFor="availability-instructor" style={{ display: 'grid', gap: '.38rem', maxWidth: '520px', color: '#334155', fontWeight: 850 }}>
+            Instructor *
+            <select id="availability-instructor" value={instructorId} disabled={instructorsLoading} onChange={event => setInstructorId(event.target.value)} style={{ ...inputStyle, background: '#fff' }}>
+              <option value="">{instructorsLoading ? 'Loading instructors…' : 'Select an instructor'}</option>
+              {instructors.filter(instructor => instructor?.legacyInstructorId && instructor?.active !== false).map(instructor => <option key={instructor.legacyInstructorId} value={instructor.legacyInstructorId}>{instructor.displayName || instructor.legacyInstructorId}{instructor.email ? ` — ${instructor.email}` : ''}</option>)}
+            </select>
+          </label>
+          {instructorsError && <p role="alert" style={{ margin: '.5rem 0 0', color: '#B91C1C', fontSize: '.82rem' }}>{instructorsError}</p>}
+          {!instructorsLoading && !instructorsError && !instructors.some(instructor => instructor?.legacyInstructorId && instructor?.active !== false) && <p style={{ margin: '.5rem 0 0', color: '#B45309', fontSize: '.82rem' }}>Add an active instructor before opening instructor availability.</p>}
+        </div>
         <div className="admin-grid-responsive admin-availability-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(240px,.8fr) minmax(320px,1.2fr)', gap: '1.25rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.6rem', marginBottom: '.55rem' }}>
@@ -1233,7 +1249,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
               </label>
               <button type="button" onClick={addLessonTime} style={{ minHeight: '44px', padding: '.7rem 1rem', border: 0, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 850, cursor: 'pointer' }}>Add time range</button>
             </div>
-            <p style={{ margin: '.5rem 0 0', color: '#64748B', fontSize: '.82rem' }}>Use 15-minute intervals. There is no fixed two-hour duration or automatic break; the server only prevents overlapping time ranges.</p>
+            <p style={{ margin: '.5rem 0 0', color: '#64748B', fontSize: '.82rem' }}>Use 15-minute intervals. Add up to 5 manual start/end ranges. There is no fixed two-hour duration or automatic break; overlapping ranges for the same instructor are prevented.</p>
             <div aria-live="polite" style={{ display: 'flex', flexWrap: 'wrap', gap: '.45rem', marginTop: '.7rem', minHeight: '32px' }}>
               {times.map(time => <button type="button" key={time} onClick={() => setTimes(current => current.filter(item => item !== time))} title="Remove lesson time" style={{ border: '1px solid #BFDBFE', borderRadius: '999px', padding: '.35rem .6rem', background: '#EFF6FF', color: '#0755AE', fontWeight: 750, cursor: 'pointer' }}>{time} ×</button>)}
               {!times.length && <span style={{ color: '#475569', fontSize: '.9rem' }}>No lesson times added yet.</span>}
@@ -1254,7 +1270,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
         </section>
         <div style={{ display: 'flex', gap: '.65rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
           <button type="button" disabled={saving} onClick={saveAvailability} style={{ minHeight: '44px', padding: '.7rem 1.15rem', border: 0, borderRadius: '9px', background: `linear-gradient(135deg,${SKY_BLUE},#0A2A5E)`, color: '#fff', fontWeight: 850, cursor: saving ? 'wait' : 'pointer' }}>{saving ? 'Opening Lesson Slots…' : 'Open Selected Dates & Times'}</button>
-          <button type="button" disabled={saving} onClick={() => { setDates([]); setTimes([]); setTimeInput('') }} style={{ minHeight: '44px', padding: '.7rem 1.15rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Reset</button>
+          <button type="button" disabled={saving} onClick={() => { setInstructorId(''); setDates([]); setTimes([]); setStartTimeInput(''); setEndTimeInput('') }} style={{ minHeight: '44px', padding: '.7rem 1.15rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Reset</button>
         </div>
       </div>
 

@@ -39,6 +39,8 @@ const {
   validateAvailabilitySlot,
   validateClosedAvailabilityDates,
   validateAdminBookingStatusChange,
+  bookingSlotKey,
+  publicAvailabilitySummary,
 } = await import('./index.js')
 
 test('online driver education access includes standalone and bundled course plans', () => {
@@ -338,6 +340,21 @@ test('admin availability accepts custom start and end times on 15-minute interva
     () => validateAvailabilitySlot('2099-12-20', '10:00 PM - 12:00 AM'),
     error => error.status === 400 && /start and end times/i.test(error.message)
   )
+})
+
+test('instructor availability keeps same date and time slots separate and reports remaining capacity', () => {
+  assert.notEqual(
+    bookingSlotKey('2099-12-20', '09:00 AM - 11:00 AM', 'instructor-a'),
+    bookingSlotKey('2099-12-20', '09:00 AM - 11:00 AM', 'instructor-b'),
+  )
+  const summary = publicAvailabilitySummary([
+    { date: '2099-12-20', time: '09:00 AM - 11:00 AM', status: 'booked', instructorId: 'instructor-a' },
+    { date: '2099-12-20', time: '09:00 AM - 11:00 AM', status: 'available', instructorId: 'instructor-b' },
+  ])
+  assert.deepEqual(summary, [{
+    date: '2099-12-20', time: '09:00 AM - 11:00 AM', availableCount: 1, totalCount: 2,
+    heldCount: 0, bookedCount: 1, blockedCount: 0, status: 'available',
+  }])
 })
 
 test('closed availability dates are future-only, unique, and sorted', () => {
