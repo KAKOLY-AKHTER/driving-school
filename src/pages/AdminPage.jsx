@@ -783,8 +783,6 @@ function AdminReviewsPanel({ cardStyle, inputStyle, labelStyle, thStyle, tdStyle
 }
 
 function InstructorSlotsReport({ cardStyle, inputStyle, instructors, loadingInstructors, instructorsError }) {
-  const [zoneId, setZoneId] = useState('')
-  const [locationId, setLocationId] = useState('')
   const [instructorId, setInstructorId] = useState('')
   const [reportMonth, setReportMonth] = useState(() => localDateKey().slice(0, 7))
   const [reportSlots, setReportSlots] = useState([])
@@ -792,26 +790,8 @@ function InstructorSlotsReport({ cardStyle, inputStyle, instructors, loadingInst
   const [reportLoading, setReportLoading] = useState(false)
   const [reportError, setReportError] = useState('')
 
-  const zones = [...new Set(instructors.flatMap(instructor => instructor.zoneIds || []).filter(Boolean).map(String))]
-    .sort((left, right) => left.localeCompare(right, undefined, { numeric: true }))
-  const instructorLocationOptions = instructor => {
-    const archivedLocations = Array.isArray(instructor?.locationOptions) ? instructor.locationOptions : []
-    const knownLabels = new Set(archivedLocations.map(option => String(option?.label || '').trim().toLowerCase()).filter(Boolean))
-    const currentLocations = (Array.isArray(instructor?.locationLabels) ? instructor.locationLabels : [])
-      .map(label => String(label || '').trim())
-      .filter(label => label && !knownLabels.has(label.toLowerCase()))
-      .map(label => ({ value: `current:${label}`, label }))
-    return [...archivedLocations, ...currentLocations]
-  }
-  // New profiles have no historical zone rows. Keep them visible even when an
-  // archive zone is selected so their current student bookings can be viewed.
-  const instructorsForZone = instructors.filter(instructor => instructor.displayName && (!zoneId || instructor.isCurrentProfile || (instructor.zoneIds || []).map(String).includes(zoneId)))
-  const locationOptions = [...new Map(instructorsForZone.flatMap(instructor => instructorLocationOptions(instructor))
-    .filter(option => option?.value)
-    .map(option => [String(option.value), { value: String(option.value), label: option.label || `Location ${option.value}` }])).values()]
-    .sort((left, right) => left.label.localeCompare(right.label))
-  const selectableInstructors = instructorsForZone
-    .filter(instructor => !locationId || instructorLocationOptions(instructor).some(option => String(option?.value) === locationId))
+  const selectableInstructors = instructors
+    .filter(instructor => instructor.displayName)
     .sort((left, right) => String(left.displayName).localeCompare(String(right.displayName)))
   const selectedInstructor = instructors.find(instructor => String(instructor.legacyInstructorId) === instructorId)
   const reportDate = new Date(`${reportMonth}-01T12:00:00`)
@@ -860,47 +840,28 @@ function InstructorSlotsReport({ cardStyle, inputStyle, instructors, loadingInst
     setReportLoading(true)
     setReportError('')
     setSelectedReportDate('')
-    api.adminInstructorSlotsReport(instructorId, { month: reportMonth, zoneId, locationId })
+    api.adminInstructorSlotsReport(instructorId, { month: reportMonth })
       .then(data => { if (active) setReportSlots(Array.isArray(data?.items) ? data.items : []) })
       .catch(error => { if (active) setReportError(error?.message || 'Instructor slots could not be loaded.') })
       .finally(() => { if (active) setReportLoading(false) })
     return () => { active = false }
-  }, [instructorId, locationId, reportMonth, zoneId])
+  }, [instructorId, reportMonth])
 
-  const formatZone = value => /^zone\s/i.test(value) ? value : `Zone ${value}`
   const shiftMonth = amount => {
     const next = new Date(reportYear, reportMonthIndex + amount, 1)
     setReportMonth(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`)
     setSelectedReportDate('')
   }
-  const changeZone = value => {
-    setZoneId(value)
-    setLocationId('')
-    setInstructorId('')
-    setSelectedReportDate('')
-  }
-  const changeLocation = value => {
-    setLocationId(value)
-    setInstructorId('')
-    setSelectedReportDate('')
-  }
-
   return (
     <section style={cardStyle} aria-labelledby="instructor-slots-report-heading">
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '1.1rem' }}>
         <div>
           <h2 id="instructor-slots-report-heading" style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.3rem' }}>Instructor Slots Report</h2>
-          <p style={{ margin: '.35rem 0 0', color: '#475569', lineHeight: 1.5 }}>Choose a zone, location, and instructor to view imported slots and current student bookings in a monthly calendar.</p>
+          <p style={{ margin: '.35rem 0 0', color: '#475569', lineHeight: 1.5 }}>Select an instructor to view their details, schedule slots, and current student bookings in a monthly calendar.</p>
         </div>
         <span style={{ padding: '.35rem .65rem', borderRadius: '999px', background: '#EFF6FF', color: '#0755AE', fontWeight: 800, fontSize: '.8rem' }}>Schedule report</span>
       </div>
-      <div className="admin-grid-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(190px, 1fr))', gap: '.85rem', alignItems: 'end' }}>
-        <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontSize: '.84rem', fontWeight: 800 }}>Zone / County
-          <select aria-label="Filter instructor report by zone or county" value={zoneId} disabled={loadingInstructors} onChange={event => changeZone(event.target.value)} style={inputStyle}><option value="">All zones</option>{zones.map(zone => <option key={zone} value={zone}>{formatZone(zone)}</option>)}</select>
-        </label>
-        <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontSize: '.84rem', fontWeight: 800 }}>Location
-          <select aria-label="Filter instructor report by location" value={locationId} disabled={loadingInstructors} onChange={event => changeLocation(event.target.value)} style={inputStyle}><option value="">All locations</option>{locationOptions.map(location => <option key={location.value} value={location.value}>{location.label}</option>)}</select>
-        </label>
+      <div style={{ maxWidth: '520px' }}>
         <label style={{ display: 'grid', gap: '.35rem', color: '#334155', fontSize: '.84rem', fontWeight: 800 }}>Instructor
           <select aria-label="Choose an instructor for the slots report" value={instructorId} disabled={loadingInstructors} onChange={event => { setInstructorId(event.target.value); setSelectedReportDate('') }} style={inputStyle}><option value="">Select instructor</option>{selectableInstructors.map(instructor => <option key={instructor.legacyInstructorId} value={instructor.legacyInstructorId}>{instructor.displayName}</option>)}</select>
         </label>
@@ -912,7 +873,7 @@ function InstructorSlotsReport({ cardStyle, inputStyle, instructors, loadingInst
         <div style={{ minWidth: '190px', flex: '1 1 220px' }}><strong style={{ color: DARK }}>{selectedInstructor.displayName}</strong><p style={{ margin: '.2rem 0 0', color: '#64748B', fontSize: '.82rem' }}>{[selectedInstructor.phone, selectedInstructor.email].filter(Boolean).join(' · ') || 'Contact not recorded'}</p></div>
         {!!Number(selectedInstructor.totalSlots || 0) && <><span style={{ padding: '.35rem .6rem', borderRadius: '8px', background: '#DCFCE7', color: '#166534', fontFamily: 'var(--font-mono)', fontSize: '.74rem', fontWeight: 900 }}>{Number(selectedInstructor.activeSlots || 0).toLocaleString()} ACTIVE SLOTS</span><span style={{ padding: '.35rem .6rem', borderRadius: '8px', background: '#E8F1FC', color: '#0755AE', fontFamily: 'var(--font-mono)', fontSize: '.74rem', fontWeight: 900 }}>{Number(selectedInstructor.totalSlots || 0).toLocaleString()} ARCHIVED SLOTS</span></>}
         {selectedInstructor.isCurrentProfile && <span style={{ padding: '.35rem .6rem', borderRadius: '8px', background: '#DCFCE7', color: '#087443', fontFamily: 'var(--font-mono)', fontSize: '.74rem', fontWeight: 900 }}>{currentBookingCount.toLocaleString()} CURRENT BOOKINGS THIS MONTH</span>}
-        <span style={{ color: '#475569', fontSize: '.8rem', flex: '1 1 240px' }}>{(selectedInstructor.locationLabels || []).join(', ') || 'Location not recorded'}</span>
+        <span style={{ color: '#475569', fontSize: '.8rem', flex: '1 1 240px' }}>Instructor ID: {selectedInstructor.legacyInstructorId || 'Not recorded'}</span>
       </div>}
       <div style={{ marginTop: '1rem', padding: '.85rem', border: '1px solid #D8E4F0', borderRadius: '14px', background: 'linear-gradient(180deg,#F8FBFF,#fff)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.7rem', marginBottom: '.8rem' }}>
@@ -935,7 +896,7 @@ function InstructorSlotsReport({ cardStyle, inputStyle, instructors, loadingInst
             return <button type="button" key={dateKey} aria-pressed={daySelected} aria-label={`${new Date(`${dateKey}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}${slots.length ? `, ${slots.length} scheduled item${slots.length === 1 ? '' : 's'}` : ', no scheduled items'}`} onClick={() => setSelectedReportDate(dateKey)} style={{ minHeight: '78px', padding: '.35rem', border: daySelected ? `2px solid ${SKY_BLUE}` : `1px solid ${slots.length ? '#86EFAC' : '#E2E8F0'}`, borderRadius: '9px', background: daySelected ? '#EFF6FF' : slots.length ? '#F0FDF4' : '#fff', textAlign: 'left', cursor: 'pointer', overflow: 'hidden', boxShadow: daySelected ? '0 0 0 2px rgba(7,85,174,.12)' : 'none' }}><div style={{ textAlign: 'right', color: slots.length ? '#166534' : '#64748B', fontSize: '.75rem', fontWeight: 850 }}>{day}</div>{slots.slice(0, 3).map(slot => { const tone = locationTone(slot.locationId || slot.locationLabel); const isCurrentBooking = slot.source === 'current-booking'; return <span key={slot.reportItemId || slot.legacySlotId} title={[isCurrentBooking ? 'Current booking' : 'Imported slot', slot.fromTimeLabel, slot.toTimeLabel, slot.locationLabel, slot.studentName, slot.courseTitle].filter(Boolean).join(' - ')} style={{ display: 'block', marginTop: '.2rem', padding: '.18rem .25rem', border: `1px solid ${tone.border}`, borderRadius: '5px', background: tone.background, color: tone.color, opacity: slot.active ? 1 : .52, fontSize: '.62rem', fontWeight: 800, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{isCurrentBooking && <b style={{ marginRight: '.25rem', color: '#0755AE', fontFamily: 'var(--font-mono)', fontSize: '.54rem', letterSpacing: '.03em' }}>BOOKING</b>}{slot.fromTimeLabel || 'Scheduled'}{slot.toTimeLabel ? ` – ${slot.toTimeLabel}` : ''}</span> })}{slots.length > 3 && <span style={{ display: 'block', marginTop: '.18rem', color: '#166534', fontSize: '.64rem', fontWeight: 850 }}>+{slots.length - 3} more</span>}</button>
           })}
         </div>
-        {instructorId && !reportLoading && !reportError && !reportSlots.length && <div style={{ margin: '.85rem 0 .1rem', padding: '.8rem 1rem', border: '1px dashed #BFDBFE', borderRadius: '10px', background: '#F8FBFF', textAlign: 'center', color: '#526C88', fontSize: '.86rem' }}><strong style={{ display: 'block', color: DARK, marginBottom: '.18rem' }}>{selectedInstructorIsCurrent ? 'No current bookings this month' : 'No schedule items this month'}</strong>{selectedInstructorIsCurrent ? 'This instructor has no assigned student lesson booked for the selected month. Try another month or confirm the student assignment.' : 'No imported slots or current student bookings match the selected filters. Try another month, location, or instructor.'}</div>}
+        {instructorId && !reportLoading && !reportError && !reportSlots.length && <div style={{ margin: '.85rem 0 .1rem', padding: '.8rem 1rem', border: '1px dashed #BFDBFE', borderRadius: '10px', background: '#F8FBFF', textAlign: 'center', color: '#526C88', fontSize: '.86rem' }}><strong style={{ display: 'block', color: DARK, marginBottom: '.18rem' }}>{selectedInstructorIsCurrent ? 'No current bookings this month' : 'No schedule items this month'}</strong>{selectedInstructorIsCurrent ? 'This instructor has no assigned student lesson booked for the selected month. Try another month or confirm the student assignment.' : 'No imported slots or current student bookings match this instructor. Try another month or instructor.'}</div>}
         {reportLoading && <p style={{ margin: '.85rem 0 .1rem', textAlign: 'center', color: '#64748B', fontSize: '.86rem' }}>Loading instructor schedule…</p>}
       </div>
       {selectedReportDate && !reportLoading && <div role="presentation" onClick={event => { if (event.target === event.currentTarget) setSelectedReportDate('') }} style={{ position: 'fixed', inset: 0, zIndex: 15000, display: 'grid', placeItems: 'center', padding: '1rem', background: 'rgba(10,22,40,.62)', backdropFilter: 'blur(7px)' }}>
