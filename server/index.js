@@ -1846,6 +1846,17 @@ function adminAvailabilityStatus(slot, today = californiaDateKey()) {
   return slot?.status
 }
 
+function sortAdminAvailabilitySlots(slots) {
+  return [...slots].sort((left, right) => {
+    const dateOrder = String(right?.date || '').localeCompare(String(left?.date || ''))
+    if (dateOrder) return dateOrder
+    const leftTime = Number.isFinite(Number(left?.timeOrder)) ? Number(left.timeOrder) : Number.MAX_SAFE_INTEGER
+    const rightTime = Number.isFinite(Number(right?.timeOrder)) ? Number(right.timeOrder) : Number.MAX_SAFE_INTEGER
+    if (leftTime !== rightTime) return leftTime - rightTime
+    return String(left?.time || '').localeCompare(String(right?.time || ''))
+  })
+}
+
 async function assertSlotsOpenForBooking(slots, session, status = 409, { dateAvailabilityOnly = false } = {}) {
   const requestedDates = [...new Set(slots.map(slot => slot.date).filter(isDateKey))]
   const leadTime = await bookingLeadTimeSetting()
@@ -6307,10 +6318,11 @@ app.get('/api/admin/availability', async (req, res) => {
       : ['available', 'blocked', 'held', 'booked', 'expired', 'legacy'].includes(statusFilter)
         ? searchMatched.filter(slot => slot.status === statusFilter)
         : searchMatched
-    const total = filtered.length
+    const ordered = sortAdminAvailabilitySlots(filtered)
+    const total = ordered.length
     const pages = Math.max(1, Math.ceil(total / limit))
     const safePage = Math.min(page, pages)
-    const items = filtered.slice((safePage - 1) * limit, safePage * limit)
+    const items = ordered.slice((safePage - 1) * limit, safePage * limit)
       .map(({ _id, slotKey, date, time, status, instructorId, instructorName, createdAt, updatedAt }) => ({ _id, slotKey, date, time, status, instructorId, instructorName, createdAt, updatedAt }))
     res.json({ items, total, page: safePage, pages, limit })
   } catch (error) {
@@ -8420,6 +8432,7 @@ export {
   deliverContactEmails,
   escapeEmailHtml,
   adminAvailabilityStatus,
+  sortAdminAvailabilitySlots,
   adminUserProfileDetails,
   canonicalAdminBookingStatus,
   bookingsForEnrollment,

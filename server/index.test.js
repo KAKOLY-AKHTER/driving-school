@@ -5,6 +5,7 @@ process.env.VERCEL = '1'
 const {
   DEFAULT_LOCATIONS,
   adminAvailabilityStatus,
+  sortAdminAvailabilitySlots,
   adminUserProfileDetails,
   canonicalAdminBookingStatus,
   cloudinarySignature,
@@ -383,6 +384,21 @@ test('admin availability marks non-future open slots expired without hiding book
   assert.equal(adminAvailabilityStatus({ date: today, status: 'available' }, today), 'expired')
   assert.equal(adminAvailabilityStatus({ date: '2026-08-25', status: 'available' }, today), 'available')
   assert.equal(adminAvailabilityStatus({ date: '2026-08-23', status: 'booked' }, today), 'booked')
+})
+
+test('admin availability lists newest lesson dates first and keeps same-day times ordered', () => {
+  const ordered = sortAdminAvailabilitySlots([
+    { date: '2026-08-22', time: '04:00 PM - 06:00 PM', timeOrder: 960 },
+    { date: '2026-10-21', time: '04:00 PM - 06:00 PM', timeOrder: 960 },
+    { date: '2026-10-21', time: '07:00 AM - 09:00 AM', timeOrder: 420 },
+    { date: '2026-09-30', time: '09:00 AM - 11:00 AM', timeOrder: 540 },
+  ])
+  assert.deepEqual(ordered.map(slot => [slot.date, slot.time]), [
+    ['2026-10-21', '07:00 AM - 09:00 AM'],
+    ['2026-10-21', '04:00 PM - 06:00 PM'],
+    ['2026-09-30', '09:00 AM - 11:00 AM'],
+    ['2026-08-22', '04:00 PM - 06:00 PM'],
+  ])
 })
 
 test('admin bookings expose only the four canonical dashboard statuses', () => {
