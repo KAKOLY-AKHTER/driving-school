@@ -3318,6 +3318,11 @@ export default function AdminPage() {
           .admin-table-wrap .admin-mobile-cards td[colspan]::before { content:none; }
           .admin-mobile-cards .admin-actions-cell { position:static !important; box-shadow:none !important; background:transparent !important; }
           .admin-mobile-cards .admin-actions-cell > div { flex-wrap:wrap !important; }
+          .admin-users-table td:nth-child(1)::before { content:'Student'; }
+          .admin-users-table td:nth-child(2)::before { content:'Login email'; }
+          .admin-users-table td:nth-child(3)::before { content:'Phone'; }
+          .admin-users-table td:nth-child(4)::before { content:'Account status'; }
+          .admin-users-table td:nth-child(5)::before { content:'Actions'; }
           .admin-availability-slots-table td:nth-child(1)::before { content:'Select'; }
           .admin-availability-slots-table td:nth-child(2)::before { content:'Lesson date'; }
           .admin-availability-slots-table td:nth-child(3)::before { content:'Lesson time'; }
@@ -3538,7 +3543,7 @@ export default function AdminPage() {
                     </div>
                     <TablePager page={safeUserPage} pages={userPages} total={filteredUsers.length} label="users" onChange={setUserPage}><select aria-label="User rows per page" value={userLimit} onChange={event => { setUserLimit(event.target.value); setUserPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></TablePager>
                     <div className="admin-table-wrap">
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <table className="admin-mobile-cards admin-users-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                           <tr>
                             <th scope="col" style={thStyle}>Student Name</th>
