@@ -1163,14 +1163,14 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
           {instructorsError && <p role="alert" style={{ margin: '.5rem 0 0', color: '#B91C1C', fontSize: '.82rem' }}>{instructorsError}</p>}
           {!instructorsLoading && !instructorsError && !instructors.some(instructor => instructor?.legacyInstructorId && instructor?.active !== false) && <p style={{ margin: '.5rem 0 0', color: '#B45309', fontSize: '.82rem' }}>Add an active instructor before opening instructor availability.</p>}
         </div>
-        <div className="admin-grid-responsive admin-availability-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(240px,.8fr) minmax(320px,1.2fr)', gap: '1.25rem' }}>
-          <div>
+        <div className="admin-grid-responsive admin-availability-layout" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,320px),1fr))', gap: '1.25rem' }}>
+          <div className="admin-availability-calendar">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.6rem', marginBottom: '.55rem' }}>
               <span id="availability-calendar-label" style={{ fontWeight: 800, color: '#334155' }}>Select future dates</span>
               <span aria-live="polite" style={{ color: '#0755AE', fontSize: '.78rem', fontWeight: 800 }}>{dates.length} selected</span>
             </div>
-            <div role="group" aria-labelledby="availability-calendar-label" style={{ padding: '.85rem', border: '1px solid #DCE6F2', borderRadius: '14px', background: 'linear-gradient(180deg,#F8FBFF,#fff)', boxShadow: '0 10px 28px rgba(15,35,70,.06)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', marginBottom: '.75rem' }}>
+            <div className="admin-availability-calendar-card" role="group" aria-labelledby="availability-calendar-label" style={{ padding: '.85rem', border: '1px solid #DCE6F2', borderRadius: '14px', background: 'linear-gradient(180deg,#F8FBFF,#fff)', boxShadow: '0 10px 28px rgba(15,35,70,.06)' }}>
+              <div className="admin-availability-calendar-heading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', marginBottom: '.75rem' }}>
                 <button type="button" aria-label="Previous month" disabled={calendarMonth <= currentMonthStart} onClick={() => setCalendarMonth(new Date(calendarYear, calendarMonthIndex - 1, 1))} style={{ width: '38px', height: '38px', border: '1px solid #D7E3F1', borderRadius: '10px', background: '#fff', color: DARK, fontSize: '1.25rem', cursor: calendarMonth <= currentMonthStart ? 'not-allowed' : 'pointer', opacity: calendarMonth <= currentMonthStart ? .4 : 1 }}>&lsaquo;</button>
                 <strong style={{ color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.05rem' }}>{calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</strong>
                 <button type="button" aria-label="Next month" onClick={() => setCalendarMonth(new Date(calendarYear, calendarMonthIndex + 1, 1))} style={{ width: '38px', height: '38px', border: '1px solid #D7E3F1', borderRadius: '10px', background: '#fff', color: DARK, fontSize: '1.25rem', cursor: 'pointer' }}>&rsaquo;</button>
@@ -1206,7 +1206,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
             <legend style={{ fontWeight: 800, color: '#334155', marginBottom: '.4rem' }}>Lesson time options <span style={{ color: '#64748B', fontSize: '.8rem', fontWeight: 650 }}>(choose any 1–5)</span></legend>
             <p style={{ margin: '0 0 .7rem', color: '#64748B', fontSize: '.82rem' }}>Enter a manual start and end time in whichever rows you need. Empty rows are ignored.</p>
             <div style={{ display: 'grid', gap: '.55rem' }}>
-              {timeInputs.map((item, index) => <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(68px, auto) minmax(130px, 1fr) minmax(130px, 1fr)', gap: '.55rem', alignItems: 'end', padding: '.55rem', border: '1px solid #D7E4F2', borderRadius: '10px', background: item.start || item.end ? '#F8FBFF' : '#fff' }}>
+              {timeInputs.map((item, index) => <div className="availability-time-input-row" key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(68px, auto) minmax(130px, 1fr) minmax(130px, 1fr)', gap: '.55rem', alignItems: 'end', padding: '.55rem', border: '1px solid #D7E4F2', borderRadius: '10px', background: item.start || item.end ? '#F8FBFF' : '#fff' }}>
                 <strong style={{ color: '#0755AE', fontFamily: 'var(--font-mono)', fontSize: '.72rem', paddingBottom: '.68rem' }}>TIME {index + 1}</strong>
                 <label htmlFor={`availability-start-time-${index}`} style={{ display: 'grid', gap: '.3rem', color: '#475569', fontWeight: 750, fontSize: '.78rem' }}>Start time
                   <input id={`availability-start-time-${index}`} type="time" step="900" value={item.start} onChange={event => updateTimeInput(index, 'start', event.target.value)} style={inputStyle} />
@@ -1233,7 +1233,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
         </section>
         <div style={{ display: 'flex', gap: '.65rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
           <button type="button" disabled={saving} onClick={saveAvailability} style={{ minHeight: '44px', padding: '.7rem 1.15rem', border: 0, borderRadius: '9px', background: `linear-gradient(135deg,${SKY_BLUE},#0A2A5E)`, color: '#fff', fontWeight: 850, cursor: saving ? 'wait' : 'pointer' }}>{saving ? 'Opening Lesson Slots…' : 'Open Selected Dates & Times'}</button>
-          <button type="button" disabled={saving} onClick={() => { setInstructorId(''); setDates([]); setTimes([]); setStartTimeInput(''); setEndTimeInput('') }} style={{ minHeight: '44px', padding: '.7rem 1.15rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Reset</button>
+          <button type="button" disabled={saving} onClick={() => { setInstructorId(''); setDates([]); setTimeInputs(Array.from({ length: 5 }, () => ({ start: '', end: '' }))) }} style={{ minHeight: '44px', padding: '.7rem 1.15rem', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: '#475569', fontWeight: 800, cursor: 'pointer' }}>Reset</button>
         </div>
       </div>
 
@@ -3207,6 +3207,11 @@ export default function AdminPage() {
         .admin-hamburger { display: none !important; }
         .admin-main { background:radial-gradient(circle at 90% 0%,rgba(1,69,168,0.045),transparent 28rem),#F8FAFD; }
         .admin-content-width { width:100%; max-width:1180px; margin-left:auto; margin-right:auto; }
+        /* Availability is used frequently on phones, so no child may force a wider page. */
+        .admin-availability-layout,.admin-availability-layout > *,.admin-availability-calendar,.admin-availability-calendar-card,.availability-time-input-row,.availability-time-input-row label { min-width:0; max-width:100%; }
+        .admin-availability-calendar { width:100%; }
+        .admin-availability-calendar-card { overflow:hidden; }
+        .admin-availability-calendar-heading > strong { min-width:0; overflow:hidden; text-align:center; text-overflow:ellipsis; white-space:nowrap; }
         .admin-table-wrap { overflow:auto; border:1px solid #E2EBF5; border-radius:16px; background:#fff; box-shadow:0 10px 32px rgba(15,23,42,0.055); scrollbar-width:thin; scrollbar-color:#B8C8DC #F1F5F9; }
         .admin-table-wrap table { min-width:760px; }
         .admin-table-wrap thead th { position:sticky; top:0; z-index:3; background:linear-gradient(180deg,#F8FBFF 0%,#F1F6FC 100%); box-shadow:inset 0 -1px 0 #D8E4F0; white-space:nowrap; }
@@ -3263,6 +3268,11 @@ export default function AdminPage() {
         }
         @media (max-width: 560px) {
           .admin-stat-grid,.admin-loading-grid { grid-template-columns:1fr !important; }
+          .admin-availability-layout { grid-template-columns:minmax(0,1fr) !important; gap:1rem !important; }
+          .availability-time-input-row { grid-template-columns:minmax(0,1fr) !important; align-items:stretch !important; }
+          .availability-time-input-row > strong { padding-bottom:0 !important; }
+          .availability-time-input-row input { width:100% !important; min-width:0 !important; }
+          .admin-availability-calendar-heading > strong { font-size:.92rem !important; }
           .admin-toast { top:82px; right:1rem; }
           .admin-table-wrap { margin-inline:-.25rem; border-radius:12px; }
           .admin-modal-backdrop { align-items:flex-end !important; padding:0 !important; }
