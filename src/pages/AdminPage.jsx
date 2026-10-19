@@ -3276,6 +3276,10 @@ export default function AdminPage() {
           .legacy-students-panel .admin-toolbar > * { min-width:0 !important; max-width:100% !important; }
           .legacy-students-filter-controls { display:grid !important; grid-template-columns:minmax(0,1fr) !important; width:100% !important; }
           .legacy-students-filter-controls select,.legacy-students-filter-controls button { width:100% !important; }
+          .admin-mobile-panel { min-width:0 !important; max-width:100% !important; overflow:hidden; box-sizing:border-box; }
+          .admin-mobile-panel .admin-toolbar > * { min-width:0 !important; max-width:100% !important; }
+          .contact-toolbar-controls { display:grid !important; grid-template-columns:minmax(0,1fr) !important; width:100% !important; }
+          .contact-toolbar-controls select,.contact-toolbar-controls button { width:100% !important; }
           .admin-availability-layout { grid-template-columns:minmax(0,1fr) !important; gap:1rem !important; }
           .admin-availability-calendar-grid,.instructor-slots-calendar-grid { width:100% !important; max-width:100% !important; grid-template-columns:repeat(7,minmax(0,1fr)) !important; }
           .admin-availability-calendar-grid > button { width:100% !important; min-width:0 !important; min-height:36px !important; aspect-ratio:auto !important; padding:.15rem !important; }
@@ -3323,11 +3327,31 @@ export default function AdminPage() {
           .admin-table-wrap .admin-mobile-cards td[colspan]::before { content:none; }
           .admin-mobile-cards .admin-actions-cell { position:static !important; box-shadow:none !important; background:transparent !important; }
           .admin-mobile-cards .admin-actions-cell > div { flex-wrap:wrap !important; }
+          .admin-mobile-cards .booking-actions-cell { position:static !important; box-shadow:none !important; background:transparent !important; }
+          .admin-mobile-cards select { min-width:0 !important; width:100% !important; }
+          .admin-mobile-cards .booking-actions-cell > div,.admin-mobile-cards .instructor-actions-cell > div { flex-wrap:wrap !important; }
           .admin-users-table td:nth-child(1)::before { content:'Student'; }
           .admin-users-table td:nth-child(2)::before { content:'Login email'; }
           .admin-users-table td:nth-child(3)::before { content:'Phone'; }
           .admin-users-table td:nth-child(4)::before { content:'Account status'; }
           .admin-users-table td:nth-child(5)::before { content:'Actions'; }
+          .admin-instructors-table td:nth-child(1)::before { content:'Instructor'; }
+          .admin-instructors-table td:nth-child(2)::before { content:'Active schedules'; }
+          .admin-instructors-table td:nth-child(3)::before { content:'Schedule history'; }
+          .admin-instructors-table td:nth-child(4)::before { content:'Locations'; }
+          .admin-instructors-table td:nth-child(5)::before { content:'Details'; }
+          .admin-bookings-table td:nth-child(1)::before { content:'Student & plan'; }
+          .admin-bookings-table td:nth-child(2)::before { content:'Lesson date'; }
+          .admin-bookings-table td:nth-child(3)::before { content:'Lesson time'; }
+          .admin-bookings-table td:nth-child(4)::before { content:'Booking status'; }
+          .admin-bookings-table td:nth-child(5)::before { content:'Actions'; }
+          .admin-contacts-table td:nth-child(1)::before { content:'Contact name'; }
+          .admin-contacts-table td:nth-child(2)::before { content:'Phone number'; }
+          .admin-contacts-table td:nth-child(3)::before { content:'Email address'; }
+          .admin-contacts-table td:nth-child(4)::before { content:'Contact message'; }
+          .admin-contacts-table td:nth-child(5)::before { content:'Message status'; }
+          .admin-contacts-table td:nth-child(6)::before { content:'Received on'; }
+          .admin-contacts-table td:nth-child(7)::before { content:'Actions'; }
           .admin-availability-slots-table td:nth-child(1)::before { content:'Select'; }
           .admin-availability-slots-table td:nth-child(2)::before { content:'Lesson date'; }
           .admin-availability-slots-table td:nth-child(3)::before { content:'Lesson time'; }
@@ -3589,7 +3613,7 @@ export default function AdminPage() {
                 )}
 
                 {!loading && !loadError && activeTab === 'instructors' && (
-                  <div style={cardStyle}>
+                  <div className="admin-mobile-panel" style={cardStyle}>
                     <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
                       <div>
                         <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '.6rem', margin: 0 }}>{SVG.users} Instructors</h3>
@@ -3613,7 +3637,7 @@ export default function AdminPage() {
                     </div>
                     {instructorsError && <div role="alert" style={{ marginBottom: '1rem', padding: '.8rem 1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{instructorsError}</div>}
                     <div className="admin-table-wrap">
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <table className="admin-mobile-cards admin-instructors-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead><tr><th scope="col" style={thStyle}>Instructor</th><th scope="col" style={thStyle}>Active Schedules</th><th scope="col" style={thStyle}>Schedule History</th><th scope="col" style={thStyle}>Locations</th><th scope="col" style={thStyle}>Details</th></tr></thead>
                         <tbody>
                           {filteredInstructors.map(instructor => <tr key={instructor.legacyInstructorId}>
@@ -3639,7 +3663,7 @@ export default function AdminPage() {
                               return <><div>{formatDateDMY(firstDate)}</div><p style={{ margin: '.18rem 0 0', color: '#64748B', fontSize: '.84rem' }}>to {formatDateDMY(lastDate)}{!hasImportedHistory && hasCurrentBookingHistory ? ' · current bookings' : ''}</p></>
                             })()}</td>
                             <td style={tdStyle}>{(instructor.locationLabels || []).length ? instructor.locationLabels.join(', ') : 'Not recorded'}</td>
-                            <td style={tdStyle}><div style={{ display: 'flex', gap: '.4rem', flexWrap: 'nowrap', alignItems: 'center' }}><button type="button" onClick={() => openInstructorDetails(instructor)} style={{ minHeight: '36px', padding: '.45rem .58rem', border: `1px solid ${SKY_BLUE}`, borderRadius: '9px', background: '#fff', color: SKY_BLUE, fontWeight: 900, fontSize: '.84rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>View schedule</button><button type="button" onClick={() => openInstructorEdit(instructor)} style={{ minHeight: '36px', padding: '.45rem .58rem', border: `1px solid ${SKY_BLUE}`, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 900, fontSize: '.84rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>Edit profile</button><AdminDeleteIconButton disabled={!instructor.isCurrentProfile} label={`Delete instructor ${instructor.displayName || instructor.legacyInstructorId}`} title={instructor.isCurrentProfile ? 'Delete current instructor profile' : 'Imported instructor history is retained'} onClick={() => handleDeleteInstructor(instructor)} style={{ width: '36px', height: '36px', minWidth: '36px', borderRadius: '9px' }} /></div></td>
+                            <td className="instructor-actions-cell" style={tdStyle}><div style={{ display: 'flex', gap: '.4rem', flexWrap: 'nowrap', alignItems: 'center' }}><button type="button" onClick={() => openInstructorDetails(instructor)} style={{ minHeight: '36px', padding: '.45rem .58rem', border: `1px solid ${SKY_BLUE}`, borderRadius: '9px', background: '#fff', color: SKY_BLUE, fontWeight: 900, fontSize: '.84rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>View schedule</button><button type="button" onClick={() => openInstructorEdit(instructor)} style={{ minHeight: '36px', padding: '.45rem .58rem', border: `1px solid ${SKY_BLUE}`, borderRadius: '9px', background: SKY_BLUE, color: '#fff', fontWeight: 900, fontSize: '.84rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>Edit profile</button><AdminDeleteIconButton disabled={!instructor.isCurrentProfile} label={`Delete instructor ${instructor.displayName || instructor.legacyInstructorId}`} title={instructor.isCurrentProfile ? 'Delete current instructor profile' : 'Imported instructor history is retained'} onClick={() => handleDeleteInstructor(instructor)} style={{ width: '36px', height: '36px', minWidth: '36px', borderRadius: '9px' }} /></div></td>
                           </tr>)}
                           {!instructorsLoading && instructors.length === 0 && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>No instructor schedule data has been imported yet.</td></tr>}
                           {!instructorsLoading && instructors.length > 0 && filteredInstructors.length === 0 && <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', padding: '2rem', color: '#475569' }}>No instructors match the current search and filter.</td></tr>}
@@ -3699,7 +3723,7 @@ export default function AdminPage() {
                 )}
 
                 {!loading && !loadError && activeTab === 'bookings' && (
-                  <div style={cardStyle}>
+                  <div className="admin-mobile-panel" style={cardStyle}>
                     <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.calendar} Bookings <span style={{ color: '#334155', fontSize: '.9rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>({filteredBookings.length} of {bookings.length})</span></h3>
                       <div className="booking-toolbar-controls" style={{ display: 'flex', alignItems: 'center', gap: '.5rem', justifyContent: 'flex-end' }}>
@@ -3738,7 +3762,7 @@ export default function AdminPage() {
                     {bookingDataFilter === 'test' && <div role="note" style={{ margin: '0 0 1rem', padding: '.8rem 1rem', borderRadius: '12px', border: '1px solid #FED7AA', background: '#FFF7ED', color: '#9A3412', lineHeight: 1.55 }}><strong>Safe test-data review:</strong> these rows are potential admin, sandbox or example-account bookings. Verify each student and payment first, then use its individual Delete action; no bulk deletion is performed.</div>}
                     <TablePager page={safeBookingPage} pages={bookingPages} total={filteredBookings.length} label="bookings" onChange={setBookingPage}><select aria-label="Booking rows per page" value={bookingLimit} onChange={event => { setBookingLimit(event.target.value); setBookingPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></TablePager>
                     <div className="admin-table-wrap">
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <table className="admin-mobile-cards admin-bookings-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                           <tr>
                             <th scope="col" style={thStyle}>Student &amp; Plan</th>
@@ -3854,10 +3878,10 @@ export default function AdminPage() {
                 )}
 
                 {!loading && !loadError && activeTab === 'contacts' && (
-                  <div style={cardStyle}>
+                  <div className="admin-mobile-panel" style={cardStyle}>
                     <div className="admin-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.mail} Contact Messages <span style={{ color: '#334155', fontSize: '.9rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>({filteredContacts.length} of {contacts.length})</span></h3>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'nowrap', justifyContent: 'flex-end' }}>
+                      <div className="contact-toolbar-controls" style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'nowrap', justifyContent: 'flex-end' }}>
                         <input className="admin-toolbar-input" aria-label="Search contact messages" type="search" placeholder="Search name, email, message…" value={contactSearch} onChange={(event) => { setContactSearch(event.target.value); setContactPage(1) }} style={{ ...inputStyle, width: '280px', minWidth: 0 }} />
                         <select aria-label="Filter contact messages by status" value={contactStatusFilter} onChange={(event) => { setContactStatusFilter(event.target.value); setContactPage(1) }} style={{ ...inputStyle, width: '145px', flexShrink: 0 }}>
                           <option value="all">All statuses</option>
@@ -3870,7 +3894,7 @@ export default function AdminPage() {
                     </div>
                     <TablePager page={safeContactPage} pages={contactPages} total={filteredContacts.length} label="messages" onChange={setContactPage}><select aria-label="Contact message rows per page" value={contactLimit} onChange={event => { setContactLimit(event.target.value); setContactPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></TablePager>
                     <div className="admin-table-wrap">
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <table className="admin-mobile-cards admin-contacts-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                           <tr>
                             <th scope="col" style={thStyle}>Contact Name</th>
