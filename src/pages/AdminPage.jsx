@@ -3319,6 +3319,7 @@ export default function AdminPage() {
           .admin-availability-layout { grid-template-columns:minmax(0,1fr) !important; }
           .admin-mobile-cards { min-width:0 !important; }
           .admin-table-wrap .admin-mobile-cards thead { display:none; }
+          .admin-table-wrap .admin-mobile-cards colgroup { display:none; }
           .admin-table-wrap .admin-mobile-cards,.admin-table-wrap .admin-mobile-cards tbody,.admin-table-wrap .admin-mobile-cards tr,.admin-table-wrap .admin-mobile-cards td { display:block; width:100%; box-sizing:border-box; }
           .admin-table-wrap .admin-mobile-cards tbody tr { margin:.65rem; width:calc(100% - 1.3rem); border:1px solid #DCE7F3; border-radius:12px; overflow:hidden; background:#fff; }
           .admin-table-wrap .admin-mobile-cards tbody tr:hover { background:#fff; transform:none; }
@@ -3331,8 +3332,11 @@ export default function AdminPage() {
           .admin-mobile-cards .admin-actions-cell > div { flex-wrap:wrap !important; }
           .admin-mobile-cards .booking-actions-cell { position:static !important; box-shadow:none !important; background:transparent !important; }
           .admin-mobile-cards .refund-actions-cell { position:static !important; box-shadow:none !important; background:transparent !important; }
+          .admin-mobile-cards .pricing-actions-cell { position:static !important; box-shadow:none !important; background:transparent !important; }
           .admin-mobile-cards select { min-width:0 !important; width:100% !important; }
+          .admin-mobile-cards button { max-width:100% !important; }
           .admin-mobile-cards .booking-actions-cell > div,.admin-mobile-cards .instructor-actions-cell > div { flex-wrap:wrap !important; }
+          .admin-mobile-cards .pricing-actions-cell > div { flex-wrap:wrap !important; }
           .admin-enrollments-table .enrollment-instructor-actions,.admin-enrollments-table td:last-child > div { flex-wrap:wrap !important; }
           .admin-users-table td:nth-child(1)::before { content:'Student'; }
           .admin-users-table td:nth-child(2)::before { content:'Login email'; }
@@ -3383,6 +3387,30 @@ export default function AdminPage() {
           .admin-refunds-table td:nth-child(7)::before { content:'Refund status'; }
           .admin-refunds-table td:nth-child(8)::before { content:'Requested on'; }
           .admin-refunds-table td:nth-child(9)::before { content:'Review / details'; }
+          .admin-pricing-table td:nth-child(1)::before { content:'Pricing plan'; }
+          .admin-pricing-table td:nth-child(2)::before { content:'Near-area price'; }
+          .admin-pricing-table td:nth-child(3)::before { content:'Long-distance price'; }
+          .admin-pricing-table td:nth-child(4)::before { content:'Included feature 1'; }
+          .admin-pricing-table td:nth-child(5)::before { content:'Included feature 2'; }
+          .admin-pricing-table td:nth-child(6)::before { content:'Included feature 3'; }
+          .admin-pricing-table td:nth-child(7)::before { content:'Included feature 4'; }
+          .admin-pricing-table td:nth-child(8)::before { content:'Included feature 5'; }
+          .admin-pricing-table td:nth-child(9)::before { content:'Manage plan'; }
+          .admin-coupons-table td:nth-child(1)::before { content:'Coupon code'; }
+          .admin-coupons-table td:nth-child(2)::before { content:'Customer discount'; }
+          .admin-coupons-table td:nth-child(3)::before { content:'Valid from'; }
+          .admin-coupons-table td:nth-child(4)::before { content:'Expires after'; }
+          .admin-coupons-table td:nth-child(5)::before { content:'Current availability'; }
+          .admin-coupons-table td:nth-child(6)::before { content:'Times used'; }
+          .admin-coupons-table td:nth-child(7)::before { content:'Manage coupon'; }
+          .admin-maps-table td:nth-child(1)::before { content:'Service area'; }
+          .admin-maps-table td:nth-child(2)::before { content:'Google Maps URL'; }
+          .admin-maps-table td:nth-child(3)::before { content:'Website embed'; }
+          .admin-maps-table td:nth-child(4)::before { content:'Manage map'; }
+          .admin-settings-social-table td:nth-child(1)::before { content:'Social platform'; }
+          .admin-settings-social-table td:nth-child(2)::before { content:'Profile / page URL'; }
+          .admin-settings-social-table td:nth-child(3)::before { content:'Manage link'; }
+          .settings-information-grid { grid-template-columns:minmax(0,1fr) !important; max-width:100% !important; }
           .admin-availability-slots-table td:nth-child(1)::before { content:'Select'; }
           .admin-availability-slots-table td:nth-child(2)::before { content:'Lesson date'; }
           .admin-availability-slots-table td:nth-child(3)::before { content:'Lesson time'; }
@@ -3963,7 +3991,7 @@ export default function AdminPage() {
                 )}
 
                 {!loading && !loadError && activeTab === 'pricing' && (
-                  <div style={cardStyle}>
+                  <div className="admin-mobile-panel" style={cardStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.dollar} Pricing Plan ({pricing.length})</h3>
                       <button onClick={() => { setPricingForm({ planName: '', planPrice: '', planPriceTwo: '', option1: '', perm1: 'Select', option2: '', perm2: 'Select', option3: '', perm3: 'Select', option4: '', perm4: 'Select', option5: '', perm5: 'Select' }); setPricingEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Pricing Plan</button>
@@ -3974,7 +4002,7 @@ export default function AdminPage() {
                     <div className="admin-toolbar" style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', marginBottom: '1rem' }}><input type="search" aria-label="Search pricing plans" placeholder="Search plan, price or option…" value={pricingSearch} onChange={event => { setPricingSearch(event.target.value); setPricingPage(1) }} style={{ ...inputStyle, maxWidth: '300px' }} /></div>
                     <TablePager page={safePricingPage} pages={pricingPages} total={filteredPricing.length} label="plans" onChange={setPricingPage}><select aria-label="Pricing plan rows per page" value={pricingLimit} onChange={event => { setPricingLimit(event.target.value); setPricingPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></TablePager>
                     <div className="admin-table-wrap">
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <table className="admin-mobile-cards admin-pricing-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                           <tr>
                             <th scope="col" style={thStyle}>Pricing Plan</th>
@@ -4379,7 +4407,7 @@ export default function AdminPage() {
                 )}
 
                 {!loading && !loadError && activeTab === 'maps' && (
-                  <div style={cardStyle}>
+                  <div className="admin-mobile-panel" style={cardStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.map} Service Area Maps ({areas.length})</h3>
                       <button onClick={() => { setAreasForm({ name: '', map: '', icon: '', order: 0 }); setAreasEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Map</button>
@@ -4387,7 +4415,7 @@ export default function AdminPage() {
                     <div className="admin-toolbar" style={{ marginBottom: '1rem' }}><input type="search" aria-label="Search service area maps" placeholder="Search name or URL…" value={areaSearch} onChange={event => { setAreaSearch(event.target.value); setAreaPage(1) }} style={{ ...inputStyle, maxWidth: '320px' }} /></div>
                     <TablePager page={safeAreaPage} pages={areaPages} total={filteredAreas.length} label="maps" onChange={setAreaPage}><select aria-label="Map rows per page" value={areaLimit} onChange={event => { setAreaLimit(event.target.value); setAreaPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select></TablePager>
                     <div className="admin-table-wrap">
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <table className="admin-mobile-cards admin-maps-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                           <tr>
                             <th scope="col" style={thStyle}>Service Area</th>
@@ -4447,14 +4475,14 @@ export default function AdminPage() {
                 )}
 
                 {!loading && !loadError && activeTab === 'settings' && (
-                  <div style={{ ...cardStyle, marginBottom: '1.25rem' }}>
+                  <div className="admin-mobile-panel" style={{ ...cardStyle, marginBottom: '1.25rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.share} Social Links Management ({socials.length})</h3>
                       <button onClick={() => { setSocialsForm({ platform: 'facebook', url: '' }); setSocialsEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Social Link</button>
                     </div>
                     <div className="admin-toolbar" style={{ marginBottom: '1rem' }}><input type="search" aria-label="Search social links" placeholder="Search platform or URL…" value={socialSearch} onChange={event => setSocialSearch(event.target.value)} style={{ ...inputStyle, maxWidth: '320px' }} /></div>
                     <div className="admin-table-wrap">
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <table className="admin-mobile-cards admin-settings-social-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                           <tr>
                             <th scope="col" style={thStyle}>Social Platform</th>
@@ -4490,14 +4518,14 @@ export default function AdminPage() {
                 )}
 
                 {!loading && !loadError && activeTab === 'settings' && (
-                  <div style={cardStyle}>
+                  <div className="admin-mobile-panel" style={cardStyle}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>{SVG.settings} Site Information</h3>
                     {settingsMsg && (
                       <div role={settingsMsgIsError ? 'alert' : 'status'} aria-live="polite" style={{ padding: '0.75rem 1rem', background: settingsMsgIsError ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${settingsMsgIsError ? '#FECACA' : '#BBF7D0'}`, borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', fontFamily: 'var(--font-body)', fontSize: '1.05rem', color: settingsMsgIsError ? '#DC2626' : '#16A34A' }}>
                         {settingsMsg}
                       </div>
                     )}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', maxWidth: '800px' }}>
+                    <div className="settings-information-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', maxWidth: '800px' }}>
                       <div>
                         <label style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#334155', display: 'block', marginBottom: '0.3rem', fontWeight: 600 }}>Phone</label>
                         <input aria-label="Business phone" type="tel" autoComplete="tel" value={settings.phone} onChange={e => setSettings(prev => ({ ...prev, phone: e.target.value }))} style={inputStyle} />
