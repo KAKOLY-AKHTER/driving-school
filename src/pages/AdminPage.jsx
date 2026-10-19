@@ -3280,6 +3280,8 @@ export default function AdminPage() {
           .admin-mobile-panel .admin-toolbar > * { min-width:0 !important; max-width:100% !important; }
           .contact-toolbar-controls { display:grid !important; grid-template-columns:minmax(0,1fr) !important; width:100% !important; }
           .contact-toolbar-controls select,.contact-toolbar-controls button { width:100% !important; }
+          .refund-toolbar-controls { display:grid !important; grid-template-columns:minmax(0,1fr) !important; width:100% !important; min-width:0 !important; }
+          .refund-toolbar-controls select,.refund-toolbar-controls button { width:100% !important; }
           .admin-availability-layout { grid-template-columns:minmax(0,1fr) !important; gap:1rem !important; }
           .admin-availability-calendar-grid,.instructor-slots-calendar-grid { width:100% !important; max-width:100% !important; grid-template-columns:repeat(7,minmax(0,1fr)) !important; }
           .admin-availability-calendar-grid > button { width:100% !important; min-width:0 !important; min-height:36px !important; aspect-ratio:auto !important; padding:.15rem !important; }
@@ -3328,8 +3330,10 @@ export default function AdminPage() {
           .admin-mobile-cards .admin-actions-cell { position:static !important; box-shadow:none !important; background:transparent !important; }
           .admin-mobile-cards .admin-actions-cell > div { flex-wrap:wrap !important; }
           .admin-mobile-cards .booking-actions-cell { position:static !important; box-shadow:none !important; background:transparent !important; }
+          .admin-mobile-cards .refund-actions-cell { position:static !important; box-shadow:none !important; background:transparent !important; }
           .admin-mobile-cards select { min-width:0 !important; width:100% !important; }
           .admin-mobile-cards .booking-actions-cell > div,.admin-mobile-cards .instructor-actions-cell > div { flex-wrap:wrap !important; }
+          .admin-enrollments-table .enrollment-instructor-actions,.admin-enrollments-table td:last-child > div { flex-wrap:wrap !important; }
           .admin-users-table td:nth-child(1)::before { content:'Student'; }
           .admin-users-table td:nth-child(2)::before { content:'Login email'; }
           .admin-users-table td:nth-child(3)::before { content:'Phone'; }
@@ -3352,6 +3356,33 @@ export default function AdminPage() {
           .admin-contacts-table td:nth-child(5)::before { content:'Message status'; }
           .admin-contacts-table td:nth-child(6)::before { content:'Received on'; }
           .admin-contacts-table td:nth-child(7)::before { content:'Actions'; }
+          .admin-certificates-table td:nth-child(1)::before { content:'Student'; }
+          .admin-certificates-table td:nth-child(2)::before { content:'Request'; }
+          .admin-certificates-table td:nth-child(3)::before { content:'Test 11'; }
+          .admin-certificates-table td:nth-child(4)::before { content:'Paid'; }
+          .admin-certificates-table td:nth-child(5)::before { content:'Requested'; }
+          .admin-certificates-table td:nth-child(6)::before { content:'Status'; }
+          .admin-certificates-table td:nth-child(7)::before { content:'Actions'; }
+          .admin-enrollments-table td:nth-child(1)::before { content:'Student'; }
+          .admin-enrollments-table td:nth-child(2)::before { content:'Instructor'; }
+          .admin-enrollments-table td:nth-child(3)::before { content:'Email address'; }
+          .admin-enrollments-table td:nth-child(4)::before { content:'Phone number'; }
+          .admin-enrollments-table td:nth-child(5)::before { content:'Enrollment status'; }
+          .admin-enrollments-table td:nth-child(6)::before { content:'Enrolled course'; }
+          .admin-enrollments-table td:nth-child(7)::before { content:'Pickup location'; }
+          .admin-enrollments-table td:nth-child(8)::before { content:'Paid price'; }
+          .admin-enrollments-table td:nth-child(9)::before { content:'Lesson slots'; }
+          .admin-enrollments-table td:nth-child(10)::before { content:'Enrollment date'; }
+          .admin-enrollments-table td:nth-child(11)::before { content:'Actions'; }
+          .admin-refunds-table td:nth-child(1)::before { content:'Student name'; }
+          .admin-refunds-table td:nth-child(2)::before { content:'Email address'; }
+          .admin-refunds-table td:nth-child(3)::before { content:'Phone number'; }
+          .admin-refunds-table td:nth-child(4)::before { content:'Refunded course'; }
+          .admin-refunds-table td:nth-child(5)::before { content:'Refund amount'; }
+          .admin-refunds-table td:nth-child(6)::before { content:'Request reason'; }
+          .admin-refunds-table td:nth-child(7)::before { content:'Refund status'; }
+          .admin-refunds-table td:nth-child(8)::before { content:'Requested on'; }
+          .admin-refunds-table td:nth-child(9)::before { content:'Review / details'; }
           .admin-availability-slots-table td:nth-child(1)::before { content:'Select'; }
           .admin-availability-slots-table td:nth-child(2)::before { content:'Lesson date'; }
           .admin-availability-slots-table td:nth-child(3)::before { content:'Lesson time'; }
@@ -4003,7 +4034,7 @@ export default function AdminPage() {
                 )}
 
                 {!loading && !loadError && activeTab === 'certificates' && (
-                  <div style={cardStyle}>
+                  <div className="admin-mobile-panel" style={cardStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
                       <div>
                         <h3 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.2rem' }}>Certificate Requests &amp; Archive</h3>
@@ -4033,7 +4064,7 @@ export default function AdminPage() {
                     </div>
                     <TablePager page={safeCertificatePage} pages={certificatePages} total={filteredCertificateRequests.length} label="certificate records" onChange={setCertificatePage}><select aria-label="Certificate records per page" value={certificateLimit} onChange={event => { setCertificateLimit(event.target.value); setCertificatePage(1) }} style={{ ...inputStyle, width: '126px' }}><option value="20">20 / page</option><option value="50">50 / page</option><option value="100">100 / page</option></select></TablePager>
                     <div className="admin-table-wrap" style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', minWidth: '1120px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                      <table className="admin-mobile-cards admin-certificates-table" style={{ width: '100%', minWidth: '1120px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                         <colgroup>
                           <col style={{ width: '17%' }} />
                           <col style={{ width: '20%' }} />
@@ -4083,7 +4114,7 @@ export default function AdminPage() {
 
                 {!loading && !loadError && activeTab === 'enrolled' && (
                   <div>
-                    <div style={cardStyle}>
+                    <div className="admin-mobile-panel" style={cardStyle}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                         <div>
                           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.book} Enrolled Users ({enrollTotal})</h3>
@@ -4108,7 +4139,7 @@ export default function AdminPage() {
                         </div>
                       <TablePager page={safeEnrollPage} pages={enrollPages} total={enrollTotal} label="enrollments" onChange={setEnrollPage}><select aria-label="Enrollments per page" value={enrollLimit} onChange={e => { setEnrollLimit(e.target.value); setEnrollPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="20">20 / page</option><option value="50">50 / page</option></select></TablePager>
                       <div className="admin-table-wrap enrollment-table" style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem', minWidth: '1280px' }}>
+                        <table className="admin-mobile-cards admin-enrollments-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem', minWidth: '1280px' }}>
                           <thead>
                             <tr>
                               <th scope="col" style={thStyle}>Student Name</th>
@@ -4185,10 +4216,10 @@ export default function AdminPage() {
                       ))}
                     </div>
 
-                    <div style={cardStyle}>
+                    <div className="admin-mobile-panel" style={cardStyle}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '.65rem', flexWrap: 'wrap' }}><h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: DARK, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>{SVG.refund} Refunds ({refundTotal})</h3><button onClick={() => { setRefundForm({ Full_Name: '', Email: '', Phone: '', Course_Name: '', Amount: '', Reason: '', Status: 'pending' }); setRefundEdit('new') }} style={{ padding: '0.5rem 1rem', background: `linear-gradient(135deg, ${SKY_BLUE}, #0a2a5e)`, color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(1,69,168,0.2)' }}>+ Add Refund</button></div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'nowrap', width: 'min(100%, 440px)', minWidth: 'min(100%, 300px)' }}>
+                        <div className="refund-toolbar-controls" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'nowrap', width: 'min(100%, 440px)', minWidth: 'min(100%, 300px)' }}>
                           <input className="admin-toolbar-input" aria-label="Search refund records" type="search" placeholder="Search by name, email, course…" value={refundSearch} onChange={e => { setRefundSearch(e.target.value); setRefundPage(1) }} style={{ ...inputStyle, flex: '1 1 0', minWidth: 0, width: 'auto' }} />
                           <select aria-label="Filter refunds by status" value={refundStatusFilter} onChange={event => { setRefundStatusFilter(event.target.value); setRefundPage(1) }} style={{ ...inputStyle, width: '155px', flexShrink: 0 }}>
                             <option value="all">All refund statuses</option>
@@ -4204,7 +4235,7 @@ export default function AdminPage() {
 
                       <TablePager page={refundPage} pages={refundPages} total={refundTotal} label="refunds" onChange={setRefundPage}><select aria-label="Refund records per page" value={refundLimit} onChange={e => { setRefundLimit(e.target.value); setRefundPage(1) }} style={{ ...inputStyle, width: '112px' }}><option value="10">10 / page</option><option value="20">20 / page</option><option value="50">50 / page</option></select></TablePager>
                       <div className="admin-table-wrap">
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <table className="admin-mobile-cards admin-refunds-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                           <thead>
                             <tr>
                               <th scope="col" style={thStyle}>Student Name</th>
