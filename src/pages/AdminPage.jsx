@@ -853,7 +853,7 @@ function InstructorSlotsReport({ cardStyle, inputStyle, instructors, loadingInst
     setSelectedReportDate('')
   }
   return (
-    <section style={cardStyle} aria-labelledby="instructor-slots-report-heading">
+    <section className="instructor-slots-report" style={cardStyle} aria-labelledby="instructor-slots-report-heading">
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '1.1rem' }}>
         <div>
           <h2 id="instructor-slots-report-heading" style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.3rem' }}>Instructor Slots Report</h2>
@@ -875,17 +875,17 @@ function InstructorSlotsReport({ cardStyle, inputStyle, instructors, loadingInst
         {selectedInstructor.isCurrentProfile && <span style={{ padding: '.35rem .6rem', borderRadius: '8px', background: '#DCFCE7', color: '#087443', fontFamily: 'var(--font-mono)', fontSize: '.74rem', fontWeight: 900 }}>{currentBookingCount.toLocaleString()} CURRENT BOOKINGS THIS MONTH</span>}
         <span style={{ color: '#475569', fontSize: '.8rem', flex: '1 1 240px' }}>Instructor ID: {selectedInstructor.legacyInstructorId || 'Not recorded'}</span>
       </div>}
-      <div style={{ marginTop: '1rem', padding: '.85rem', border: '1px solid #D8E4F0', borderRadius: '14px', background: 'linear-gradient(180deg,#F8FBFF,#fff)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.7rem', marginBottom: '.8rem' }}>
+      <div className="instructor-slots-calendar" style={{ marginTop: '1rem', padding: '.85rem', border: '1px solid #D8E4F0', borderRadius: '14px', background: 'linear-gradient(180deg,#F8FBFF,#fff)' }}>
+        <div className="instructor-slots-calendar-heading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.7rem', marginBottom: '.8rem' }}>
           <button type="button" aria-label="Previous report month" onClick={() => shiftMonth(-1)} style={{ width: '38px', height: '38px', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: DARK, fontSize: '1.2rem', cursor: 'pointer' }}>&lsaquo;</button>
           <label style={{ display: 'grid', gap: '.15rem', textAlign: 'center', color: '#64748B', fontSize: '.68rem', fontWeight: 800 }}>REPORT MONTH
-            <select aria-label="Choose report month" value={reportMonth} onChange={event => { setReportMonth(event.target.value); setSelectedReportDate('') }} style={{ minWidth: '185px', padding: '.35rem .5rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', color: DARK, fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 800, cursor: 'pointer' }}>{reportMonths.map(month => <option key={month} value={month}>{new Date(`${month}-01T12:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</option>)}</select>
+            <select className="instructor-slots-report-month-select" aria-label="Choose report month" value={reportMonth} onChange={event => { setReportMonth(event.target.value); setSelectedReportDate('') }} style={{ minWidth: '185px', padding: '.35rem .5rem', border: '1px solid #CBD5E1', borderRadius: '8px', background: '#fff', color: DARK, fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 800, cursor: 'pointer' }}>{reportMonths.map(month => <option key={month} value={month}>{new Date(`${month}-01T12:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</option>)}</select>
           </label>
           <button type="button" aria-label="Next report month" onClick={() => shiftMonth(1)} style={{ width: '38px', height: '38px', border: '1px solid #CBD5E1', borderRadius: '9px', background: '#fff', color: DARK, fontSize: '1.2rem', cursor: 'pointer' }}>&rsaquo;</button>
         </div>
         {!instructorId && <p style={{ margin: '.3rem 0 .75rem', textAlign: 'center', color: '#64748B', fontSize: '.88rem' }}>Select an instructor to view schedule slots and current bookings for this month.</p>}
         {reportError && <p role="alert" style={{ margin: '.3rem 0 .75rem', textAlign: 'center', color: '#B91C1C', fontSize: '.88rem' }}>{reportError}</p>}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '.32rem' }}>
+        <div className="instructor-slots-calendar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '.32rem' }}>
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => <span key={day} aria-hidden="true" style={{ padding: '.25rem 0', textAlign: 'center', color: '#64748B', fontSize: '.72rem', fontWeight: 850 }}>{day}</span>)}
           {Array.from({ length: reportStartDay }, (_, index) => <span key={`report-blank-${index}`} />)}
           {Array.from({ length: reportDays }, (_, index) => {
@@ -893,7 +893,7 @@ function InstructorSlotsReport({ cardStyle, inputStyle, instructors, loadingInst
             const dateKey = `${reportMonth}-${String(day).padStart(2, '0')}`
             const slots = slotsByDate.get(dateKey) || []
             const daySelected = selectedReportDate === dateKey
-            return <button type="button" key={dateKey} aria-pressed={daySelected} aria-label={`${new Date(`${dateKey}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}${slots.length ? `, ${slots.length} scheduled item${slots.length === 1 ? '' : 's'}` : ', no scheduled items'}`} onClick={() => setSelectedReportDate(dateKey)} style={{ minHeight: '78px', padding: '.35rem', border: daySelected ? `2px solid ${SKY_BLUE}` : `1px solid ${slots.length ? '#86EFAC' : '#E2E8F0'}`, borderRadius: '9px', background: daySelected ? '#EFF6FF' : slots.length ? '#F0FDF4' : '#fff', textAlign: 'left', cursor: 'pointer', overflow: 'hidden', boxShadow: daySelected ? '0 0 0 2px rgba(7,85,174,.12)' : 'none' }}><div style={{ textAlign: 'right', color: slots.length ? '#166534' : '#64748B', fontSize: '.75rem', fontWeight: 850 }}>{day}</div>{slots.slice(0, 3).map(slot => { const tone = locationTone(slot.locationId || slot.locationLabel); const isCurrentBooking = slot.source === 'current-booking'; return <span key={slot.reportItemId || slot.legacySlotId} title={[isCurrentBooking ? 'Current booking' : 'Imported slot', slot.fromTimeLabel, slot.toTimeLabel, slot.locationLabel, slot.studentName, slot.courseTitle].filter(Boolean).join(' - ')} style={{ display: 'block', marginTop: '.2rem', padding: '.18rem .25rem', border: `1px solid ${tone.border}`, borderRadius: '5px', background: tone.background, color: tone.color, opacity: slot.active ? 1 : .52, fontSize: '.62rem', fontWeight: 800, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{isCurrentBooking && <b style={{ marginRight: '.25rem', color: '#0755AE', fontFamily: 'var(--font-mono)', fontSize: '.54rem', letterSpacing: '.03em' }}>BOOKING</b>}{slot.fromTimeLabel || 'Scheduled'}{slot.toTimeLabel ? ` – ${slot.toTimeLabel}` : ''}</span> })}{slots.length > 3 && <span style={{ display: 'block', marginTop: '.18rem', color: '#166534', fontSize: '.64rem', fontWeight: 850 }}>+{slots.length - 3} more</span>}</button>
+            return <button className="instructor-slots-calendar-day" type="button" key={dateKey} aria-pressed={daySelected} aria-label={`${new Date(`${dateKey}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}${slots.length ? `, ${slots.length} scheduled item${slots.length === 1 ? '' : 's'}` : ', no scheduled items'}`} onClick={() => setSelectedReportDate(dateKey)} style={{ minHeight: '78px', padding: '.35rem', border: daySelected ? `2px solid ${SKY_BLUE}` : `1px solid ${slots.length ? '#86EFAC' : '#E2E8F0'}`, borderRadius: '9px', background: daySelected ? '#EFF6FF' : slots.length ? '#F0FDF4' : '#fff', textAlign: 'left', cursor: 'pointer', overflow: 'hidden', boxShadow: daySelected ? '0 0 0 2px rgba(7,85,174,.12)' : 'none' }}><div style={{ textAlign: 'right', color: slots.length ? '#166534' : '#64748B', fontSize: '.75rem', fontWeight: 850 }}>{day}</div>{slots.slice(0, 3).map(slot => { const tone = locationTone(slot.locationId || slot.locationLabel); const isCurrentBooking = slot.source === 'current-booking'; return <span key={slot.reportItemId || slot.legacySlotId} title={[isCurrentBooking ? 'Current booking' : 'Imported slot', slot.fromTimeLabel, slot.toTimeLabel, slot.locationLabel, slot.studentName, slot.courseTitle].filter(Boolean).join(' - ')} style={{ display: 'block', marginTop: '.2rem', padding: '.18rem .25rem', border: `1px solid ${tone.border}`, borderRadius: '5px', background: tone.background, color: tone.color, opacity: slot.active ? 1 : .52, fontSize: '.62rem', fontWeight: 800, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{isCurrentBooking && <b style={{ marginRight: '.25rem', color: '#0755AE', fontFamily: 'var(--font-mono)', fontSize: '.54rem', letterSpacing: '.03em' }}>BOOKING</b>}{slot.fromTimeLabel || 'Scheduled'}{slot.toTimeLabel ? ` – ${slot.toTimeLabel}` : ''}</span> })}{slots.length > 3 && <span style={{ display: 'block', marginTop: '.18rem', color: '#166534', fontSize: '.64rem', fontWeight: 850 }}>+{slots.length - 3} more</span>}</button>
           })}
         </div>
         {instructorId && !reportLoading && !reportError && !reportSlots.length && <div style={{ margin: '.85rem 0 .1rem', padding: '.8rem 1rem', border: '1px dashed #BFDBFE', borderRadius: '10px', background: '#F8FBFF', textAlign: 'center', color: '#526C88', fontSize: '.86rem' }}><strong style={{ display: 'block', color: DARK, marginBottom: '.18rem' }}>{selectedInstructorIsCurrent ? 'No current bookings this month' : 'No schedule items this month'}</strong>{selectedInstructorIsCurrent ? 'This instructor has no assigned student lesson booked for the selected month. Try another month or confirm the student assignment.' : 'No imported slots or current student bookings match this instructor. Try another month or instructor.'}</div>}
@@ -1143,8 +1143,8 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
   </div>
 
   return (
-    <div style={{ display: 'grid', gap: '1.5rem' }}>
-      <div style={cardStyle}>
+    <div className="admin-availability-panel" style={{ display: 'grid', gap: '1.5rem' }}>
+      <div className="admin-availability-open-card" style={cardStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
           <div>
             <h2 style={{ margin: 0, color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>Open Lesson Availability</h2>
@@ -1175,7 +1175,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
                 <strong style={{ color: DARK, fontFamily: 'var(--font-display)', fontSize: '1.05rem' }}>{calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</strong>
                 <button type="button" aria-label="Next month" onClick={() => setCalendarMonth(new Date(calendarYear, calendarMonthIndex + 1, 1))} style={{ width: '38px', height: '38px', border: '1px solid #D7E3F1', borderRadius: '10px', background: '#fff', color: DARK, fontSize: '1.25rem', cursor: 'pointer' }}>&rsaquo;</button>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,minmax(0,1fr))', gap: '.3rem', textAlign: 'center' }}>
+              <div className="admin-availability-calendar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7,minmax(0,1fr))', gap: '.3rem', textAlign: 'center' }}>
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => <span key={day} aria-hidden="true" style={{ padding: '.25rem 0', color: '#64748B', fontSize: '.68rem', fontWeight: 850 }}>{day.slice(0, 1)}</span>)}
                 {Array.from({ length: calendarStartDay }, (_, index) => <span key={`blank-${index}`} />)}
                 {Array.from({ length: calendarDayCount }, (_, index) => {
@@ -1274,7 +1274,7 @@ function AdminAvailabilityPanel({ cardStyle, inputStyle, thStyle, tdStyle, reque
         {error && <div role="alert" style={{ padding: '.85rem 1rem', marginBottom: '1rem', border: '1px solid #FECACA', borderRadius: '10px', background: '#FEF2F2', color: '#B91C1C', fontWeight: 750 }}>{error} <button type="button" onClick={() => setLoadVersion(value => value + 1)} style={{ marginLeft: '.6rem', border: 0, background: 'transparent', color: '#0755AE', fontWeight: 850, cursor: 'pointer' }}>Retry</button></div>}
         {paginationControls}
         <div className="admin-table-wrap">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="admin-mobile-cards admin-availability-slots-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead><tr><th scope="col" style={{ ...thStyle, minWidth: '92px' }}><label style={{ display: 'inline-flex', alignItems: 'center', gap: '.45rem', cursor: selectableRows.length ? 'pointer' : 'not-allowed' }}><input aria-label="Select all editable lesson slots on this page" type="checkbox" disabled={!selectableRows.length} checked={allSelected} onChange={() => setSelected(allSelected ? [] : selectableRows.map(row => String(row._id)))} /><span>Select</span></label></th><th scope="col" style={thStyle}>Lesson Date</th><th scope="col" style={thStyle}>Lesson Time</th><th scope="col" style={thStyle}>Booking Availability Status</th><th scope="col" className="admin-actions-cell" style={thStyle}>Remove Slot</th></tr></thead>
             <tbody>
               {rows.map(row => { const meta = statusStyle(row.status); const manageable = isManageable(row); const removable = isRemovable(row); return <tr key={row._id}><td style={tdStyle}><input aria-label={`Select lesson slot on ${row.date} at ${row.time}`} type="checkbox" disabled={!manageable} checked={selected.includes(String(row._id))} onChange={() => setSelected(current => current.includes(String(row._id)) ? current.filter(id => id !== String(row._id)) : [...current, String(row._id)])} /></td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{new Date(`${row.date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</td><td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{row.time}</td><td style={tdStyle}>{manageable ? <select aria-label={`Change booking availability for ${row.date} at ${row.time}`} disabled={saving} value={row.status} onChange={event => updateRowStatus(row, event.target.value)} style={{ minWidth: '150px', padding: '.46rem .65rem', border: `1px solid ${meta.color}55`, borderRadius: '9px', background: meta.background, color: meta.color, fontFamily: 'var(--font-mono)', fontSize: '.76rem', letterSpacing: '.04em', textTransform: 'uppercase', fontWeight: 800, cursor: saving ? 'wait' : 'pointer' }}><option value="available">Available</option><option value="blocked">Unavailable</option><option value="booked" disabled>Booked (automatic)</option></select> : <span title="Booked is created automatically when a student reserves this lesson slot" style={{ ...meta, display: 'inline-flex', padding: '.25rem .55rem', borderRadius: '999px', fontFamily: 'var(--font-mono)', fontSize: '.72rem', letterSpacing: '.06em', textTransform: 'uppercase', fontWeight: 800, whiteSpace: 'nowrap' }}>{statusLabel(row.status)}</span>}</td><td className="admin-actions-cell" style={tdStyle}><AdminDeleteIconButton disabled={!removable} label={`Remove lesson slot on ${row.date} at ${row.time}`} title={removable ? 'Remove this future lesson slot' : 'Past, checkout-in-progress, and booked slots cannot be removed'} onClick={() => requestConfirmation('Permanently remove this lesson slot?', `${row.date} at ${row.time} will be removed and will no longer appear in the student booking calendar.`, () => deleteSlot(row))} /></td></tr> })}
@@ -3268,7 +3268,16 @@ export default function AdminPage() {
         }
         @media (max-width: 560px) {
           .admin-stat-grid,.admin-loading-grid { grid-template-columns:1fr !important; }
+          /* The calendar page must never create a page-wide horizontal scrollbar on a phone. */
+          .admin-main,.admin-main > div,.admin-content-width,.admin-availability-panel,.admin-availability-panel > *,.admin-availability-open-card,.instructor-slots-report,.instructor-slots-calendar { min-width:0 !important; max-width:100% !important; box-sizing:border-box; }
+          .admin-main,.admin-content-width,.admin-availability-panel { overflow-x:hidden; }
           .admin-availability-layout { grid-template-columns:minmax(0,1fr) !important; gap:1rem !important; }
+          .admin-availability-calendar-grid,.instructor-slots-calendar-grid { width:100% !important; max-width:100% !important; grid-template-columns:repeat(7,minmax(0,1fr)) !important; }
+          .admin-availability-calendar-grid > button { width:100% !important; min-width:0 !important; min-height:36px !important; aspect-ratio:auto !important; padding:.15rem !important; }
+          .instructor-slots-calendar-grid > button { width:100% !important; min-width:0 !important; min-height:52px !important; padding:.2rem !important; }
+          .instructor-slots-calendar-grid > button span { display:none !important; }
+          .instructor-slots-calendar-heading { gap:.35rem !important; }
+          .instructor-slots-report-month-select { min-width:0 !important; width:100% !important; max-width:calc(100vw - 150px) !important; font-size:.86rem !important; }
           .availability-time-input-row { grid-template-columns:minmax(0,1fr) !important; align-items:stretch !important; }
           .availability-time-input-row > strong { padding-bottom:0 !important; }
           .availability-time-input-row input { width:100% !important; min-width:0 !important; }
@@ -3309,6 +3318,11 @@ export default function AdminPage() {
           .admin-table-wrap .admin-mobile-cards td[colspan]::before { content:none; }
           .admin-mobile-cards .admin-actions-cell { position:static !important; box-shadow:none !important; background:transparent !important; }
           .admin-mobile-cards .admin-actions-cell > div { flex-wrap:wrap !important; }
+          .admin-availability-slots-table td:nth-child(1)::before { content:'Select'; }
+          .admin-availability-slots-table td:nth-child(2)::before { content:'Lesson date'; }
+          .admin-availability-slots-table td:nth-child(3)::before { content:'Lesson time'; }
+          .admin-availability-slots-table td:nth-child(4)::before { content:'Booking status'; }
+          .admin-availability-slots-table td:nth-child(5)::before { content:'Remove slot'; }
           .admin-review-table td:nth-child(1)::before { content:'Reviewer'; }
           .admin-review-table td:nth-child(2)::before { content:'Review message'; }
           .admin-review-table td:nth-child(3)::before { content:'Rating'; }
