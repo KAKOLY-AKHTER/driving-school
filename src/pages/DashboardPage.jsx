@@ -1083,6 +1083,33 @@ export default function DashboardPage() {
           .dash-cart-link { width:38px !important; height:38px !important; }
           .dash-course-toolbar-actions { align-items:stretch; flex-direction:column; }
           .dash-course-toolbar-actions button { width:100%; }
+          .dash-payment-history { padding:1.15rem !important; border-radius:18px; }
+          .dash-payment-filter { flex-direction:column; align-items:stretch; }
+          .dash-payment-filter .dash-input { flex-basis:auto !important; width:100% !important; }
+          .dash-payment-pagination { align-items:stretch !important; flex-direction:column; }
+          .dash-payment-pagination > div { width:100%; }
+          .dash-payment-pagination > div:last-child { justify-content:flex-start; overflow-x:auto; padding-bottom:.25rem; }
+          .dash-payment-pagination button { flex:0 0 auto; }
+          .dash-payment-table { min-width:0 !important; border-spacing:0 .75rem !important; }
+          .dash-payment-table thead { display:none; }
+          .dash-payment-table tbody { display:grid; gap:.75rem; }
+          .dash-payment-table tbody tr { display:block; border:1px solid #E2EBF5 !important; border-radius:14px; overflow:hidden; background:#fff; box-shadow:0 5px 14px rgba(15,35,65,.04); }
+          .dash-payment-table tbody td { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; width:100%; max-width:none !important; padding:.72rem .85rem !important; border-bottom:1px solid #EEF2F7; box-sizing:border-box; text-align:right !important; font-size:.9rem !important; }
+          .dash-payment-table tbody td:last-child { border-bottom:0; }
+          .dash-payment-table tbody td::before { content:''; flex:0 0 88px; color:#64748B; font-family:var(--font-mono); font-size:.67rem; font-weight:800; letter-spacing:.08em; text-align:left; text-transform:uppercase; }
+          .dash-payment-table tbody td:nth-child(1)::before { content:'Date'; }
+          .dash-payment-table tbody td:nth-child(2)::before { content:'Reference'; }
+          .dash-payment-table tbody td:nth-child(3)::before { content:'Email'; }
+          .dash-payment-table tbody td:nth-child(4)::before { content:'Item'; }
+          .dash-payment-table tbody td:nth-child(5)::before { content:'Amount'; }
+          .dash-payment-table tbody td:nth-child(6)::before { content:'Status'; }
+          .dash-payment-table tbody td:nth-child(7)::before { content:'Receipt'; }
+          .dash-payment-table tbody td button { min-width:0; max-width:calc(100% - 96px) !important; overflow-wrap:anywhere; white-space:normal !important; text-align:right; }
+          .dash-payment-table .dash-payment-actions { position:static; z-index:auto; box-shadow:none; background:transparent !important; align-items:center; }
+          .dash-payment-table .dash-payment-actions button { max-width:none !important; }
+          .dash-payment-table tbody tr:has(td[colspan]) { padding:1rem; }
+          .dash-payment-table tbody td[colspan] { display:block; padding:1.5rem .5rem !important; text-align:center !important; border:0; }
+          .dash-payment-table tbody td[colspan]::before { display:none; }
         }
         .dash-course-card { display:flex; align-items:center; background:#ffffff; padding:1.25rem 1.5rem; border-radius:16px; border:1px solid #E8EDF4; gap:1.5rem; transition:all 0.4s cubic-bezier(0.22,1,0.36,1); position:relative; overflow:hidden; }
         .dash-course-card::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(1,69,168,0.02),rgba(253,188,1,0.02)); opacity:0; transition:opacity 0.4s; border-radius:16px; pointer-events:none; }
@@ -1573,11 +1600,11 @@ export default function DashboardPage() {
 
               {activeTab === 'payments' && (
                 <div className="dash-content-width">
-                  <div className="dash-anim dash-card-premium" style={{ padding:'clamp(1.25rem,2.5vw,2.5rem)' }}>
+                  <div className="dash-anim dash-card-premium dash-payment-history" style={{ padding:'clamp(1.25rem,2.5vw,2.5rem)' }}>
                     <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:`linear-gradient(90deg,${GOLD},${GOLD_BRIGHT},${GOLD})`, backgroundSize:'200% 100%', animation:'dashShimmer 5s linear infinite' }} />
                     <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.85rem', letterSpacing:'0.14em', textTransform:'uppercase', color:'#475569', margin:'0 0 0.5rem', fontWeight:600, animation:'dashTextReveal 0.8s ease both' }}>Billing</p>
                     <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.5rem', color:'#0F172A', margin:'0 0 1.5rem', fontWeight:800, textTransform:'uppercase' }}>PAYMENT HISTORY</h2>
-                    <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search payments" placeholder="Search reference, item or email…" value={paymentSearch} onChange={event => { setPaymentSearch(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ flex:'1 1 260px' }} /><select aria-label="Filter payments by status" value={paymentStatusFilter} onChange={event => { setPaymentStatusFilter(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ width:'180px' }}><option value="all">All payment statuses</option>{PAYMENT_STATUS_FILTERS.map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}</select></div>
+                    <div className="dash-payment-filter" style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', marginBottom:'1rem' }}><input type="search" aria-label="Search payments" placeholder="Search reference, item or email…" value={paymentSearch} onChange={event => { setPaymentSearch(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ flex:'1 1 260px' }} /><select aria-label="Filter payments by status" value={paymentStatusFilter} onChange={event => { setPaymentStatusFilter(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ width:'180px' }}><option value="all">All payment statuses</option>{PAYMENT_STATUS_FILTERS.map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}</select></div>
                     <div className="dash-stat-grid" style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:'1rem', marginBottom:'2rem' }}>
                       <div style={{ background:'linear-gradient(135deg,rgba(5,150,105,0.04),rgba(5,150,105,0.01))', border:'1px solid rgba(5,150,105,0.1)', borderRadius:'var(--radius-md)', padding:'1.25rem' }}>
                         <p style={{ fontFamily:'var(--font-mono)', fontSize:'0.75rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#059669', margin:'0 0 0.25rem', fontWeight:600 }}>Total Paid</p>
@@ -1588,7 +1615,7 @@ export default function DashboardPage() {
                         <p style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', color:SKY_BLUE, margin:0, fontWeight:800 }}>{payments.length}</p>
                       </div>
                     </div>
-                    {matchedPayments.length > 0 && <div aria-label="Payment pagination" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'.75rem', flexWrap:'wrap', margin:'0 0 1rem' }}>
+                    {matchedPayments.length > 0 && <div className="dash-payment-pagination" aria-label="Payment pagination" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'.75rem', flexWrap:'wrap', margin:'0 0 1rem' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:'.7rem', flexWrap:'wrap' }}>
                         <select aria-label="Payments per page" value={paymentLimit} onChange={event => { setPaymentLimit(event.target.value); setPaymentPage(1) }} className="dash-input" style={{ width:'125px' }}><option value="10">10 / page</option><option value="25">25 / page</option><option value="50">50 / page</option></select>
                         <span style={{ color:'#475569' }}>Page {safePaymentPage} of {paymentPages} · {matchedPayments.length} payments</span>
@@ -1596,7 +1623,7 @@ export default function DashboardPage() {
                       <div style={{ display:'flex', gap:'.45rem', alignItems:'center' }}><button type="button" disabled={safePaymentPage <= 1} onClick={() => setPaymentPage(page => Math.max(1, page - 1))} style={{ ...pagerButtonStyle(), minWidth:'82px', opacity:safePaymentPage <= 1 ? .5 : 1, cursor:safePaymentPage <= 1 ? 'not-allowed' : 'pointer' }}>Previous</button>{pageNumbers(safePaymentPage, paymentPages).map(page => <button type="button" key={page} aria-label={`Payment page ${page}`} aria-current={page === safePaymentPage ? 'page' : undefined} onClick={() => setPaymentPage(page)} style={pagerButtonStyle(page === safePaymentPage)}>{page}</button>)}<button type="button" disabled={safePaymentPage >= paymentPages} onClick={() => setPaymentPage(page => Math.min(paymentPages, page + 1))} style={{ ...pagerButtonStyle(), minWidth:'60px', opacity:safePaymentPage >= paymentPages ? .5 : 1, cursor:safePaymentPage >= paymentPages ? 'not-allowed' : 'pointer' }}>Next</button></div>
                     </div>}
                     <div className="dash-table-scroll">
-                    <table style={{ width:'100%', borderCollapse:'separate', borderSpacing:'0', minWidth:'700px' }}>
+                    <table className="dash-payment-table" style={{ width:'100%', borderCollapse:'separate', borderSpacing:'0', minWidth:'700px' }}>
                       <thead>
                         <tr>
                           {['Date','Ref','Email','Item','Amount','Payment Status','Receipt'].map((th, i) => (
